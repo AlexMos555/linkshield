@@ -37,6 +37,7 @@ from datetime import datetime, timedelta, timezone
 
 from api.config import get_settings
 from api.services.stripe_billing import BillingError, cancel_user_subscriptions
+from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.account_purge")
 
@@ -52,7 +53,7 @@ async def purge_expired_accounts() -> dict:
     call finds zero candidates because the first DELETE wiped the rows).
     """
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         logger.warning("account_purge.supabase_not_configured")
         return {"deleted": 0, "skipped": "supabase_not_configured"}
 
@@ -60,8 +61,7 @@ async def purge_expired_accounts() -> dict:
 
     cutoff = (datetime.now(timezone.utc) - timedelta(days=GRACE_DAYS)).isoformat()
     headers = {
-        "apikey": settings.supabase_service_key,
-        "Authorization": f"Bearer {settings.supabase_service_key}",
+        **supabase_keys.server_headers(settings),
     }
 
     # Step 1: list candidates for logging. We need to know WHO got

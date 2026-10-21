@@ -12,7 +12,9 @@ makes the new one exit cleanly.
 
 Environment:
     SUPABASE_URL              required
-    SUPABASE_SERVICE_KEY      required (service_role; bypasses RLS)
+    SUPABASE_SECRET_KEY       sb_secret_… server key (bypasses RLS); or
+    SUPABASE_SERVICE_KEY      the legacy service_role key — or an sb_secret_
+                              value in this variable (one of the two required)
     REDIS_URL                 optional, used for the global lock
     WATCHTOWER_MAX_BRANDS     optional cap per run (default 200)
 """
@@ -84,16 +86,16 @@ async def _release_lock(client, token: str | None) -> None:
 
 async def _supabase(http: httpx.AsyncClient, method: str, path: str, **kwargs):
     settings_url = os.environ["SUPABASE_URL"].rstrip("/")
-    service_key = os.environ["SUPABASE_SERVICE_KEY"]
+    from api.services import supabase_keys
+
+    # An sb_secret_ key goes in `apikey` only; a legacy JWT also as Bearer.
     return await http.request(
         method,
         f"{settings_url}/rest/v1/{path}",
-        headers={
-            "apikey": service_key,
-            "Authorization": f"Bearer {service_key}",
-            "Content-Type": "application/json",
-            **kwargs.pop("headers", {}),
-        },
+        headers=supabase_keys.api_key_headers(
+            supabase_keys.server_key_from_env(),
+            **{"Content-Type": "application/json", **kwargs.pop("headers", {})},
+        ),
         **kwargs,
     )
 
@@ -216,8 +218,10 @@ async def run_once(cap: int) -> int:
 
 async def main(args) -> int:
     cap = int(os.environ.get("WATCHTOWER_MAX_BRANDS", "200"))
-    if not (os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_KEY")):
-        logger.error("SUPABASE_URL and SUPABASE_SERVICE_KEY must be set")
+    from api.services import supabase_keys
+
+    if not (os.environ.get("SUPABASE_URL") and supabase_keys.server_key_from_env()):
+        logger.error("SUPABASE_URL and SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_KEY) must be set")
         return 2
 
     client, acquired, token = await _acquire_lock(os.environ.get("REDIS_URL"))

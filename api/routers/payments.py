@@ -59,6 +59,7 @@ from api.services.entitlements import (
     stripe_status,
 )
 from api.models.schemas import AuthUser
+from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.payments")
 
@@ -1046,15 +1047,14 @@ async def _update_subscription(
     from api.services.cache import get_redis
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         raise BillingError("supabase_not_configured_for_subscription_update")
 
     # Update Supabase — one row per user_id, mutated in place. Migration
     # 013 added UNIQUE(user_id), so the `on_conflict=user_id` query param
     # tells PostgREST to actually merge instead of inserting a new row.
     headers = {
-        "apikey": settings.supabase_service_key,
-        "Authorization": f"Bearer {settings.supabase_service_key}",
+        **supabase_keys.server_headers(settings),
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates,return=minimal",
     }

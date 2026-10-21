@@ -33,6 +33,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from api.services.rate_limiter import unsubscribe_rate_limit
+from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.email.unsubscribe")
 
@@ -161,7 +162,7 @@ async def _process_unsubscribe(payload: dict) -> None:
     )
 
     supabase_url = os.environ.get("SUPABASE_URL", "").strip()
-    service_key = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
+    service_key = supabase_keys.server_key_from_env()
     if not supabase_url or not service_key:
         # Dev / unconfigured — log only, no DB write. Operators reconcile
         # from logs until Supabase env is wired.
@@ -174,8 +175,7 @@ async def _process_unsubscribe(payload: dict) -> None:
     import httpx
 
     headers = {
-        "apikey": service_key,
-        "Authorization": f"Bearer {service_key}",
+        **supabase_keys.api_key_headers(service_key),
     }
     timeout = httpx.Timeout(5.0)
 
@@ -241,7 +241,7 @@ async def is_unsubscribed(user_id: str, template_key: str) -> bool:
     actual compliance comes from the recorded unsubscribe event itself.
     """
     supabase_url = os.environ.get("SUPABASE_URL", "").strip()
-    service_key = os.environ.get("SUPABASE_SERVICE_KEY", "").strip()
+    service_key = supabase_keys.server_key_from_env()
     if not supabase_url or not service_key:
         return False
 
@@ -253,8 +253,7 @@ async def is_unsubscribed(user_id: str, template_key: str) -> bool:
                 f"{supabase_url}/rest/v1/user_settings",
                 params={"user_id": f"eq.{user_id}", "select": "settings"},
                 headers={
-                    "apikey": service_key,
-                    "Authorization": f"Bearer {service_key}",
+                    **supabase_keys.api_key_headers(service_key),
                 },
             )
         if resp.status_code != 200:

@@ -23,6 +23,7 @@ import logging
 import httpx
 
 from api.config import get_settings
+from api.services import supabase_keys
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ async def check_typosquat_alert(domain: str) -> dict:
         return neutral
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         return neutral
 
     try:
@@ -71,8 +72,7 @@ async def check_typosquat_alert(domain: str) -> dict:
                     "limit": "1",
                 },
                 headers={
-                    "apikey": settings.supabase_service_key,
-                    "Authorization": f"Bearer {settings.supabase_service_key}",
+                    **supabase_keys.server_headers(settings),
                 },
             )
             if resp.status_code != 200:

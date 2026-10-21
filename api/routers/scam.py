@@ -29,6 +29,7 @@ from api.models.schemas import AuthUser
 from api.services.auth import get_current_user
 from api.services.email_analyzer import ALL_BODY_PATTERNS, _aggregate_score, _level_for_score, Finding
 from api.services.rate_limiter import rate_limit
+from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.scam")
 
@@ -357,7 +358,7 @@ async def _persist_analysis(
     from api.config import get_settings
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         return  # Degraded mode — accept classification but skip history write
 
     import httpx
@@ -378,8 +379,7 @@ async def _persist_analysis(
                 f"{settings.supabase_url}/rest/v1/scam_analyses",
                 json=body,
                 headers={
-                    "apikey": settings.supabase_service_key,
-                    "Authorization": f"Bearer {settings.supabase_service_key}",
+                    **supabase_keys.server_headers(settings),
                     "Content-Type": "application/json",
                     "Prefer": "return=minimal",
                 },

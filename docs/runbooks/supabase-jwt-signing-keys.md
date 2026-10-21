@@ -39,6 +39,36 @@
 Пока новые переменные не заданы, используется `SUPABASE_JWT_SECRET` — ничего
 не ломается.
 
+## Какой ключ API использует бэкенд (с PR feat/supabase-secret-key)
+
+Все обращения API к Supabase (PostgREST, Auth admin, вызовы RPC, задача
+Watchtower) идут через `api/services/supabase_keys.py`:
+
+| Назначение | Переменная (новая, приоритетная) | Запасная (legacy) |
+|------------|----------------------------------|-------------------|
+| Серверный ключ (обходит RLS) | `SUPABASE_SECRET_KEY` = `sb_secret_…` | `SUPABASE_SERVICE_KEY` (service_role JWT) |
+| Публичный ключ (`/auth/v1/verify`, `/logout`, проверка `/health/deep`) | `SUPABASE_PUBLISHABLE_KEY` = `sb_publishable_…` | `SUPABASE_ANON_KEY` |
+
+- Новые ключи — **не JWT**. Бэкенд отправляет их только в заголовке
+  `apikey` и **не** кладёт в `Authorization: Bearer` (Supabase принимает их
+  там лишь если значение совпадает с `apikey` и советует заголовок не
+  заполнять). Legacy JWT-ключи по-прежнему уходят и в `apikey`, и в `Bearer`.
+- Заголовки строятся по виду ключа, а не по имени переменной: значение
+  `sb_secret_…`, вставленное в старую `SUPABASE_SERVICE_KEY`, тоже работает.
+- При старте API проверяет ключи и **не запускается** (в любом окружении),
+  если: в `SUPABASE_SECRET_KEY` не `sb_secret_…` (например, publishable);
+  в `SUPABASE_SERVICE_KEY` публичный ключ (publishable или anon JWT);
+  в `SUPABASE_PUBLISHABLE_KEY` не `sb_publishable_…`; в `SUPABASE_ANON_KEY`
+  серверный ключ. В staging/production нужен хотя бы один серверный ключ;
+  если это ещё legacy service_role — в логах предупреждение
+  `supabase_server_key is the legacy service_role key`.
+- `/health/deep` → `components.supabase_server_key` (информационно, не
+  будит дежурного): `{"ok": true, "kind": "secret", "status": 200}` значит,
+  что серверный ключ — новый и Auth admin API принимает его как
+  service_role (запрос `GET /auth/v1/admin/users?per_page=1`, ответ не
+  сохраняется). `kind: "legacy_service_role"` — бэкенд всё ещё на старом
+  ключе. Сам ключ нигде не выводится.
+
 ## Шаги для основателя (по порядку)
 
 1. **Railway → сервис API → Variables** — добавить две переменные, каждая —
@@ -47,25 +77,50 @@
    - `AUDIT_IP_HASH_KEY`
 
    Railway сам перезапустит сервис. Проверка: `https://api.cleanway.ai/health` — ok.
-2. **Перевести клиентов на publishable key.** Supabase → Project Settings →
-   API Keys: создать (если ещё нет) `sb_publishable_…` и `sb_secret_…`.
-   Заменить:
-   - сайт (Vercel): `NEXT_PUBLIC_SUPABASE_ANON_KEY` → publishable key;
-   - мобильное приложение: `EXPO_PUBLIC_SUPABASE_ANON_KEY` → publishable key
-     (нужна новая сборка; старые сборки с anon-ключом перестанут входить после
-     шага 4 — дождаться, пока большинство обновится);
-   - расширения: ключ, который сайт передаёт расширению (`anon_key` при
-     подключении) — берётся из той же переменной сайта;
-   - Railway: `SUPABASE_ANON_KEY` → publishable key, `SUPABASE_SERVICE_KEY` →
-     secret key (`sb_secret_…`).
-3. Подождать **90 дней** после шага 1, если важно, чтобы старые ссылки
+2. **Создать новые ключи.** Supabase → Project Settings → **API Keys** →
+   вкладка «Publishable and secret API keys»: если ключей ещё нет — *Create
+   new API keys*. Получится `sb_publishable_…` (default) и `sb_secret_…`
+   (default). Старые anon/service_role при этом продолжают работать.
+   Секретный ключ можно открыть только кнопкой «показать» — копировать
+   его сразу в Railway, никуда больше (ни в чат, ни в код).
+3. **Railway → сервис API → Variables** — добавить:
+   - `SUPABASE_SECRET_KEY` = `sb_secret_…`;
+   - `SUPABASE_PUBLISHABLE_KEY` = `sb_publishable_…`.
+
+   Старые `SUPABASE_SERVICE_KEY` / `SUPABASE_ANON_KEY` пока **не удалять** —
+   это откат: если что-то пойдёт не так, достаточно удалить две новые
+   переменные. Railway сам передеплоит сервис.
+4. **Проверить API.** Через 2–3 минуты:
+   - `https://api.cleanway.ai/health` → `ok` (если сервис не стартовал — в
+     логах Railway `ConfigError`: в переменную попал не тот ключ);
+   - `https://api.cleanway.ai/health/deep` → в
+     `components.supabase_server_key` должно быть `"ok": true` и
+     `"kind": "secret"`; в `components.supabase` — `"ok": true`;
+   - в приложении или на сайте: войти, открыть настройки, нажать
+     «подключить расширение» — работает.
+5. **GitHub → Settings → Secrets and variables → Actions** — секрет
+   `SUPABASE_SERVICE_KEY` (им пользуется ежедневная задача Watchtower)
+   заменить значением `sb_secret_…`. Скрипт сам поймёт, что это новый ключ.
+   Проверка: Actions → «Refresh Watchtower» → *Run workflow* → зелёный.
+6. **Перевести клиентов на publishable key** (если ещё не сделано в PR #215):
+   - сайт (Vercel): `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` = `sb_publishable_…`
+     (сайт предпочитает его старому `NEXT_PUBLIC_SUPABASE_ANON_KEY`);
+   - мобильное приложение: `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (нужна
+     новая сборка; старые сборки с anon-ключом перестанут входить после
+     шага 8 — дождаться, пока большинство обновится);
+   - расширения получают ключ от сайта при подключении — отдельно ничего
+     делать не нужно.
+7. Подождать **90 дней** после шага 1, если важно, чтобы старые ссылки
    «отписаться» в уже отправленных письмах продолжали работать. (Если не
    важно — можно сразу.)
-4. **Отозвать legacy-ключи.** Supabase → Project Settings → JWT Keys:
-   legacy HS256 secret → *Revoke*; API Keys → legacy `anon` / `service_role` →
-   *Disable*. После этого `SUPABASE_JWT_SECRET` в Railway больше ничего не
-   подписывает и не проверяет (переменную можно оставить — конфиг пока
-   требует её в production).
+8. **Отозвать legacy-ключи.** Supabase → Project Settings → API Keys →
+   вкладка «Legacy API keys» → *Disable JWT-based API keys* (это обратимо:
+   если что-то сломалось — включить обратно). Сразу после этого снова
+   открыть `/health/deep` (`supabase_server_key.ok` = `true`) и проверить
+   вход в приложении и на сайте. Затем Project Settings → JWT Keys: legacy
+   HS256 secret → *Revoke* (это уже необратимо). После этого в Railway можно
+   удалить `SUPABASE_SERVICE_KEY` и `SUPABASE_ANON_KEY`;
+   `SUPABASE_JWT_SECRET` пока оставить — конфиг ещё требует её в production.
 
 ## Если после деплоя все получают 401
 

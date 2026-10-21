@@ -22,6 +22,7 @@ from api.config import get_settings
 from api.models.schemas import AuthUser
 from api.services.auth import get_current_user, get_optional_user
 from api.services.rate_limiter import rate_limit
+from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.phone")
 
@@ -107,7 +108,7 @@ async def report_phone(
     _, _ = user, _validate_hash(payload.phone_hash)  # typing assertions
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         # Degraded mode — accept silently so the client doesn't crash, but log.
         logger.warning(
             "phone_report_degraded", extra={"user_id": user.id, "kind": payload.kind}
@@ -127,8 +128,7 @@ async def report_phone(
             f"{settings.supabase_url}/rest/v1/rpc/report_phone",
             json=body,
             headers={
-                "apikey": settings.supabase_service_key,
-                "Authorization": f"Bearer {settings.supabase_service_key}",
+                **supabase_keys.server_headers(settings),
                 "Content-Type": "application/json",
             },
         )
@@ -169,14 +169,13 @@ async def lookup_phone(
         raise HTTPException(status_code=422, detail="cc must be a 2-letter ISO code")
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         return PhoneLookupResponse(known=False, verdict="unknown")
 
     import httpx
 
     headers = {
-        "apikey": settings.supabase_service_key,
-        "Authorization": f"Bearer {settings.supabase_service_key}",
+        **supabase_keys.server_headers(settings),
     }
 
     async with httpx.AsyncClient(timeout=5.0) as client:

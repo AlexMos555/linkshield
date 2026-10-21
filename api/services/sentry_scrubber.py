@@ -64,6 +64,9 @@ _PII_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # keys, custom bearer tokens). Anchored so we don't eat random
     # "Bearer" in prose.
     (re.compile(r"Bearer\s+[A-Za-z0-9\._\-\+/=]{8,}", re.IGNORECASE), "Bearer [redacted]"),
+    # New Supabase API keys (not JWTs, so the eyJ pattern misses them). The
+    # publishable one is public but redacted too — same reasoning as anon.
+    (re.compile(r"sb_(?:secret|publishable)_[A-Za-z0-9_\-]{8,}"), "[redacted-supabase-key]"),
     # Google API keys (Safe Browsing's `?key=` — it lands in a span's
     # http.query and in any exception message that quotes the request URL).
     (re.compile(r"AIza[0-9A-Za-z_\-]{35}"), "[redacted-google-key]"),
@@ -125,6 +128,7 @@ _ALWAYS_REDACT_KEYS = frozenset(
         "set-cookie",
         "session",
         "supabase_service_key",
+        "supabase_secret_key",
         "supabase_jwt_secret",
         "stripe_secret_key",
         "stripe_webhook_secret",

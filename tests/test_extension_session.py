@@ -143,6 +143,24 @@ def test_opens_a_new_session_for_the_token_owner(client):
     assert client.limited == ["extension_session"]
 
 
+def test_new_api_keys_are_preferred_and_never_sent_as_bearer(client, monkeypatch):
+    """SUPABASE_SECRET_KEY / SUPABASE_PUBLISHABLE_KEY win over the legacy
+    keys, and an sb_ key travels only in `apikey` (it is not a JWT)."""
+    from api import config
+
+    settings = config.get_settings()
+    monkeypatch.setattr(settings, "supabase_secret_key", "sb_secret_test_value_123", raising=False)
+    monkeypatch.setattr(settings, "supabase_publishable_key", "sb_publishable_test_value_123", raising=False)
+
+    resp = _post(client)
+    assert resp.status_code == 200, resp.text
+    link, verify = _FakeClient.calls
+    assert link["headers"]["apikey"] == "sb_secret_test_value_123"
+    assert "Authorization" not in link["headers"]
+    assert verify["headers"]["apikey"] == "sb_publishable_test_value_123"
+    assert "Authorization" not in verify["headers"]
+
+
 def test_supabase_js_shaped_link_answer_is_accepted(client):
     _FakeClient.script["/auth/v1/admin/generate_link"] = _Resp(
         200, {"properties": {"hashed_token": "h2", "verification_type": "signup"}, "user": {"id": USER.id}}

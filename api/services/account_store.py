@@ -23,6 +23,7 @@ import logging
 from typing import Any, Optional, Protocol
 
 from api.config import get_settings
+from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.account_store")
 
@@ -93,8 +94,7 @@ class PostgrestAccountStore:
 
     def _headers(self, **extra: str) -> dict[str, str]:
         return {
-            "apikey": self._key,
-            "Authorization": f"Bearer {self._key}",
+            **supabase_keys.api_key_headers(self._key),
             **extra,
         }
 
@@ -340,6 +340,6 @@ def get_account_store() -> Optional[AccountStore]:
     if _override is not None:
         return _override
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         return None
-    return PostgrestAccountStore(settings.supabase_url, settings.supabase_service_key)
+    return PostgrestAccountStore(settings.supabase_url, supabase_keys.server_key(settings))

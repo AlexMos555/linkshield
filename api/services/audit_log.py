@@ -26,6 +26,7 @@ import logging
 from typing import Any, Optional
 
 from api.config import get_settings
+from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.audit_log")
 
@@ -105,7 +106,7 @@ async def write(
         )
     """
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         # Without Supabase wired we can't write the row. Log so a
         # developer running locally sees the trace, but never raise.
         logger.debug(
@@ -130,8 +131,7 @@ async def write(
             resp = await client.post(
                 f"{settings.supabase_url}/rest/v1/audit_log",
                 headers={
-                    "apikey": settings.supabase_service_key,
-                    "Authorization": f"Bearer {settings.supabase_service_key}",
+                    **supabase_keys.server_headers(settings),
                     "Content-Type": "application/json",
                     "Prefer": "return=minimal",
                 },

@@ -21,6 +21,7 @@ from api.services.auth import get_current_user
 from api.services.rate_limiter import rate_limit
 from api.models.schemas import AuthUser
 from api.config import get_settings
+from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.org")
 
@@ -47,7 +48,7 @@ async def _require_org_admin(user: AuthUser, org_id: str) -> None:
     is unreachable there.
     """
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         if settings.environment == "production":
             raise HTTPException(503, "Database not configured")
         return  # dev / staging stub flow
@@ -64,8 +65,7 @@ async def _require_org_admin(user: AuthUser, org_id: str) -> None:
                     "limit": "1",
                 },
                 headers={
-                    "apikey": settings.supabase_service_key,
-                    "Authorization": f"Bearer {settings.supabase_service_key}",
+                    **supabase_keys.server_headers(settings),
                 },
             )
     except Exception as e:
@@ -139,7 +139,7 @@ async def create_org(
     import httpx
 
     settings = get_settings()
-    if not settings.supabase_url or not settings.supabase_service_key:
+    if not settings.supabase_url or not supabase_keys.server_key(settings):
         # In production this is a hard failure — we won't fake a business org.
         # In dev/staging the mock helps local flows without Supabase configured.
         if settings.environment == "production":
@@ -156,8 +156,7 @@ async def create_org(
 
     try:
         headers = {
-            "apikey": settings.supabase_service_key,
-            "Authorization": f"Bearer {settings.supabase_service_key}",
+            **supabase_keys.server_headers(settings),
             "Content-Type": "application/json",
             "Prefer": "return=representation",
         }
