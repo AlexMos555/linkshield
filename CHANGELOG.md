@@ -23,6 +23,24 @@
 ### Tests
 - 382 backend tests passing (was 373). Added 9 parameterized tests for `CheckoutRequest` URL validation.
 
+## [Extension 0.2.1] - 2026-10-21
+
+Browser extension for Chrome, Edge, Opera, Firefox and Safari. The first version for the stores: 0.2.0 was built but never submitted. Permissions are the same as in 0.2.0.
+
+**Что нового**
+- **Предупреждение об опасном сайте — теперь отдельная страница расширения.** Раньше красный экран «СТОП» рисовался внутри самой мошеннической страницы, и она могла его убрать. Теперь вкладка переходит на страницу Cleanway, до которой сайт не может дотянуться. «Назад» возвращает туда, откуда вы пришли; «Всё равно открыть» пускает на этот сайт в этой вкладке на час, а форма пароля на нём остаётся под строгим присмотром.
+- **Ключ входа надёжнее спрятан.** Короткоживущий ключ входа хранится в памяти браузера, которую не видят скрипты на страницах, и стирается при закрытии браузера; войти заново не придётся — расширение само обновит вход при запуске.
+- **Расширение говорит только с сервером Cleanway.** Адрес сервера нельзя подменить на чужой.
+- **Ловит больше мошеннических сайтов на бесплатных хостингах** (например, `gmail-support.netlify.app`, `facebook-login0.vercel.app`) и на сервисах бесплатных доменов вроде duckdns.org.
+- **Убран неиспользуемый код**, который узнавал почтовые сайты по части адреса (его обманул бы адрес вроде `mail.google.com.evil.example`); на защиту он не влиял.
+
+**What's new**
+- **The dangerous-site warning is now the extension's own page.** The red STOP screen used to be drawn inside the scam page itself, which could remove it. Now the tab moves to a Cleanway page the site cannot reach. "Go back" returns you to where you came from; "Open anyway" lets you into that site in that tab for an hour, and its password form stays under strict watch.
+- **Your sign-in key is kept out of reach.** The short-lived sign-in key lives in browser memory that page scripts cannot read and is cleared when the browser closes; you stay signed in — the extension refreshes the sign-in at start-up.
+- **The extension talks only to Cleanway's server.** The server address cannot be pointed somewhere else.
+- **Catches more scam sites on free hosting** (for example `gmail-support.netlify.app`, `facebook-login0.vercel.app`) and on free dynamic-DNS names such as duckdns.org.
+- **Removed unused code** that recognised mail sites by part of the address (an address like `mail.google.com.evil.example` would have fooled it); it never affected protection.
+
 ## [Android 1.0.4] - 2026-10-08
 
 Android app, versionCode 104.
