@@ -29,6 +29,7 @@ Browser extension for Chrome, Edge, Opera, Firefox and Safari. The first version
 
 **Что нового**
 - **Предупреждение об опасном сайте — теперь отдельная страница расширения.** Раньше красный экран «СТОП» рисовался внутри самой мошеннической страницы, и она могла его убрать. Теперь вкладка переходит на страницу Cleanway, до которой сайт не может дотянуться. «Назад» возвращает туда, откуда вы пришли; «Всё равно открыть» пускает на этот сайт в этой вкладке на час, а форма пароля на нём остаётся под строгим присмотром.
+- **Значок Cleanway на странице предупреждения говорит «Это мошеннический сайт»**, а не «Эта страница безопасна», и предлагает закрыть вкладку.
 - **Ключ входа надёжнее спрятан.** Короткоживущий ключ входа хранится в памяти браузера, которую не видят скрипты на страницах, и стирается при закрытии браузера; войти заново не придётся — расширение само обновит вход при запуске.
 - **Расширение говорит только с сервером Cleanway.** Адрес сервера нельзя подменить на чужой.
 - **Ловит больше мошеннических сайтов на бесплатных хостингах** (например, `gmail-support.netlify.app`, `facebook-login0.vercel.app`) и на сервисах бесплатных доменов вроде duckdns.org.
@@ -36,6 +37,7 @@ Browser extension for Chrome, Edge, Opera, Firefox and Safari. The first version
 
 **What's new**
 - **The dangerous-site warning is now the extension's own page.** The red STOP screen used to be drawn inside the scam page itself, which could remove it. Now the tab moves to a Cleanway page the site cannot reach. "Go back" returns you to where you came from; "Open anyway" lets you into that site in that tab for an hour, and its password form stays under strict watch.
+- **The Cleanway popup on the warning page says "This is a scam site"**, not "This page is safe", and offers to close the tab.
 - **Your sign-in key is kept out of reach.** The short-lived sign-in key lives in browser memory that page scripts cannot read and is cleared when the browser closes; you stay signed in — the extension refreshes the sign-in at start-up.
 - **The extension talks only to Cleanway's server.** The server address cannot be pointed somewhere else.
 - **Catches more scam sites on free hosting** (for example `gmail-support.netlify.app`, `facebook-login0.vercel.app`) and on free dynamic-DNS names such as duckdns.org.
