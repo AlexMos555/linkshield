@@ -18,7 +18,7 @@ No shots were dropped. All five planned screens were captured in both languages.
 
 ## How they were captured
 
-- **Date:** 2026-10-21 (all ten images; the 2026-10-13 set showed the old in-page overlay in 02 and 03)
+- **Date:** 2026-10-21 (all ten images, retaken after the accessibility pass of PR #247 changed text colours and the popup; the 2026-10-13 set showed the old in-page overlay in 02 and 03)
 - **Build:** the unpacked `extension/` folder at version 0.2.1 (MV3), loaded with `--load-extension` exactly as a user would load it.
 - **Browser:** Chromium 151.0.7922.34 (Chrome for Testing from Playwright 1.62.1), new headless mode, on macOS. The viewport was 1280x800 at device scale factor 1.
 - **Locale:** for each set, Chromium's UI language was set (`-AppleLanguages`, `--lang` and `LANGUAGE`). The extension reported `chrome.i18n` UI locale `en_US` (which uses `_locales/en`) and `ru` respectively. The script refuses to capture if the locale does not match. The extension has no language setting of its own: it follows the browser's language.
