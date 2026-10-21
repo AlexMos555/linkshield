@@ -112,7 +112,11 @@ async def lifespan(app: FastAPI):
     # fresh) so DNS queries stop paying a Redis round trip each.
     from api.routers.doh import startup as doh_startup
     await doh_startup()
+    # Retention purge loop — only when RETENTION_PURGE is dry_run / on.
+    from api.services import retention
+    retention.start_background()
     yield
+    await retention.stop_background()
     # ── Shutdown ──
     # DoH gateway first (it reads Redis in the background): stop the
     # blocklist refresher + stats logger, release the upstream connections.

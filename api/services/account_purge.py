@@ -22,13 +22,10 @@ deleted, any still-live Stripe subscription is cancelled; a user whose
 billing can't be stopped, or whose auth record can't be deleted, is
 skipped and retried on the next run.
 
-This script is invokable two ways:
-  1. CLI:   `python -m api.services.account_purge`
-  2. HTTP:  the admin-token-gated endpoint defined in api/routers/admin.py
-     (set ADMIN_PURGE_TOKEN env to use it; otherwise the endpoint 503s)
-
-Cron'd hourly is plenty — grace is 30 DAYS, so the exact tick time of
-the purge doesn't matter. A nightly run would also be fine.
+Run by the retention job (api/services/retention.py — every 6 hours inside
+the API process when RETENTION_PURGE=on), or by hand:
+`python -m api.services.account_purge`. Grace is 30 DAYS, so the exact
+tick time doesn't matter.
 """
 from __future__ import annotations
 
@@ -223,6 +220,8 @@ async def purge_expired_accounts() -> dict:
     # exactly what a compliance review needs after the fact (the
     # users.id row itself is gone forever now). audit_log rows do NOT
     # cascade on users.id — see migration 014.
+    await _drop_redis_keys(deleted_ids)
+
     from api.services import audit_log
     for uid in deleted_ids:
         await audit_log.write(
@@ -237,6 +236,27 @@ async def purge_expired_accounts() -> dict:
     if skipped_ids:
         result["skipped"] = skipped_ids
     return result
+
+
+# Redis keys holding a purged user's data. The whitelist (a list of sites
+# the person trusted) would otherwise outlive the account by up to a year
+# (its TTL); the others are caches.
+_USER_REDIS_KEYS = ("whitelist:{uid}", "percentile:{uid}", "tier:{uid}")
+
+
+async def _drop_redis_keys(user_ids: list[str]) -> None:
+    """Best-effort: a Redis outage never undoes a purge, it only leaves the
+    keys to their TTLs."""
+    if not user_ids:
+        return
+    try:
+        from api.services.cache import get_redis
+
+        r = await get_redis()
+        keys = [k.format(uid=uid) for uid in user_ids for k in _USER_REDIS_KEYS]
+        await r.delete(*keys)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("account_purge.redis_cleanup_failed", extra={"error": type(e).__name__})
 
 
 def main() -> int:
