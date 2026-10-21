@@ -646,7 +646,7 @@ Generated file: src/utils/scorer-data.js is readable data written by scripts/bui
 
 Third-party libraries, unmodified:
 - src/utils/vendor/tweetnacl.min.js = tweetnacl 1.0.3, nacl-fast.min.js from the npm package (https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl-fast.min.js), SHA-256 3ec535c004aeeb225785d8e93fb33bf99f52e399bd7dfc01969b5629baea5131.
-- src/utils/vendor/qrcode-generator.min.js = qrcode-generator 1.4.4 as minified by jsDelivr (https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js; original source https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js), SHA-256 bb2365e4902f4f84852cf4025e6f6a60325a682aeafa43fb63b7fc8f098d1ef2.
+- src/utils/vendor/qrcode-generator.js = qrcode-generator 1.4.4, qrcode.js from the npm package, not minified (https://registry.npmjs.org/qrcode-generator/-/qrcode-generator-1.4.4.tgz, file package/qrcode.js; same file at https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js), SHA-256 18ae399f81182bc9de916e9c77b195df20cc58d6f2d55a62b085a299f1bf1780.
 ```
 
 7. **Submit Version**. Проверка у Mozilla — люди, обычно 3–10 рабочих дней.
