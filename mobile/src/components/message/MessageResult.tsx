@@ -16,6 +16,7 @@ import {
 } from "../../utils/message-verdict";
 import { MessageLinksCard } from "./MessageLinksCard";
 import { LockedDetailsCard } from "../paywall/LockedDetails";
+import { CallCloseOneButton } from "../checkup/CallCloseOneButton";
 
 interface Props {
   /** The checked text — shown back on this screen only, never stored. */
@@ -131,6 +132,10 @@ export function MessageResult(props: Props) {
           ))}
         </View>
       )}
+
+      {/* Dangerous or suspicious — a "new number, lend me money" message is
+          often only "caution": call the saved close one before answering. */}
+      {verdict !== "no_signals" && <CallCloseOneButton />}
 
       {analysis.truncated && <Text style={s.note}>{t("mobile.message.truncated")}</Text>}
 

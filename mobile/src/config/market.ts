@@ -14,3 +14,14 @@ export function paidPlansVisible(language: string): boolean {
   const base = (language || "").split("-")[0].toLowerCase();
   return !PAID_PLANS_HIDDEN_LANGUAGES.has(base);
 }
+
+/**
+ * Show the family steps that exist only under Russian law — the Госуслуги
+ * bans, «вторая рука», caller-ID apps named by their Russian names? The app
+ * language decides, or a phone whose region is Russia in another language;
+ * a Spanish-speaking grandmother in Madrid is not sent to Госуслуги.
+ */
+export function russianStepsVisible(language: string, region: string | null | undefined): boolean {
+  const base = (language || "").split("-")[0].toLowerCase();
+  return base === "ru" || (region ?? "").toUpperCase() === "RU";
+}

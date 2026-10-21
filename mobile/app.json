@@ -66,6 +66,7 @@
         "android.permission.READ_PHONE_STATE",
         "android.permission.READ_CALL_LOG",
         "android.permission.ANSWER_PHONE_CALLS",
+        "android.permission.READ_CONTACTS",
         "android.permission.CALL_PHONE"
       ]
     },

@@ -37,6 +37,7 @@ import { ListedMark, NotFoundCard, ServerDetailsNote } from "../src/components/c
 import { useCallGuard } from "../src/components/call/CallGuardProvider";
 import { LockedDetailsCard, NotListedCard } from "../src/components/paywall/LockedDetails";
 import { useAutoPaywall, useDetailGate } from "../src/hooks/useFreemium";
+import { CallCloseOneButton } from "../src/components/checkup/CallCloseOneButton";
 
 type Level = keyof typeof levelColors;
 
@@ -218,6 +219,12 @@ export default function SharedScreen() {
             <Text style={s.moreSignals}>{t("mobile.shared.more_signals", { n: hidden })}</Text>
           )}
         </View>
+      )}
+
+      {!safe && (
+        // Blocked or suspicious: before anything else, the person they trust
+        // is one tap away (only when they saved a number on the checkup screen).
+        <CallCloseOneButton />
       )}
 
       {via === "guard" && openTarget && (

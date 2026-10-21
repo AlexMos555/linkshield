@@ -39,6 +39,8 @@ import { shieldForKeepAlive } from "../../src/utils/keep-alive";
 import { callState, isMessageCheckSupported, isVpnRunning, linkListAvailable, privateDnsStrictHost } from "../../modules/cleanway-vpn";
 import { CallHelpButton } from "../../src/components/call/CallHelpButton";
 import { useCallGuard } from "../../src/components/call/CallGuardProvider";
+import { CheckupCard } from "../../src/components/shield/CheckupCard";
+import { useFamilySetup } from "../../src/hooks/useFamilySetup";
 import type { HistoryFilter } from "../../src/utils/history-model";
 
 /**
@@ -126,6 +128,8 @@ export default function HomeScreen() {
   // iPhone: DNS protection (NEDNSSettingsManager), live from iOS. Inert elsewhere.
   const iosDns = useIosDnsProtection();
   const [dnsSheetVisible, setDnsSheetVisible] = useState(false);
+  // "Done N of M" on the checkup card: the family steps as the person marked them.
+  const family = useFamilySetup();
 
   useFocusEffect(useCallback(() => {
     getStats().then(setStats).catch(() => {});
@@ -442,6 +446,14 @@ export default function HomeScreen() {
           />
         </View>
       )}
+
+      <View style={s.section}>
+        <CheckupCard
+          onOpen={() => router.push("/checkup")}
+          done={family.progress.done}
+          total={family.progress.total}
+        />
+      </View>
 
       <View style={s.section}>
         <CheckAnythingCard
