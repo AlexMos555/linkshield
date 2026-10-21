@@ -12,10 +12,10 @@
     <header class="header">
       <div class="brand">
         <span class="brand-logo" aria-hidden="true">&#x1F6E1;</span>
-        <span class="brand-name" data-i18n="popup_brand">Cleanway</span>
+        <h1 class="brand-name" data-i18n="popup_brand">Cleanway</h1>
       </div>
-      <button class="icon-btn" id="btn-settings" aria-label="Settings" data-i18n-aria-label="popup_settings_title" data-i18n-title="popup_settings_title" title="Settings">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <button class="icon-btn" id="btn-settings" type="button" aria-label="Settings" data-i18n-aria-label="popup_settings_title" data-i18n-title="popup_settings_title" title="Settings">
+        <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </header>
 
@@ -35,11 +35,13 @@
       <p class="locked-body" data-i18n="locked_body">You asked to delete your Cleanway account. We&apos;re holding it for 30 days before erasing everything. Restore it now to keep your subscription, history, and family.</p>
       <button class="btn btn-primary" id="btn-restore-account" data-i18n="locked_restore_cta" type="button">Restore my account</button>
       <p class="locked-meta" id="locked-meta"></p>
-      <div class="locked-error" id="locked-error" hidden></div>
+      <div class="locked-error" id="locked-error" role="alert" hidden></div>
     </section>
 
     <!-- Main status card -->
-    <section class="status-card" id="status-card" data-state="scanning">
+    <!-- role="status": a screen reader says the verdict once it replaces
+         "Checking this page…", without the person having to find it. -->
+    <section class="status-card" id="status-card" data-state="scanning" role="status" aria-live="polite">
       <div class="status-icon" id="status-icon" aria-hidden="true">
         <div class="spinner"></div>
       </div>
@@ -54,7 +56,7 @@
 
     <!-- Primary action (only shown on danger state) -->
     <div class="primary-action" id="primary-action" hidden>
-      <button class="btn btn-danger" id="btn-close-tab" data-i18n="action_close_tab">Close this page</button>
+      <button class="btn btn-danger" id="btn-close-tab" type="button" data-i18n="action_close_tab">Close this page</button>
     </div>
 
     <!-- Secondary actions (always visible) -->
@@ -101,7 +103,7 @@
     <details class="more">
       <summary class="more-summary">
         <span data-i18n="action_more">More</span>
-        <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <svg class="chevron" aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </summary>
 
       <!-- Stats row -->
@@ -147,7 +149,7 @@
         <strong class="tip-title" data-i18n="onboarding_welcome">Welcome to Cleanway!</strong>
         <p class="tip-text" data-i18n="onboarding_tip">I'll check every link you see.</p>
       </div>
-      <button class="icon-btn tip-dismiss" id="dismiss-tip" aria-label="Dismiss" data-i18n-aria-label="tip_dismiss">&times;</button>
+      <button class="icon-btn tip-dismiss" id="dismiss-tip" type="button" aria-label="Dismiss" data-i18n-aria-label="tip_dismiss">&times;</button>
     </section>
 
     <!-- Account: sign in through cleanway.ai (background/auth.js). Shown

@@ -363,7 +363,7 @@ function showBlockPage(result, actions) {
     .slice(0, 4)
     .map((g) => _evidenceCardFor(g));
   const evidenceHTML = evidenceCards.length
-    ? `<div class="ls-block-evidence" aria-label="${e(bt("block_evidence_heading"))}">
+    ? `<div class="ls-block-evidence">
          <h2 class="ls-block-evidence-heading">${e(bt("block_evidence_heading"))}</h2>
          <div class="ls-block-evidence-grid">
            ${evidenceCards
@@ -546,8 +546,15 @@ function showBlockPage(result, actions) {
       .ls-block-btn-proceed:disabled { opacity: 0.5; cursor: wait; }
       .ls-block-footer {
         margin-top: 28px; font-size: 11px;
-        color: rgba(254, 226, 226, 0.5);
+        /* 0.5 was 4.2:1 on the lighter top of the card; 0.7 is ≥ 6:1. */
+        color: rgba(254, 226, 226, 0.7);
         display: flex; align-items: center; justify-content: center; gap: 6px;
+      }
+      /* Keyboard focus: a white ring the page under the overlay cannot hide. */
+      #ls-block-overlay :focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+      @media (prefers-reduced-motion: reduce) {
+        #ls-block-overlay, #ls-block-overlay * { animation: none !important; transition: none !important; }
+        .ls-block-btn-back:hover { transform: none; }
       }
       @media (max-width: 480px) {
         .ls-block-card { padding: 28px 20px; }
@@ -643,11 +650,12 @@ function showBlockPage(result, actions) {
       block.className = "ls-block-explainer";
       block.setAttribute("data-source", String(data.source || ""));
       block.setAttribute("data-category", String(data.category || ""));
-      // Content: an h3 for screen readers + the explanation text.
+      // Content: a heading for screen readers + the explanation text. An h2,
+      // like the other sections under the page's h1.
       // We keep it plain text — the backend already localizes per
       // Cleanway's SAFE_KEYS whitelist so nothing user-controlled
       // ever reaches innerHTML here.
-      var heading = document.createElement("h3");
+      var heading = document.createElement("h2");
       heading.className = "ls-block-explainer-heading";
       heading.textContent = bt("block_explainer_heading");
       var body = document.createElement("p");

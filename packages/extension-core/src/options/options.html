@@ -20,9 +20,12 @@
     .row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #334155; }
     .row:last-child { border-bottom: none; }
     .row-label { font-size: 14px; }
-    .row-desc { font-size: 12px; color: #64748b; margin-top: 2px; }
+    /* #64748b was 3.1:1 on the cards; #8a9bb3 is 5.2:1 (WCAG AA). */
+    .row-desc { font-size: 12px; color: #8a9bb3; margin-top: 2px; }
     .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
     .toggle input { opacity: 0; width: 0; height: 0; }
+    /* The checkbox itself is invisible: its ring goes on the switch. */
+    .toggle input:focus-visible + .slider { outline: 2px solid #60a5fa; outline-offset: 2px; }
     .toggle .slider {
       position: absolute; cursor: pointer; inset: 0; background: #334155;
       border-radius: 24px; transition: 0.3s;
@@ -40,22 +43,28 @@
     .family-member-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #0f172a; border-radius: 6px; border: 1px solid #1e293b; font-size: 13px; }
     .family-alert-row { padding: 10px 12px; background: #0f172a; border-radius: 6px; border: 1px solid #1e293b; margin-bottom: 6px; font-size: 12px; }
     .family-alert-row .domain { color: #f8fafc; font-weight: 600; }
-    .family-alert-row .meta { color: #64748b; font-size: 11px; margin-top: 2px; }
-    .btn:hover { background: #334155; }
-    .btn-danger { color: #ef4444; border-color: #ef4444; }
+    .family-alert-row .meta { color: #8a9bb3; font-size: 11px; margin-top: 2px; }
+    /* #f87171 keeps 4.7:1 on the card and on hover; #ef4444 was 3.9:1. */
+    .btn-danger { color: #f87171; border-color: #f87171; }
     .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
     .stat { text-align: center; background: #111827; border-radius: 8px; padding: 12px; }
     .stat-num { font-size: 24px; font-weight: bold; }
-    .stat-label { font-size: 11px; color: #64748b; }
+    .stat-label { font-size: 11px; color: #8a9bb3; }
     .saved { color: #22c55e; font-size: 12px; margin-top: 8px; display: none; }
 
     /* Skill Level cards */
     .skill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
     .skill-card {
+      position: relative;
       display: block; padding: 12px; border-radius: 10px; border: 2px solid #334155;
       cursor: pointer; transition: border-color .2s, background .2s;
     }
-    .skill-card input[type="radio"] { display: none; }
+    /* Hidden from sight, not from the keyboard: display:none took the radios
+       out of the Tab order, so the cards could not be chosen without a mouse. */
+    .skill-card input[type="radio"] {
+      position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none;
+    }
+    .skill-card:has(input:focus-visible) { outline: 2px solid #60a5fa; outline-offset: 2px; }
     .skill-card:hover { background: #263244; }
     .skill-card.active { border-color: #22c55e; background: #052e16; }
     .skill-title { font-weight: 600; font-size: 14px; }
@@ -67,11 +76,16 @@
        dialog covered the whole settings page on every open, and its Done
        button is only wired once an invite exists. */
     #family-invite-modal[hidden] { display: none !important; }
+    /* Keyboard focus: one visible ring everywhere (7:1 on the page). */
+    :focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    }
     input[type="range"] { accent-color: #22c55e; width: 160px; }
     .pin-input {
       width: 80px; padding: 6px 10px; border-radius: 6px;
       border: 1px solid #334155; background: #0f172a; color: #e2e8f0;
-      font-size: 14px; letter-spacing: 4px; text-align: center; outline: none;
+      font-size: 14px; letter-spacing: 4px; text-align: center;
     }
     /* Provenance badges — show when a setting comes from a device override
        vs the account default. Useful when Family Hub admin has remotely
@@ -142,11 +156,11 @@
     <div class="skill-opt" id="skill-opt-font" hidden>
       <div class="row">
         <div>
-          <div class="row-label" data-i18n="options_font_scale">Text size</div>
-          <div class="row-desc" data-i18n="options_font_scale_desc">Larger text in the Cleanway window</div>
+          <div id="font-scale-label" class="row-label" data-i18n="options_font_scale">Text size</div>
+          <div id="font-scale-desc" class="row-desc" data-i18n="options_font_scale_desc">Larger text in the Cleanway window</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <input type="range" id="font-scale" min="0.8" max="2.5" step="0.1" value="1.0">
+          <input aria-labelledby="font-scale-label" aria-describedby="font-scale-desc" type="range" id="font-scale" min="0.8" max="2.5" step="0.1" value="1.0">
           <span id="font-scale-val" style="font-size:12px;color:#94a3b8;width:32px;text-align:right;">1.0×</span>
         </div>
       </div>
@@ -155,10 +169,10 @@
     <div class="skill-opt" id="skill-opt-voice" hidden>
       <div class="row">
         <div>
-          <div class="row-label" data-i18n="options_voice">Voice warnings</div>
-          <div class="row-desc" data-i18n="options_voice_desc">Read the warning aloud when Cleanway blocks a scam site</div>
+          <div id="voice-alerts-label" class="row-label" data-i18n="options_voice">Voice warnings</div>
+          <div id="voice-alerts-desc" class="row-desc" data-i18n="options_voice_desc">Read the warning aloud when Cleanway blocks a scam site</div>
         </div>
-        <label class="toggle"><input type="checkbox" id="voice-alerts"><span class="slider"></span></label>
+        <label class="toggle"><input aria-labelledby="voice-alerts-label" aria-describedby="voice-alerts-desc" type="checkbox" id="voice-alerts"><span class="slider"></span></label>
       </div>
     </div>
 
@@ -222,10 +236,10 @@
     <!-- Override toggle -->
     <div class="row">
       <div>
-        <div class="row-label" data-i18n="device_override_toggle_label">Override on this device only</div>
-        <div class="row-desc" data-i18n="device_override_toggle_desc">When on, the controls below write only to this device — your account default is unchanged.</div>
+        <div id="device-override-on-label" class="row-label" data-i18n="device_override_toggle_label">Override on this device only</div>
+        <div id="device-override-on-desc" class="row-desc" data-i18n="device_override_toggle_desc">When on, the controls below write only to this device — your account default is unchanged.</div>
       </div>
-      <label class="toggle"><input type="checkbox" id="device-override-on"><span class="slider"></span></label>
+      <label class="toggle"><input aria-labelledby="device-override-on-label" aria-describedby="device-override-on-desc" type="checkbox" id="device-override-on"><span class="slider"></span></label>
     </div>
 
     <!-- Per-device controls (visible only when override is on) -->
@@ -251,17 +265,17 @@
 
       <div class="row" style="margin-top: 12px;">
         <div>
-          <div class="row-label" data-i18n="device_voice_label">Voice alerts on this device</div>
+          <div id="device-voice-alerts-label" class="row-label" data-i18n="device_voice_label">Voice alerts on this device</div>
         </div>
-        <label class="toggle"><input type="checkbox" id="device-voice-alerts"><span class="slider"></span></label>
+        <label class="toggle"><input aria-labelledby="device-voice-alerts-label" type="checkbox" id="device-voice-alerts"><span class="slider"></span></label>
       </div>
 
       <div class="row">
         <div>
-          <div class="row-label" data-i18n="device_font_label">Text size on this device</div>
+          <div id="device-font-scale-label" class="row-label" data-i18n="device_font_label">Text size on this device</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <input type="range" id="device-font-scale" min="0.8" max="2.5" step="0.1" value="1.0">
+          <input aria-labelledby="device-font-scale-label" type="range" id="device-font-scale" min="0.8" max="2.5" step="0.1" value="1.0">
           <span id="device-font-scale-val" style="font-size:12px;color:#94a3b8;width:32px;text-align:right;">1.0×</span>
         </div>
       </div>
@@ -305,11 +319,11 @@
       </div>
       <div id="family-join-form" hidden style="margin-top: 12px; padding: 12px; background: #0f172a; border-radius: 8px; border: 1px solid #334155;">
         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-          <input type="text" id="family-join-code" placeholder="Code or paste invite link" autocomplete="off" style="flex: 1; min-width: 140px; padding: 8px 12px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; font-size: 13px; outline: none;" data-i18n-placeholder="family_join_code_placeholder">
-          <input type="text" id="family-join-pin" placeholder="PIN" data-i18n-placeholder="family_invite_pin_label" inputmode="numeric" maxlength="4" pattern="\d{4}" autocomplete="off" style="width: 80px; padding: 8px 12px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; font-size: 13px; outline: none; text-align: center; letter-spacing: 4px;">
+          <input type="text" id="family-join-code" aria-label="Code or paste invite link" data-i18n-aria-label="family_join_code_placeholder" placeholder="Code or paste invite link" autocomplete="off" style="flex: 1; min-width: 140px; padding: 8px 12px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; font-size: 13px;" data-i18n-placeholder="family_join_code_placeholder">
+          <input type="text" id="family-join-pin" aria-label="PIN" data-i18n-aria-label="family_invite_pin_label" placeholder="PIN" data-i18n-placeholder="family_invite_pin_label" inputmode="numeric" maxlength="4" pattern="\d{4}" autocomplete="off" style="width: 80px; padding: 8px 12px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; font-size: 13px; text-align: center; letter-spacing: 4px;">
           <button class="btn btn-primary" id="family-accept-btn" data-i18n="family_accept_btn">Join</button>
         </div>
-        <div class="row-desc" style="margin-top: 6px; color: #64748b; font-size: 12px;" data-i18n="family_join_paste_hint">Tip: paste a Cleanway invite link in the first field — it'll fill in the PIN for you.</div>
+        <div class="row-desc" style="margin-top: 6px; color: #8a9bb3; font-size: 12px;" data-i18n="family_join_paste_hint">Tip: paste a Cleanway invite link in the first field — it'll fill in the PIN for you.</div>
         <div class="row-desc" id="family-join-error" style="margin-top: 6px; color: #fca5a5;" hidden></div>
       </div>
     </div>
@@ -350,24 +364,24 @@
 
   <!-- Invite modal — shown ONCE after invite generation; values are not retrievable later -->
   <div id="family-invite-modal" hidden style="position: fixed; inset: 0; z-index: 10000; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 20px;">
-    <div style="max-width: 420px; width: 100%; background: #1e293b; border: 1px solid #22c55e40; border-radius: 14px; padding: 24px;">
-      <h3 style="margin: 0 0 8px; font-size: 17px; color: #f8fafc;" data-i18n="family_invite_modal_title">Share this with your family member</h3>
+    <div role="dialog" aria-modal="true" aria-labelledby="family-invite-modal-title" style="max-width: 420px; width: 100%; background: #1e293b; border: 1px solid #22c55e40; border-radius: 14px; padding: 24px;">
+      <h2 id="family-invite-modal-title" style="margin: 0 0 8px; font-size: 17px; color: #f8fafc;" data-i18n="family_invite_modal_title">Share this with your family member</h2>
       <p style="font-size: 13px; color: #94a3b8; margin: 0 0 16px; line-height: 1.5;" data-i18n="family_invite_modal_desc">Both values appear once. After this dialog closes, you can't see them again — generate another invite if needed.</p>
       <div style="background: #0f172a; border-radius: 8px; padding: 14px; margin-bottom: 8px;">
-        <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;" data-i18n="family_invite_code_label">Code</div>
+        <div style="font-size: 11px; color: #8a9bb3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;" data-i18n="family_invite_code_label">Code</div>
         <div id="family-invite-code-display" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 18px; color: #22c55e; font-weight: 700; letter-spacing: 1px; word-break: break-all;"></div>
       </div>
       <div style="background: #0f172a; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-        <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;" data-i18n="family_invite_pin_label">PIN</div>
+        <div style="font-size: 11px; color: #8a9bb3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;" data-i18n="family_invite_pin_label">PIN</div>
         <div id="family-invite-pin-display" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 28px; color: #22c55e; font-weight: 700; letter-spacing: 8px; text-align: center;"></div>
       </div>
       <!-- QR + shareable link: render after invite is generated -->
       <div id="family-invite-qr-wrap" hidden style="background: #0f172a; border-radius: 8px; padding: 14px; margin-bottom: 12px; text-align: center;">
-        <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;" data-i18n="family_invite_qr_label">Or scan with phone</div>
+        <div style="font-size: 11px; color: #8a9bb3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;" data-i18n="family_invite_qr_label">Or scan with phone</div>
         <div id="family-invite-qr" style="background: #fff; padding: 12px; border-radius: 6px; display: inline-block; line-height: 0;"></div>
       </div>
       <div id="family-invite-link-wrap" hidden style="background: #0f172a; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-        <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;" data-i18n="family_invite_link_label">Or share this link</div>
+        <div style="font-size: 11px; color: #8a9bb3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;" data-i18n="family_invite_link_label">Or share this link</div>
         <div id="family-invite-link-display" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #cbd5e1; word-break: break-all; line-height: 1.5; margin-bottom: 8px;"></div>
         <button class="btn" id="family-invite-link-copy-btn" style="font-size: 12px; padding: 6px 10px;" data-i18n="family_invite_link_copy_btn">Copy link</button>
       </div>
@@ -392,24 +406,24 @@
     <h2 data-i18n="options_protection">Protection</h2>
     <div class="row">
       <div>
-        <div class="row-label" data-i18n="options_auto_scan">Check links automatically</div>
-        <div class="row-desc" data-i18n="options_auto_scan_desc">Check every link on every page</div>
+        <div id="auto-scan-label" class="row-label" data-i18n="options_auto_scan">Check links automatically</div>
+        <div id="auto-scan-desc" class="row-desc" data-i18n="options_auto_scan_desc">Check every link on every page</div>
       </div>
-      <label class="toggle"><input type="checkbox" id="auto-scan" checked><span class="slider"></span></label>
+      <label class="toggle"><input aria-labelledby="auto-scan-label" aria-describedby="auto-scan-desc" type="checkbox" id="auto-scan" checked><span class="slider"></span></label>
     </div>
     <div class="row">
       <div>
-        <div class="row-label" data-i18n="options_badges">Marks next to links</div>
-        <div class="row-desc" data-i18n="options_badges_desc">Show a safety mark next to each link</div>
+        <div id="show-badges-label" class="row-label" data-i18n="options_badges">Marks next to links</div>
+        <div id="show-badges-desc" class="row-desc" data-i18n="options_badges_desc">Show a safety mark next to each link</div>
       </div>
-      <label class="toggle"><input type="checkbox" id="show-badges" checked><span class="slider"></span></label>
+      <label class="toggle"><input aria-labelledby="show-badges-label" aria-describedby="show-badges-desc" type="checkbox" id="show-badges" checked><span class="slider"></span></label>
     </div>
     <div class="row">
       <div>
-        <div class="row-label" data-i18n="options_block">Block dangerous pages</div>
-        <div class="row-desc" data-i18n="options_block_desc">Show a warning screen before a dangerous site opens</div>
+        <div id="block-dangerous-label" class="row-label" data-i18n="options_block">Block dangerous pages</div>
+        <div id="block-dangerous-desc" class="row-desc" data-i18n="options_block_desc">Show a warning screen before a dangerous site opens</div>
       </div>
-      <label class="toggle"><input type="checkbox" id="block-dangerous" checked><span class="slider"></span></label>
+      <label class="toggle"><input aria-labelledby="block-dangerous-label" aria-describedby="block-dangerous-desc" type="checkbox" id="block-dangerous" checked><span class="slider"></span></label>
     </div>
   </div>
 
@@ -417,17 +431,17 @@
     <h2 data-i18n="options_privacy">Privacy</h2>
     <div class="row">
       <div>
-        <div class="row-label" data-i18n="options_auto_audit">Privacy check on every new site</div>
-        <div class="row-desc" data-i18n="options_auto_audit_desc">See what each new site collects about you</div>
+        <div id="auto-audit-label" class="row-label" data-i18n="options_auto_audit">Privacy check on every new site</div>
+        <div id="auto-audit-desc" class="row-desc" data-i18n="options_auto_audit_desc">See what each new site collects about you</div>
       </div>
-      <label class="toggle"><input type="checkbox" id="auto-audit"><span class="slider"></span></label>
+      <label class="toggle"><input aria-labelledby="auto-audit-label" aria-describedby="auto-audit-desc" type="checkbox" id="auto-audit"><span class="slider"></span></label>
     </div>
     <div class="row">
       <div>
-        <div class="row-label" data-i18n="options_anon_stats">Anonymous statistics</div>
-        <div class="row-desc" data-i18n="options_anon_stats_desc">Help improve Cleanway by sharing anonymous totals</div>
+        <div id="anon-stats-label" class="row-label" data-i18n="options_anon_stats">Anonymous statistics</div>
+        <div id="anon-stats-desc" class="row-desc" data-i18n="options_anon_stats_desc">Help improve Cleanway by sharing anonymous totals</div>
       </div>
-      <label class="toggle"><input type="checkbox" id="anon-stats"><span class="slider"></span></label>
+      <label class="toggle"><input aria-labelledby="anon-stats-label" aria-describedby="anon-stats-desc" type="checkbox" id="anon-stats"><span class="slider"></span></label>
     </div>
   </div>
 
@@ -444,18 +458,18 @@
     <h2 data-i18n="options_lists">Your lists</h2>
     <div class="row">
       <div>
-        <div class="row-label" data-i18n="options_blocklist">Blocked sites</div>
-        <div class="row-desc" data-i18n="options_blocklist_desc">Sites to always block (one per line)</div>
+        <div id="custom-blocklist-label" class="row-label" data-i18n="options_blocklist">Blocked sites</div>
+        <div id="custom-blocklist-desc" class="row-desc" data-i18n="options_blocklist_desc">Sites to always block (one per line)</div>
       </div>
     </div>
-    <textarea id="custom-blocklist" rows="3" placeholder="example.com&#10;malware-site.xyz" style="width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:12px;font-family:monospace;resize:vertical;margin-top:8px;outline:none;"></textarea>
+    <textarea aria-labelledby="custom-blocklist-label" aria-describedby="custom-blocklist-desc" id="custom-blocklist" rows="3" placeholder="example.com&#10;malware-site.xyz" style="width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:12px;font-family:monospace;resize:vertical;margin-top:8px;"></textarea>
     <div class="row">
       <div>
-        <div class="row-label" data-i18n="options_allowlist">Trusted sites</div>
-        <div class="row-desc" data-i18n="options_allowlist_desc">Sites never to flag (one per line)</div>
+        <div id="custom-whitelist-label" class="row-label" data-i18n="options_allowlist">Trusted sites</div>
+        <div id="custom-whitelist-desc" class="row-desc" data-i18n="options_allowlist_desc">Sites never to flag (one per line)</div>
       </div>
     </div>
-    <textarea id="custom-whitelist" rows="3" placeholder="my-internal-app.com&#10;trusted-site.org" style="width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:12px;font-family:monospace;resize:vertical;margin-top:8px;outline:none;"></textarea>
+    <textarea aria-labelledby="custom-whitelist-label" aria-describedby="custom-whitelist-desc" id="custom-whitelist" rows="3" placeholder="my-internal-app.com&#10;trusted-site.org" style="width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:12px;font-family:monospace;resize:vertical;margin-top:8px;"></textarea>
     <button class="btn" id="save-lists" style="margin-top:8px;" data-i18n="options_save_lists">Save lists</button>
   </div>
 
@@ -463,17 +477,17 @@
     <h2 data-i18n="options_tracking_heading">Protection from tracking</h2>
     <div class="row">
       <div>
-        <div class="row-label" data-i18n="options_clean_tracking">Remove tracking tags from links</div>
-        <div class="row-desc" data-i18n="options_clean_tracking_desc">Strip fbclid, utm_* and gclid from addresses automatically</div>
+        <div id="clean-tracking-label" class="row-label" data-i18n="options_clean_tracking">Remove tracking tags from links</div>
+        <div id="clean-tracking-desc" class="row-desc" data-i18n="options_clean_tracking_desc">Strip fbclid, utm_* and gclid from addresses automatically</div>
       </div>
-      <label class="toggle"><input type="checkbox" id="clean-tracking" checked><span class="slider"></span></label>
+      <label class="toggle"><input aria-labelledby="clean-tracking-label" aria-describedby="clean-tracking-desc" type="checkbox" id="clean-tracking" checked><span class="slider"></span></label>
     </div>
     <div class="row">
       <div>
-        <div class="row-label" data-i18n="options_block_miners">Block crypto miners</div>
-        <div class="row-desc" data-i18n="options_block_miners_desc">Stop sites from mining cryptocurrency on your computer</div>
+        <div id="block-miners-label" class="row-label" data-i18n="options_block_miners">Block crypto miners</div>
+        <div id="block-miners-desc" class="row-desc" data-i18n="options_block_miners_desc">Stop sites from mining cryptocurrency on your computer</div>
       </div>
-      <label class="toggle"><input type="checkbox" id="block-miners" checked><span class="slider"></span></label>
+      <label class="toggle"><input aria-labelledby="block-miners-label" aria-describedby="block-miners-desc" type="checkbox" id="block-miners" checked><span class="slider"></span></label>
     </div>
   </div>
 
@@ -481,11 +495,11 @@
     <h2 data-i18n="options_advanced">Advanced</h2>
     <div class="row">
       <div>
-        <div class="row-label" data-i18n="options_api_server">API server</div>
-        <div class="row-desc" data-i18n="options_api_server_desc">For developers. Default: https://api.cleanway.ai</div>
+        <div id="api-url-input-label" class="row-label" data-i18n="options_api_server">API server</div>
+        <div id="api-url-input-desc" class="row-desc" data-i18n="options_api_server_desc">For developers. Default: https://api.cleanway.ai</div>
       </div>
       <div style="display:flex;gap:6px;">
-        <input id="api-url-input" placeholder="https://api.cleanway.ai" style="width:180px;padding:6px 10px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:12px;outline:none;">
+        <input aria-labelledby="api-url-input-label" aria-describedby="api-url-input-desc" id="api-url-input" placeholder="https://api.cleanway.ai" style="width:180px;padding:6px 10px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:12px;">
         <button class="btn" id="save-api-url" data-i18n="options_save">Save</button>
       </div>
     </div>
@@ -502,11 +516,11 @@
     </div>
     <div class="row">
       <div>
-        <div class="row-label" data-i18n="options_redeem">Enter a code</div>
-        <div class="row-desc" data-i18n="options_redeem_desc">Got a code from a friend? Enter it here</div>
+        <div id="referral-input-label" class="row-label" data-i18n="options_redeem">Enter a code</div>
+        <div id="referral-input-desc" class="row-desc" data-i18n="options_redeem_desc">Got a code from a friend? Enter it here</div>
       </div>
       <div style="display:flex;gap:6px;">
-        <input id="referral-input" placeholder="CODE" data-i18n-placeholder="options_redeem_placeholder" style="width:80px;padding:6px 10px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;text-transform:uppercase;outline:none;">
+        <input aria-labelledby="referral-input-label" aria-describedby="referral-input-desc" id="referral-input" placeholder="CODE" data-i18n-placeholder="options_redeem_placeholder" style="width:80px;padding:6px 10px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px;text-transform:uppercase;">
         <button class="btn" id="redeem-code" data-i18n="options_redeem_btn">Apply</button>
       </div>
     </div>
@@ -530,7 +544,7 @@
     </div>
   </div>
 
-  <div class="saved" id="saved-msg" data-i18n="options_settings_saved">Settings saved</div>
+  <div class="saved" id="saved-msg" role="status" data-i18n="options_settings_saved">Settings saved</div>
 
   <!-- No TweetNaCl tags here: family-crypto.js imports the vendored
        tweetnacl.min.js itself, so it works the same in this page and in

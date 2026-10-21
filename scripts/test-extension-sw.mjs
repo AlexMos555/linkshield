@@ -624,6 +624,47 @@ async function runTree(tree) {
       await opts.close();
     });
 
+    // Accessibility in the real browser (the static half is in
+    // scripts/test-extension-core.mjs): every control a person can reach
+    // has a name in the page's language, the page says which language it is
+    // in, Tab reaches the skill cards, and the focus ring is drawn.
+    await check("extension pages: named controls, page language, keyboard reaches the skill cards", async () => {
+      const unnamed = (p) => p.evaluate(() => {
+        const nameOf = (el) => {
+          const ids = el.getAttribute("aria-labelledby");
+          if (ids) return ids.split(/\s+/).map((id) => (document.getElementById(id) || {}).textContent || "").join(" ");
+          if (el.getAttribute("aria-label")) return el.getAttribute("aria-label");
+          if (el.labels && el.labels.length) return [...el.labels].map((l) => l.textContent).join(" ");
+          return el.textContent || "";
+        };
+        return [...document.querySelectorAll("button, input, select, textarea, a[href], summary")]
+          .filter((el) => el.getClientRects().length && !/\p{L}/u.test(nameOf(el)))
+          .map((el) => el.outerHTML.slice(0, 120));
+      });
+      for (const path of ["src/popup/popup.html", "src/options/options.html", "src/popup/welcome.html"]) {
+        const p = await context.newPage();
+        await p.goto(`chrome-extension://${extId}/${path}`);
+        await p.waitForLoadState("load");
+        assert.deepEqual(await unnamed(p), [], `${path}: controls without a name`);
+        const [lang, ui] = await p.evaluate(() => [document.documentElement.lang, chrome.i18n.getUILanguage()]);
+        assert.equal(lang.split("-")[0], ui.split("-")[0], `${path}: <html lang="${lang}"> but the browser speaks ${ui}`);
+        if (path.endsWith("popup.html")) {
+          assert.equal(await p.getAttribute("#status-card", "role"), "status", "popup verdict is not announced");
+        }
+        if (path.endsWith("options.html")) {
+          let onRadio = false;
+          for (let i = 0; i < 40 && !onRadio; i++) {
+            await p.keyboard.press("Tab");
+            onRadio = await p.evaluate(() => document.activeElement && document.activeElement.name === "skill-level");
+          }
+          assert.ok(onRadio, "Tab never reaches the skill cards");
+          const ring = await p.evaluate(() => getComputedStyle(document.activeElement.closest(".skill-card")).outlineStyle);
+          assert.notEqual(ring, "none", "the focused skill card shows no focus ring");
+        }
+        await p.close();
+      }
+    });
+
     await check("signing out stops the family poll and forgets the family", async () => {
       await sw.evaluate(() => chrome.storage.session.remove("auth_token"));
       await until("family poll cleared", () =>

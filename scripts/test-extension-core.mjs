@@ -1864,6 +1864,153 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
   });
 }
 
+// ── Group 10: accessibility of the extension's own pages ──
+// Many of our users are older, some use a keyboard or a screen reader. The
+// skill cards on the settings page were display:none radios (no Tab stop),
+// eleven switches and four text fields had no name, the overlays opened from
+// the popup closed with a clickable <span>, and several pages turned the
+// focus ring off with outline:none. These checks keep that from coming back.
+
+const A11Y_PAGES = [
+  "src/popup/popup.html",
+  "src/popup/welcome.html",
+  "src/popup/block-preview.html",
+  "src/options/options.html",
+  "src/blocked/blocked.html",
+];
+
+// The page and the stylesheets it links (popup.css), for CSS checks.
+function pageWithStyles(tree, page) {
+  const html = readFileSync(join(ROOT, tree, page), "utf8");
+  let css = "";
+  for (const m of html.matchAll(/<link[^>]+href="([^"]+\.css)"/g)) {
+    css += readFileSync(join(ROOT, tree, dirname(page), m[1]), "utf8");
+  }
+  return { html, all: html + css };
+}
+
+const attr = (tag, name) => {
+  const m = tag.match(new RegExp(`\\s${name}="([^"]*)"`));
+  return m ? m[1] : null;
+};
+// Text a person would hear: the text between tags, minus aria-hidden
+// elements; entities for symbols (&times;) are not words. (Split, not
+// replace: this reads our own markup, it does not sanitize anything.)
+const spokenText = (inner) => {
+  let out = "";
+  let hidden = 0;
+  for (const part of inner.split(/(<[^>]*>)/)) {
+    if (part.startsWith("<")) {
+      if (hidden) hidden += part.startsWith("</") ? -1 : part.endsWith("/>") ? 0 : 1;
+      else if (/\saria-hidden="true"/.test(part)) hidden = 1;
+      continue;
+    }
+    if (!hidden) out += part;
+  }
+  return out.split(/&[#a-z0-9]+;/i).join("");
+};
+const hasWords = (s) => /\p{L}/u.test(s);
+
+function namedByAttr(tag, html) {
+  if (attr(tag, "aria-label") || attr(tag, "data-i18n-aria-label")) return true;
+  const ids = attr(tag, "aria-labelledby");
+  if (ids) {
+    for (const id of ids.split(/\s+/)) assert.ok(html.includes(`id="${id}"`), `aria-labelledby="${id}" points at nothing`);
+    return true;
+  }
+  return false;
+}
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] extension pages: lang, title, named controls, visible focus`, () => {
+    for (const page of A11Y_PAGES) {
+      const { html, all } = pageWithStyles(tree, page);
+      assert.match(html, /<html[^>]*\slang="[a-z]{2}/, `${page}: <html lang> missing`);
+      assert.match(html, /<title[^>]*>[^<\s][^<]*<\/title>/, `${page}: empty <title>`);
+
+      for (const m of html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)) {
+        const tag = `<button${m[1]}>`;
+        const ok = namedByAttr(tag, html) || attr(tag, "data-i18n") || hasWords(spokenText(m[2]));
+        assert.ok(ok, `${page}: a button has no accessible name: ${tag}`);
+      }
+
+      for (const m of html.matchAll(/<(input|select|textarea)\b[^>]*>/g)) {
+        const tag = m[0];
+        if (attr(tag, "type") === "hidden") continue;
+        const id = attr(tag, "id");
+        let ok = namedByAttr(tag, html) || (id && html.includes(`for="${id}"`));
+        if (!ok) {
+          // Wrapped in a <label> that has words of its own (the skill cards).
+          const open = html.lastIndexOf("<label", m.index);
+          const close = html.lastIndexOf("</label>", m.index);
+          if (open > close) {
+            const end = html.indexOf("</label>", m.index);
+            ok = hasWords(spokenText(html.slice(html.indexOf(">", open) + 1, end)));
+          }
+        }
+        assert.ok(ok, `${page}: a form field has no label: ${tag.slice(0, 120)}`);
+      }
+
+      // A described-by id must exist too.
+      for (const m of html.matchAll(/aria-describedby="([^"]+)"/g)) {
+        for (const id of m[1].split(/\s+/)) assert.ok(html.includes(`id="${id}"`), `${page}: aria-describedby="${id}" points at nothing`);
+      }
+
+      assert.ok(!/outline\s*:\s*(none|0)\b/.test(all), `${page}: outline:none turns the focus ring off`);
+      // blocked.html's controls are drawn by content/block-page.js (checked below).
+      if (!page.endsWith("blocked.html")) {
+        assert.match(all, /:focus-visible\s*\{[^}]*outline:\s*\d/, `${page}: no :focus-visible ring`);
+        if (/\b(animation|transition)\s*:/.test(all)) {
+          assert.match(all, /prefers-reduced-motion/, `${page}: animations ignore prefers-reduced-motion`);
+        }
+        assert.equal((html.match(/<h1\b/g) || []).length, 1, `${page}: needs exactly one <h1>`);
+      }
+      assert.ok(!/\stabindex="[1-9]/.test(html), `${page}: positive tabindex breaks the Tab order`);
+    }
+
+    // The settings page's skill cards must stay reachable by keyboard.
+    const options = readFileSync(join(ROOT, tree, "src/options/options.html"), "utf8");
+    assert.ok(!/\.skill-card input\[type="radio"\]\s*\{\s*display:\s*none/.test(options), "skill-card radios are display:none (no Tab stop)");
+    assert.match(options, /\.toggle input:focus-visible \+ \.slider \{[^}]*outline/, "the switches show no focus ring");
+    assert.match(options, /id="family-invite-modal"[^>]*>\s*<div role="dialog" aria-modal="true" aria-labelledby=/, "the invite modal is not a dialog");
+
+    // The popup says its verdict, and the page language reaches screen readers.
+    const popup = readFileSync(join(ROOT, tree, "src/popup/popup.html"), "utf8");
+    assert.match(popup, /id="status-card"[^>]*role="status"/, "the popup verdict is not a live status");
+    for (const file of ["src/popup/popup.js", "src/options/options.js"]) {
+      const js = readFileSync(join(ROOT, tree, file), "utf8");
+      assert.match(js, /documentElement\.lang = /, `${file} does not set <html lang>`);
+      assert.match(js, /documentElement\.dir = /, `${file} does not set dir for Arabic`);
+    }
+  });
+
+  await check(`[${tree}] block page and popup overlays: focus, names, motion`, () => {
+    const block = readFileSync(join(ROOT, tree, "src/content/block-page.js"), "utf8");
+    assert.match(block, /#ls-block-overlay :focus-visible \{[^}]*outline:/, "block page: no focus ring");
+    assert.match(block, /prefers-reduced-motion: reduce/, "block page: the pulsing stop sign ignores reduced motion");
+    assert.match(block, /setAttribute\("role", "alertdialog"\)/, "block page is no longer an alertdialog");
+    assert.ok(!/outline\s*:\s*(none|0)\b/.test(block), "block page: outline:none");
+
+    // Close controls are real buttons with a localized name, and the modal
+    // overlays take focus and close on Escape.
+    for (const [file, closeId, modal] of [
+      ["src/content/weekly-report.js", "ls-report-close", true],
+      ["src/content/security-score.js", "ls-score-close", true],
+      ["src/content/index.js", "ls-audit-close", false],
+      ["src/content/index.js", "ls-float-close", false],
+    ]) {
+      const src = readFileSync(join(ROOT, tree, file), "utf8");
+      assert.ok(!new RegExp(`<span id="${closeId}"`).test(src), `${file}: #${closeId} is a clickable <span>`);
+      assert.match(src, new RegExp(`<button type="button" id="${closeId}" aria-label="`), `${file}: #${closeId} is not a named button`);
+      if (modal) {
+        assert.match(src, /role="dialog" aria-modal="true" aria-labelledby="/, `${file}: overlay is not a dialog`);
+        assert.match(src, /e\.key === "Escape"/, `${file}: Escape does not close the overlay`);
+        assert.match(src, /closeBtn\.focus\(\)/, `${file}: focus does not move into the overlay`);
+      }
+    }
+  });
+}
+
 console.log(
   failed === 0
     ? `\n${passed} checks passed (source + ${BROWSER_TREES.length} browser trees)`
