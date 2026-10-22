@@ -1874,7 +1874,6 @@
   "mobile.paywall.benefit_unlimited": "Pemeriksaan rinci tautan dan pesan tanpa batas",
   "mobile.paywall.benefit_sms": "Pemeriksaan SMS otomatis",
   "mobile.paywall.benefit_text_model": "Analisis teks: mengapa itu penipuan dan apa yang harus dilakukan",
-  "mobile.paywall.benefit_calls": "Perlindungan saat panggilan telepon",
   "mobile.paywall.benefit_devices": "Hingga {{n}} perangkat dalam satu akun",
   "mobile.paywall.cta_sign_in": "Masuk untuk berlangganan",
   "mobile.paywall.cta_web": "Berlangganan di cleanway.ai",
@@ -1999,5 +1998,6 @@
   "mobile.fallback.not_found_body": "Mungkin tautan ini untuk versi aplikasi yang lebih baru. Perbarui Cleanway, atau buka layar utama.",
   "mobile.fallback.error_title": "Terjadi kesalahan",
   "mobile.fallback.error_body": "Layar ini tidak bisa ditampilkan. Kembali ke layar utama dan coba lagi dari sana.",
-  "mobile.fallback.home": "Buka layar utama"
+  "mobile.fallback.home": "Buka layar utama",
+  "mobile.ios_info_plist.camera_usage": "Cleanway memakai kamera untuk membaca kode QR dan memeriksa apakah tautan di dalamnya aman."
 }

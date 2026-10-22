@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "O Cleanway usa a câmera para ler códigos QR e verificar se o link que eles contêm é seguro."
+  }
+}

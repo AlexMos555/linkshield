@@ -1874,7 +1874,6 @@
   "mobile.paywall.benefit_unlimited": "Unlimited detailed checks of links and messages",
   "mobile.paywall.benefit_sms": "Automatic SMS check",
   "mobile.paywall.benefit_text_model": "Scam text recognition: why it is a scam and what to do",
-  "mobile.paywall.benefit_calls": "Protection during phone calls",
   "mobile.paywall.benefit_devices": "Up to {{n}} devices in one account",
   "mobile.paywall.cta_sign_in": "Sign in to subscribe",
   "mobile.paywall.cta_web": "Subscribe on cleanway.ai",
@@ -1999,5 +1998,6 @@
   "mobile.fallback.not_found_body": "It may be meant for a newer version of the app. Update Cleanway, or go to the home screen.",
   "mobile.fallback.error_title": "Something went wrong",
   "mobile.fallback.error_body": "This screen couldn't be shown. Go back to the home screen and try again from there.",
-  "mobile.fallback.home": "Go to the home screen"
+  "mobile.fallback.home": "Go to the home screen",
+  "mobile.ios_info_plist.camera_usage": "Cleanway uses the camera to scan QR codes and check if the link inside is safe."
 }

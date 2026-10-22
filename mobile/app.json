@@ -13,6 +13,18 @@
       "resizeMode": "contain",
       "backgroundColor": "#0f172a"
     },
+    "locales": {
+      "en": "./i18n/ios/en.json",
+      "ru": "./i18n/ios/ru.json",
+      "es": "./i18n/ios/es.json",
+      "pt": "./i18n/ios/pt.json",
+      "fr": "./i18n/ios/fr.json",
+      "de": "./i18n/ios/de.json",
+      "it": "./i18n/ios/it.json",
+      "id": "./i18n/ios/id.json",
+      "hi": "./i18n/ios/hi.json",
+      "ar": "./i18n/ios/ar.json"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ai.cleanway.app",

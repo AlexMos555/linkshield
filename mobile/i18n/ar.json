@@ -1874,7 +1874,6 @@
   "mobile.paywall.benefit_unlimited": "فحوصات مفصّلة للروابط والرسائل بلا حدود",
   "mobile.paywall.benefit_sms": "فحص تلقائي للرسائل النصية",
   "mobile.paywall.benefit_text_model": "تحليل النص: لماذا هو احتيال وماذا تفعل",
-  "mobile.paywall.benefit_calls": "حماية أثناء المكالمات الهاتفية",
   "mobile.paywall.benefit_devices": "حتى {{n}} أجهزة في حساب واحد",
   "mobile.paywall.cta_sign_in": "سجّل الدخول للاشتراك",
   "mobile.paywall.cta_web": "اشترك عبر cleanway.ai",
@@ -1999,5 +1998,6 @@
   "mobile.fallback.not_found_body": "ربما هو مخصص لإصدار أحدث من التطبيق. حدّث Cleanway أو انتقل إلى الشاشة الرئيسية.",
   "mobile.fallback.error_title": "حدث خطأ ما",
   "mobile.fallback.error_body": "تعذّر عرض هذه الشاشة. ارجع إلى الشاشة الرئيسية وحاول مرة أخرى من هناك.",
-  "mobile.fallback.home": "الانتقال إلى الشاشة الرئيسية"
+  "mobile.fallback.home": "الانتقال إلى الشاشة الرئيسية",
+  "mobile.ios_info_plist.camera_usage": "يستخدم Cleanway الكاميرا لقراءة رموز QR والتحقق مما إذا كان الرابط بداخلها آمنًا."
 }
