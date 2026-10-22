@@ -42,20 +42,22 @@ from urllib.parse import urlsplit
 # API routes whose path segment is a site, a phone or device hash or an
 # unsubscribe token. Page URLs reach Sentry in Referer headers, request URLs
 # and — when a request matched no route — transaction names.
-_SENSITIVE_PATH_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+_SITE_PATH_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"(/(?:check|audit)/)[^/?#\s\"']+"), r"\1[site]"),
     (re.compile(r"(/api/v1/breach/domain/)[^/?#\s\"']+"), r"\1[site]"),
+]
+_TOKEN_PATH_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"(/api/v1/phone/lookup/)[^/?#\s\"']+"), r"\1[hash]"),
     (re.compile(r"(/api/v1/user/device/)[^/?#\s\"']+"), r"\1[hash]"),
     (re.compile(r"(/api/v1/email/unsubscribe/)[^/?#\s\"']+"), r"\1[token]"),
     # RFC 8484 GET: the base64url DNS question, i.e. the name being resolved.
     (re.compile(r"([?&]dns=)[^&#\s\"']+"), r"\1[query]"),
 ]
+_SENSITIVE_PATH_PATTERNS = [*_SITE_PATH_PATTERNS, *_TOKEN_PATH_PATTERNS]
 
 # Order matters — JWT match must come BEFORE the generic Bearer header
 # match so the actual token gets replaced, not the literal word "Bearer".
-_PII_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    *_SENSITIVE_PATH_PATTERNS,
+_CREDENTIAL_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # JWT: three base64url segments separated by dots, starting with eyJ
     # (any standard JWS header). Catches both Authorization bearer values
     # and any JWT body that leaks into exception messages.
@@ -77,19 +79,25 @@ _PII_PATTERNS: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(sk|pk|rk)_(live|test)_[A-Za-z0-9]{16,}"),
         "[redacted-stripe-key]",
     ),
+]
+# Supabase service-role key: prefixed eyJ JWT, already covered above.
+# Supabase anon key: same prefix, intentionally public — we still
+# redact it to avoid burning rate limit on a fresh project key
+# rotation if we ever migrate.
+# Email addresses (RFC-ish — generous on TLD length).
+_EMAIL_PATTERN: tuple[re.Pattern[str], str] = (
+    re.compile(r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,24}\b"),
+    "[redacted-email]",
+)
+
+_PII_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    *_SENSITIVE_PATH_PATTERNS,
+    *_CREDENTIAL_PATTERNS,
     (
         re.compile(r"(cus|sub|pi|ch|cs|tok|re|in|seti|src|prod|price)_[A-Za-z0-9]{14,}"),
         "[redacted-stripe-id]",
     ),
-    # Supabase service-role key: prefixed eyJ JWT, already covered above.
-    # Supabase anon key: same prefix, intentionally public — we still
-    # redact it to avoid burning rate limit on a fresh project key
-    # rotation if we ever migrate.
-    # Email addresses (RFC-ish — generous on TLD length).
-    (
-        re.compile(r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,24}\b"),
-        "[redacted-email]",
-    ),
+    _EMAIL_PATTERN,
     # User UUIDs / session IDs / device hashes. 8-4-4-4-12 hex with
     # optional braces. Matches Supabase auth.uid() values which are
     # the primary user-PII key in our DB.
@@ -110,10 +118,23 @@ _PII_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     ),
 ]
 
+# What the stdout JSON log scrubs (api/services/logger.py): credentials,
+# email addresses, and tokens or DNS questions in paths. User ids, Stripe
+# ids, sites and IPs stay out of this list on purpose — Railway's logs are
+# access-controlled and keep `user_id` / `domain` for ops; the log's own key
+# allowlist decides which fields exist at all.
+_LOG_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    *_TOKEN_PATH_PATTERNS,
+    *_CREDENTIAL_PATTERNS,
+    _EMAIL_PATTERN,
+]
+
 # Keys whose VALUE we always redact regardless of content — these are
 # always sensitive even if the value doesn't match a pattern (e.g.
-# a short token, a recovery code, a PIN).
-_ALWAYS_REDACT_KEYS = frozenset(
+# a short token, a recovery code, a PIN). This first set is redacted in
+# every sink, the stdout log included; _ALWAYS_REDACT_KEYS adds what only
+# leaves for Sentry.
+_SECRET_KEYS = frozenset(
     {
         "password",
         "passwd",
@@ -140,6 +161,26 @@ _ALWAYS_REDACT_KEYS = frozenset(
         "credit_card",
         "card_number",
         "cvv",
+        # The weekly benchmark's rate-limit bypass token, when configured.
+        "x-cleanway-benchmark",
+        # Billing (api/billing): a phone number is the most sensitive datum in
+        # the system and must never reach Sentry, nor a device's bearer
+        # secret, a trial fingerprint, a claim / activation code or the
+        # provider's own phone field.
+        "msisdn",
+        "phone",
+        "user_phone",
+        "device_secret",
+        "fingerprint",
+        "activation_code",
+        "idempotency-key",
+        "x-fake-signature",
+        "x-partner-signature",
+    }
+)
+
+_ALWAYS_REDACT_KEYS = _SECRET_KEYS | frozenset(
+    {
         # Browsing context — the domain / URL a user is checking. Cleanway's
         # privacy invariant is "even on breach, attackers learn nothing
         # about the user's online activity". The analyzer + safe_browsing
@@ -168,21 +209,6 @@ _ALWAYS_REDACT_KEYS = frozenset(
         "query_string",
         "http.query",
         "http.fragment",
-        # The weekly benchmark's rate-limit bypass token, when configured.
-        "x-cleanway-benchmark",
-        # Billing (api/billing): a phone number is the most sensitive datum in
-        # the system and must never reach Sentry, nor a device's bearer
-        # secret, a trial fingerprint, a claim / activation code or the
-        # provider's own phone field.
-        "msisdn",
-        "phone",
-        "user_phone",
-        "device_secret",
-        "fingerprint",
-        "activation_code",
-        "idempotency-key",
-        "x-fake-signature",
-        "x-partner-signature",
     }
 )
 
@@ -231,10 +257,14 @@ _HOSTNAME = re.compile(
 )
 
 
-def _scrub_string(s: str) -> str:
-    for pattern, replacement in _PII_PATTERNS:
+def _sub_all(s: str, patterns: list[tuple[re.Pattern[str], str]]) -> str:
+    for pattern, replacement in patterns:
         s = pattern.sub(replacement, s)
     return s
+
+
+def _scrub_string(s: str) -> str:
+    return _sub_all(s, _PII_PATTERNS)
 
 
 def _scrub(node: Any) -> Any:
@@ -257,6 +287,30 @@ def _scrub(node: Any) -> Any:
         scrubbed = [_scrub(item) for item in node]
         return type(node)(scrubbed) if isinstance(node, tuple) else scrubbed
     return node
+
+
+def scrub_log_text(s: str) -> str:
+    """A log message or traceback with credentials and addresses removed."""
+    return _sub_all(s, _LOG_PATTERNS)
+
+
+def scrub_log_value(node: Any) -> Any:
+    """One `extra` value of a stdout log line (api/services/logger.py), made
+    JSON-ready: strings at any depth go through _LOG_PATTERNS, values under a
+    _SECRET_KEYS name are replaced, sets become lists, and any other object
+    is printed with str() first so its text is scrubbed too."""
+    if node is None or isinstance(node, (bool, int, float)):
+        return node
+    if isinstance(node, str):
+        return scrub_log_text(node)
+    if isinstance(node, dict):
+        return {
+            k: "[redacted]" if isinstance(k, str) and k.lower() in _SECRET_KEYS else scrub_log_value(v)
+            for k, v in node.items()
+        }
+    if isinstance(node, (list, tuple, set, frozenset)):
+        return [scrub_log_value(item) for item in node]
+    return scrub_log_text(str(node))
 
 
 def before_send(event: dict[str, Any], _hint: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -350,13 +404,18 @@ def before_send_transaction(
     return before_send(event)
 
 
-def sentry_init_options(dsn: str, debug: bool) -> dict[str, Any]:
+def sentry_init_options(
+    dsn: str, debug: bool, environment: str | None = None, release: str | None = None,
+) -> dict[str, Any]:
     """Every privacy-relevant `sentry_sdk.init` option, in one place a test
-    can pin."""
+    can pin. `environment` is settings.environment and `release` the deploy
+    (api/services/sentry_setup.py); without them the old guess from `debug`
+    stands and the SDK looks for a release itself."""
     return {
         "dsn": dsn,
         "traces_sample_rate": 0.1,
-        "environment": "production" if not debug else "development",
+        "environment": environment or ("production" if not debug else "development"),
+        "release": release,
         # send_default_pii is False by default in modern sentry-sdk but we set
         # it explicitly so a future SDK version bumping the default to True
         # doesn't silently leak.
