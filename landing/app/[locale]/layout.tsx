@@ -56,6 +56,13 @@ export async function generateMetadata({
       description,
       site: "@cleanwayai",
     },
+    // Search Console / Yandex Webmaster ownership by meta tag — only when the
+    // founder sets the code in Vercel env. Verifying by a DNS TXT record on
+    // Cloudflare is preferred (covers every subdomain); this is the fallback.
+    verification: {
+      google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+      yandex: process.env.NEXT_PUBLIC_YANDEX_VERIFICATION || undefined,
+    },
   };
 }
 
