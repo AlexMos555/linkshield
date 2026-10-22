@@ -1105,6 +1105,11 @@ async def trigger_welcome_email(user: AuthUser = Depends(get_current_user)) -> W
 
     if not result.ok:
         return WelcomeResponse(sent=False, reason="send_failed")
+    if result.skip_reason == "rate_limited":
+        # Nothing went out, yet a send was counted — e.g. one the provider
+        # failed. Marking it sent would end the retries; left unmarked, the
+        # first sign-in after the window sends it.
+        return WelcomeResponse(sent=False, reason="rate_limited")
 
     # Mark sent. Even when the provider was "noop" we mark — the only
     # thing the timestamp protects against is double-sends, and the

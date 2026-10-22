@@ -18,7 +18,7 @@ Accept invitation https://cleanway.example/family/accept/tok_xyz
 
 Cleanway · Protection from scam sites
 
-Unsubscribe from these emails https://cleanway.example/u/abc123·Contact support https://cleanway.ai/fr/support
+Unsubscribe from these emails https://cleanway.example/u/abc123 · Contact support https://cleanway.ai/fr/support
 
 You received this email because you have a Cleanway account.
 

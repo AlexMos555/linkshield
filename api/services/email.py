@@ -443,32 +443,33 @@ async def send_template(
                 skip_reason="user_unsubscribed",
             )
 
-        if not await _check_email_rate_limit(user_id, template):
-            send_id = str(uuid.uuid4())
-            logger.warning(
-                "email.skipped_rate_limited",
-                extra={"template": template, "send_id": send_id},
-            )
-            return SendResult(
-                ok=True,
-                provider_message_id=None,
-                error=None,
-                send_id=send_id,
-                skipped=True,
-                skip_reason="rate_limited",
-            )
-
     rendered = render_template(template, locale, fixture_overrides)
 
     if any(FIXTURE_MARKER in part for part in (rendered.subject, rendered.html, rendered.text, unsubscribe_url)):
         # A fixture link left in means the caller's overrides missed a value.
         # Mailing it would send the reader to a domain that does not exist.
+        # Checked before the rate limit so a refused email uses up no budget.
         send_id = str(uuid.uuid4())
         logger.error(
             "email.unfilled_placeholder",
             extra={"template": template, "locale": rendered.locale, "send_id": send_id},
         )
         return SendResult(ok=False, provider_message_id=None, error="unfilled_placeholder", send_id=send_id)
+
+    if user_id is not None and not await _check_email_rate_limit(user_id, template):
+        send_id = str(uuid.uuid4())
+        logger.warning(
+            "email.skipped_rate_limited",
+            extra={"template": template, "send_id": send_id},
+        )
+        return SendResult(
+            ok=True,
+            provider_message_id=None,
+            error=None,
+            send_id=send_id,
+            skipped=True,
+            skip_reason="rate_limited",
+        )
 
     settings = _get_settings()
     headers = {

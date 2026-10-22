@@ -148,6 +148,15 @@ async def test_send_template_skips_when_rate_limited(monkeypatch, fake_redis):
     # Exhaust the weekly_report budget
     fake_redis.counts["email_rl:weekly_report:u1"] = 5  # already over
 
+    # A filled email: the placeholder guard runs before the rate limit.
+    monkeypatch.setattr(
+        email_svc,
+        "render_template",
+        lambda *a, **k: email_svc.RenderedEmail(
+            subject="s", html="<p>h</p>", text="t", template_key="weekly_report", locale="en"
+        ),
+    )
+
     sent = {"v": False}
 
     class _Provider:

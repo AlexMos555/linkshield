@@ -18,6 +18,7 @@ Pinned here, against the committed templates in packages/email-templates/out/:
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -29,6 +30,7 @@ LOCALES = ("en", "ru", "es", "pt", "fr", "de", "it", "id", "hi", "ar")
 UNSUB = "https://api.cleanway.ai/api/v1/email/unsubscribe/payload.signature"
 USER = AuthUser(id="user-777", email="new@example.com", tier=UserTier.free)
 HREF = re.compile(r'href="([^"]+)"')
+OUT_DIR = Path(__file__).resolve().parent.parent / "packages" / "email-templates" / "out"
 
 
 def _render(locale: str):
@@ -68,6 +70,26 @@ def test_the_footer_names_the_operator_not_san_francisco(locale):
     assert "ACECORE GLOBAL TECHNOLOGIES – FZCO" in out.text
     assert "43029-001" in out.text
     assert "San Francisco" not in out.html and "سان فرانسيسكو" not in out.html
+
+
+def test_the_plain_text_unsubscribe_link_ends_at_whitespace():
+    # A plain-text client finds a link by reading to the next whitespace. The
+    # footer once read "…/unsubscribe/<token>·Contact support": the separator
+    # and the next word joined the link and verify_token refused it. The
+    # footer is shared, so check every template and locale that carries it.
+    from api.services.email import _load_manifest
+
+    fixture = "https://cleanway.example/u/abc123"
+    checked = 0
+    for template, entry in _load_manifest().items():
+        if entry["fixture_props"].get("unsubscribeUrl") != fixture:
+            continue
+        for locale in LOCALES:
+            text = (OUT_DIR / template / f"{locale}.txt").read_text(encoding="utf-8")
+            end = text.index(fixture) + len(fixture)
+            assert end == len(text) or text[end].isspace(), f"{template}/{locale}: {text[end:end + 20]!r}"
+            checked += 1
+    assert checked >= 70, checked
 
 
 def test_the_false_device_only_claim_is_gone():
@@ -125,6 +147,26 @@ async def test_an_email_with_an_unfilled_fixture_is_not_sent(provider):
     )
     assert result.ok is False and result.error == "unfilled_placeholder"
     assert provider.sent == []
+
+
+@pytest.mark.asyncio
+async def test_an_unfilled_email_does_not_use_up_the_send_budget(provider, fake_redis, monkeypatch):
+    # Welcome allows one send per user per 7 days. The placeholder guard used
+    # to run after that send was counted, so the retry on the next sign-in was
+    # skipped as rate_limited (ok=True) and the endpoint marked the email sent.
+    from api.services.email import fixture_overrides_for, send_template
+
+    async def _subscribed(*_a):
+        return False
+
+    monkeypatch.setattr("api.routers.email_unsubscribe.is_unsubscribed", _subscribed)
+    common = dict(to="new@example.com", user_id=USER.id, template="welcome", locale="ru", unsubscribe_url=UNSUB)
+
+    first = await send_template(fixture_overrides={"unsubscribe_url": UNSUB}, **common)
+    assert first.ok is False and first.error == "unfilled_placeholder"
+    retry = await send_template(fixture_overrides=fixture_overrides_for("welcome", unsubscribeUrl=UNSUB), **common)
+    assert retry.ok is True and retry.skipped is False
+    assert len(provider.sent) == 1
 
 
 @pytest.mark.asyncio
@@ -214,3 +256,30 @@ def test_welcome_endpoint_mails_a_filled_email_with_a_working_unsubscribe_link(
     for part in (mail["subject"], mail["html"], mail["text"]):
         assert "cleanway.example" not in part and "Alex" not in part
     assert _check_url(locale) in HREF.findall(mail["html"])
+
+
+def test_a_rate_limited_welcome_is_not_marked_sent(client, provider, monkeypatch):
+    # A rate-limited call sent nothing. Writing welcome_sent_at would stop the
+    # retry for good, e.g. after the provider failed on the counted attempt;
+    # left unset, the next sign-in after the window sends it.
+    import httpx
+
+    from api.services import email as email_svc
+
+    sb = FakeSupabase()
+    sb.on("GET", "/rest/v1/user_settings", body=[{"settings": {"theme": "dark"}}])
+    sb.on("GET", "/rest/v1/users", body=[{"preferred_locale": "ru"}])
+    monkeypatch.setattr(httpx, "AsyncClient", sb.client())
+
+    async def _over_budget(*_a):
+        return False
+
+    async def _subscribed(*_a):
+        return False
+
+    monkeypatch.setattr(email_svc, "_check_email_rate_limit", _over_budget)
+    monkeypatch.setattr("api.routers.email_unsubscribe.is_unsubscribed", _subscribed)
+
+    assert client.post("/api/v1/user/welcome").json() == {"sent": False, "reason": "rate_limited"}
+    assert provider.sent == []
+    assert sb.writes() == []

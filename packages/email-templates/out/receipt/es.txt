@@ -24,7 +24,7 @@ Descargar factura https://cleanway.example/invoices/inv_abc
 
 Cleanway · Protección contra sitios fraudulentos
 
-Darse de baja de estos correos https://cleanway.example/u/abc123·Contactar soporte https://cleanway.ai/es/support
+Darse de baja de estos correos https://cleanway.example/u/abc123 · Contactar soporte https://cleanway.ai/es/support
 
 Recibiste este correo porque tienes una cuenta en Cleanway.
 
