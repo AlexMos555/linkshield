@@ -166,6 +166,9 @@
     </footer>
   </div>
 
+  <!-- First, before any other script: in Firefox (MV2) chrome.* on extension
+       pages returns no Promises; utils/browser-alias.js points it at browser.*. -->
+  <script src="../utils/browser-alias.js"></script>
   <script src="../utils/platform.js"></script>
   <script src="../utils/token-store.js"></script>
   <script src="../utils/blocked-url.js"></script>

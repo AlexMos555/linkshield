@@ -16,7 +16,7 @@
  * listener after it, including the link check, would never register.
  */
 
-import "./browser-compat.js"; // must stay first: aliases chrome → browser in Firefox
+import "../utils/browser-alias.js"; // must stay first: aliases chrome → browser in Firefox
 import "../utils/link-target.js"; // sets self.cleanwayLinkTarget (classic UMD file)
 import "../utils/api-base.js"; // sets self.cleanwayApiBase (classic UMD file): the API server allowlist
 import "../utils/token-store.js"; // sets self.cleanwayTokens (classic UMD file): where the access token lives

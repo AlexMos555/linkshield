@@ -148,7 +148,7 @@ grep '"version"' extension/manifest.json
 **Dev account:** https://addons.mozilla.org/developers/ — free, Mozilla account required.
 
 **Notes:**
-- We ship MV2 with a module background (`"type": "module"`, so Firefox 112+) and a `chrome → browser` alias in `src/background/browser-compat.js`. Firefox's MV3 transition is still mid-flight; MV2 keeps the broadest compatibility. Chromium can't load MV2, so `scripts/test-extension-sw.mjs` does not cover this build: load it by hand in Firefox (about:debugging) before submitting.
+- We ship MV2 with a module background (`"type": "module"`, so Firefox 112+) and a `chrome → browser` alias in `src/utils/browser-alias.js` (the background's first import and the first script of every extension page: Firefox MV2's `chrome.*` there returns no Promises). Firefox's MV3 transition is still mid-flight; MV2 keeps the broadest compatibility. Chromium can't load MV2, so `scripts/test-extension-sw.mjs` does not cover this build: load it by hand in Firefox (about:debugging) before submitting.
 - AMO requires a **source-code submission** for any extension that uses minified or bundled code. Our own code is hand-written, unminified JS, but `src/utils/vendor/` holds two unmodified third-party files from their npm packages (tweetnacl 1.0.3 `nacl-fast.min.js`, minified as published; qrcode-generator 1.4.4 `qrcode.js`, unminified, saved as `qrcode-generator.js`) and `src/utils/scorer-data.js` is generated. So answer "Yes" and upload `dist/store-artifacts/cleanway-<v>-firefox-source.zip`; the reviewer notes with the libraries' URLs and hashes are in `docs/STORE_SUBMISSION_KIT.md` §5.
 - Mozilla's review is human-led; expect 3-10 business days. The honest publish-our-FP-rate angle plays VERY well with AMO reviewers.
 

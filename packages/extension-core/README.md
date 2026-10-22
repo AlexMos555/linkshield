@@ -19,7 +19,6 @@ src/
 │   └── welcome.html
 ├── background/         ← Module service worker / background script ("type": "module")
 │   ├── index.js           (entry; STATIC imports only — import() is forbidden in a service worker)
-│   ├── browser-compat.js  (Firefox chrome → browser alias; imported first)
 │   ├── auth.js            (sign-in: AUTH_* messages, the refresh alarm — wires utils/auth-session.js)
 │   ├── block-redirect.js  (dangerous page → the tab goes to blocked/blocked.html; "open anyway" per tab)
 │   ├── page-blocks.js     (what counts as a blocked scam: a block page shown, once per site per day)
@@ -44,6 +43,7 @@ src/
 │   ├── options.html
 │   └── options.js
 └── utils/              ← Shared helpers
+    ├── browser-alias.js    (Firefox chrome → browser alias: the background's first import, every page's first <script>)
     ├── api.js              (API_BASE resolution + 410 lock detection + chrome.storage.local override; registerDevice() hook)
     ├── auth-session.js     (sign-in handoff checks, token storage, Supabase refresh — pure, no chrome at top level)
     ├── blocked-url.js      (the block page's address: encoded on the way in, validated on the way out)
@@ -83,7 +83,7 @@ This:
 3. Applies `extension-{flavor}/overrides/` (if present) on top
 4. Re-runs `scripts/build-i18n.py` so locales stay in sync
 
-The Firefox `chrome → browser` alias is no longer text injected by the build: the background is an ES module, so it lives in `src/background/browser-compat.js` (a no-op outside Firefox).
+The Firefox `chrome → browser` alias is no longer text injected by the build: it lives in `src/utils/browser-alias.js` (a no-op outside Firefox), the background's first import and the first `<script>` of every extension page. Firefox MV2 gives extension pages and the background a callback-only `chrome.*`, so without it the popup, Settings and the block page broke there; `scripts/test-extension-core.mjs` fails on a page that does not load it first.
 
 ## Offline scorer
 

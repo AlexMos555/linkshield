@@ -57,8 +57,9 @@ sync_one() {
 
   # Firefox's chrome → browser alias is no longer injected here: the
   # background is an ES module now, and text prepended to index.js cannot
-  # reach the modules it imports. src/background/browser-compat.js does it
-  # at runtime for every build instead (a no-op outside Firefox).
+  # reach the modules it imports. src/utils/browser-alias.js does it at
+  # runtime for every build instead (a no-op outside Firefox): the
+  # background's first import and the first <script> of every page.
 }
 
 for entry in "${TARGETS[@]}"; do

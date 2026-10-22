@@ -372,23 +372,57 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
   });
 }
 
-// browser-compat.js has no import/export, so Node would load it as CommonJS
-// and cache it by filename; a fresh vm context per case is the honest model.
-function runCompat(tree, globals) {
-  const src = readFileSync(join(ROOT, tree, "src/background/browser-compat.js"), "utf8");
+// The Firefox alias (src/utils/browser-alias.js). Firefox MV2 hands extension
+// pages AND the background a callback-only `chrome`: a Promise-style call
+// returns undefined. The popup read tabs[0] of undefined and threw, Settings
+// read data.skill_level of undefined, GET_STATS answered nothing. Every page
+// and the background load the alias before anything else.
+// It has no import/export, so Node would load it as CommonJS and cache it by
+// filename; a fresh vm context per case is the honest model.
+const ALIAS = "src/utils/browser-alias.js";
+
+function runAlias(tree, globals) {
+  const src = readFileSync(join(ROOT, tree, ALIAS), "utf8");
   const ctx = vm.createContext({ ...globals });
   vm.runInContext(src, ctx);
   return ctx;
 }
 
 for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
-  await check(`[${tree}] browser-compat aliases chrome to browser only in Firefox`, () => {
+  await check(`[${tree}] the browser alias points chrome at browser only in Firefox`, () => {
     const chromeLike = { runtime: {} };
     // Chrome 148+ and Safari expose `browser` too, without getBrowserInfo().
-    assert.equal(runCompat(tree, { chrome: chromeLike, browser: { runtime: {} } }).chrome, chromeLike);
-    assert.equal(runCompat(tree, { chrome: chromeLike }).chrome, chromeLike);
+    assert.equal(runAlias(tree, { chrome: chromeLike, browser: { runtime: {} } }).chrome, chromeLike);
+    assert.equal(runAlias(tree, { chrome: chromeLike }).chrome, chromeLike);
     const firefox = { runtime: { getBrowserInfo: async () => ({ name: "Firefox" }) } };
-    assert.equal(runCompat(tree, { chrome: chromeLike, browser: firefox }).chrome, firefox);
+    assert.equal(runAlias(tree, { chrome: chromeLike, browser: firefox }).chrome, firefox);
+    // Firefox defines `chrome` on a page as a lazy getter with a setter.
+    let lazy = chromeLike;
+    const ctx = vm.createContext({ browser: firefox });
+    Object.defineProperty(ctx, "chrome", { configurable: true, get: () => lazy, set: (v) => { lazy = v; } });
+    vm.runInContext(readFileSync(join(ROOT, tree, ALIAS), "utf8"), ctx);
+    assert.equal(lazy, firefox, "a setter-backed chrome is replaced too");
+  });
+
+  await check(`[${tree}] every extension page loads the browser alias before any other script`, () => {
+    const pages = listHtml(join(tree, "src"));
+    assert.ok(pages.length >= 5, `expected the extension's pages, found ${pages.join(", ")}`);
+    for (const page of pages) {
+      const html = readFileSync(join(ROOT, page), "utf8");
+      const first = /<script\b[^>]*>/.exec(html.replace(/<!--[\s\S]*?-->/g, ""));
+      assert.ok(first, `${page} loads no script`);
+      const src = /\ssrc="([^"]+)"/.exec(first[0]);
+      assert.ok(src, `${page}: the first <script> is inline, not the alias`);
+      const resolved = relative(join(ROOT, tree), resolve(dirname(join(ROOT, page)), src[1]));
+      assert.equal(resolved, ALIAS, `${page}: the first script is ${src[1]}, not the browser alias`);
+    }
+  });
+
+  await check(`[${tree}] the background imports the browser alias first`, () => {
+    const src = readFileSync(join(ROOT, tree, "src/background/index.js"), "utf8");
+    const [first] = [...src.matchAll(STATIC_IMPORT_RE)];
+    assert.equal(relative(join(ROOT, tree), resolve(join(ROOT, tree, "src/background"), first[1])), ALIAS);
+    assert.ok(!existsSync(join(ROOT, tree, "src/background/browser-compat.js")), "two alias files to keep in step");
   });
 }
 
