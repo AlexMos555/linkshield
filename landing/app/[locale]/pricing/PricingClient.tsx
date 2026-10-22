@@ -2,7 +2,6 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useState, type ReactNode } from "react";
 
-import { getSupabaseClient, isAuthConfigured } from "@/lib/supabase/client";
 import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import { localePath } from "@/lib/locale-path";
 import { checkoutPlanKey, monthsFree, usd, type Interval, type WorldPricing } from "@/lib/world-pricing";
@@ -53,14 +52,18 @@ async function startCheckout(
   // dependency accepts the request. If Supabase isn't configured yet
   // (NEXT_PUBLIC_SUPABASE_* missing in this build), token is null and
   // the backend will 401 — handled below by sending the user to /signup.
+  //
+  // Loaded on click, not with the page: the Supabase SDK is ~55 KB (gzip) that
+  // every /pricing visitor downloaded and only a buyer ever runs.
   let bearer: string | null = null;
-  if (isAuthConfigured()) {
-    try {
+  try {
+    const { getSupabaseClient, isAuthConfigured } = await import("@/lib/supabase/client");
+    if (isAuthConfigured()) {
       const { data } = await getSupabaseClient().auth.getSession();
       bearer = data.session?.access_token ?? null;
-    } catch {
-      bearer = null;
     }
+  } catch {
+    bearer = null;
   }
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };

@@ -60,7 +60,10 @@ const CSP_DIRECTIVES = [
   // Stripe checkout + Sentry ingest. Wildcarding subdomains so the
   // staging slug works too.
   // Sentry ingest is fetch-only (no <script>), kept in connect-src.
-  "connect-src 'self' https://api.cleanway.ai https://*.supabase.co https://*.supabase.in https://api.stripe.com https://*.ingest.sentry.io",
+  // The project's DSN is in Sentry's EU region (o….ingest.de.sentry.io), which
+  // `*.ingest.sentry.io` does not match — a wildcard covers one label, so
+  // every browser event was blocked by this CSP and never reached Sentry.
+  "connect-src 'self' https://api.cleanway.ai https://*.supabase.co https://*.supabase.in https://api.stripe.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://*.ingest.us.sentry.io",
   // Stripe Checkout + the Outlook add-in iframe surface (addin domain
   // sits on the same Vercel deploy) + the Turnstile widget iframe.
   "frame-src https://js.stripe.com https://hooks.stripe.com https://addin.cleanway.ai https://challenges.cloudflare.com",
@@ -149,6 +152,14 @@ const withSentry = (config: NextConfig): NextConfig =>
     // Privacy-first: don't expose source maps to the public after upload.
     sourcemaps: { disable: false, deleteSourcemapsAfterUpload: true },
     disableLogger: true,
+    // Tree-shake SDK code we never run: debug logging and every part of
+    // Session Replay (off by policy, see lib/sentry-init.ts). ~6 KB gzip.
+    bundleSizeOptimizations: {
+      excludeDebugStatements: true,
+      excludeReplayIframe: true,
+      excludeReplayShadowDom: true,
+      excludeReplayWorker: true,
+    },
   });
 
 export default withSentry(withNextIntl(nextConfig));
