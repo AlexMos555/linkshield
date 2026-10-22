@@ -1,135 +1,66 @@
-# Runbook: Deploy
+# Деплой: как код попадает в production
 
-Promotes code from GitHub main → staging (automatic) → production (manual with approval).
+Переписано 2026-10-22. Прежняя версия описывала автоматический staging,
+ручной запуск «Deploy to production» и одобрение вторым человеком — ничего
+из этого нет. Ниже — как есть на самом деле.
 
-## The short version
+## Что где живёт и как выкатывается
 
-```
-1. Open a PR.
-2. CI runs tests. If green → merge to main.
-3. Merge to main auto-deploys to STAGING.
-4. Smoke-test staging (5 minutes of clicks or automated E2E).
-5. Trigger the "Deploy to production" GitHub Action manually.
-6. Approve in the GitHub UI (second team member).
-7. Watch metrics for 10 min post-deploy.
-```
-
-## Detail
-
-### Step 1: Open a PR
-
-- Branch name: `feat/xyz`, `fix/abc`, `refactor/qqq`
-- PR description must include:
-  - What changed and why
-  - Migration files added/changed (if any)
-  - Env vars added (so Railway/Vercel can be updated before deploy)
-  - Rollback note: "how do we undo this if it breaks in prod?"
-
-### Step 2: CI must pass
-
-Required checks before merge is enabled:
-- `test` — pytest suite (250+ tests)
-- `lint` — ruff on api/, tests/, ml/
-- `security/gitleaks` — no committed secrets
-- `security/bandit` — no Python SAST findings
-- `security/pip-audit` — no known CVEs in deps
-- `security/trivy-image` — no HIGH/CRITICAL container CVEs
-
-Landing PRs get an automatic Vercel preview URL. Smoke-test the preview before merging.
-
-### Step 3: Merge → auto-deploy to staging
-
-Happens automatically via `.github/workflows/deploy-staging.yml`:
-- Pulls latest main
-- Builds Docker image, tags with git SHA
-- Pushes to Railway staging service
-- Runs schema migrations on staging Supabase
-- Smoke-test: GET `/health` must return 200 within 60s of deploy
-
-If any step fails, the staging service rolls back to the previous image automatically.
-
-### Step 4: Smoke-test staging
-
-Minimum checks before promoting to prod:
-
-- [ ] `curl https://api-staging.yourdomain/health` returns `{"status":"ok"}`
-- [ ] Load the staging landing page in a browser, verify LanguageSwitcher works
-- [ ] Trigger a test email: admin endpoint should deliver to your inbox via Resend sandbox
-- [ ] Load the extension's popup against the staging API URL (via Options page override)
-- [ ] Check Sentry staging project for any startup errors
-
-### Step 5: Trigger production deploy
-
-1. Go to **GitHub → Actions → Deploy to production**
-2. Click **Run workflow**
-3. Select branch: `main`
-4. Optional: enter a commit SHA to pin (defaults to HEAD)
-5. Click **Run workflow**
-
-### Step 6: Approval gate
-
-The workflow pauses at the `production` environment gate. A **second team member** must approve via the GitHub UI:
-- Navigate to the running workflow
-- Click **Review deployments** → check **production** → **Approve and deploy**
-
-Why: two-person rule prevents accidental/malicious prod deploys. A single compromised GitHub account can't push to prod alone.
-
-### Step 7: Watch the deploy
-
-After approval:
-- Railway builds and deploys the prod image
-- Supabase migrations run (if any)
-- `/health` is polled every 10s for 2 min; workflow fails if not green
-
-**During and 10 min after:**
-- Watch **Sentry prod** for a spike in errors
-- Watch **Railway logs** for stack traces or weird patterns
-- Watch **Stripe dashboard** if the deploy touched payments — any webhook failures?
-
-If anything looks wrong → [rollback](rollback.md) immediately. Five-minute RTO.
-
-## Deploy approval policy
-
-| Deploy type | Who approves | Required CI checks |
+| Что | Где | Как выкатывается |
 |---|---|---|
-| Landing-only change | 1 engineer | lint, build |
-| Extension-only change (no server API change) | 1 engineer | all |
-| Backend code change | 1 engineer + ops lead | all |
-| Schema migration | 1 engineer + ops lead, migration reviewed | all |
-| Stripe-touching code | 1 engineer + finance lead | all |
-| Multi-component change | 1 engineer + ops lead | all |
+| API и DNS-шлюз (`api.cleanway.ai`, `dns.cleanway.ai`) | Railway, проект `honest-playfulness`, сервис `web` (EU West, 2 реплики) + сервис `Redis` | **Сам, на каждый коммит в `main`** (интеграция Railway с GitHub). Railway собирает корневой `Dockerfile`; старые реплики работают, пока новая не ответит на health check `/health`. Статус виден на коммите в GitHub: `honest-playfulness - web` |
+| Лендинг `cleanway.ai` | Vercel (`landing/vercel.json`) | Production — сам, на каждый коммит в `main`; на каждый PR — превью (статус `Vercel` в PR) |
+| База | Supabase `bpyqgzzclsbfvxthyfsf` (EU) | **Не автоматически.** Миграции из `supabase/migrations/` применяет основатель вручную (SQL Editor) |
+| Мониторы | Cloudflare Workers `cleanway-uptime`, `cleanway-backup-sink` | Вручную: загрузить `worker.js` (`ops/uptime-worker/README.md`, `ops/backup-sink/README.md`) |
+| Приложения, расширения | сторы | отдельно (`docs/STORES.md`, `docs/CWS_SUBMISSION.md`) |
 
-## Common issues
+Staging-окружения нет. Workflow `deploy-staging.yml` (только ручной запуск,
+нет ни сервиса, ни секретов) и `deploy-production.yml` (3 запуска 2026-08-18,
+все упали) **не используются** — не запускайте их. Удалить их может только
+основатель: токен Claude не может менять `.github/workflows/`.
 
-### "CI is red but I'm sure it's a flake"
+## Коротко
 
-Re-run the one failed job. If it's red again, it's not a flake. Don't merge.
+1. Ветка (`fix/…`, `feat/…`) и PR. В описании: что и зачем, новые миграции,
+   новые переменные окружения, как откатить.
+2. CI зелёный: `test`, `lint`, `openapi-drift`, `mobile`, `docker`, Security
+   (`gitleaks`, `bandit`, `pip-audit`, `npm-audit`, `trivy`, `hadolint`),
+   CodeQL. Для лендинга — ещё `e2e-landing`: его задачи стартуют поздно,
+   дождитесь их до merge.
+3. Если нужна миграция или переменная — **до** merge: миграцию в SQL Editor
+   (код должен работать и со старой, и с новой схемой), переменную — Railway →
+   `web` → Variables (сервис перезапустится сам).
+4. Merge в `main`. Railway и Vercel выкатывают сами (обычно несколько минут).
+5. Проверить:
+   ```bash
+   curl -s https://api.cleanway.ai/health/deep   # 200, "status":"ok", "warnings":[]
+   curl -s https://api.cleanway.ai/health/doh    # "ok":true, "filter":{"loaded":true,…}
+   gh api repos/AlexMos555/linkshield/commits/<sha>/statuses \
+     --jq '.[] | [.context, .state, .description] | @tsv'   # web и Vercel — success
+   ```
+   По желанию: GitHub → Actions → **DNS canary** → Run workflow (полная
+   проверка DNS снаружи, ~1 минута).
+6. Минут 10 смотреть: письма монитора (`Cleanway: не работает …`), Railway →
+   `web` → Logs, Sentry. Что-то не так — [rollback.md](rollback.md).
 
-### "The migration failed on staging"
+`/health` для проверки не годится: он всегда 200, пока процесс жив (это
+liveness-проверка Railway).
 
-The Railway deploy auto-rolled back, but the Supabase migration may be in a half-applied state. Check:
-```sql
--- Against staging Supabase:
-SELECT * FROM pg_stat_activity WHERE state = 'active' AND query LIKE '%migration%';
-```
-If idle-in-transaction: kill the session, hand-run the migration's inverse, retry deploy.
+## Если деплой не прошёл
 
-### "Staging looks fine but prod deploy fails"
+1. Статус `honest-playfulness - web` на коммите → ссылка на деплой → Build /
+   Deploy logs. Частые причины:
+   - `ModuleNotFoundError` — зависимость не в `requirements.txt`;
+   - сканер уязвимостей Railway остановил сборку — обновить пакет (для
+     транзитивных — `overrides` в `package.json`);
+   - `ConfigError: … is required in environment=production` — не хватает
+     переменной в Railway → `web` → Variables.
+2. Пока новая версия не прошла health check, работает предыдущая — пользователи
+   поломки не видят. Чините следующим PR.
 
-Usually an env var missing on the prod Railway service that's present on staging. Compare:
-```bash
-railway variables --environment staging > /tmp/staging.txt
-railway variables --environment production > /tmp/prod.txt
-diff /tmp/staging.txt /tmp/prod.txt
-```
+## Срочное исправление
 
-### "I need to hotfix prod without going through staging"
-
-**Only with ops lead approval.** Procedure:
-1. Branch from `main` as `hotfix/abc`
-2. Make the minimal fix
-3. Self-merge (bypass review ONCE, document why in PR)
-4. Deploy workflow with `skip_staging=true` input (audit-logged)
-5. File an incident postmortem within 24h explaining why staging was skipped
-
-Abuse of this path is tracked. More than twice/quarter → we fix the deploy process instead.
+Тот же путь: PR → CI → merge. Обходной дороги нет и не нужна — Railway
+выкатит merge за минуты. Если CI сломан не по вашей вине (упал внешний
+сервис), перезапустите упавшую задачу; упала второй раз — это не случайность.
+Быстрее любого исправления — откат ([rollback.md](rollback.md)).
