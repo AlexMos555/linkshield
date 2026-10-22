@@ -391,11 +391,13 @@ def _returned_ids(resp) -> "set[str] | None":
 
 # Redis keys holding a purged user's data. The whitelist (a list of sites
 # the person trusted) would otherwise outlive the account by up to a year
-# (its TTL), the referral marker too; the others are caches.
+# (its TTL), the referral marker too; the others are caches (tier_last: the
+# last confirmed paid tier, kept a week for outages — api/services/auth.py).
 _USER_REDIS_KEYS = (
     "whitelist:{uid}",
     "percentile:{uid}",
     "tier:{uid}",
+    "tier_last:{uid}",
     "notdeleted:{uid}",
     "redeemed:{uid}",
 )

@@ -11,12 +11,15 @@ Device limits (config, see api/config.py):
             Free use needs no account at all; this only caps how many
             installs share one free account.
 
+The tier resolver (api/services/auth.py) is this module's answer too: the
+tier every limit reads is the plan of `get_effective_entitlement`.
+
 Transition (migration plan in 023): the Stripe webhook writes BOTH
-`subscriptions` (legacy, still read by the tier resolver) and
-`entitlements`. Until every paid row has been backfilled/rewritten, a paid
-legacy `subscriptions` row with no entitlement row of its own still counts
-as an active Stripe entitlement — nobody who paid loses their plan because
-the migration ran a little later than the deploy.
+`subscriptions` (legacy) and `entitlements`. Until every paid row has been
+backfilled/rewritten, a paid legacy `subscriptions` row with no entitlement
+row of its own still counts as an active Stripe entitlement — until its
+current_period_end + the grace window — so nobody who paid loses their plan
+because the migration ran a little later than the deploy.
 
 Writers (`record_entitlement` is the single entry point):
   * stripe                  — the Stripe webhook (api/routers/payments.py)
@@ -186,6 +189,11 @@ def _legacy_entitlement(row: Optional[dict], rows: list[dict]) -> Optional[Entit
     from api.services.stripe_billing import has_paid_subscription
 
     if not has_paid_subscription(row):
+        return None
+    # Same end date + grace rule as an entitlement row: a copy still saying
+    # "active" after its period (a missed or out-of-order deletion event)
+    # must expire, not grant the plan forever.
+    if not row_is_active({"status": row.get("status"), "period_end": row.get("current_period_end")}):
         return None
     sub_id = row.get("provider_subscription_id")
     if sub_id and any(r.get("source") == "stripe" and r.get("external_id") == sub_id for r in rows):

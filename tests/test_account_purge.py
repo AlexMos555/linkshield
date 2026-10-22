@@ -375,6 +375,8 @@ async def test_purge_drops_the_users_redis_keys(supabase_ok, supabase_stub, monk
         assert f"whitelist:{uid}" in deleted
         assert f"percentile:{uid}" in deleted
         assert f"tier:{uid}" in deleted
+        # The last confirmed paid tier (api/services/auth.py) is kept a week.
+        assert f"tier_last:{uid}" in deleted
         # The referral marker and the user's own code record are personal data.
         assert f"notdeleted:{uid}" in deleted
         assert f"redeemed:{uid}" in deleted

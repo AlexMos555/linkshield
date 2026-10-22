@@ -156,12 +156,21 @@ def included_devices() -> int:
 #   STRIPE_PRICE_EXTRA_DEVICE_T{1..4}_{MONTHLY|YEARLY}
 #
 # Until those env vars are set (dev / staging without Stripe) a
-# deterministic placeholder keeps /api/v1/pricing parseable. Checkout with
-# a placeholder fails at Stripe ("No such price …") — loud, not silent.
+# deterministic placeholder keeps /api/v1/pricing parseable. Checkout
+# refuses a placeholder with 503 checkout_not_configured
+# (api/routers/payments.py) instead of sending it to Stripe.
+
+_PLACEHOLDER_SUFFIX = "_PLACEHOLDER"
 
 
 def _env_price(name: str) -> str:
-    return _os.environ.get(name, f"price_{name.removeprefix('STRIPE_PRICE_')}_PLACEHOLDER")
+    return _os.environ.get(name, f"price_{name.removeprefix('STRIPE_PRICE_')}{_PLACEHOLDER_SUFFIX}")
+
+
+def is_configured_price(price_id: str | None) -> bool:
+    """False for the placeholder of an unset STRIPE_PRICE_* env var, or one
+    set to nothing: checkout cannot sell such a price."""
+    return bool(price_id) and not str(price_id).endswith(_PLACEHOLDER_SUFFIX)
 
 
 def _plan_env(tier: Tier, interval: Interval) -> str:

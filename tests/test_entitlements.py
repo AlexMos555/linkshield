@@ -166,6 +166,20 @@ def test_entitlement_row_overrides_its_legacy_copy(account_store):
     assert not _run(ent.get_effective_entitlement("acc", legacy_row=legacy)).is_paid
 
 
+def test_legacy_row_past_its_period_end_and_grace_is_not_paid(account_store):
+    # A legacy copy still saying "active" after its period (a missed
+    # customer.subscription.deleted) expires like any entitlement row.
+    legacy = {"user_id": "acc", "tier": "personal", "status": "active", "provider": "stripe",
+              "provider_subscription_id": "sub_stale", "current_period_end": _iso(days=-30)}
+    assert not _run(ent.get_effective_entitlement("acc", legacy_row=legacy)).is_paid
+
+
+def test_legacy_row_inside_the_grace_window_still_counts(account_store):
+    legacy = {"user_id": "acc", "tier": "personal", "status": "past_due", "provider": "stripe",
+              "provider_subscription_id": "sub_grace", "current_period_end": _iso(hours=-1)}
+    assert _run(ent.get_effective_entitlement("acc", legacy_row=legacy)).is_paid
+
+
 def test_free_legacy_row_is_not_paid(account_store):
     legacy = {"user_id": "acc", "tier": "free", "status": "active", "provider": "stripe"}
     assert not _run(ent.get_effective_entitlement("acc", legacy_row=legacy)).is_paid

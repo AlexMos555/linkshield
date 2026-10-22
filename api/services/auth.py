@@ -25,12 +25,18 @@ from fastapi import Depends, HTTPException, Header
 from api.config import get_settings
 from api.models.schemas import AuthUser, UserTier
 from api.services import security_alerts
-from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.auth")
 
 # Cache tier in Redis for 5 minutes
 _TIER_CACHE_TTL = 300
+# A lookup that failed is retried after this many seconds, not 5 minutes.
+_TIER_FAILURE_CACHE_TTL = 15
+# The last confirmed paid tier, served while a lookup fails.
+_TIER_LAST_KNOWN_TTL = 7 * 24 * 3600
+# Budget for the whole lookup (entitlements, then maybe subscriptions) on
+# the auth path; past it the request goes on with the fallback tier.
+_TIER_LOOKUP_TIMEOUT = 4.0
 
 _AUDIENCE = "authenticated"
 _ASYMMETRIC_ALGORITHMS = ("ES256", "RS256")
@@ -497,11 +503,16 @@ async def get_current_user_no_disposable(
 
 async def _resolve_user_tier(user_id: str) -> UserTier:
     """
-    Look up user's subscription tier.
-    1. Check Redis cache (tier:{user_id})
-    2. If miss, query Supabase subscriptions table
-    3. Cache result for 5 minutes
-    4. Fallback to free tier if DB unavailable
+    The account's tier: the plan of its effective entitlement
+    (_fetch_tier_from_supabase).
+    1. Redis cache (tier:{user_id})
+    2. On a miss, the entitlements (+ the legacy subscriptions row)
+    3. A confirmed answer is cached for 5 minutes; a paid one is also kept
+       as tier_last:{user_id} for a week
+    4. A FAILED lookup (Supabase down or slow) falls back to that last
+       confirmed paid tier, else free, and is cached for 15 s only — a
+       short outage must not put a paying user on free limits for five
+       minutes (the store failing never means "free plan", account_store.py)
     """
     from api.services.cache import get_redis
 
@@ -514,88 +525,66 @@ async def _resolve_user_tier(user_id: str) -> UserTier:
     except Exception:
         pass
 
-    # 2. Query Supabase
-    tier = await _fetch_tier_from_supabase(user_id)
+    # 2. Look it up
+    tier, confirmed = await _fetch_tier_from_supabase(user_id)
+    if not confirmed:
+        tier = await _last_known_tier(user_id) or tier
 
     # 3. Cache the result
     try:
         r = await get_redis()
-        await r.setex(f"tier:{user_id}", _TIER_CACHE_TTL, tier.value)
+        await r.setex(f"tier:{user_id}", _TIER_CACHE_TTL if confirmed else _TIER_FAILURE_CACHE_TTL, tier.value)
+        if confirmed and tier is not UserTier.free:
+            await r.setex(f"tier_last:{user_id}", _TIER_LAST_KNOWN_TTL, tier.value)
     except Exception:
         pass
 
     return tier
 
 
-async def _fetch_tier_from_supabase(user_id: str) -> UserTier:
-    """
-    Query Supabase for user's active subscription tier.
-    Returns free tier if no active subscription or on error.
-    """
-    import httpx
-
-    settings = get_settings()
-
-    if not settings.supabase_url or not supabase_keys.server_key(settings):
-        logger.debug("Supabase not configured — defaulting to free tier")
-        return UserTier.free
+async def _last_known_tier(user_id: str) -> Optional[UserTier]:
+    from api.services.cache import get_redis
 
     try:
-        # We grant paid tier on BOTH `active` AND `past_due`. Stripe sends
-        # `past_due` while it's retrying a failed payment (typical dunning
-        # window is 1-2 weeks); revoking the user's tier instantly on the
-        # first declined card is hostile UX. If the retry cycle fails,
-        # Stripe eventually sends `customer.subscription.deleted` which our
-        # webhook maps to status='cancelled' — the user falls to free
-        # naturally at that point.
-        #
-        # order=created_at.desc + limit=1: when a user has historical
-        # cancelled rows alongside a current row, pick the most recent.
-        # Otherwise the unordered query could return any row and a stale
-        # cancelled row would override a fresh active subscription.
-        url = (
-            f"{settings.supabase_url}/rest/v1/subscriptions"
-            f"?user_id=eq.{user_id}"
-            f"&status=in.(active,past_due)"
-            f"&select=tier"
-            f"&order=created_at.desc"
-            f"&limit=1"
-        )
-        headers = {
-            **supabase_keys.server_headers(settings),
-        }
-
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(url, headers=headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                if data and len(data) > 0:
-                    tier_str = data[0].get("tier", "free")
-                    try:
-                        return UserTier(tier_str)
-                    except ValueError:
-                        logger.warning("Unknown tier value: %s", tier_str)
-                        return UserTier.free
-
-        return await _tier_from_entitlements(user_id)
-
-    except Exception as e:
-        logger.warning("supabase_tier_lookup_failed", extra={"error": str(e)})
-        return UserTier.free  # Safe fallback
+        r = await get_redis()
+        last = await r.get(f"tier_last:{user_id}")
+        return UserTier(last) if last else None
+    except Exception:
+        return None
 
 
-async def _tier_from_entitlements(user_id: str) -> UserTier:
-    """Plans paid outside Stripe (Google Play / App Store via RevenueCat,
-    later RuStore, the operator, promo) exist only in `entitlements`
-    (migration 023 step 2): without this a store purchase would show as
-    paid on the account screen yet keep free limits everywhere else."""
+async def _fetch_tier_from_supabase(user_id: str) -> tuple[UserTier, bool]:
+    """(tier, confirmed): the plan of the account's effective entitlement.
+
+    Every way of paying writes `entitlements` — Stripe, Google Play / App
+    Store through RevenueCat, later RuStore and the operator subscription,
+    promo — and `get_effective_entitlement` picks the best ACTIVE row
+    (status, end date + grace window), falling back to a paid legacy
+    `subscriptions` row the table doesn't know yet. It is the answer the
+    account screen shows. (This used to read `subscriptions` alone; since
+    migration 010 gives every account a tier='free' row there, a plan
+    bought in a store showed "paid" on the account screen and kept free
+    limits everywhere else.)
+
+    past_due still grants the plan: Stripe retries a declined card for 1-2
+    weeks (dunning) before customer.subscription.deleted ends it, and a store
+    keeps access through its billing grace period.
+
+    confirmed=False when the lookup failed or took longer than
+    _TIER_LOOKUP_TIMEOUT: that "free" is a fallback, not an answer, and the
+    caller must not cache it like one.
+    """
     from api.services.entitlements import get_effective_entitlement
 
     try:
-        ent = await get_effective_entitlement(user_id, legacy_row=None)
-        if ent.is_paid:
-            return UserTier(ent.plan)
-        return UserTier.free
-    except Exception as e:  # EntitlementError, or a plan name UserTier doesn't know
-        logger.warning("entitlement_tier_lookup_failed", extra={"error": str(e)})
-        return UserTier.free  # same safe fallback as the subscriptions lookup
+        ent = await asyncio.wait_for(get_effective_entitlement(user_id), timeout=_TIER_LOOKUP_TIMEOUT)
+    except Exception as e:  # EntitlementError, a timeout, or anything unexpected on the auth path
+        logger.warning("tier_lookup_failed", extra={"error": str(e) or type(e).__name__})
+        return UserTier.free, False
+    if not ent.is_paid:
+        return UserTier.free, True
+    try:
+        return UserTier(ent.plan), True
+    except ValueError:
+        logger.warning("Unknown tier value: %s", ent.plan)
+        return UserTier.free, True

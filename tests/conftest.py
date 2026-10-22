@@ -257,6 +257,38 @@ class FakeStripe:
 
 
 @pytest.fixture
+def stripe_checkout_ready(monkeypatch):
+    """Checkout may sell: a webhook secret, and a real-looking id for every
+    Stripe price instead of the placeholder of an unset STRIPE_PRICE_* env
+    var (POST /payments/checkout answers 503 checkout_not_configured
+    otherwise).
+
+    Tests that reload api.services.pricing (real_price_env) leave more than
+    one copy of it alive: the one checkout imports now (sys.modules) and the
+    one /api/v1/pricing was imported with. Both get the same ids, so "the
+    price shown is the price charged" still holds."""
+    import importlib
+    import sys
+
+    from api import config
+
+    monkeypatch.setattr(config.get_settings(), "stripe_webhook_secret", "whsec_test_dummy", raising=False)
+    namespaces = [vars(importlib.import_module("api.services.pricing"))]
+    router = sys.modules.get("api.routers.pricing")
+    if router is not None:
+        namespaces.append(router.get_quote_for_country.__globals__)
+    seen: set[int] = set()
+    for ns in namespaces:
+        for table, name in ((ns["STRIPE_PRICE_IDS"], "devices"), (ns["STRIPE_EXTRA_DEVICE_PRICE_IDS"], "extra_device")):
+            if id(table) in seen:
+                continue
+            seen.add(id(table))
+            for tier, by_interval in table.items():
+                for interval in list(by_interval):
+                    monkeypatch.setitem(by_interval, interval, f"price_test_{name}_t{tier}_{interval}")
+
+
+@pytest.fixture
 def fake_stripe(monkeypatch) -> FakeStripe:
     """In-memory Stripe + a configured secret key."""
     from api import config

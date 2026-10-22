@@ -24,8 +24,8 @@ from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.stripe_billing")
 
-# Our subscriptions.status values that still grant the paid tier
-# (mirrors the resolver in api/services/auth.py::_fetch_tier_from_supabase).
+# Our subscriptions.status values that still grant the paid tier (a legacy
+# row the entitlements table doesn't know yet, api/services/entitlements.py).
 PAID_STATUSES = frozenset({"active", "past_due"})
 
 # Stripe subscription statuses that can still produce a charge (or
