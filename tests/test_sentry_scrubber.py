@@ -382,6 +382,72 @@ def test_init_options_scrub_transactions_and_send_no_trace_headers():
     assert opts["environment"] == "production"
 
 
+def test_init_options_take_environment_and_release_from_the_caller():
+    """Until 2026-10-22 every event said `production` whenever debug was off
+    (staging too) and none named a release, so a regression could not be
+    tied to the deploy that brought it."""
+    opts = sentry_init_options("https://public@o0.ingest.sentry.io/0", debug=False,
+                               environment="staging", release="cleanway-api@abc123")
+    assert opts["environment"] == "staging"
+    assert opts["release"] == "cleanway-api@abc123"
+
+
+@pytest.mark.parametrize("environ,expected", [
+    ({"SENTRY_RELEASE": "v1.2.3", "RAILWAY_GIT_COMMIT_SHA": "f" * 40}, "v1.2.3"),
+    ({"RAILWAY_GIT_COMMIT_SHA": "0123456789abcdef0123456789abcdef01234567"}, "cleanway-api@0123456789ab"),
+    ({"SENTRY_RELEASE": "  ", "RAILWAY_GIT_COMMIT_SHA": ""}, None),
+    ({}, None),
+])
+def test_the_release_is_sentry_release_else_railways_commit(environ, expected):
+    # The image has no .git (.dockerignore) and sentry-sdk does not read
+    # Railway's variable, so without this the SDK finds no release at all.
+    from api.services.sentry_setup import sentry_release
+
+    assert sentry_release(environ) == expected
+
+
+@pytest.mark.parametrize("environ,role", [({}, "api"), ({"ROLE": "billing"}, "billing"), ({"ROLE": "nonsense"}, "api")])
+def test_events_are_tagged_with_the_process_role(environ, role):
+    from api.services.sentry_setup import sentry_tags
+
+    assert sentry_tags(environ) == {"role": role}
+
+
+def test_init_sentry_passes_the_settings_and_tags_the_global_scope(monkeypatch):
+    from types import SimpleNamespace
+
+    import sentry_sdk
+
+    from api.services import sentry_setup
+
+    inits, tags = [], {}
+    monkeypatch.setattr(sentry_sdk, "init", lambda **kw: inits.append(kw))
+    monkeypatch.setattr(sentry_sdk, "get_global_scope",
+                        lambda: SimpleNamespace(set_tag=lambda k, v: tags.__setitem__(k, v)))
+    monkeypatch.setenv("RAILWAY_GIT_COMMIT_SHA", "a" * 40)
+    monkeypatch.delenv("SENTRY_RELEASE", raising=False)
+    monkeypatch.setenv("ROLE", "billing")
+
+    settings = SimpleNamespace(sentry_dsn="https://public@o0.ingest.sentry.io/0", debug=False,
+                               environment="staging")
+    assert sentry_setup.init_sentry(settings) is True
+    (opts,) = inits
+    assert (opts["environment"], opts["release"]) == ("staging", "cleanway-api@" + "a" * 12)
+    assert opts["before_send"] is before_send  # the scrubber is still wired
+    assert tags == {"role": "billing"}
+
+
+def test_init_sentry_without_a_dsn_does_nothing(monkeypatch):
+    from types import SimpleNamespace
+
+    import sentry_sdk
+
+    from api.services import sentry_setup
+
+    monkeypatch.setattr(sentry_sdk, "init", lambda **kw: pytest.fail("must not init"))
+    assert sentry_setup.init_sentry(SimpleNamespace(sentry_dsn="", debug=False, environment="production")) is False
+
+
 def test_the_real_sdk_ships_only_scrubbed_transactions():
     """End to end through sentry-sdk itself: a sampled transaction with the
     spans the integrations create, captured at the transport."""
