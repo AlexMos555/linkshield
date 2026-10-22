@@ -687,7 +687,8 @@
         "title": "1. What Cleanway is",
         "paragraphs": [
           "Cleanway helps protect you from scam and phishing sites. It consists of the Android and iPhone apps, the browser extension, the site check on cleanway.ai and a DNS filter for iPhone, Mac and Windows. Cleanway checks site names against lists of known threats and other signals and tells you what it found.",
-          "Cleanway is run by ACECORE GLOBAL TECHNOLOGIES – FZCO, registration no. 43029, Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE (“we”, “us”)."
+          "Cleanway is run by ACECORE GLOBAL TECHNOLOGIES – FZCO, registration no. 43029, Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE (“we”, “us”).",
+          "Until the App Store developer account is transferred to the company, the iPhone app is published there under the personal account of Cleanway's founder, so the App Store names the founder as its seller."
         ]
       },
       {
@@ -944,7 +945,7 @@
         ],
         "after": [
           "These companies are based outside Russia, mainly in the USA and the EU, so the data they process is transferred abroad. Our server and our database backups are located in the EU.",
-          "Some of these companies are based in the USA. When they receive personal data of people in the European Economic Area (EEA), the transfer relies on the EU–US Data Privacy Framework if the company is certified under it, and otherwise on the standard contractual clauses approved by the European Commission, which are part of the company's data processing terms. You can ask us for details of these safeguards (section 19)."
+          "Some of these companies are based in the USA. Under the GDPR, personal data of people in the European Economic Area (EEA) may go to such a company only with a safeguard: the EU–US Data Privacy Framework, if the company is certified under it, or the standard contractual clauses approved by the European Commission. We are checking this for each of these companies and will name the safeguard for each one in this section. You can ask us about it (section 19)."
         ]
       },
       {

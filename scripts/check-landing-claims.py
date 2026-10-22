@@ -319,6 +319,25 @@ CLAIMS: tuple[Claim, ...] = (
               "hi": r"Cleanway अपने आप आपके SMS नहीं पढ़ता",
               "ar": r"لا يقرأ Cleanway رسائلك القصيرة من تلقاء نفسه",
           }, scope="landing.privacy_policy"),
+    # 2026-10-22 review of PR #274: policy section 14 said the transfer to every
+    # US processor "relies on" the DPF or on standard contractual clauses "which
+    # are part of the company's data processing terms". Nobody has checked which
+    # processor relies on which, or that each DPA is in force (docs/PRIVACY.md,
+    # "Transfers"); until then the policy names the safeguards without saying
+    # they are in place.
+    Claim("states that every US processor's transfer already rests on the DPF or on standard contractual "
+          "clauses in its data processing terms — not confirmed per processor (docs/PRIVACY.md, Transfers)", {
+              "en": r"the transfer relies on|which are part of the company's data processing terms",
+              "ru": r"передача опирается на|которые входят в условия обработки данных",
+              "es": r"la transferencia se apoya en|que forman parte de las condiciones de tratamiento",
+              "pt": r"a transfer[eê]ncia se apoia|que fazem parte dos termos de tratamento",
+              "fr": r"le transfert repose sur|qui font partie des conditions de traitement",
+              "de": r"st[üu]tzt sich die [ÜU]bermittlung|die Teil der Datenverarbeitungsbedingungen",
+              "it": r"il trasferimento si basa|che fanno parte delle condizioni di trattamento",
+              "id": r"transfer tersebut bersandar|yang menjadi bagian dari ketentuan pemrosesan data",
+              "hi": r"ट्रांसफ़र EU–US Data Privacy Framework पर टिका|डेटा प्रोसेसिंग शर्तों का हिस्सा हैं",
+              "ar": r"يستند النقل إلى|وهي جزء من شروط معالجة البيانات",
+          }, scope="landing.privacy_policy"),
     # 2026-10-08 store readiness: an "automatic SMS check" exists only on the
     # unmerged RuStore branch (feat/sms-auto-rustore); the site and the Google
     # Play build check a message only when the person shares or pastes it, and

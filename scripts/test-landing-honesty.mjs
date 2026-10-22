@@ -76,7 +76,7 @@ import { scrubSitePaths } from "../landing/lib/sentry-scrub.ts";
 import { switchLocaleHref } from "../landing/lib/switch-locale.ts";
 import { INDEXED_CHECK_DOMAINS, isIndexedCheckHost } from "../landing/lib/seo-domains.ts";
 import { isFlagOn } from "../landing/lib/support.ts";
-import { OPERATOR } from "../landing/lib/operator.ts";
+import { APP_STORE_SELLER, OPERATOR } from "../landing/lib/operator.ts";
 import {
   DEFAULT_PRICING,
   checkoutPlanKey,
@@ -372,6 +372,19 @@ check("the policy and the terms name the operator, its address and registration 
       for (const part of [OPERATOR.name, OPERATOR.address, OPERATOR.registration]) {
         assert.ok(text.includes(part), `${locale} ${doc}: does not spell out ${JSON.stringify(part)}`);
       }
+    }
+  }
+});
+// The App Store shows whoever holds the developer account as the seller. While
+// that is the founder personally, terms section 1 must say so next to the
+// company it names as "we" (2026-10-22 review of PR #274).
+check("terms section 1 says who sells the iPhone app in the App Store, in every locale", () => {
+  for (const locale of LOCALES) {
+    const text = JSON.stringify(landingSource(locale).terms.sections[0]);
+    if (APP_STORE_SELLER === "founder") {
+      assert.ok(text.includes("App Store"), `${locale} terms §1: does not say the App Store seller is the founder`);
+    } else {
+      assert.ok(!text.includes("App Store"), `${locale} terms §1: still says the App Store seller is the founder`);
     }
   }
 });

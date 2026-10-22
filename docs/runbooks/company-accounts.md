@@ -58,6 +58,7 @@ developer.apple.com/contact → **Membership and Account** → **Program Enrollm
 
 После перевода:
 - основатель принимает соглашения в App Store Connect → Business: Paid Apps, банк и налоги уже на компанию;
+- Claude ставит `APP_STORE_SELLER = "company"` в `landing/lib/operator.ts` и убирает из §1 условий абзац о том, что App Store называет продавцом основателя (10 языков, `scripts/test-landing-honesty.mjs` проверяет);
 - Claude создаёт подписки `cleanway.devices.monthly` и `.yearly` (`docs/IOS.md` §3.4), ключ In-App Purchase для RevenueCat и подключает App Store в RevenueCat (`docs/runbooks/revenuecat.md`).
 
 ## 4. Google Play: аккаунт организации

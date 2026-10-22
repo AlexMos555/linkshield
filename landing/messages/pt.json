@@ -687,7 +687,8 @@
         "title": "1. O que é o Cleanway",
         "paragraphs": [
           "O Cleanway ajuda a proteger você contra sites de golpe e de phishing. Ele é formado pelos apps para Android e iPhone, pela extensão do navegador, pela verificação de sites em cleanway.ai e por um filtro DNS para iPhone, Mac e Windows. O Cleanway compara nomes de sites com listas de ameaças conhecidas e outros sinais e diz o que encontrou.",
-          "O Cleanway é operado pela ACECORE GLOBAL TECHNOLOGIES – FZCO, número de registro 43029, Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE (“nós”)."
+          "O Cleanway é operado pela ACECORE GLOBAL TECHNOLOGIES – FZCO, número de registro 43029, Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE (“nós”).",
+          "Até a conta de desenvolvedor da App Store ser transferida para a empresa, o app para iPhone é publicado lá na conta pessoal do fundador do Cleanway, por isso a App Store indica o fundador como vendedor."
         ]
       },
       {
@@ -944,7 +945,7 @@
         ],
         "after": [
           "Essas empresas ficam fora da Rússia, principalmente nos EUA e na UE, então os dados que elas tratam são transferidos para o exterior. Nosso servidor e as cópias de segurança do banco de dados ficam na UE.",
-          "Algumas dessas empresas ficam nos EUA. Quando recebem dados pessoais de pessoas do Espaço Econômico Europeu (EEE), a transferência se apoia no EU–US Data Privacy Framework, se a empresa for certificada nele, e, caso contrário, nas cláusulas contratuais-padrão aprovadas pela Comissão Europeia, que fazem parte dos termos de tratamento de dados da empresa. Você pode nos pedir detalhes sobre essas garantias (seção 19)."
+          "Algumas dessas empresas ficam nos EUA. Pelo RGPD, dados pessoais de pessoas do Espaço Econômico Europeu (EEE) só podem ir para uma empresa assim com uma garantia: o EU–US Data Privacy Framework, se a empresa for certificada nele, ou as cláusulas contratuais-padrão aprovadas pela Comissão Europeia. Estamos verificando isso para cada uma dessas empresas e vamos indicar nesta seção a garantia de cada uma. Você pode nos perguntar sobre isso (seção 19)."
         ]
       },
       {
