@@ -227,6 +227,7 @@ def test_odd_values_are_printed_not_raised():
         def __str__(self):
             return "thing for x@y.ru"
 
-    line = _line(reason=_Thing(), sources={"b", "a"})
+    line = _line(reason=_Thing(), sources={"b", "a"}, outcomes={("a", 1): 2})
     assert line["reason"] == "thing for [redacted-email]"
     assert sorted(line["sources"]) == ["a", "b"]
+    assert line["outcomes"] == "{('a', 1): 2}"  # not JSON-able as is: printed, the line survives

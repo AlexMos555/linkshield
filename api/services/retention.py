@@ -291,7 +291,7 @@ async def health_status(now: Optional[float] = None) -> dict:
         return {**out, "ok": False, "error": "redis_unavailable"}
     out.update(
         last_ok_at=_iso_at(last_ok),
-        last_ok_mode=last_ok["mode"] if last_ok else None,
+        last_ok_mode=last_ok.get("mode") if last_ok else None,
         last_pass_at=_iso_at(last_pass),
         last_pass_failed=last_pass.get("failed") if last_pass else None,
     )

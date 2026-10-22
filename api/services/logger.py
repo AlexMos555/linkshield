@@ -87,7 +87,10 @@ def _bounded(value: Any) -> Any:
         return value
     if isinstance(value, str):
         return value if len(value) <= MAX_VALUE_CHARS else value[:MAX_VALUE_CHARS] + TRUNCATED
-    text = json.dumps(value, default=str, ensure_ascii=False)
+    try:
+        text = json.dumps(value, default=str, ensure_ascii=False)
+    except (TypeError, ValueError):  # e.g. a tuple as a dict key: print it, never lose the line
+        return str(value)[:MAX_VALUE_CHARS]
     return value if len(text) <= MAX_VALUE_CHARS else text[:MAX_VALUE_CHARS] + TRUNCATED
 
 
