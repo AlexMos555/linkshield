@@ -14,6 +14,7 @@ import { BILLING_TERMS, SELLER, SUPPORT_PHONE, pricingVariantFor } from "@/lib/b
 import { localePath } from "@/lib/locale-path";
 import { DEFAULT_PRICING, intervalFrom, normalizePricing, usd, type WorldPricing } from "@/lib/world-pricing";
 import { safeJsonLd } from "@/lib/json-ld";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -60,12 +61,14 @@ export async function generateMetadata({
       siteName: "Cleanway",
       type: "website",
       locale: safeLocale,
+      images: [DEFAULT_OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
       site: "@cleanwayai",
+      images: [DEFAULT_OG_IMAGE.url],
     },
     robots: {
       index: true,

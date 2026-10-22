@@ -12,6 +12,7 @@ import { displayHost } from "@/lib/display-host";
 import { localePath } from "@/lib/locale-path";
 import { reasonLines } from "@/lib/reason-label";
 import { safeJsonLd } from "@/lib/json-ld";
+import { isIndexedCheckHost } from "@/lib/seo-domains";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -87,6 +88,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
   languages["x-default"] = urlFor(routing.defaultLocale as Locale, decoded);
 
+  // /check/<anything> is an infinite URL space: only the curated sites are
+  // search landing pages (lib/seo-domains.ts), and only while the check has a
+  // verdict — "we couldn't check this right now" is not a page to rank. Same
+  // fetch as the page body, so Next serves both from one request.
+  const indexable = isIndexedCheckHost(decoded) && isLevel((await fetchScan(decoded)).level);
+
   const shown = displayHost(decoded);
   const title = t("meta_title", { domain: shown });
   const description = t("meta_description", { domain: shown });
@@ -107,6 +114,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: canonical,
       siteName: "Cleanway",
       type: "article",
+      locale: safeLocale,
       // OG image is generated automatically from sibling opengraph-image.tsx
     },
     twitter: {
@@ -115,11 +123,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: ogDescription,
       site: "@cleanwayai",
     },
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: { index: true, follow: true, "max-image-preview": "large" },
-    },
+    robots: indexable
+      ? { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large" } }
+      : { index: false, follow: true },
   };
 }
 

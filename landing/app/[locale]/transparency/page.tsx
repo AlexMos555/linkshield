@@ -22,6 +22,7 @@ import {
   type BenchmarkSnapshot,
 } from "@/lib/benchmark";
 import { localePath } from "@/lib/locale-path";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -71,6 +72,7 @@ export async function generateMetadata({
       siteName: "Cleanway",
       type: "article",
       locale: safeLocale,
+      images: [DEFAULT_OG_IMAGE],
     },
     robots: {
       index: true,

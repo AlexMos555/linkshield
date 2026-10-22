@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
@@ -5,9 +6,38 @@ import CheckForm from "@/components/CheckForm";
 import { routing, type Locale } from "@/i18n/routing";
 import { toCheckHost } from "@/lib/check-host";
 import { localePath } from "@/lib/locale-path";
+import { DEFAULT_OG_IMAGE, localeAlternates } from "@/lib/seo";
 
 function resolveLocale(locale: string): Locale {
   return (routing.locales as readonly string[]).includes(locale) ? (locale as Locale) : routing.defaultLocale;
+}
+
+/**
+ * Without its own metadata this page inherited the site default — the home
+ * page's description word for word — and had no canonical or hreflang, so
+ * search engines saw it as ten near-copies of the home page.
+ */
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const locale = resolveLocale((await params).locale);
+  const t = await getTranslations({ locale, namespace: "Check" });
+  const title = `${t("index_title")} — Cleanway`;
+  const description = t("index_subtitle");
+  const alternates = localeAlternates(locale, "/check");
+  return {
+    title,
+    description,
+    alternates,
+    openGraph: {
+      title,
+      description,
+      url: alternates.canonical,
+      siteName: "Cleanway",
+      type: "website",
+      locale,
+      images: [DEFAULT_OG_IMAGE],
+    },
+    twitter: { card: "summary_large_image", title, description, site: "@cleanwayai", images: [DEFAULT_OG_IMAGE.url] },
+  };
 }
 
 export default async function CheckSearch({

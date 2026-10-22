@@ -11,6 +11,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: "Join Cleanway — Free 7-Day Trial",
     description: "Your friend invited you to Cleanway. Get 7 days of unlimited phishing protection free.",
+    // One URL per invite code: personal links, not search landing pages.
+    robots: { index: false, follow: true },
   };
 }
 

@@ -18,6 +18,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { routing, type Locale } from "@/i18n/routing";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 const SITE_URL = "https://cleanway.ai";
 const DEFAULT_API_URL = "https://api.cleanway.ai";
@@ -58,6 +59,7 @@ export async function generateMetadata({
       siteName: "Cleanway",
       type: "article",
       locale: safeLocale,
+      images: [DEFAULT_OG_IMAGE],
     },
     robots: { index: true, follow: true },
   };

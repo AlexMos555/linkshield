@@ -15,13 +15,8 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { routing, type Locale } from "@/i18n/routing";
 import { localePath } from "@/lib/locale-path";
+import { localeAlternates } from "@/lib/seo";
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_LIVE } from "@/lib/support";
-
-const SITE_URL = "https://cleanway.ai";
-
-function urlFor(locale: Locale | string): string {
-  return locale === routing.defaultLocale ? `${SITE_URL}/support` : `${SITE_URL}/${locale}/support`;
-}
 
 function resolveLocale(locale: string): Locale {
   return (routing.locales as readonly string[]).includes(locale) ? (locale as Locale) : routing.defaultLocale;
@@ -34,12 +29,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const safeLocale = resolveLocale((await params).locale);
   const t = await getTranslations({ locale: safeLocale, namespace: "Support" });
-  const languages: Record<string, string> = {};
-  for (const loc of routing.locales) languages[loc] = urlFor(loc as Locale);
   return {
     title: `${t("title")} — Cleanway`,
     description: t("subtitle"),
-    alternates: { canonical: urlFor(safeLocale), languages },
+    alternates: localeAlternates(safeLocale, "/support"),
   };
 }
 
