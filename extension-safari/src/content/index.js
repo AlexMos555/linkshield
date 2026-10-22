@@ -27,6 +27,20 @@ function _log() {
   if (_debugMode) console.log.apply(console, ["[Cleanway]"].concat(Array.from(arguments)));
 }
 
+// This document's id, sent with every check: the toolbar count is per
+// document (background/toolbar-badge.js). One per script run, so an SPA's
+// history.pushState or a #fragment link keeps the count of links already
+// scanned, and a page restored from the back/forward cache — the same
+// document, nothing re-scanned — gets its count back.
+var _docId = (function() {
+  try {
+    var b = crypto.getRandomValues(new Uint32Array(2));
+    return b[0].toString(36) + "-" + b[1].toString(36);
+  } catch (e) {
+    return String(performance.timeOrigin || Date.now());
+  }
+})();
+
 /**
  * HTML-escape an untrusted string before it lands inside an innerHTML
  * template. Used for any value that originates from the API response
@@ -175,7 +189,7 @@ async function checkDomains(domains, page) {
 
   // Try to get better results from background (async, don't wait too long)
   try {
-    var response = await chrome.runtime.sendMessage({ type: "CHECK_DOMAINS", domains: domains, page: page === true });
+    var response = await chrome.runtime.sendMessage({ type: "CHECK_DOMAINS", domains: domains, page: page === true, doc: _docId });
     if (response && response.results && response.results.length > 0) {
       _log("Background returned", response.results.length, "results, merging");
       // Use background results where they have higher score (more info)

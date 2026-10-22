@@ -490,7 +490,8 @@ background (from content scripts, CORS discarded the answers in Chromium);
 public checks carry a random install number (`X-Cleanway-Install`, replaced
 every 24 h), a 429 pauses link lookups for its `Retry-After` but never the page
 check, and an offline fallback is kept minutes instead of an hour; the toolbar
-count is per tab and clears on navigation; "Report wrong result" sends the
+count is per tab and per page (a new page starts it from zero; an SPA's
+pushState or a #link keeps it); "Report wrong result" sends the
 right direction; the BitB scan no longer reads every div's text. Permissions
 are unchanged. Firefox: load `extension-firefox/` via about:debugging and open
 the popup, Settings and a block page before uploading — Chromium cannot run

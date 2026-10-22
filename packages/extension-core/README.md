@@ -25,7 +25,7 @@ src/
 │   ├── page-lookups.js    (BREACH_PREFIX / VERIFIED_HOSTS: the leak and brand-host lookups content scripts ask for)
 │   ├── public-check.js    (the site check: install number, a 429 pauses link lookups, never the page check)
 │   ├── trusted-hosts.js   (exact official hosts answered "safe", and user-content hosts answered "can't be checked")
-│   ├── toolbar-badge.js   (the count on the toolbar icon: per tab, cleared on navigation)
+│   ├── toolbar-badge.js   (the count on the toolbar icon: per tab and per document — a pushState or #link keeps it)
 │   ├── verdict-cache.js   (bounded LRU; API verdicts mirrored to storage.session, fallbacks kept minutes)
 │   └── webmail-scanner.js (opt-in: registers content/webmail.js only while Settings has it on)
 ├── content/            ← Content scripts injected into every page

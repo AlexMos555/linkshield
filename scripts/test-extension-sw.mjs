@@ -160,7 +160,9 @@ const PAGES = {
     "<a id=\"l-guess\" href=\"http://login.paypa1.tk/\">Account</a> " +
     "<a id=\"l-wrapped\" href=\"https://www.google.com/url?q=http://scam-wrapped.example/&sa=D\">Search result</a> " +
     "<a id=\"l-hidden\" href=\"https://www.linkedin.com/slink?code=e2e\">Short link</a> " +
-    "<a id=\"l-docs\" href=\"https://docs.google.com/forms/d/e/e2e/viewform\">Form</a></p>",
+    "<a id=\"l-docs\" href=\"https://docs.google.com/forms/d/e/e2e/viewform\">Form</a> " +
+    // An in-page link: a same-document navigation, nothing to badge.
+    "<a id=\"l-below\" href=\"#below\">Below</a></p><p id=\"below\">The end</p>",
   // A sign-in form that posts to its own host: nothing for the form checks.
   "/landing.html":
     "<!doctype html><title>Sign in</title><form action=\"/login\" method=\"post\">" +
@@ -551,8 +553,29 @@ async function runTree(tree) {
       assert.equal(await badgeText(sw, readerTab), "3", "the reader tab's toolbar count");
       const otherTab = await tabIdOf(sw, page);
       assert.equal(await badgeText(sw, otherTab), "", "another tab shows the reader's count");
+
+      // Same-document navigations (an SPA's history.pushState, a #fragment
+      // link) fire tabs.onUpdated "loading" too, but the page and its links
+      // are the same: the count stays.
+      await reader.bringToFront();
+      await reader.evaluate(() => history.pushState({}, "", "/links.html?view=2"));
+      await reader.click("#l-below");
+      await reader.waitForURL(/#below$/);
+      await sleep(1000);
+      assert.equal(await badgeText(sw, readerTab), "3", "a same-document navigation dropped the count");
+
+      await reader.evaluate(() => { window.__cleanwayE2eKept = true; });
       await reader.goto(`http://reader.example:${new URL(api.base).port}/landing.html`);
       await until("the badge to clear on navigation", async () => (await badgeText(sw, readerTab)) === "", 5000);
+
+      // Back again: restored from the back/forward cache (nothing re-scans
+      // its links, only its page check runs) or loaded afresh, the count is
+      // the reader page's again.
+      await reader.goBack();
+      const restored = await reader.evaluate(() => window.__cleanwayE2eKept === true);
+      await until(`the reader's count after going back (${restored ? "back/forward cache" : "loaded again"})`,
+        async () => (await badgeText(sw, readerTab)) === "3", 5000);
+      console.log(`        (going back: ${restored ? "restored from the back/forward cache" : "loaded again"})`);
       await reader.close();
     });
 

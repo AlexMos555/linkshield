@@ -123,8 +123,8 @@ try {
 // ── Verdicts, the site check, the toolbar badge ──
 // Cache: bounded LRU in memory, API verdicts mirrored to storage.session
 // (verdict-cache.js). The check: an install number, a 429 pauses link
-// lookups, never the page check (public-check.js). The badge: per tab,
-// cleared on navigation (toolbar-badge.js). Fetch and the clock are looked
+// lookups, never the page check (public-check.js). The badge: per tab and
+// per document (toolbar-badge.js). Fetch and the clock are looked
 // up at call time.
 const session = sessionArea(chrome);
 const verdicts = createVerdictCache({ session });
@@ -182,13 +182,13 @@ function apiReasons(data) {
 
 // ── Main handler ──
 // `page` is true for the check of the page the user is on (content/index.js),
-// false for links on it, the popup and the context menu. `tabId`: the tab
-// whose content script asked, for its toolbar badge (none for the popup).
-// Results come back in the order asked.
-async function handleCheck(domains, { page = false, tabId = null } = {}) {
+// false for links on it, the popup and the context menu. `tabId` and `doc`:
+// the tab and the document whose content script asked, for its toolbar
+// badge (none for the popup). Results come back in the order asked.
+async function handleCheck(domains, { page = false, tabId = null, doc = null } = {}) {
   const list = (Array.isArray(domains) ? domains : []).filter((d) => typeof d === "string" && d);
   _log("Checking", list.length, "domains");
-  const gen = tabId === null ? 0 : badge.generation(tabId);
+  if (tabId !== null) badge.enter(tabId, doc); // before any await: see toolbar-badge.js
   await verdicts.hydrate(list);
   const results = new Array(list.length);
   const toCheck = [];
@@ -227,7 +227,9 @@ async function handleCheck(domains, { page = false, tabId = null } = {}) {
   });
 
   await recordCheckStats(results, page);
-  if (tabId !== null) await badge.record(tabId, gen, results).catch(() => {});
+  // Not awaited: the reply — and the block decision the page check waits
+  // on — must not queue behind the toolbar count of every other tab.
+  if (tabId !== null) badge.record(tabId, doc, results).catch(() => {});
 
   _log("Returning", results.length, "results");
   return { results };
@@ -376,10 +378,11 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
     // Credential-guard strict mode is NOT decided here: this message also
     // carries every link on the page, and a page must not turn strict just
     // for linking to a scam. It follows the page's own block (PAGE_BLOCKED).
-    // The toolbar badge counts for the tab whose page asked (top frame only).
+    // The toolbar badge counts for the tab whose page asked (top frame only),
+    // per document (msg.doc, made by content/index.js).
     const tabId = isWebPageSender(sender) && (sender.frameId === undefined || sender.frameId === 0)
       ? sender.tab.id : null;
-    handleCheck(msg.domains, { page: msg.page === true, tabId: Number.isInteger(tabId) ? tabId : null })
+    handleCheck(msg.domains, { page: msg.page === true, tabId: Number.isInteger(tabId) ? tabId : null, doc: msg.doc })
       .then(respond)
       .catch((err) => {
         try { respond({ error: "background_failure", message: String(err && err.message ? err.message : err) }); }

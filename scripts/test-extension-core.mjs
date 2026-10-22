@@ -2080,7 +2080,7 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
 //   fallback is kept only until the API can be asked again, API verdicts
 //   survive a restart in storage.session, and lookups run a few at a time.
 // - The toolbar badge was global and never cleared: it is per tab now, and
-//   a navigation clears it.
+//   a new document starts it from zero (a same-document navigation does not).
 // - The password-leak check and the brand's verified hosts were fetched from
 //   content scripts, where CORS blocks them in Chromium (and the visited
 //   site's origin went along). The background makes both calls now.
@@ -2131,6 +2131,12 @@ const lastBadge = (badge, tabId, kind = "text") => {
   const mine = badge.filter((b) => b.tabId === tabId && b.kind === kind);
   return mine.length ? mine[mine.length - 1][kind === "text" ? "text" : "color"] : undefined;
 };
+
+// Lets work the background does after replying (the toolbar badge) finish.
+const settle = () => new Promise((r) => setTimeout(r, 20));
+function within(ms, promise) {
+  return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error(`no reply in ${ms} ms`)), ms))]);
+}
 
 async function withRealClockAndFetch(fn) {
   const realNow = Date.now;
@@ -2236,12 +2242,15 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     assert.deepEqual(stale.seen.map((s) => s.host), ["kept.example"], "an hour-old verdict was served");
   }));
 
-  await check(`[${tree}] the toolbar badge belongs to one tab and a navigation clears it`, () => withRealClockAndFetch(async () => {
+  await check(`[${tree}] the toolbar badge counts per tab and per document; a same-document navigation keeps it`, () => withRealClockAndFetch(async () => {
     const clock = { t: Date.UTC(2026, 9, 22, 12) };
-    const bg = await lookupBackground(tree, { clock, answer: verdictFor });
-    await bg.send({ type: "CHECK_DOMAINS", domains: ["scam-a.example", "warn-b.example", "ok.example"] }, tabSender(5));
-    await bg.send({ type: "CHECK_DOMAINS", domains: ["scam-c.example", "scam-a.example"] }, tabSender(5));
-    await bg.send({ type: "CHECK_DOMAINS", domains: ["ok2.example"] }, tabSender(6, "https://news.example/"));
+    const session = memoryStorage();
+    const bg = await lookupBackground(tree, { clock, session, answer: verdictFor });
+    const A = "doc-a";
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["scam-a.example", "warn-b.example", "ok.example"], doc: A }, tabSender(5));
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["scam-c.example", "scam-a.example"], doc: A }, tabSender(5));
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["ok2.example"], doc: "doc-n" }, tabSender(6, "https://news.example/"));
+    await settle();
     assert.ok(bg.badge.length > 0, "no badge was drawn");
     assert.ok(bg.badge.every((b) => Number.isInteger(b.tabId)), "a badge call without a tab paints every tab");
     assert.equal(lastBadge(bg.badge, 5), "3", "three risky hosts on tab 5, one of them twice");
@@ -2250,14 +2259,68 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
 
     const before = bg.badge.length;
     await bg.send({ type: "CHECK_DOMAINS", domains: ["scam-z.example"], page: true }); // the popup: no tab
+    await settle();
     assert.equal(bg.badge.length, before, "the popup's check painted a badge");
 
-    bg.api.tabs.onUpdated.listeners[0](5, { status: "loading" }, { id: 5 });
-    await new Promise((r) => setTimeout(r, 10));
-    assert.equal(lastBadge(bg.badge, 5), "", "a navigation did not clear the badge");
-    await bg.send({ type: "CHECK_DOMAINS", domains: ["warn-d.example"] }, tabSender(5, "https://reader.example/next"));
+    // Chromium fires "loading" for history.pushState and a #fragment link
+    // too: the same document, the same links, already scanned.
+    for (const l of bg.api.tabs.onUpdated.listeners) l(5, { status: "loading" }, { id: 5 });
+    await settle();
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["ok3.example"], doc: A }, tabSender(5, "https://reader.example/page#below"));
+    await settle();
+    assert.equal(lastBadge(bg.badge, 5), "3", "a same-document navigation dropped the count");
+
+    // A new document in the tab starts from zero.
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["warn-d.example"], doc: "doc-b" }, tabSender(5, "https://reader.example/next"));
+    await settle();
     assert.equal(lastBadge(bg.badge, 5), "1", "the new page starts from zero");
     assert.equal(lastBadge(bg.badge, 5, "color"), "#f59e0b");
+
+    // Back to the first page from the back/forward cache: the same document,
+    // whose links are not scanned again — only its page check is sent.
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["reader.example"], page: true, doc: A }, tabSender(5));
+    await settle();
+    assert.equal(lastBadge(bg.badge, 5), "3", "the restored page lost its count");
+
+    // A closed tab is forgotten.
+    const pages = async () => Object.keys((await session.get(["toolbar_badge_tabs"])).toolbar_badge_tabs || {});
+    assert.ok((await pages()).includes("5:doc-a"), `counts kept per tab and document: ${await pages()}`);
+    for (const l of bg.api.tabs.onRemoved.listeners) l(5, {});
+    await settle();
+    assert.ok(!(await pages()).some((k) => k.startsWith("5:")), `a closed tab's counts were kept: ${await pages()}`);
+  }));
+
+  await check(`[${tree}] a late answer for the page a tab left is not painted on the next one`, () => withRealClockAndFetch(async () => {
+    const clock = { t: Date.UTC(2026, 9, 22, 12) };
+    const bg = await lookupBackground(tree, { clock, answer: verdictFor });
+    let release;
+    const gate = new Promise((r) => { release = r; });
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async (url, init) => {
+      if (url.includes("scam-slow.example")) await gate;
+      return realFetch(url, init);
+    };
+    const slow = bg.send({ type: "CHECK_DOMAINS", domains: ["scam-slow.example"], doc: "doc-old" }, tabSender(7));
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["warn-new.example"], doc: "doc-new" }, tabSender(7, "https://reader.example/other"));
+    release();
+    await slow;
+    await settle();
+    assert.equal(lastBadge(bg.badge, 7), "1", "the old page's late answer was counted on the new one");
+  }));
+
+  await check(`[${tree}] a check's reply does not wait for the toolbar`, () => withRealClockAndFetch(async () => {
+    const clock = { t: Date.UTC(2026, 9, 22, 12) };
+    const bg = await lookupBackground(tree, { clock, answer: verdictFor });
+    const painted = [];
+    // A toolbar call that never settles (no test drives Safari's).
+    bg.api.action.setBadgeText = (o) => { painted.push(o.tabId); return new Promise(() => {}); };
+    bg.api.action.setBadgeBackgroundColor = () => new Promise(() => {});
+    for (const id of [1, 2, 3]) {
+      const reply = await within(1000, bg.send({ type: "CHECK_DOMAINS", domains: [`scam-${id}.example`], doc: `doc-${id}` }, tabSender(id)));
+      assert.equal(reply.results[0].level, "dangerous");
+    }
+    await settle();
+    assert.deepEqual(painted, [1, 2, 3], "a stuck toolbar call held up every count after it");
   }));
 }
 
