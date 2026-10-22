@@ -289,7 +289,7 @@ cp "$APK" "$OUT/cleanway-$V-$VC-rustore.apk"
 #    every RELEASE variant, so the AAB is ARM-only too (armeabi-v7a +
 #    arm64-v8a), not universal. Fine for phones; it does exclude x86
 #    Chromebooks/tablets. Widen with CLEANWAY_ABIS if you need them.
-export EXPO_PUBLIC_REVENUECAT_ANDROID_KEY="goog_…"
+export EXPO_PUBLIC_REVENUECAT_ANDROID_KEY="goog_…"   # the real public key from RevenueCat
 cw_build play bundleRelease assembleRelease
 cp "$AAB" "$OUT/cleanway-$V-$VC-play.aab"
 cp "$APK" "$OUT/cleanway-$V-$VC-play-check.apk"
