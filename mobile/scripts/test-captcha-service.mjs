@@ -20,7 +20,10 @@
  *     foreign app firing our scheme cannot inject a token into a sign-in;
  *   • every non-completion (timeout, back-out, no browser, cancel) resolves
  *     null exactly once and drops its listener — the sign-in screen has one
- *     branch to write and can never hang.
+ *     branch to write and can never hang;
+ *   • on iPhone the page opens in the in-app sheet, never in Safari (App
+ *     Review 4.0), its returned URL passes the same nonce check, and a
+ *     timeout or cancel dismisses the sheet.
  */
 import assert from "node:assert/strict";
 import { mock, test } from "node:test";
@@ -35,6 +38,23 @@ let openUrlImpl = async () => {};
 let appStateHandler = null;
 let removedListeners = 0;
 const expoExtra = {};
+
+// The iPhone's in-app sheet (captcha.ts AuthSheet; modules/cleanway-safari →
+// ASWebAuthenticationSession). authSessionImpl null = not available (Android,
+// or an iPhone binary without the native half): the Linking + deep-link path.
+let authSessionImpl = null;
+const sheetCalls = [];
+let sheetCancels = 0;
+const fakeSheet = {
+  available: () => authSessionImpl !== null,
+  open(url, scheme) {
+    sheetCalls.push({ url, scheme });
+    return authSessionImpl(url, scheme);
+  },
+  cancel() {
+    sheetCancels += 1;
+  },
+};
 
 mock.module("react-native-get-random-values", { namedExports: {} });
 mock.module("expo-constants", { defaultExport: { expoConfig: { extra: expoExtra } } });
@@ -292,6 +312,162 @@ test("cancel with nothing pending is a no-op", async () => {
   const removedBefore = removedListeners;
   captcha.cancelCaptcha();
   assert.equal(removedListeners, removedBefore);
+});
+
+// ─── iPhone: the in-app sheet, never a trip to Safari ─────────────
+//
+// App Review 4.0: a sign-in step must not leave the app for Safari. With the
+// native sheet (ASWebAuthenticationSession) the challenge opens inside the
+// app, and the sheet itself catches the page's cleanway://captcha-return
+// redirect — no deep link, no AppState guessing. The nonce check still
+// decides, and every way out resolves exactly once.
+
+/** Run [fn] with the sheet present; [impl] answers each openAuthSession call. */
+async function withSheet(impl, fn) {
+  authSessionImpl = impl;
+  try {
+    return await fn();
+  } finally {
+    authSessionImpl = null;
+  }
+}
+
+/** A sheet that stays open until the test closes it with a URL (or null). */
+function controllableSheet() {
+  const opened = [];
+  const impl = () => new Promise((resolve) => opened.push(resolve));
+  return { impl, close: (url, i = opened.length - 1) => opened[i](url), opened };
+}
+
+const returnUrl = (nonce, token) =>
+  `cleanway://captcha-return?nonce=${encodeURIComponent(nonce)}&token=${encodeURIComponent(token)}`;
+
+test("iPhone: the challenge opens in the in-app sheet for the cleanway scheme, not in Safari", async () => {
+  const sheet = controllableSheet();
+  await withSheet(sheet.impl, async () => {
+    const captcha = await loadCaptcha(HTTPS_URL);
+    const linkingBefore = openedUrls.length;
+    const pending = captcha.requestCaptchaToken(fakeSheet);
+    await flush();
+    assert.equal(openedUrls.length, linkingBefore, "Linking.openURL not used");
+    assert.equal(appStateHandler, null, "no AppState guessing");
+    const { url, scheme } = sheetCalls.at(-1);
+    assert.equal(scheme, "cleanway");
+    const opened = new URL(url);
+    assert.equal(opened.origin + opened.pathname, HTTPS_URL);
+    const nonce = opened.searchParams.get("nonce");
+    assert.match(nonce, /^[0-9a-f]{32}$/);
+    const cancelsBefore = sheetCancels;
+    sheet.close(returnUrl(nonce, "tok/+=.~ 1"));
+    assert.equal(await pending, "tok/+=.~ 1");
+    assert.equal(sheetCancels, cancelsBefore, "the sheet closed itself; nothing to cancel");
+  });
+});
+
+test("a sheet that is not available (Android, older iPhone binary) → the browser path, as before", async () => {
+  const captcha = await loadCaptcha(HTTPS_URL);
+  const sheetBefore = sheetCalls.length;
+  const { pending, nonce } = await (async () => {
+    const p = captcha.requestCaptchaToken(fakeSheet);
+    await flush();
+    return { pending: p, nonce: new URL(openedUrls.at(-1)).searchParams.get("nonce") };
+  })();
+  assert.equal(sheetCalls.length, sheetBefore, "no sheet opened");
+  assert.ok(appStateHandler, "AppState listener registered for the browser hop");
+  assert.equal(captcha.deliverCaptchaToken(nonce, "tok"), true);
+  assert.equal(await pending, "tok");
+});
+
+test("iPhone: a sheet answer with another nonce, another URL or none resolves null", async () => {
+  for (const answer of [
+    (nonce) => returnUrl(`${nonce.slice(1)}0`, "tok"),
+    (nonce) => `cleanway://other?nonce=${nonce}&token=tok`,
+    (nonce) => `https://cleanway.ai/captcha-return?nonce=${nonce}&token=tok`,
+    (nonce) => returnUrl(nonce, "   "),
+    () => null,
+    () => "",
+  ]) {
+    const sheet = controllableSheet();
+    await withSheet(sheet.impl, async () => {
+      const captcha = await loadCaptcha(HTTPS_URL);
+      const pending = captcha.requestCaptchaToken(fakeSheet);
+      await flush();
+      const nonce = new URL(sheetCalls.at(-1).url).searchParams.get("nonce");
+      sheet.close(answer(nonce));
+      assert.equal(await pending, null, String(answer(nonce)));
+    });
+  }
+});
+
+test("iPhone: the sheet failing to open resolves null", async () => {
+  await withSheet(() => Promise.reject(new Error("no window")), async () => {
+    const captcha = await loadCaptcha(HTTPS_URL);
+    assert.equal(await captcha.requestCaptchaToken(fakeSheet), null);
+  });
+});
+
+test("iPhone: cancel closes the sheet; its late answer is ignored", async () => {
+  const sheet = controllableSheet();
+  await withSheet(sheet.impl, async () => {
+    const captcha = await loadCaptcha(HTTPS_URL);
+    const pending = captcha.requestCaptchaToken(fakeSheet);
+    await flush();
+    const nonce = new URL(sheetCalls.at(-1).url).searchParams.get("nonce");
+    const cancelsBefore = sheetCancels;
+    captcha.cancelCaptcha();
+    assert.equal(await pending, null);
+    assert.equal(sheetCancels, cancelsBefore + 1, "the sheet is dismissed");
+    sheet.close(returnUrl(nonce, "late"));
+    await flush();
+    assert.equal(captcha.deliverCaptchaToken(nonce, "late"), false);
+  });
+});
+
+test("iPhone: the hard timeout closes the sheet and resolves null", async () => {
+  mock.timers.enable({ apis: ["setTimeout"] });
+  try {
+    const sheet = controllableSheet();
+    await withSheet(sheet.impl, async () => {
+      const captcha = await loadCaptcha(HTTPS_URL);
+      const pending = captcha.requestCaptchaToken(fakeSheet);
+      await flush();
+      const cancelsBefore = sheetCancels;
+      mock.timers.tick(SOLVE_TIMEOUT_MS);
+      assert.equal(await pending, null);
+      assert.equal(sheetCancels, cancelsBefore + 1);
+    });
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+test("iPhone: a second request supersedes the first; the first sheet's answer cannot settle it", async () => {
+  const sheet = controllableSheet();
+  await withSheet(sheet.impl, async () => {
+    const captcha = await loadCaptcha(HTTPS_URL);
+    const first = captcha.requestCaptchaToken(fakeSheet);
+    await flush();
+    const firstNonce = new URL(sheetCalls.at(-1).url).searchParams.get("nonce");
+    const second = captcha.requestCaptchaToken(fakeSheet);
+    await flush();
+    const secondNonce = new URL(sheetCalls.at(-1).url).searchParams.get("nonce");
+    assert.equal(await first, null);
+    sheet.close(returnUrl(firstNonce, "stale"), 0);
+    assert.equal(await isStillPending(second), true);
+    sheet.close(returnUrl(secondNonce, "fresh"), 1);
+    assert.equal(await second, "fresh");
+  });
+});
+
+test("parseCaptchaReturn: only cleanway://captcha-return, first value wins, bad escapes refused", async () => {
+  const { parseCaptchaReturn } = await loadCaptcha(HTTPS_URL);
+  assert.deepEqual(parseCaptchaReturn("cleanway://captcha-return?nonce=ab&token=t%2Bk%20x"), { nonce: "ab", token: "t+k x" });
+  assert.deepEqual(parseCaptchaReturn("cleanway://captcha-return?token=t&nonce=n&nonce=evil"), { nonce: "n", token: "t" });
+  assert.deepEqual(parseCaptchaReturn("cleanway://captcha-return?nonce=n#token=t"), { nonce: "n", token: "" });
+  for (const bad of [null, "", "cleanway://captcha-return", "cleanway://captcha-returnx?nonce=n&token=t",
+    "evil://captcha-return?nonce=n&token=t", "cleanway://captcha-return?nonce=%E0%A4%A&token=t"]) {
+    assert.equal(parseCaptchaReturn(bad), null, String(bad));
+  }
 });
 
 // ─── OTP request: captcha on demand (src/utils/otp-request.ts) ────

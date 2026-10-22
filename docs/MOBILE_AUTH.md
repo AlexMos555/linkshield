@@ -99,6 +99,14 @@ installed 1.0.4** if flipped today:
   `options.captchaToken`. After that, resends in the session go captcha-first.
   While captcha is off, nobody sees anything and the request bytes are unchanged.
   `verifyOtp` needs no token.
+- **iPhone: the challenge must open inside the app.** App Review 4.0 rejects a
+  sign-in step that leaves the app for Safari, and once captcha is on every
+  iPhone sign-in — the reviewer's included — goes through this page. Builds
+  after 1.0.5 build 4 open it in an in-app sheet (ASWebAuthenticationSession,
+  `mobile/modules/cleanway-safari`, no new dependency); the sheet catches the
+  `cleanway://captcha-return` redirect itself, with the same nonce check.
+  **1.0.5 build 4 and older still switch to Safari** (`Linking.openURL`).
+  Android keeps the browser hop and the deep link (`app/captcha-return.tsx`).
 - **Web:** `/signup` already passes the Turnstile token as
   `signInWithOtp({ options: { captchaToken } })` (`SignupForm.tsx`).
 
@@ -107,6 +115,10 @@ installed 1.0.4** if flipped today:
 1. **Ship 1.0.5 everywhere** — App Store, Google Play, RuStore and the direct APK
    on cleanway.ai. Local gradle builds (direct APK / RuStore) read
    `mobile/.env`, not `eas.json`: add `EXPO_PUBLIC_CAPTCHA_URL` there too.
+   **On iPhone that means a build after 1.0.5 build 4** — the first one with
+   the in-app sheet (above). Build 4 opens Safari, so it must not be the App
+   Store build on the day captcha goes on: ship the next iOS build first, and
+   in step 3 count build 4 together with 1.0.4 and older.
 2. ★ **Turnstile sitekey on the web.** Cloudflare dashboard → Turnstile → add a
    widget for `cleanway.ai` (Managed). Put its **sitekey** in Vercel as
    `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and redeploy. One widget serves both
@@ -120,9 +132,11 @@ installed 1.0.4** if flipped today:
    (`mobile.auth.err_captcha_update`), not a generic error.
 4. ★ **Enable captcha in Supabase**: Dashboard → Authentication → Attack
    Protection → Enable Captcha protection → provider **Turnstile** → the
-   widget's **secret key** from step 2. Immediately test: web `/signup` and a
-   1.0.5 phone (the challenge page should open once, then the code arrives).
-   Rollback = switch it off; nothing else to undo.
+   widget's **secret key** from step 2. Immediately test: web `/signup`, a
+   1.0.5 Android phone and an iPhone on the build with the sheet (the
+   challenge page should open once — on iPhone as a sheet over the app, never
+   Safari — then the code arrives). Rollback = switch it off; nothing else to
+   undo.
 5. ★ **Later: 8-digit codes.** Once 1.0.4 and older are negligible, set
    `OTP_LENGTH = 8` in `scripts/supabase_mail.py` and apply it (or Dashboard →
    Authentication → Email → OTP length = 8). Then update the code-length range

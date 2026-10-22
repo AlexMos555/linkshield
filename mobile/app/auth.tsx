@@ -21,9 +21,19 @@ import {
   isCaptchaRequired,
   requestCaptchaToken,
   cancelCaptcha,
+  type AuthSheet,
 } from "../src/services/captcha";
 import { createOtpRequester } from "../src/utils/otp-request";
 import { PRIVACY_POLICY_URL, TERMS_URL } from "../src/utils/legal-urls";
+import { authSessionAvailable, cancelAuthSession, openAuthSession } from "../modules/cleanway-safari";
+
+// iPhone: the captcha page opens in an in-app sheet, not in Safari (App
+// Review 4.0). Unavailable on Android, which keeps the browser hop.
+const CAPTCHA_SHEET: AuthSheet = {
+  available: authSessionAvailable,
+  open: openAuthSession,
+  cancel: cancelAuthSession,
+};
 
 // Module scope on purpose: once GoTrue has asked for a captcha, a resend (or a
 // second visit to this screen) in the same app session goes captcha-first
@@ -31,7 +41,7 @@ import { PRIVACY_POLICY_URL, TERMS_URL } from "../src/utils/legal-urls";
 const requestOtp = createOtpRequester({
   captchaConfigured: isCaptchaRequired(),
   send: sendEmailOtp,
-  getCaptchaToken: requestCaptchaToken,
+  getCaptchaToken: () => requestCaptchaToken(CAPTCHA_SHEET),
 });
 
 /**

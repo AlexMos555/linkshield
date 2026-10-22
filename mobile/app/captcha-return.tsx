@@ -12,7 +12,9 @@
  * deep link aimed at the already-focused route.
  *
  * UNREACHABLE unless EXPO_PUBLIC_CAPTCHA_URL is set — nothing navigates here
- * and no captcha page exists to redirect here.
+ * and no captcha page exists to redirect here. On iPhone the in-app sheet
+ * (src/services/captcha.ts) catches the redirect itself, so this route serves
+ * Android and iPhone builds without the sheet.
  *
  * Cold-start case: if the OS killed the app while the browser was open there
  * is no pending request to satisfy (the promise died with the JS context), so
