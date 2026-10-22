@@ -44,6 +44,7 @@ files, one per store ([docs/RUSTORE_SUBMISSION.md](docs/RUSTORE_SUBMISSION.md) �
 - **Доступность.** У всех кнопок есть роли и подписи для VoiceOver и TalkBack; вердикт проверки и загрузка озвучиваются; онбординг говорит «Шаг N из 3». Контраст текста и кнопок — не ниже AA, области нажатия не меньше 44 pt, крупный шрифт больше не обрезается, при «Уменьшить движение» кольцо оценки и окно защиты от звонков не анимируются (#249).
 - **Политика конфиденциальности в приложении** перечисляет обработчиков данных после переезда инфраструктуры (#228); для сайтов на динамических DNS результат проверки показывает понятную причину (#224).
 - **Android: экран подписки перечисляет только то, что даёт подписка** — без «Автоматической проверки SMS» (её нет ни в одной сборке) и «Защиты во время звонков» (она бесплатна для всех).
+- **iOS, не в build 4 (нужна следующая iOS-сборка):** проверка «я не робот» при входе открывается в окне внутри приложения (ASWebAuthenticationSession), а не в Safari; запрос доступа к камере для QR-кодов — на языке телефона.
 
 **What's new**
 - Reopens a closed on-device database instead of losing data; a failed read is never treated as a first run (#184).
@@ -55,7 +56,7 @@ files, one per store ([docs/RUSTORE_SUBMISSION.md](docs/RUSTORE_SUBMISSION.md) �
 - Accessibility: roles and labels on every touchable for VoiceOver and TalkBack; verdicts and loading states are announced; onboarding says "Step N of 3". Text and button contrast meets AA, touch targets are at least 44 pt, large text is no longer clipped, and Reduce Motion stops the score-ring and call-guard animations (#249).
 - In-app privacy policy lists the subprocessors after the infrastructure move (#228); sites on dynamic DNS get a plain-language reason in the check result (#224).
 - Android: the paywall lists only what the subscription adds — no "Automatic SMS check" (no build has it) and no "Protection during phone calls" (free for everyone).
-- iOS, not in build 4 (needs the next iOS build): the on-demand sign-in captcha opens in an in-app sheet (ASWebAuthenticationSession) instead of switching to Safari.
+- iOS, not in build 4 (needs the next iOS build): the on-demand sign-in captcha opens in an in-app sheet (ASWebAuthenticationSession) instead of switching to Safari; the camera prompt for QR codes is in the phone's language.
 
 Enablement order for the server-side switches: [docs/MOBILE_AUTH.md](docs/MOBILE_AUTH.md).
 
