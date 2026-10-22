@@ -38,8 +38,9 @@ def authed_user():
 
 
 @pytest.fixture
-def stripe_configured(monkeypatch):
-    """Pretend Stripe is set up so the endpoint proceeds to price lookup."""
+def stripe_configured(monkeypatch, stripe_checkout_ready):
+    """Pretend Stripe is set up (key, webhook secret, price ids) so the
+    endpoint proceeds to price lookup."""
     from api import config
 
     s = config.get_settings()
@@ -271,8 +272,9 @@ def test_checkout_rejects_unknown_interval(
     assert stripe_stub == []
 
 
-def test_checkout_500_when_stripe_key_missing(client, authed_user, monkeypatch):
-    """No STRIPE_SECRET_KEY in env → 500 before any Stripe call."""
+def test_checkout_503_when_stripe_key_missing(client, authed_user, monkeypatch):
+    """No STRIPE_SECRET_KEY in env → 503 checkout_not_configured before any
+    Stripe call: billing that isn't set up is unavailable, not a crash."""
     from api import config
 
     s = config.get_settings()
@@ -283,7 +285,47 @@ def test_checkout_500_when_stripe_key_missing(client, authed_user, monkeypatch):
         json={"plan": "personal_monthly"},
         headers={"Authorization": "Bearer fake"},
     )
-    assert resp.status_code == 500
+    assert resp.status_code == 503
+    assert resp.json()["detail"]["code"] == "checkout_not_configured"
+
+
+def test_checkout_503_when_the_webhook_is_not_configured(
+    client, stripe_configured, real_price_env, stripe_stub, monkeypatch
+):
+    """Without STRIPE_WEBHOOK_SECRET the webhook answers 503 to Stripe, so a
+    payment would be taken and never recorded: refuse to sell."""
+    monkeypatch.setattr(stripe_configured, "stripe_webhook_secret", " ", raising=False)
+    resp = client.post(
+        "/api/v1/payments/checkout",
+        json={"plan": "devices_monthly"},
+        headers={"Authorization": "Bearer fake"},
+    )
+    assert resp.status_code == 503
+    assert resp.json()["detail"]["code"] == "checkout_not_configured"
+    assert stripe_stub == []
+
+
+@pytest.mark.parametrize("extra_devices", [0, 2])
+def test_checkout_503_when_a_price_is_a_placeholder(client, stripe_stub, monkeypatch, extra_devices):
+    """STRIPE_PRICE_* not set → the placeholder id (pricing.py). Stripe would
+    reject it with a 500; it is a configuration gap, so 503 before Stripe."""
+    from api import config
+
+    pricing = importlib.import_module("api.services.pricing")
+    s = config.get_settings()
+    monkeypatch.setattr(s, "stripe_secret_key", "sk_test_dummy", raising=False)
+    monkeypatch.setattr(s, "stripe_webhook_secret", "whsec_test_dummy", raising=False)
+    if extra_devices:  # the plan's price is real, only the extra device's is missing
+        monkeypatch.setitem(pricing.STRIPE_PRICE_IDS[2], "monthly", "price_real_plan")
+    assert not pricing.is_configured_price(pricing.extra_device_price_id_for_checkout(None, "monthly"))
+    resp = client.post(
+        "/api/v1/payments/checkout",
+        json={"plan": "devices_monthly", "extra_devices": extra_devices},
+        headers={"Authorization": "Bearer fake"},
+    )
+    assert resp.status_code == 503
+    assert resp.json()["detail"]["code"] == "checkout_not_configured"
+    assert stripe_stub == []
 
 
 # ─── Idempotency-key on Stripe Checkout ────────────────────────
@@ -628,3 +670,29 @@ def test_checkout_503_when_entitlements_cannot_be_read(
     resp = _checkout(client)
     assert resp.status_code == 503
     assert stripe_stub == []
+
+
+# ─── Where Stripe sends the buyer back ─────────────────────────
+
+
+@pytest.mark.parametrize("success_url,sent", [
+    # A bare URL gets Stripe's session placeholder appended once.
+    ("https://cleanway.ai/ru/success", "https://cleanway.ai/ru/success?session_id={CHECKOUT_SESSION_ID}"),
+    # A query string already there: joined with &, not a second "?".
+    ("https://cleanway.ai/success?from=pricing",
+     "https://cleanway.ai/success?from=pricing&session_id={CHECKOUT_SESSION_ID}"),
+    # The site used to send the placeholder itself: never doubled.
+    ("https://cleanway.ai/success?session_id={CHECKOUT_SESSION_ID}",
+     "https://cleanway.ai/success?session_id={CHECKOUT_SESSION_ID}"),
+])
+def test_success_url_carries_the_session_id_exactly_once(
+    client, stripe_configured, stripe_stub, success_url, sent
+):
+    resp = client.post(
+        "/api/v1/payments/checkout",
+        json={"plan": "devices_yearly", "success_url": success_url, "cancel_url": "https://cleanway.ai/de/pricing"},
+        headers={"Authorization": "Bearer fake"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert stripe_stub[0]["success_url"] == sent
+    assert stripe_stub[0]["cancel_url"] == "https://cleanway.ai/de/pricing"

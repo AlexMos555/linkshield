@@ -441,6 +441,19 @@
     "contact_title": "Suporte",
     "contact_pending": "A caixa de e-mail do suporte está temporariamente fora do ar; o endereço voltará a aparecer aqui assim que funcionar. Até lá, cancele no app."
   },
+  "SubscriptionReturn": {
+    "meta_title": "Voltar ao app",
+    "title": "Volte ao app Cleanway",
+    "intro": "Você voltou da página de pagamento. Abra o app: lá você vê se a assinatura está ativa.",
+    "open_app": "Abrir o Cleanway",
+    "paid_title": "Se o pagamento foi concluído",
+    "paid_body": "A assinatura é ativada no app sozinha assim que o pagamento é confirmado. Você não precisa fazer mais nada.",
+    "failed_title": "Se não foi",
+    "failed_body": "Nada foi cobrado. Abra o app e tente de novo, ou verifique se há saldo suficiente na sua linha de celular.",
+    "get_app": "Ainda não tem o app? Baixe para Android",
+    "cancel_link": "Como cancelar",
+    "support_link": "Suporte"
+  },
   "Transparency": {
     "page_title": "Relatório de transparência",
     "page_description": "O que o Cleanway já mediu sobre a própria precisão e o que ainda não mediu.",
@@ -1189,7 +1202,9 @@
         "Se você criar uma conta, em cleanway.ai/account vê cada dispositivo e pode desvincular o que não é mais usado."
       ],
       "pricing_body": "No momento não há planos pagos no seu país, nem para equipes nem para ninguém. A página de Preços mostra o que está incluído.",
-      "pricing_cta": "O que está incluído"
+      "pricing_cta": "O que está incluído",
+      "contact_live": "Se você quer proteger muitos dispositivos, escreva para nós:",
+      "contact_not_live": "Nossa caixa de e-mail está temporariamente fora do ar, então no momento não conseguimos receber pedidos por e-mail. Esta página vai voltar a mostrar nosso endereço assim que funcionar."
     },
     "operator": {
       "meta_description": "Proteja os celulares da sua equipe contra sites de golpe e de phishing. O bloqueio pela lista funciona sem pagar nada; a assinatura das verificações detalhadas é cobrada na conta do celular.",

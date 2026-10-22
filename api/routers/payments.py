@@ -49,7 +49,7 @@ from api.services.stripe_billing import (
     subscription_period,
     trial_available,
 )
-from api.services.pricing import STRIPE_TRIAL_DAYS
+from api.services.pricing import STRIPE_TRIAL_DAYS, is_configured_price
 from api.services.entitlements import (
     EntitlementError,
     end_source_entitlements,
@@ -106,6 +106,19 @@ def _resolve_price(
 
 _ALLOWED_REDIRECT_PREFIXES = ("https://cleanway.ai/", "https://www.cleanway.ai/")
 
+_SESSION_ID_PLACEHOLDER = "{CHECKOUT_SESSION_ID}"
+
+
+def _with_session_id(success_url: str) -> str:
+    """The success URL with Stripe's session placeholder (Stripe fills it in
+    on the redirect) — exactly once, joined with "&" when the URL already
+    has a query. The site used to send it too, which made "?session_id=…
+    ?session_id=…"."""
+    if _SESSION_ID_PLACEHOLDER in success_url:
+        return success_url
+    joiner = "&" if "?" in success_url else "?"
+    return f"{success_url}{joiner}session_id={_SESSION_ID_PLACEHOLDER}"
+
 
 class CheckoutRequest(BaseModel):
     plan: str  # "devices_monthly" | "devices_yearly" ("personal_*" still accepted)
@@ -154,6 +167,21 @@ class PortalResponse(BaseModel):
 _BILLING_UNAVAILABLE = "Billing is temporarily unavailable. Please try again in a moment."
 
 
+def _checkout_not_configured(missing: str) -> HTTPException:
+    """503 for a deployment that can't take a Stripe payment end to end yet
+    (docs/runbooks/LAUNCH_ROADMAP.md, Stripe). The site hides its buy button
+    until NEXT_PUBLIC_STRIPE_LIVE is on (landing/lib/billing-config.ts); this
+    is the guard for every other caller."""
+    logger.error("checkout_not_configured", extra={"missing": missing})
+    return HTTPException(
+        503,
+        detail={
+            "code": "checkout_not_configured",
+            "error": "Paid plans can't be bought here yet. Everything free keeps working.",
+        },
+    )
+
+
 @router.post(
     "/checkout",
     response_model=CheckoutResponse,
@@ -181,8 +209,10 @@ async def create_checkout(
 
     settings = get_settings()
     stripe_key = getattr(settings, "stripe_secret_key", "")
-    if not stripe_key:
-        raise HTTPException(500, "Stripe not configured")
+    if not stripe_key or not (getattr(settings, "stripe_webhook_secret", "") or "").strip():
+        # No key: nothing to sell with. No webhook secret: the webhook answers
+        # Stripe 503, so the payment would be taken and never recorded.
+        raise _checkout_not_configured("stripe_keys")
 
     stripe.api_key = stripe_key
 
@@ -190,6 +220,10 @@ async def create_checkout(
     if not resolved:
         raise HTTPException(400, f"Invalid plan: {request.plan}")
     line_items, pricing_tier = resolved
+    if not all(is_configured_price(item["price"]) for item in line_items):
+        # STRIPE_PRICE_* not set (scripts/create_stripe_prices.py): Stripe
+        # would refuse the placeholder id with a 500.
+        raise _checkout_not_configured("stripe_prices")
 
     try:
         row = await fetch_subscription_row(user_id=user.id)
@@ -227,7 +261,7 @@ async def create_checkout(
     params: dict = {
         "mode": "subscription",
         "line_items": line_items,
-        "success_url": request.success_url + "?session_id={CHECKOUT_SESSION_ID}",
+        "success_url": _with_session_id(request.success_url),
         "cancel_url": request.cancel_url,
         "metadata": {
             "user_id": user.id,
@@ -415,7 +449,7 @@ async def stripe_webhook(request: Request):
     logger.info("webhook_received", extra={"type": event_type, "event_id": event_id})
 
     try:
-        await _dispatch_event(event_type, data)
+        await _dispatch_event(event_type, data, event.get("created"))
     except Exception as e:
         logger.error(
             "webhook_processing_failed",
@@ -431,11 +465,13 @@ async def stripe_webhook(request: Request):
     return {"status": "ok"}
 
 
-async def _dispatch_event(event_type: str, data: dict) -> None:
+async def _dispatch_event(event_type: str, data: dict, created: Optional[int] = None) -> None:
+    """`created`: the event's Stripe timestamp (epoch seconds), which orders
+    deliveries of the same subscription (_stale_subscription_event)."""
     if event_type == "checkout.session.completed":
         await _handle_checkout_completed(data)
     elif event_type == "customer.subscription.updated":
-        await _handle_subscription_updated(data)
+        await _handle_subscription_updated(data, created)
     elif event_type == "customer.subscription.deleted":
         await _handle_subscription_deleted(data)
     elif event_type == "customer.subscription.trial_will_end":
@@ -613,6 +649,13 @@ async def _handle_checkout_completed(session: dict):
         logger.warning("checkout_no_user_id")
         return
 
+    if await _subscription_ended(subscription_id):
+        # A retry of a delivery that failed before the subscription ended
+        # (Stripe retries for 3 days): it must not reopen it — a trial row
+        # without a period end would become an open-ended plan.
+        logger.info("checkout_for_ended_subscription_skipped", extra={"subscription_id": subscription_id})
+        return
+
     tier = _tier_from_plan_key(plan)
 
     from api.services import audit_log
@@ -664,8 +707,12 @@ async def _handle_checkout_completed(session: dict):
     )
 
 
-async def _handle_subscription_updated(subscription: dict):
-    """Subscription changed (upgrade/downgrade/renewal)."""
+async def _handle_subscription_updated(subscription: dict, created: Optional[int] = None):
+    """Subscription changed (upgrade/downgrade/renewal).
+
+    An older delivery than the one already applied, or any update of a
+    subscription that has ended for good, is skipped — both writes
+    (_stale_subscription_event)."""
     status = subscription.get("status")  # active, past_due, canceled, etc.
     subscription_id = subscription.get("id")
     customer_id = object_id(subscription.get("customer"))
@@ -677,6 +724,12 @@ async def _handle_subscription_updated(subscription: dict):
 
     if not user_id:
         logger.warning("subscription_updated_unattributed", extra={"subscription_id": subscription_id})
+        return
+    if await _stale_subscription_event(subscription_id, created):
+        logger.info(
+            "subscription_event_stale",
+            extra={"subscription_id": subscription_id, "stripe_status": status, "event_created": created},
+        )
         return
 
     mapped_status = "active" if status in ("active", "trialing") else "past_due" if status == "past_due" else "cancelled"
@@ -705,6 +758,7 @@ async def _handle_subscription_updated(subscription: dict):
             plan=tier,
             period_end=period_end,
             device_limit=stripe_device_limit(subscription),
+            source_event_at=_epoch_to_iso(created),
         )
 
     from api.services import audit_log
@@ -972,6 +1026,9 @@ async def _handle_customer_deleted(customer: dict):
             await end_source_entitlements(account_id=user_id, source="stripe")
         except EntitlementError as e:
             raise BillingError(f"entitlement update failed: {e}") from e
+        # Again after this write: a request between the two writes would
+        # cache the plan this one ends (_record_stripe_entitlement).
+        await _drop_tier_cache(user_id)
 
 
 async def _record_stripe_entitlement(
@@ -982,11 +1039,17 @@ async def _record_stripe_entitlement(
     plan: Optional[str] = None,
     period_end: Optional[str] = None,
     device_limit: Optional[int] = None,
+    source_event_at: Optional[str] = None,
 ) -> None:
     """Mirror a Stripe subscription into `entitlements` (migration 023) —
-    the table every account screen and the double-payment guard read.
-    Written alongside the legacy `subscriptions` row; a failure raises so
-    the webhook answers 5xx and Stripe retries both writes."""
+    the table the tier resolver, every account screen and the double-payment
+    guard read. Written alongside the legacy `subscriptions` row; a failure
+    raises so the webhook answers 5xx and Stripe retries both writes.
+
+    `source_event_at` (migration 024): the Stripe time of the event, so an
+    older delivery can be told apart later. The tier cache is dropped after
+    this write too — the subscriptions write drops it first, and a request in
+    between would cache the plan this write is about to change."""
     try:
         await record_entitlement(
             account_id=user_id,
@@ -996,9 +1059,66 @@ async def _record_stripe_entitlement(
             plan=plan,
             period_end=period_end,
             device_limit=device_limit,
+            source_event_at=source_event_at,
         )
     except EntitlementError as e:
         raise BillingError(f"entitlement write failed: {e}") from e
+    await _drop_tier_cache(user_id)
+
+
+# A Stripe subscription never leaves these: Stripe cannot reactivate a
+# canceled subscription (buying again creates a new one), and a fully
+# refunded one was cancelled by us (_handle_charge_refunded).
+_FINAL_ENTITLEMENT_STATUSES = frozenset({"cancelled", "refunded"})
+
+
+async def _stripe_entitlement_row(subscription_id: Optional[str]) -> Optional[dict]:
+    """The subscription's entitlement row, None when there is none (or no
+    store / no id). Raises BillingError when it can't be read, so the
+    webhook answers 5xx and Stripe retries."""
+    from api.services import account_store
+    from api.services.account_store import AccountStoreError
+
+    store = account_store.get_account_store()
+    if not subscription_id or store is None:
+        return None
+    try:
+        return await store.get_entitlement(source="stripe", external_id=subscription_id)
+    except AccountStoreError as e:
+        raise BillingError(f"entitlement read failed: {e}") from e
+
+
+async def _subscription_ended(subscription_id: Optional[str]) -> bool:
+    """True when the subscription has ended for good (cancelled, refunded):
+    no later delivery may reopen it."""
+    row = await _stripe_entitlement_row(subscription_id)
+    return bool(row) and row.get("status") in _FINAL_ENTITLEMENT_STATUSES
+
+
+async def _stale_subscription_event(subscription_id: Optional[str], created: Optional[int]) -> bool:
+    """True when applying a customer.subscription.updated would roll the
+    subscription back. Stripe delivers events out of order and retries a
+    failed one for 3 days, so an older update can arrive after a newer one:
+    it is stale when the subscription's entitlement row has already seen a
+    LATER event (source_event_at; the same second is not "later"), or has
+    ended for good. Raises BillingError when the row can't be read."""
+    row = await _stripe_entitlement_row(subscription_id)
+    if not row:
+        return False
+    if row.get("status") in _FINAL_ENTITLEMENT_STATUSES:
+        return True
+    seen = _iso_to_epoch(row.get("source_event_at"))
+    return seen is not None and created is not None and int(created) < seen
+
+
+def _iso_to_epoch(value: object) -> Optional[float]:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        ts = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return (ts if ts.tzinfo else ts.replace(tzinfo=timezone.utc)).timestamp()
 
 
 def _epoch_to_iso(epoch: Optional[int]) -> Optional[str]:
@@ -1045,7 +1165,6 @@ async def _update_subscription(
     omitted fields (tier, trial_used_at, …) keep their stored value.
     """
     import httpx
-    from api.services.cache import get_redis
 
     settings = get_settings()
     if not settings.supabase_url or not supabase_keys.server_key(settings):
@@ -1105,9 +1224,19 @@ async def _update_subscription(
         )
         raise BillingError(f"subscription upsert returned {resp.status_code}")
 
-    # Invalidate Redis tier cache
+    await _drop_tier_cache(user_id)
+
+
+async def _drop_tier_cache(user_id: str) -> None:
+    """Best-effort: the cached tier expires on its own within 5 minutes.
+    The last known paid tier (tier_last, the resolver's outage fallback —
+    api/services/auth.py) goes too: after a refund or cancellation it would
+    serve the ended plan for a week. The next paid lookup rewrites it."""
+    from api.services.cache import get_redis
+
     try:
         r = await get_redis()
         await r.delete(f"tier:{user_id}")
+        await r.delete(f"tier_last:{user_id}")
     except Exception:
         pass

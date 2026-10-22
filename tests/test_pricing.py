@@ -14,6 +14,7 @@ from api.services.pricing import (
     get_extra_device_price,
     get_price,
     get_quote_for_country,
+    is_configured_price,
     is_extra_device_price,
     parse_plan_key,
     plan_for_price_id,
@@ -124,6 +125,18 @@ def test_placeholder_price_ids_without_env():
     field parseable; Stripe refuses it loudly (No such price …)."""
     assert get_price(2, "monthly").stripe_price_id == "price_DEVICES_T2_MONTHLY_PLACEHOLDER"
     assert get_extra_device_price(4, "yearly").stripe_price_id == "price_EXTRA_DEVICE_T4_YEARLY_PLACEHOLDER"
+
+
+@pytest.mark.parametrize("price_id,configured", [
+    ("price_DEVICES_T2_MONTHLY_PLACEHOLDER", False),
+    ("", False),
+    (None, False),
+    ("price_1QabcDEF", True),
+])
+def test_is_configured_price(price_id, configured):
+    """Checkout sells only prices that exist in Stripe: not the placeholder
+    of an unset env var, not an env var set to nothing."""
+    assert is_configured_price(price_id) is configured
 
 
 def test_every_tier_and_interval_has_distinct_ids():

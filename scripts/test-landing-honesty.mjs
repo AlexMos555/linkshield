@@ -455,13 +455,23 @@ check("price for N devices: the plan covers the included ones, each more adds th
 });
 check("pricingVariant: Russian visitors get the free page today and the operator page only with the flag on", () => {
   const stripe = (visitor) => paidPlansOffered(visitor);
-  assert.equal(pricingVariant(stripe({ locale: "ru" }), false), "free");
-  assert.equal(pricingVariant(stripe({ locale: "ru" }), true), "operator");
-  assert.equal(pricingVariant(stripe({ locale: "en", country: "RU" }), false), "free");
-  assert.equal(pricingVariant(stripe({ locale: "en", country: "RU" }), true), "operator");
-  // Stripe where it is sold — the flag does not touch those visitors.
-  assert.equal(pricingVariant(stripe({ locale: "en", country: null }), true), "stripe");
-  assert.equal(pricingVariant(stripe({ locale: "de", country: "DE" }), false), "stripe");
+  for (const stripeLive of [false, true]) {
+    assert.equal(pricingVariant(stripe({ locale: "ru" }), false, stripeLive), "free");
+    assert.equal(pricingVariant(stripe({ locale: "ru" }), true, stripeLive), "operator");
+    assert.equal(pricingVariant(stripe({ locale: "en", country: "RU" }), false, stripeLive), "free");
+    assert.equal(pricingVariant(stripe({ locale: "en", country: "RU" }), true, stripeLive), "operator");
+  }
+  // Stripe where it is sold — the operator flag does not touch those visitors.
+  assert.equal(pricingVariant(stripe({ locale: "en", country: null }), true, true), "stripe");
+  assert.equal(pricingVariant(stripe({ locale: "de", country: "DE" }), false, true), "stripe");
+});
+check("pricingVariant: until Stripe checkout is live (NEXT_PUBLIC_STRIPE_LIVE) the world gets the free page — never a buy button that dead-ends, never the ruble offer", () => {
+  const stripe = (visitor) => paidPlansOffered(visitor);
+  for (const billingEnabled of [false, true]) {
+    assert.equal(pricingVariant(stripe({ locale: "en", country: null }), billingEnabled, false), "free");
+    assert.equal(pricingVariant(stripe({ locale: "de", country: "DE" }), billingEnabled, false), "free");
+    assert.equal(pricingVariant(stripe({ locale: "en", country: "US" }), billingEnabled, true), "stripe");
+  }
 });
 check("seller requisites: present only when every field is well-formed", () => {
   const complete = sellerFromEnv({

@@ -14,7 +14,7 @@ Complements tests/test_jwt_verification.py:
   with nothing cached they are 503 `auth_unavailable`, and a garbled answer
   must not poison the cache once Supabase recovers;
 - get_optional_user / get_current_user_no_disposable entry points;
-- the subscriptions tier lookup falls back to free on errors / unknown tiers.
+- the tier lookup reports a Supabase error or timeout as an unconfirmed free.
 """
 from __future__ import annotations
 
@@ -444,26 +444,33 @@ def _entitlements(monkeypatch, plan=None):
 async def test_unknown_tier_in_the_subscriptions_row_is_free(supabase, monkeypatch):
     from api.services import auth
 
-    _httpx_answering(monkeypatch, body=[{"tier": "platinum"}])
-    assert await auth._fetch_tier_from_supabase("u1") is UserTier.free
+    _httpx_answering(monkeypatch, body=[{"tier": "platinum", "status": "active"}])
+    assert await auth._fetch_tier_from_supabase("u1") == (UserTier.free, True)
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("status", [401, 500, 503])
-async def test_subscriptions_error_status_falls_through_to_entitlements(supabase, monkeypatch, status):
+async def test_the_tier_is_the_effective_entitlement(supabase, monkeypatch):
     from api.services import auth
 
-    _httpx_answering(monkeypatch, status=status, body={"message": "boom"})
     calls = _entitlements(monkeypatch, plan="personal")
-    assert await auth._fetch_tier_from_supabase("u1") is UserTier.personal
+    assert await auth._fetch_tier_from_supabase("u1") == (UserTier.personal, True)
     assert calls == ["u1"]
 
 
 @pytest.mark.asyncio
-async def test_subscriptions_timeout_is_free_not_an_error(supabase, monkeypatch):
+@pytest.mark.parametrize("status", [401, 500, 503])
+async def test_supabase_error_status_is_free_but_not_confirmed(supabase, monkeypatch, status):
+    from api.services import auth
+
+    _httpx_answering(monkeypatch, status=status, body={"message": "boom"})
+    assert await auth._fetch_tier_from_supabase("u1") == (UserTier.free, False)
+
+
+@pytest.mark.asyncio
+async def test_supabase_timeout_is_free_not_an_error(supabase, monkeypatch):
     import httpx
 
     from api.services import auth
 
     _httpx_answering(monkeypatch, exc=httpx.ReadTimeout("slow"))
-    assert await auth._fetch_tier_from_supabase("u1") is UserTier.free
+    assert await auth._fetch_tier_from_supabase("u1") == (UserTier.free, False)

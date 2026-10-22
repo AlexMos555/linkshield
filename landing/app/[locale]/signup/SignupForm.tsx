@@ -15,7 +15,10 @@ import {
   normalizeOtpInput,
   queryErrorKey,
   sendErrorKey,
+  signupDestination,
   verifyErrorKey,
+  type SignupInterval,
+  type SignupPlan,
 } from "@/lib/signup-flow";
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_LIVE } from "@/lib/support";
 
@@ -30,8 +33,8 @@ const CAPTCHA_TOKEN_WAIT_MS = 5_000;
 const PROBE_TIMEOUT_MS = 3_000;
 
 interface SignupFormProps {
-  planFromQuery: string | null;
-  intervalFromQuery: string | null;
+  planFromQuery: SignupPlan | null;
+  intervalFromQuery: SignupInterval | null;
   /** `?error=` left by /auth/callback when a magic link could not sign in. */
   errorFromQuery?: string | null;
   /**
@@ -106,11 +109,13 @@ export default function SignupForm({ planFromQuery, intervalFromQuery, errorFrom
     }, 1000);
   }, []);
 
-  const nextPath = nextFromQuery
-    ? nextFromQuery
-    : planFromQuery
-      ? `${localePath(locale, "/pricing")}?plan=${planFromQuery}${intervalFromQuery ? `&interval=${intervalFromQuery}` : ""}`
-      : localePath(locale, "/");
+  const nextPath = signupDestination({
+    next: nextFromQuery ?? null,
+    plan: planFromQuery,
+    interval: intervalFromQuery,
+    pricingPath: localePath(locale, "/pricing"),
+    homePath: localePath(locale, "/"),
+  });
 
   const queryError = queryErrorKey(errorFromQuery);
 

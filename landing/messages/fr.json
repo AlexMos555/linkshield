@@ -441,6 +441,19 @@
     "contact_title": "Assistance",
     "contact_pending": "La boîte de l'assistance est temporairement hors service ; l'adresse réapparaîtra ici dès qu'elle fonctionnera. D'ici là, résiliez dans l'application."
   },
+  "SubscriptionReturn": {
+    "meta_title": "Retour à l'application",
+    "title": "Revenez dans l'application Cleanway",
+    "intro": "Vous revenez de la page de paiement. Ouvrez l'application : elle indique si l'abonnement est actif.",
+    "open_app": "Ouvrir Cleanway",
+    "paid_title": "Si le paiement a abouti",
+    "paid_body": "L'abonnement s'active tout seul dans l'application dès que le paiement est confirmé. Vous n'avez rien d'autre à faire.",
+    "failed_title": "S'il n'a pas abouti",
+    "failed_body": "Rien n'a été prélevé. Ouvrez l'application et réessayez, ou vérifiez que le crédit de votre ligne mobile est suffisant.",
+    "get_app": "Pas encore l'application ? Téléchargez-la pour Android",
+    "cancel_link": "Comment résilier",
+    "support_link": "Assistance"
+  },
   "Transparency": {
     "page_title": "Rapport de transparence",
     "page_description": "Ce que Cleanway a mesuré sur sa propre précision, et ce qu'il n'a pas encore mesuré.",
@@ -1189,7 +1202,9 @@
         "Si vous créez un compte, vous voyez chaque appareil sur cleanway.ai/account et pouvez dissocier celui qui n'est plus utilisé."
       ],
       "pricing_body": "Il n'y a pas d'offre payante dans votre pays pour le moment, ni pour les équipes ni pour personne. La page des tarifs indique ce qui est inclus.",
-      "pricing_cta": "Ce qui est inclus"
+      "pricing_cta": "Ce qui est inclus",
+      "contact_live": "Si vous voulez protéger de nombreux appareils, écrivez-nous :",
+      "contact_not_live": "Notre boîte e-mail est temporairement hors service : nous ne pouvons donc pas recevoir de demandes par e-mail pour le moment. Cette page affichera de nouveau notre adresse dès qu'elle fonctionnera."
     },
     "operator": {
       "meta_description": "Protégez les téléphones de votre équipe contre les sites d'arnaque et de phishing. Le blocage par liste fonctionne sans rien payer ; l'abonnement aux vérifications détaillées est prélevé sur le compte du téléphone mobile.",

@@ -73,6 +73,9 @@ def client(fake_redis, account_store, monkeypatch):
         return fake_redis
 
     monkeypatch.setattr(rate_limiter, "get_redis", _fake)
+    # Tier already cached, so the Supabase reads _export_reads sees are the
+    # export's own: the tier lookup reads the subscriptions row too (limit=1).
+    asyncio.run(fake_redis.setex(f"tier:{ACCOUNT}", 300, "free"))
     yield TestClient(app)
     app.dependency_overrides.clear()
 

@@ -441,6 +441,19 @@
     "contact_title": "Support",
     "contact_pending": "The support mailbox is temporarily not working; the address appears here again as soon as it works. Until then, cancel in the app."
   },
+  "SubscriptionReturn": {
+    "meta_title": "Back to the app",
+    "title": "Go back to the Cleanway app",
+    "intro": "You are back from the payment page. Open the app: it shows whether the subscription is on.",
+    "open_app": "Open Cleanway",
+    "paid_title": "If the payment went through",
+    "paid_body": "The subscription turns on in the app by itself as soon as the payment is confirmed. You don't need to do anything else.",
+    "failed_title": "If it didn't",
+    "failed_body": "Nothing was charged. Open the app and try again, or check that there is enough money on your phone account.",
+    "get_app": "No app yet? Get it for Android",
+    "cancel_link": "How to cancel",
+    "support_link": "Support"
+  },
   "Transparency": {
     "page_title": "Transparency report",
     "page_description": "What Cleanway has measured about its own accuracy — and what it has not measured yet.",
@@ -1189,7 +1202,9 @@
         "If you create an account, you see every device at cleanway.ai/account and can unlink one that is no longer used."
       ],
       "pricing_body": "There are no paid plans in your country right now, for a team or for anyone else. The Pricing page lists what is included.",
-      "pricing_cta": "What is included"
+      "pricing_cta": "What is included",
+      "contact_live": "If you want to protect many devices, write to us:",
+      "contact_not_live": "Our mailbox is temporarily not working, so we cannot take requests by email right now. This page will show our address again as soon as it works."
     },
     "operator": {
       "meta_description": "Protect your team's phones from scam and phishing sites. Blocking from the list works with nothing to pay; the subscription for detailed checks is billed to the mobile phone account.",

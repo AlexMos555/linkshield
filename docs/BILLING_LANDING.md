@@ -23,21 +23,25 @@ the server and the site can be configured from one sheet.
 | `NEXT_PUBLIC_BILLING_STOP_NUMBER` | unset | 4–6 digit short number for SMS «СТОП»; until set the cancel page says the number is pending |
 | `NEXT_PUBLIC_SUPPORT_PHONE` | unset | E.164 (`+7…`), shown on the pricing page when set |
 | `NEXT_PUBLIC_SUPPORT_EMAIL_LIVE` | unset | existing flag — the address appears once the mailbox works |
+| `NEXT_PUBLIC_STRIPE_LIVE` | unset (off) | not an operator-billing setting: the WORLD `/pricing` sells the Stripe device plan only when this is on. Off, every visitor outside Russia gets `FreePricing` too (no plan cards, no buy button, no Offer in the JSON-LD), and never the ruble page. Switch it on last, once the API takes a Stripe payment end to end (docs/runbooks/LAUNCH_ROADMAP.md, Stripe) |
 
 ## What the flag changes (Russian visitors only)
 
 "Russian visitor" is `lib/paid-plans.ts`: the `ru` locale, or a known `RU`
-country (edge geo header / `?cc=`). Everyone else keeps the Stripe plans and is
-untouched by the flag. `pricingVariant()` names the three outcomes:
-`stripe` / `free` (today) / `operator` (flag on).
+country (edge geo header / `?cc=`). Everyone else keeps the Stripe plans (once
+`NEXT_PUBLIC_STRIPE_LIVE` is on; the free page until then) and is untouched by
+the flag. `pricingVariant()` names the three outcomes: `stripe` / `free`
+(today) / `operator` (flag on).
 
 | Surface | Flag off (today) | Flag on |
 |---|---|---|
 | `/pricing` | `FreePricing` (free-only, no prices) | `OperatorPricing`: badge, trial note, three plan cards (price per month, per phone), what is included, how it works, FAQ (auto-charge, cancel, no money, Wi-Fi/other operator, who sees the number, refunds), requisites block, support block, links to `/cancel`, `/terms`, `/privacy-policy`; Product/FAQ JSON-LD in RUB |
 | `/cancel` | 404 (localized) | cancel + refund page: four channels (app, SMS «СТОП», support, operator), what follows, refunds, support |
+| `/subscription/return` | 404 (localized) | where the payment form sends the buyer back (`BILLING_MIXPLAT_RETURN_URL`), paid or not: "open the app" (`cleanway://`), what each outcome means, links to the Android page, `/cancel`, support; `noindex`, not in the sitemap |
 | `/terms` | section 4 "Платные тарифы" (no paid plans in Russia, Stripe elsewhere) | that section is replaced **in place** (by id `payments`) by `terms.billing.section` + the lapse-policy sentence; numbering and every other section unchanged |
 | `/privacy-policy` | section 12 "Оплата" | replaced in place by `privacy_policy.billing.section` (phone number, separate database in Russia, who else sees it, retention; Stripe for other countries) |
 | `/` (home) teaser | "Защита бесплатна … Платных тарифов в России сейчас нет", no plans link | "Подписка со счёта телефона", trial + "от 99 ₽ в месяц", link to `/pricing` |
+| `/business`, `/account` (free account) | `/business` says protection is free (`landing.business.free.*`), its button reads "What is included", not "See prices"; `/account` has no "See plans" | `/business` names the subscription (`landing.business.operator.*`), `/account` links `/pricing`. The world `/business` and `/account` switch the same way on `NEXT_PUBLIC_STRIPE_LIVE` |
 | `sitemap.xml` | no `/cancel` | `/cancel` in all languages |
 
 Nothing else changes. In particular the existing strings — including every
@@ -52,6 +56,7 @@ first; regenerate with `python3 scripts/build-i18n.py`:
 
 - `landing.billing.*` → `Billing` (server-only namespace)
 - `landing.cancel.*` → `Cancel` (server-only)
+- `landing.subscription_return.*` → `SubscriptionReturn` (server-only)
 - `landing.terms.billing.{section, lapse_basic, lapse_off}`
 - `landing.privacy_policy.billing.section`
 - `landing.pricing_teaser.operator.{heading, body, plans_link}`

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { routing, type Locale } from "@/i18n/routing";
+import { pricingVariantFor } from "@/lib/billing-config";
 
 import AccountClient from "./AccountClient";
 
@@ -58,7 +59,9 @@ export default async function AccountPage({ params }: Props) {
       </nav>
       <main style={{ maxWidth: 720, margin: "0 auto", padding: "40px 16px 80px" }}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "#f8fafc", margin: "0 0 24px" }}>{t("heading")}</h1>
-        <AccountClient />
+        {/* "See plans" only where /pricing sells one (lib/billing-config.ts);
+            until then /pricing is the free page. */}
+        <AccountClient plansOnSale={pricingVariantFor({ locale }) !== "free"} />
       </main>
     </div>
   );

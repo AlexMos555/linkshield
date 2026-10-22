@@ -1992,6 +1992,19 @@
       "contact_title": "Support",
       "contact_pending": "Das Support-Postfach funktioniert vorübergehend nicht; die Adresse erscheint hier wieder, sobald es funktioniert. Bis dahin kündigen Sie in der App."
     },
+    "subscription_return": {
+      "meta_title": "Zurück zur App",
+      "title": "Zurück zur Cleanway-App",
+      "intro": "Sie kommen von der Bezahlseite zurück. Öffnen Sie die App – dort sehen Sie, ob das Abo aktiv ist.",
+      "open_app": "Cleanway öffnen",
+      "paid_title": "Wenn die Zahlung geklappt hat",
+      "paid_body": "Das Abo wird in der App von selbst aktiv, sobald die Zahlung bestätigt ist. Sie müssen nichts weiter tun.",
+      "failed_title": "Wenn nicht",
+      "failed_body": "Es wurde nichts abgebucht. Öffnen Sie die App und versuchen Sie es noch einmal, oder prüfen Sie, ob genug Guthaben auf Ihrem Mobilfunkkonto ist.",
+      "get_app": "Noch keine App? Für Android herunterladen",
+      "cancel_link": "So kündigen Sie",
+      "support_link": "Support"
+    },
     "transparency": {
       "page_title": "Transparenzbericht",
       "page_description": "Was Cleanway über die eigene Genauigkeit gemessen hat – und was noch nicht.",
@@ -2740,7 +2753,9 @@
           "Mit einem Konto sehen Sie auf cleanway.ai/account jedes Gerät und können eines entfernen, das nicht mehr genutzt wird."
         ],
         "pricing_body": "In Ihrem Land gibt es derzeit keine kostenpflichtigen Tarife – weder für Teams noch für andere. Was enthalten ist, steht auf der Preisseite.",
-        "pricing_cta": "Was enthalten ist"
+        "pricing_cta": "Was enthalten ist",
+        "contact_live": "Wenn Sie viele Geräte schützen möchten, schreiben Sie uns:",
+        "contact_not_live": "Unser Postfach funktioniert vorübergehend nicht, daher können wir gerade keine Anfragen per E-Mail annehmen. Diese Seite zeigt unsere Adresse wieder, sobald es funktioniert."
       },
       "operator": {
         "meta_description": "Schützen Sie die Telefone Ihres Teams vor Betrugs- und Phishing-Seiten. Das Blockieren nach Liste funktioniert, ohne etwas zu bezahlen; das Abo für ausführliche Prüfungen wird über das Mobilfunkkonto abgerechnet.",

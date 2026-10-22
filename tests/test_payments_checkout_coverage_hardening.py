@@ -19,6 +19,11 @@ from tests.test_payments_checkout import _row, _SubscriptionsStub
 AUTH = {"Authorization": "Bearer fake"}
 
 
+@pytest.fixture(autouse=True)
+def _checkout_ready(stripe_checkout_ready):
+    """Webhook secret + real-looking price ids: checkout gets as far as Stripe."""
+
+
 @pytest.fixture
 def client():
     from api.main import app

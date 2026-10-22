@@ -163,11 +163,13 @@ ALLOWED_ORIGINS=https://cleanway.ai,https://www.cleanway.ai,https://mail.google.
 ### Шаг 5.2 — Stripe
 - [ ] https://dashboard.stripe.com → создать account (или войти)
 - [ ] Activate account (нужен российский / EU / US legal entity)
-- [ ] Products → создать 3 subscription (Personal $4.99/mo, Family $9.99/mo, Business $49/mo)
-- [ ] Для каждого — создать 24 Price (по одному на каждый из 4 PPP tiers × локалей)
 - [ ] API keys → Restricted key → `sk_live_...` → Railway env `STRIPE_SECRET_KEY`
-- [ ] Webhook → создать endpoint `https://[api]/api/v1/payments/webhook` → signing secret → Railway env `STRIPE_WEBHOOK_SECRET`
+- [ ] Продукты и цены вручную в дашборде **не создавать**: их создаёт скрипт. Это один план на устройства («Cleanway Unlimited») и цена доп. устройства, каждая × 4 PPP-тира × 2 интервала = 16 цен. Суммы скрипт берёт из `api/services/pricing.py`
+- [ ] Цены: `STRIPE_SECRET_KEY=sk_... python scripts/create_stripe_prices.py --dry-run` (проверить список), затем то же без `--dry-run` → вставить напечатанные `STRIPE_PRICE_DEVICES_T{1..4}_{MONTHLY|YEARLY}` и `STRIPE_PRICE_EXTRA_DEVICE_T{1..4}_{MONTHLY|YEARLY}` в Railway. Пока их нет, `POST /payments/checkout` отвечает 503 `checkout_not_configured` (не 500 от Stripe)
+- [ ] Миграция `supabase/migrations/024_store_purchases_revenuecat.sql` применена **до** включения вебхука: вебхук Stripe пишет `entitlements.source_event_at` (порядок событий), без колонки каждая запись упадёт и Stripe будет повторять
+- [ ] Webhook → создать endpoint `https://[api]/api/v1/payments/webhook` → signing secret → Railway env `STRIPE_WEBHOOK_SECRET`. Без него checkout тоже отвечает 503: платёж, который вебхук не запишет, не продаём
 - [ ] Customer portal → включить (self-service subscription management)
+- [ ] **Последним**: Vercel env `NEXT_PUBLIC_STRIPE_LIVE=1` + redeploy без build cache. До этого `/pricing` для мира — бесплатная страница (без «Get Unlimited» и без Offer в JSON-LD), см. `landing/lib/billing-config.ts`
 
 ### Шаг 5.3 — SES / Resend (транзакционный email)
 - [ ] **Resend** (проще на старте): https://resend.com → add domain `mail.[brand].com` → DNS records (SPF, DKIM) → verify

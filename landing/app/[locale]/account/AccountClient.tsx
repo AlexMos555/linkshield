@@ -29,8 +29,11 @@ type State =
  * Plan + devices for the signed-in account. The website itself is NOT a
  * device: visiting /account takes no seat, it only manages the phones and
  * browsers that signed in through the app or the extension.
+ *
+ * `plansOnSale`: /pricing sells a plan to this reader (the server page decides
+ * with the build's flags); a free account is sent there only then.
  */
-export default function AccountClient() {
+export default function AccountClient({ plansOnSale }: { plansOnSale: boolean }) {
   const t = useTranslations("Account");
   const locale = useLocale();
   const [state, setState] = useState<State>({ kind: "loading" });
@@ -275,13 +278,17 @@ export default function AccountClient() {
 
       {notice && <p role="alert" style={{ ...body, color: "#fca5a5", margin: 0 }}>{notice}</p>}
 
-      <section style={card} aria-labelledby="plan-h">
+      <section style={card} aria-labelledby="plan-h" data-testid="account-plan">
         <h2 id="plan-h" style={h2}>{t("plan_heading")}</h2>
         <p style={{ ...body, fontSize: 20, fontWeight: 700, color: "#f8fafc", margin: "4px 0" }}>{planLabel}</p>
         <p style={muted}>
           {[sourceLabel, statusLabel, paid ? null : t("free_desc")].filter(Boolean).join(" · ")}
         </p>
-        {!paid && <a href={localePath(locale, "/pricing")} style={{ ...button, marginTop: 12 }}>{t("plans_cta")}</a>}
+        {!paid && plansOnSale && (
+          <a href={localePath(locale, "/pricing")} style={{ ...button, marginTop: 12 }} data-testid="account-plans-link">
+            {t("plans_cta")}
+          </a>
+        )}
         {paid && ent.source === "stripe" && (
           <button
             type="button"

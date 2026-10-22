@@ -149,11 +149,15 @@ def sandbox_accepted() -> bool:
 
 
 async def invalidate_tier_cache(account_id: str) -> None:
+    """Drop the cached tier and the last known paid tier (api/services/auth.py
+    falls back to it during an outage): after a refund or an expiry it would
+    otherwise serve the ended plan for a week. A paid lookup rewrites it."""
     try:
         from api.services.cache import get_redis
 
         r = await get_redis()
         await r.delete(f"tier:{account_id}")
+        await r.delete(f"tier_last:{account_id}")
     except Exception:
         pass  # the cache expires on its own in 5 minutes
 
