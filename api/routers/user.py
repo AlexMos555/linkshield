@@ -1148,7 +1148,7 @@ async def trigger_welcome_email(user: AuthUser = Depends(get_current_user)) -> W
 
 # GDPR Art. 15 / 152-FZ art. 14: the person downloads everything the server
 # holds about the account — "Download my data" on cleanway.ai/account and in
-# the app's Account screen (Privacy Policy §16). Which tables, and what is
+# the app's Account screen (Privacy Policy §17). Which tables, and what is
 # left out on purpose, lives in api/services/export.py, shared with the
 # operator's CLI for requests that arrive by email
 # (docs/runbooks/data-requests.md). Payment records held by Stripe are the
