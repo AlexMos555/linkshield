@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
+  View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Linking,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -23,6 +23,7 @@ import {
   cancelCaptcha,
 } from "../src/services/captcha";
 import { createOtpRequester } from "../src/utils/otp-request";
+import { PRIVACY_POLICY_URL, TERMS_URL } from "../src/utils/legal-urls";
 
 // Module scope on purpose: once GoTrue has asked for a captcha, a resend (or a
 // second visit to this screen) in the same app session goes captcha-first
@@ -220,6 +221,25 @@ export default function AuthScreen() {
                 : <Text style={styles.btnText}>{t("mobile.auth.otp_send")}</Text>}
             </TouchableOpacity>
 
+            {/* The address is collected here, so the policy is one tap away
+                here too (GDPR Art. 13), not only in Settings. */}
+            <View style={styles.legalRow}>
+              <TouchableOpacity
+                onPress={() => void Linking.openURL(PRIVACY_POLICY_URL).catch(() => undefined)}
+                style={styles.legal}
+                accessibilityRole="link"
+              >
+                <Text style={styles.legalLabel}>{t("mobile.settings.privacy_policy")}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => void Linking.openURL(TERMS_URL).catch(() => undefined)}
+                style={styles.legal}
+                accessibilityRole="link"
+              >
+                <Text style={styles.legalLabel}>{t("mobile.settings.terms")}</Text>
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity style={styles.skipBtn} onPress={leaveAuth} accessibilityRole="button">
               <Text style={styles.skipText}>{t("mobile.auth.skip")}</Text>
             </TouchableOpacity>
@@ -312,6 +332,9 @@ const styles = StyleSheet.create({
   switchDisabled: { color: colors.textMuted },
   forgotText: { color: colors.textSecondary, fontSize: fontSize.sm },
   skipBtn: { minHeight: 44, justifyContent: "center", alignItems: "center", padding: spacing.sm },
+  legalRow: { flexDirection: "row", justifyContent: "center", flexWrap: "wrap", gap: spacing.md },
+  legal: { minHeight: 44, justifyContent: "center", paddingHorizontal: spacing.sm },
+  legalLabel: { color: colors.textSecondary, fontSize: fontSize.sm, textDecorationLine: "underline" },
   skipText: { color: colors.textMuted, fontSize: fontSize.sm },
   errorText: {
     color: colors.dangerous, fontSize: fontSize.sm,

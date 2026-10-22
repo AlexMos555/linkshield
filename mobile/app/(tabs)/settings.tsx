@@ -22,6 +22,7 @@ import {
 import { paidPlansVisible } from "../../src/utils/freemium";
 import { PAID_PLANS_OFFERED } from "../../src/services/freemium";
 import { linkGuardSettingShown } from "../../src/utils/platform-features";
+import { PRIVACY_POLICY_URL, TERMS_URL } from "../../src/utils/legal-urls";
 
 type SkillLevel = "kids" | "regular" | "granny" | "pro";
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -458,9 +459,9 @@ export default function SettingsScreen() {
 
       <Section title={t("mobile.settings.about")}>
         <Row first label={t("mobile.settings.privacy_policy")} right={chevron}
-             onPress={() => void Linking.openURL("https://cleanway.ai/privacy-policy")} />
+             onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)} />
         <Row label={t("mobile.settings.terms")} right={chevron}
-             onPress={() => void Linking.openURL("https://cleanway.ai/terms")} />
+             onPress={() => void Linking.openURL(TERMS_URL)} />
         {/* The version this build really is — from the app config, not a literal. */}
         <Row label={t("mobile.settings.version")}
              right={<Text style={s.value}>{Constants.expoConfig?.version ?? "—"}</Text>} />
