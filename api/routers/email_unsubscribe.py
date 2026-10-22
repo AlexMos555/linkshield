@@ -42,6 +42,15 @@ router = APIRouter(prefix="/api/v1/email", tags=["email"])
 _TOKEN_TTL_SECONDS = 90 * 24 * 3600  # 90 days
 _PURPOSE = "email_unsubscribe_v1"
 
+# The routes below are served by the API only. cleanway.ai is the Next.js
+# site, which has no /api/v1 rewrite: a link built on it answered 404.
+PUBLIC_API_ORIGIN = "https://api.cleanway.ai"
+
+
+def unsubscribe_url(token: str) -> str:
+    """The link an email carries (body and List-Unsubscribe header)."""
+    return f"{PUBLIC_API_ORIGIN}{router.prefix}/unsubscribe/{token}"
+
 
 def _verification_secrets() -> list[bytes]:
     """Keys a link may be signed with: the dedicated key first, then the

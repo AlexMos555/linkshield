@@ -87,6 +87,17 @@ export function t(
   return text;
 }
 
+const SITE_ORIGIN = "https://cleanway.ai";
+
+/**
+ * A page on cleanway.ai in the reader's language. The site keeps English at
+ * the apex and prefixes every other locale (landing/lib/locale-path.ts), so
+ * ("ru", "/check") → "https://cleanway.ai/ru/check".
+ */
+export function siteUrl(locale: Locale, path: string): string {
+  return locale === "en" ? `${SITE_ORIGIN}${path}` : `${SITE_ORIGIN}/${locale}${path}`;
+}
+
 export const RTL_LOCALES: readonly Locale[] = ["ar"] as const;
 
 export function isRTL(locale: Locale): boolean {

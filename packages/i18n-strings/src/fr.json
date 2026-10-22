@@ -2707,12 +2707,15 @@
         },
         "_needs_native_review": true
       },
+      "greeting_neutral": {
+        "text": "Hi there,"
+      },
       "signature": {
         "text": "— The Cleanway team",
         "_needs_native_review": true
       },
       "trust_footer": {
-        "text": "Cleanway · Protection that stays on your device",
+        "text": "Cleanway · Protection from scam sites",
         "_needs_native_review": true
       },
       "unsubscribe_link": {
@@ -2736,7 +2739,7 @@
         "_needs_native_review": true
       },
       "footer_address": {
-        "text": "Cleanway · San Francisco, CA",
+        "text": "Cleanway is operated by ACECORE GLOBAL TECHNOLOGIES – FZCO · Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE",
         "_needs_native_review": true
       }
     },
@@ -2746,7 +2749,7 @@
         "_needs_native_review": true
       },
       "preheader": {
-        "text": "Every link you see is being checked, automatically.",
+        "text": "What Cleanway checks, and how to check a site yourself.",
         "_needs_native_review": true
       },
       "hero_title": {
@@ -2754,31 +2757,31 @@
         "_needs_native_review": true
       },
       "body_p1": {
-        "text": "We'll quietly check every link you encounter. The dangerous ones get a red mark — you'll see them before clicking. That's it.",
+        "text": "Cleanway checks site names against lists of known scam and phishing sites and other warning signs, and tells you plainly when a site looks dangerous.",
         "_needs_native_review": true
       },
       "body_p2": {
-        "text": "Your browsing data never leaves your device. We only check domain names, and your history is yours alone.",
+        "text": "We only check domain names, not your full URLs or page content, and we don't keep a history of the sites you visit.",
         "_needs_native_review": true
       },
-      "cta_scan": {
-        "text": "Scan my inbox for hidden scams",
+      "cta_check": {
+        "text": "Check a site or link",
         "_needs_native_review": true
       },
       "list_item_1": {
-        "text": "Automatic link checking on every page you visit",
+        "text": "Known scam sites are blocked in every app on Android",
         "_needs_native_review": true
       },
       "list_item_2": {
-        "text": "Block dangerous sites before they steal your data",
+        "text": "Check any site or link before you open it — with the reasons in plain words",
         "_needs_native_review": true
       },
       "list_item_3": {
-        "text": "Works across Chrome, Firefox, Safari, and your phone",
+        "text": "Blocking known scam sites is free and works without an account",
         "_needs_native_review": true
       },
       "list_item_4": {
-        "text": "Your data stays on your device — always",
+        "text": "No ads, and we never sell your data",
         "_needs_native_review": true
       }
     },

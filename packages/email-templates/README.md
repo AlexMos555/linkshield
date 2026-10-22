@@ -97,6 +97,19 @@ Example: template rendered with `firstName: "Alex"` → HTML contains "Hi Alex,"
 At send time, `email.py` gets called with `{"Alex": "Maria"}` override, which
 becomes `html.replace("Alex", "Maria")` → "Hi Maria,".
 
+Build the override map with `fixture_overrides_for(template, **props)` (in
+`api/services/email.py`), which reads the fixture values from `manifest.json`
+by prop name: `fixture_overrides_for("welcome", unsubscribeUrl=url)`. Keying
+the map by hand went wrong once — the welcome endpoint passed
+`{"unsubscribe_url": url}`, which matches no fixture, and every sign-up got
+"Привет, Alex!" and links to cleanway.example. Since 2026-10-22 every fixture
+link is on `cleanway.example`, and `send_template` refuses to send an email
+that still contains it (`error="unfilled_placeholder"`).
+
+A value that is the same for everyone does not belong in a fixture: the
+welcome email builds its check link per locale at render time (`siteUrl`)
+and greets neutrally when no `firstName` is given.
+
 **Downside:** if the fixture name collides with real content ("Alex" appears elsewhere), substitution corrupts it. Mitigation: use fixtures unlikely to appear in template content (e.g. `__FIRSTNAME__` is tempting, but we keep realistic names for snapshot review quality).
 
 **Better approach future work:** switch to `{{mustache}}` placeholders in the rendered HTML. Requires post-processing the React Email output to leave those intact. Deferred until we hit a real collision.

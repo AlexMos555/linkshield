@@ -27,7 +27,7 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-import { isRTL, t, type Locale } from "../helpers/i18n.js";
+import { isRTL, siteUrl, t, type Locale } from "../helpers/i18n.js";
 
 export interface ShellProps {
   locale: Locale;
@@ -137,7 +137,7 @@ export function Shell({
                 </Link>
               )}
               <span style={{ color: "#cbd5e1" }}>·</span>
-              <Link href="https://cleanway.ai/support" style={footerLink}>
+              <Link href={siteUrl(locale, "/support")} style={footerLink}>
                 {t(locale, "email.common.support_link")}
               </Link>
             </Text>

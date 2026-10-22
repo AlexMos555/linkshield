@@ -2705,11 +2705,14 @@
           }
         }
       },
+      "greeting_neutral": {
+        "text": "¡Hola!"
+      },
       "signature": {
         "text": "— El equipo de Cleanway"
       },
       "trust_footer": {
-        "text": "Cleanway · Protección que se queda en tu dispositivo"
+        "text": "Cleanway · Protección contra sitios fraudulentos"
       },
       "unsubscribe_link": {
         "text": "Darse de baja de estos correos"
@@ -2727,7 +2730,7 @@
         "text": "Recibiste este correo porque tienes una cuenta en Cleanway."
       },
       "footer_address": {
-        "text": "Cleanway · San Francisco, CA"
+        "text": "Cleanway lo gestiona ACECORE GLOBAL TECHNOLOGIES – FZCO · Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE"
       }
     },
     "welcome": {
@@ -2735,31 +2738,31 @@
         "text": "Bienvenido a Cleanway — ya estás protegido"
       },
       "preheader": {
-        "text": "Cada enlace que ves se comprueba automáticamente."
+        "text": "Qué comprueba Cleanway y cómo comprobar un sitio tú mismo."
       },
       "hero_title": {
         "text": "Ya estás protegido"
       },
       "body_p1": {
-        "text": "Comprobamos silenciosamente cada enlace que encuentras. Los peligrosos se marcan en rojo — los verás antes de hacer clic. Eso es todo."
+        "text": "Cleanway compara los nombres de los sitios con listas de sitios fraudulentos y de phishing conocidos y con otras señales de alerta, y te dice claramente cuándo un sitio parece peligroso."
       },
       "body_p2": {
-        "text": "Tus datos de navegación nunca salen de tu dispositivo. Solo comprobamos nombres de sitios; tu historial es solo tuyo."
+        "text": "Solo comprobamos nombres de dominio, no tus enlaces completos ni el contenido de las páginas, y no guardamos un historial de los sitios que visitas."
       },
-      "cta_scan": {
-        "text": "Revisar mi bandeja por estafas ocultas"
+      "cta_check": {
+        "text": "Comprobar un sitio o enlace"
       },
       "list_item_1": {
-        "text": "Comprobación automática de enlaces en cada página"
+        "text": "Los sitios fraudulentos conocidos se bloquean en todas las apps de Android"
       },
       "list_item_2": {
-        "text": "Bloquea sitios peligrosos antes de que roben tus datos"
+        "text": "Comprueba cualquier sitio o enlace antes de abrirlo, con los motivos en palabras sencillas"
       },
       "list_item_3": {
-        "text": "Funciona en Chrome, Firefox, Safari y tu móvil"
+        "text": "Bloquear los sitios fraudulentos conocidos es gratis y funciona sin cuenta"
       },
       "list_item_4": {
-        "text": "Tus datos se quedan en tu dispositivo — siempre"
+        "text": "Sin anuncios, y nunca vendemos tus datos"
       }
     },
     "receipt": {

@@ -2707,12 +2707,15 @@
         },
         "_needs_native_review": true
       },
+      "greeting_neutral": {
+        "text": "مرحبًا،"
+      },
       "signature": {
         "text": "— فريق Cleanway",
         "_needs_native_review": true
       },
       "trust_footer": {
-        "text": "Cleanway · حماية تبقى على جهازك",
+        "text": "Cleanway · حماية من مواقع الاحتيال",
         "_needs_native_review": true
       },
       "unsubscribe_link": {
@@ -2736,7 +2739,7 @@
         "_needs_native_review": true
       },
       "footer_address": {
-        "text": "Cleanway · سان فرانسيسكو، كاليفورنيا",
+        "text": "يدير Cleanway شركة ACECORE GLOBAL TECHNOLOGIES – FZCO · Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE",
         "_needs_native_review": true
       }
     },
@@ -2746,7 +2749,7 @@
         "_needs_native_review": true
       },
       "preheader": {
-        "text": "كل رابط يصلك يتم فحصه — تلقائيًا.",
+        "text": "ما الذي يفحصه Cleanway، وكيف تفحص موقعًا بنفسك.",
         "_needs_native_review": true
       },
       "hero_title": {
@@ -2754,31 +2757,31 @@
         "_needs_native_review": true
       },
       "body_p1": {
-        "text": "سنفحص بهدوء كل رابط تصادفه. الروابط الخطيرة تحصل على علامة حمراء — ستراها قبل النقر. هذا كل شيء.",
+        "text": "يطابق Cleanway أسماء المواقع مع قوائم مواقع الاحتيال والتصيد المعروفة ومع علامات تحذير أخرى، ويخبرك بوضوح عندما يبدو موقع ما خطيرًا.",
         "_needs_native_review": true
       },
       "body_p2": {
-        "text": "بيانات تصفحك لا تغادر جهازك أبدًا. نتحقق فقط من أسماء النطاقات، وسجلك يخصك وحدك.",
+        "text": "نفحص أسماء النطاقات فقط، لا روابطك الكاملة ولا محتوى الصفحات، ولا نحتفظ بسجل للمواقع التي تزورها.",
         "_needs_native_review": true
       },
-      "cta_scan": {
-        "text": "افحص بريدي بحثًا عن عمليات احتيال مخفية",
+      "cta_check": {
+        "text": "افحص موقعًا أو رابطًا",
         "_needs_native_review": true
       },
       "list_item_1": {
-        "text": "كل رابط في متصفحك يُفحص قبل أن تنقر عليه.",
+        "text": "تُحظر مواقع الاحتيال المعروفة في كل التطبيقات على أندرويد",
         "_needs_native_review": true
       },
       "list_item_2": {
-        "text": "المواقع الاحتيالية تُحجب فورًا مع شرح بلغة بسيطة.",
+        "text": "افحص أي موقع أو رابط قبل أن تفتحه، مع الأسباب بكلمات بسيطة",
         "_needs_native_review": true
       },
       "list_item_3": {
-        "text": "بيانات التصفح تبقى على جهازك. نحن لا نحتفظ بسجل لزياراتك.",
+        "text": "حظر مواقع الاحتيال المعروفة مجاني ويعمل دون حساب",
         "_needs_native_review": true
       },
       "list_item_4": {
-        "text": "الإضافة تعمل مع Chrome وFirefox وSafari، وأيضًا على iOS وAndroid.",
+        "text": "لا إعلانات، ولا نبيع بياناتك أبدًا",
         "_needs_native_review": true
       }
     },
