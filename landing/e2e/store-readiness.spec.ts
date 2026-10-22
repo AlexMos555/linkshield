@@ -1,5 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 
+import { BILLING_ON, STRIPE_LIVE } from "./billing-flag";
+
 /**
  * What a store reviewer opens (docs/STORES.md): the public delete-account
  * page Google Play asks for, account deletion that works signed in — even
@@ -151,6 +153,18 @@ test.describe("signed in", () => {
       return route.fulfill({ status: 404, headers: cors, contentType: "application/json", body: "{}" });
     });
     return { deletes, exports };
+  }
+
+  // A free account is offered plans only where /pricing sells one: the world
+  // device plan once Stripe is live, the operator subscription in Russian.
+  for (const [path, onSale] of [["/account", STRIPE_LIVE], ["/ru/account", BILLING_ON]] as const) {
+    test(`${path}: "See plans" only while paid plans are on sale`, async ({ page }) => {
+      await signIn(page);
+      await fakeAccountApi(page, 200);
+      await page.goto(path);
+      await expect(page.getByTestId("account-plan")).toBeVisible();
+      await expect(page.getByTestId("account-plans-link")).toHaveCount(onSale ? 1 : 0);
+    });
   }
 
   for (const entitlementStatus of [200, 503]) {

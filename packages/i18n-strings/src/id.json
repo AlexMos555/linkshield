@@ -2753,7 +2753,9 @@
           "Jika Anda membuat akun, di cleanway.ai/account Anda melihat setiap perangkat dan bisa melepaskan perangkat yang tidak dipakai lagi."
         ],
         "pricing_body": "Saat ini tidak ada paket berbayar di negara Anda, baik untuk tim maupun siapa pun. Halaman Harga menjelaskan apa saja yang termasuk.",
-        "pricing_cta": "Apa yang termasuk"
+        "pricing_cta": "Apa yang termasuk",
+        "contact_live": "Jika Anda ingin melindungi banyak perangkat, tulis kepada kami:",
+        "contact_not_live": "Kotak surat kami untuk sementara tidak berfungsi, jadi saat ini kami tidak bisa menerima permintaan lewat email. Alamat kami akan muncul lagi di halaman ini begitu berfungsi."
       },
       "operator": {
         "meta_description": "Lindungi ponsel tim Anda dari situs penipuan dan phishing. Pemblokiran berdasarkan daftar berjalan tanpa bayar; langganan untuk pemeriksaan detail ditagihkan ke pulsa ponsel.",

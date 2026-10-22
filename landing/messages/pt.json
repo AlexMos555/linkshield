@@ -1202,7 +1202,9 @@
         "Se você criar uma conta, em cleanway.ai/account vê cada dispositivo e pode desvincular o que não é mais usado."
       ],
       "pricing_body": "No momento não há planos pagos no seu país, nem para equipes nem para ninguém. A página de Preços mostra o que está incluído.",
-      "pricing_cta": "O que está incluído"
+      "pricing_cta": "O que está incluído",
+      "contact_live": "Se você quer proteger muitos dispositivos, escreva para nós:",
+      "contact_not_live": "Nossa caixa de e-mail está temporariamente fora do ar, então no momento não conseguimos receber pedidos por e-mail. Esta página vai voltar a mostrar nosso endereço assim que funcionar."
     },
     "operator": {
       "meta_description": "Proteja os celulares da sua equipe contra sites de golpe e de phishing. O bloqueio pela lista funciona sem pagar nada; a assinatura das verificações detalhadas é cobrada na conta do celular.",

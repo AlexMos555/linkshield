@@ -1202,7 +1202,9 @@
         "Se crei un account, su cleanway.ai/account vedi ogni dispositivo e puoi scollegare quello che non si usa più."
       ],
       "pricing_body": "Al momento nel tuo paese non ci sono piani a pagamento, né per i team né per nessun altro. La pagina dei prezzi elenca cosa è incluso.",
-      "pricing_cta": "Cosa è incluso"
+      "pricing_cta": "Cosa è incluso",
+      "contact_live": "Se vuoi proteggere molti dispositivi, scrivici:",
+      "contact_not_live": "La nostra casella email è temporaneamente fuori servizio, quindi al momento non possiamo ricevere richieste via email. Questa pagina mostrerà di nuovo il nostro indirizzo appena funzionerà."
     },
     "operator": {
       "meta_description": "Proteggi i telefoni del tuo team dai siti truffa e di phishing. Il blocco tramite elenco funziona senza pagare nulla; l'abbonamento ai controlli dettagliati si paga con il credito del telefono.",

@@ -16,7 +16,9 @@
  * are no paid plans in Russia. The copy now follows the pricing variant
  * /pricing picks (lib/billing-config.ts), from the page's locale AND the
  * visitor's country (Vercel's x-vercel-ip-country header): the device plan
- * where it is sold, "free, no paid plans" where it is not, and the
+ * where it is sold (and only once NEXT_PUBLIC_STRIPE_LIVE is on — until then
+ * the world /pricing is the free page too), "free, no paid plans" where it is
+ * not, and the
  * subscription billed to the phone account once the operator billing is
  * switched on (Business.free.* / Business.operator.*). Reading the header
  * makes the page dynamic, as /pricing is; by locale alone, /business or
@@ -124,11 +126,13 @@ export default async function BusinessPage({ params }: Props) {
           <h2 id="contact-h" style={h2}>{t("contact_heading")}</h2>
           {SUPPORT_EMAIL_LIVE ? (
             <p style={body}>
-              {t("contact_live")}{" "}
+              {t(variant === "free" ? "free.contact_live" : "contact_live")}{" "}
               <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#60a5fa", textDecoration: "underline" }}>{SUPPORT_EMAIL}</a>
             </p>
           ) : (
-            <p style={body} data-testid="business-contact-not-live">{t("contact_not_live")}</p>
+            <p style={body} data-testid="business-contact-not-live">
+              {t(variant === "free" ? "free.contact_not_live" : "contact_not_live")}
+            </p>
           )}
         </section>
 

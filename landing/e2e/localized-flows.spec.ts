@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-import { BILLING_ON } from "./billing-flag";
+import { BILLING_ON, STRIPE_LIVE } from "./billing-flag";
 
 /**
  * Pages people reach from a link someone sent them, or from a step of a flow
@@ -203,8 +203,23 @@ test("/business from Russia, in any page language, sells only what /pricing sell
   await expect(de.getByRole("link")).toHaveAttribute("href", "/de/pricing");
 });
 
-test("/business (world) still prices per device and links /pricing", async ({ page }) => {
+// The world /pricing sells the device plan only once Stripe checkout is live
+// (NEXT_PUBLIC_STRIPE_LIVE); until then it is the free page, so /business must
+// not talk about paying, nor send people to "the plan on the Pricing page".
+test("/business (world) prices per device only while Stripe is live", async ({ page }) => {
   await page.goto("/business");
-  await expect(page.getByTestId("business-pricing")).toContainText("per device");
-  await expect(page.locator("main")).toContainText("the browser extension is coming soon");
+  const pricing = page.getByTestId("business-pricing");
+  const main = page.locator("main");
+  await expect(main).toContainText("the browser extension is coming soon");
+  await expect(pricing.getByRole("link")).toHaveAttribute("href", "/pricing");
+  if (STRIPE_LIVE) {
+    await expect(pricing).toContainText("per device");
+    await expect(pricing.getByRole("link")).toHaveText("See prices");
+    return;
+  }
+  await expect(pricing).toContainText("There are no paid plans in your country right now");
+  await expect(pricing.getByRole("link")).toHaveText("What is included");
+  for (const paid of ["per device", "See prices", "the plan on the Pricing page", "invoice"]) {
+    await expect(main).not.toContainText(paid);
+  }
 });

@@ -2753,7 +2753,9 @@
           "Si vous créez un compte, vous voyez chaque appareil sur cleanway.ai/account et pouvez dissocier celui qui n'est plus utilisé."
         ],
         "pricing_body": "Il n'y a pas d'offre payante dans votre pays pour le moment, ni pour les équipes ni pour personne. La page des tarifs indique ce qui est inclus.",
-        "pricing_cta": "Ce qui est inclus"
+        "pricing_cta": "Ce qui est inclus",
+        "contact_live": "Si vous voulez protéger de nombreux appareils, écrivez-nous :",
+        "contact_not_live": "Notre boîte e-mail est temporairement hors service : nous ne pouvons donc pas recevoir de demandes par e-mail pour le moment. Cette page affichera de nouveau notre adresse dès qu'elle fonctionnera."
       },
       "operator": {
         "meta_description": "Protégez les téléphones de votre équipe contre les sites d'arnaque et de phishing. Le blocage par liste fonctionne sans rien payer ; l'abonnement aux vérifications détaillées est prélevé sur le compte du téléphone mobile.",

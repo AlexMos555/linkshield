@@ -2753,7 +2753,9 @@
           "Mit einem Konto sehen Sie auf cleanway.ai/account jedes Gerät und können eines entfernen, das nicht mehr genutzt wird."
         ],
         "pricing_body": "In Ihrem Land gibt es derzeit keine kostenpflichtigen Tarife – weder für Teams noch für andere. Was enthalten ist, steht auf der Preisseite.",
-        "pricing_cta": "Was enthalten ist"
+        "pricing_cta": "Was enthalten ist",
+        "contact_live": "Wenn Sie viele Geräte schützen möchten, schreiben Sie uns:",
+        "contact_not_live": "Unser Postfach funktioniert vorübergehend nicht, daher können wir gerade keine Anfragen per E-Mail annehmen. Diese Seite zeigt unsere Adresse wieder, sobald es funktioniert."
       },
       "operator": {
         "meta_description": "Schützen Sie die Telefone Ihres Teams vor Betrugs- und Phishing-Seiten. Das Blockieren nach Liste funktioniert, ohne etwas zu bezahlen; das Abo für ausführliche Prüfungen wird über das Mobilfunkkonto abgerechnet.",

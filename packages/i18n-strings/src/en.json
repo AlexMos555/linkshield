@@ -2755,7 +2755,9 @@
           "If you create an account, you see every device at cleanway.ai/account and can unlink one that is no longer used."
         ],
         "pricing_body": "There are no paid plans in your country right now, for a team or for anyone else. The Pricing page lists what is included.",
-        "pricing_cta": "What is included"
+        "pricing_cta": "What is included",
+        "contact_live": "If you want to protect many devices, write to us:",
+        "contact_not_live": "Our mailbox is temporarily not working, so we cannot take requests by email right now. This page will show our address again as soon as it works."
       },
       "operator": {
         "meta_description": "Protect your team's phones from scam and phishing sites. Blocking from the list works with nothing to pay; the subscription for detailed checks is billed to the mobile phone account.",

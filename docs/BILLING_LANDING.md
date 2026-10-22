@@ -41,6 +41,7 @@ the flag. `pricingVariant()` names the three outcomes: `stripe` / `free`
 | `/terms` | section 4 "Платные тарифы" (no paid plans in Russia, Stripe elsewhere) | that section is replaced **in place** (by id `payments`) by `terms.billing.section` + the lapse-policy sentence; numbering and every other section unchanged |
 | `/privacy-policy` | section 12 "Оплата" | replaced in place by `privacy_policy.billing.section` (phone number, separate database in Russia, who else sees it, retention; Stripe for other countries) |
 | `/` (home) teaser | "Защита бесплатна … Платных тарифов в России сейчас нет", no plans link | "Подписка со счёта телефона", trial + "от 99 ₽ в месяц", link to `/pricing` |
+| `/business`, `/account` (free account) | `/business` says protection is free (`landing.business.free.*`), its button reads "What is included", not "See prices"; `/account` has no "See plans" | `/business` names the subscription (`landing.business.operator.*`), `/account` links `/pricing`. The world `/business` and `/account` switch the same way on `NEXT_PUBLIC_STRIPE_LIVE` |
 | `sitemap.xml` | no `/cancel` | `/cancel` in all languages |
 
 Nothing else changes. In particular the existing strings — including every
