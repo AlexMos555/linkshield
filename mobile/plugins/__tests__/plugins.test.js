@@ -151,6 +151,83 @@ console.log("withSeedGuard:");
   });
 }
 
+console.log("withDistributionGuard:");
+{
+  // Which store a release is for decides the paywall (web checkout or not),
+  // the self-update banner and whether Play Billing is linked. Unset means
+  // the site APK, so a forgotten export turned the Play AAB and the RuStore
+  // APK into the site build with a green BUILD SUCCESSFUL (backlog rank 2).
+  const { releaseCheck, distributionOf } = require("../distribution.js");
+  const { _patch: patchDist } = require("../withDistributionGuard.js");
+
+  check("reads the store the same way the app does (trimmed, lower-case)", () => {
+    assert.strictEqual(distributionOf({ EXPO_PUBLIC_DISTRIBUTION: " PLAY " }), "play");
+    assert.strictEqual(distributionOf({ EXPO_PUBLIC_DISTRIBUTION: "rustore" }), "rustore");
+    assert.strictEqual(distributionOf({}), "");
+    // Nothing but [a-z0-9_-] survives, so the value can be baked into gradle.
+    assert.strictEqual(distributionOf({ EXPO_PUBLIC_DISTRIBUTION: "pl'ay${x}" }), "playx");
+  });
+  check("a release build must name its store — unset or unknown fails", () => {
+    for (const distribution of ["", "googleplay", "appstore"]) {
+      for (const artifact of ["apk", "aab"]) {
+        const r = releaseCheck({ distribution, prebuild: distribution, artifact });
+        assert.strictEqual(r.ok, false, `${distribution || "unset"} ${artifact}`);
+        assert.ok(r.message.includes("EXPO_PUBLIC_DISTRIBUTION"), r.message);
+        assert.ok(/site.*rustore.*play/s.test(r.message), "names the three stores");
+      }
+    }
+  });
+  check("an App Bundle is never the site build", () => {
+    const r = releaseCheck({ distribution: "site", prebuild: "site", artifact: "aab" });
+    assert.strictEqual(r.ok, false);
+    assert.ok(r.message.includes("EXPO_PUBLIC_DISTRIBUTION=play"), r.message);
+  });
+  check("site APK, RuStore APK/AAB and Play AAB/APK pass", () => {
+    for (const [distribution, artifact] of [
+      ["site", "apk"], ["rustore", "apk"], ["rustore", "aab"], ["play", "aab"], ["play", "apk"],
+    ]) {
+      const r = releaseCheck({ distribution, prebuild: distribution, artifact, revenueCatKey: true });
+      assert.strictEqual(r.ok, true, `${distribution} ${artifact}: ${r.message}`);
+      assert.ok(r.message.includes(distribution), r.message);
+    }
+  });
+  check("android/ generated for another store fails (stale autolinking)", () => {
+    const r = releaseCheck({ distribution: "play", prebuild: "site", artifact: "aab", revenueCatKey: true });
+    assert.strictEqual(r.ok, false);
+    assert.ok(r.message.includes("expo prebuild -p android --clean"), r.message);
+  });
+  check("a Play build without the RevenueCat key passes with a warning", () => {
+    const r = releaseCheck({ distribution: "play", prebuild: "play", artifact: "aab", revenueCatKey: false });
+    assert.strictEqual(r.ok, true);
+    assert.ok(r.message.includes("EXPO_PUBLIC_REVENUECAT_ANDROID_KEY"), r.message);
+  });
+
+  const out = patchDist(TEMPLATE, "play");
+  check("bakes the prebuild's store into the gradle file", () => {
+    assert.ok(out.includes("def cleanwayPrebuildDistribution = 'play'"));
+    assert.ok(patchDist(TEMPLATE, "").includes("def cleanwayPrebuildDistribution = ''"));
+  });
+  check("checks APK and AAB release packaging, before any task runs", () => {
+    assert.ok(out.includes("gradle.taskGraph.whenReady"));
+    assert.ok(out.includes("it.name ==~ /bundle\\w*Release/"));
+    assert.ok(out.includes("it.name ==~ /package\\w*Release/"));
+  });
+  check("asks plugins/distribution.js and fails the build on a refusal", () => {
+    assert.ok(out.includes('"plugins/distribution.js", "check"'));
+    assert.ok(out.includes("throw new GradleException("));
+  });
+  check("leaves the android block untouched (appended after it)", () => {
+    assert.ok(out.startsWith(TEMPLATE.trimEnd()));
+  });
+  check("re-prebuilding for another store re-bakes the value, once", () => {
+    const again = patchDist(out, "rustore");
+    assert.ok(again.includes("def cleanwayPrebuildDistribution = 'rustore'"));
+    assert.ok(!again.includes("'play'"));
+    assert.strictEqual(again.split("cleanway-distribution-guard:").length, 2);
+    assert.strictEqual(patchDist(again, "rustore"), again);
+  });
+}
+
 console.log("withDarkSystemBars:");
 {
   // The Expo SDK 54 prebuild MainActivity.kt onCreate, verbatim.
@@ -216,6 +293,20 @@ class MainActivity : ReactActivity() {
   });
   check("app.json registers the dark-system-bars plugin", () => {
     assert.ok((appJson.plugins || []).includes("./plugins/withDarkSystemBars"));
+  });
+  check("app.json registers the distribution guard", () => {
+    assert.ok((appJson.plugins || []).includes("./plugins/withDistributionGuard"));
+  });
+  // EAS release profiles carry their store in eas.json, so an EAS Android
+  // build passes the guard by itself: production is the Play AAB.
+  check("eas.json: every release profile names its store, production is Google Play", () => {
+    const eas = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "eas.json"), "utf8")).build;
+    assert.strictEqual(eas.production.env.EXPO_PUBLIC_DISTRIBUTION, "play");
+    assert.strictEqual(eas.production.android.buildType, "app-bundle");
+    for (const [name, profile] of Object.entries(eas)) {
+      if (name.startsWith("//") || profile.developmentClient) continue;
+      assert.ok(["site", "rustore", "play"].includes(profile.env && profile.env.EXPO_PUBLIC_DISTRIBUTION), name);
+    }
   });
   check("expo-camera plugin disables Android audio recording", () => {
     const cam = (appJson.plugins || []).find((p) => Array.isArray(p) && p[0] === "expo-camera");
