@@ -670,3 +670,29 @@ def test_checkout_503_when_entitlements_cannot_be_read(
     resp = _checkout(client)
     assert resp.status_code == 503
     assert stripe_stub == []
+
+
+# ─── Where Stripe sends the buyer back ─────────────────────────
+
+
+@pytest.mark.parametrize("success_url,sent", [
+    # A bare URL gets Stripe's session placeholder appended once.
+    ("https://cleanway.ai/ru/success", "https://cleanway.ai/ru/success?session_id={CHECKOUT_SESSION_ID}"),
+    # A query string already there: joined with &, not a second "?".
+    ("https://cleanway.ai/success?from=pricing",
+     "https://cleanway.ai/success?from=pricing&session_id={CHECKOUT_SESSION_ID}"),
+    # The site used to send the placeholder itself: never doubled.
+    ("https://cleanway.ai/success?session_id={CHECKOUT_SESSION_ID}",
+     "https://cleanway.ai/success?session_id={CHECKOUT_SESSION_ID}"),
+])
+def test_success_url_carries_the_session_id_exactly_once(
+    client, stripe_configured, stripe_stub, success_url, sent
+):
+    resp = client.post(
+        "/api/v1/payments/checkout",
+        json={"plan": "devices_yearly", "success_url": success_url, "cancel_url": "https://cleanway.ai/de/pricing"},
+        headers={"Authorization": "Bearer fake"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert stripe_stub[0]["success_url"] == sent
+    assert stripe_stub[0]["cancel_url"] == "https://cleanway.ai/de/pricing"

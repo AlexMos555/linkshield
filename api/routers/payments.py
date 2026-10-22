@@ -106,6 +106,19 @@ def _resolve_price(
 
 _ALLOWED_REDIRECT_PREFIXES = ("https://cleanway.ai/", "https://www.cleanway.ai/")
 
+_SESSION_ID_PLACEHOLDER = "{CHECKOUT_SESSION_ID}"
+
+
+def _with_session_id(success_url: str) -> str:
+    """The success URL with Stripe's session placeholder (Stripe fills it in
+    on the redirect) — exactly once, joined with "&" when the URL already
+    has a query. The site used to send it too, which made "?session_id=…
+    ?session_id=…"."""
+    if _SESSION_ID_PLACEHOLDER in success_url:
+        return success_url
+    joiner = "&" if "?" in success_url else "?"
+    return f"{success_url}{joiner}session_id={_SESSION_ID_PLACEHOLDER}"
+
 
 class CheckoutRequest(BaseModel):
     plan: str  # "devices_monthly" | "devices_yearly" ("personal_*" still accepted)
@@ -248,7 +261,7 @@ async def create_checkout(
     params: dict = {
         "mode": "subscription",
         "line_items": line_items,
-        "success_url": request.success_url + "?session_id={CHECKOUT_SESSION_ID}",
+        "success_url": _with_session_id(request.success_url),
         "cancel_url": request.cancel_url,
         "metadata": {
             "user_id": user.id,
