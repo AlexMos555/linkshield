@@ -93,6 +93,7 @@ async def revenuecat_webhook(request: Request):
         outcome = await apply_event(event)
     except RevenueCatError as e:
         logger.error("revenuecat_webhook_failed", extra={"event_id": event_id, "type": event_type, "error": str(e)})
+        await security_alerts.record("webhook_processing_failed", key="revenuecat")
         raise HTTPException(500, "Webhook processing failed; RevenueCat will retry")
 
     # An event skipped because of OUR configuration (a product missing from

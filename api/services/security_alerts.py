@@ -71,6 +71,12 @@ RULES: dict[str, tuple[Rule, ...]] = {
     ),
     "rate_limited": (Rule(1000, per_key=True, public_key=True),),
     "admin_or_service_key_use": (Rule(30), Rule(5, window_s=_HOUR, per_key=True)),
+    # Not an attack but money: a payment the provider keeps retrying that
+    # never reaches the account. The first failure per provider is an email,
+    # then at most one an hour while the retries keep failing.
+    "webhook_processing_failed": (
+        Rule(1, window_s=_HOUR, per_key=True, public_key=True, cooldown_s=_HOUR),
+    ),
 }
 
 # (what it means, what to check) — the email body, in the founder's language.
@@ -115,6 +121,13 @@ EVENT_INFO: dict[str, tuple[str, str]] = {
         "Всплеск отказов по лимиту запросов (429) в одной категории.",
         "Скорее всего бот или DDoS. Посмотрите логи ip_rate_limit_exceeded в Railway; "
         "при длительной атаке — раздел «Остановить или прикрыть API» в runbook.",
+    ),
+    "webhook_processing_failed": (
+        "Платёжный вебхук пришёл с верной подписью, но мы не смогли его обработать.",
+        "Оплата или отмена не дошла до аккаунта; провайдер будет повторять доставку. Посмотрите "
+        "в логах Railway webhook_processing_failed (Stripe) или revenuecat_webhook_failed: поле "
+        "error. Чаще всего недоступна база (Supabase) или ключ — проверьте /health/deep. Когда "
+        "причина устранена, повтор провайдера применит событие сам; в RevenueCat можно нажать Retry.",
     ),
     "admin_or_service_key_use": (
         "Сервисный ключ Supabase часто используется от имени запросов (выпуск сессий расширения).",

@@ -421,6 +421,7 @@ async def stripe_webhook(request: Request):
             "webhook_processing_failed",
             extra={"event_id": event_id, "type": event_type, "error": str(e)},
         )
+        await security_alerts.record("webhook_processing_failed", key="stripe")
         if claim == "claimed":
             await _release_event(event_id)
         raise HTTPException(500, "Webhook processing failed; Stripe will retry")

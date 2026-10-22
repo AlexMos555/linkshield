@@ -462,6 +462,20 @@ def test_wrong_authorization_is_reported(client, security_events):
     assert security_events == [("webhook_signature_invalid", "revenuecat")]
 
 
+def test_a_processing_failure_is_reported(client, account_store, settings, security_events, monkeypatch):
+    """A purchase RevenueCat keeps retrying never reaches the account: until
+    2026-10-22 only a log line said so."""
+    from api.services.revenuecat import RevenueCatError
+
+    async def failing_sync(account_id):
+        raise RevenueCatError("RevenueCat answered 503")
+
+    monkeypatch.setattr("api.services.revenuecat_sync.sync_account", failing_sync)
+    monkeypatch.setattr(settings, "revenuecat_secret_api_key", "sk_test")
+    assert post(client, load("transfer")).status_code == 500
+    assert security_events == [("webhook_processing_failed", "revenuecat")]
+
+
 def test_good_authorization_is_not_reported(client, security_events):
     assert post(client, load("initial_purchase")).status_code == 200
     assert security_events == []
