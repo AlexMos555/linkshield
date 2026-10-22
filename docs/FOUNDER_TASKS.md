@@ -199,8 +199,9 @@ outward-поведения privacy-бренда**, поэтому решение
    `python -m api.services.retention --dry-run`. Ошибки (`error`, `last_pass_failed`) —
    прислать мне.
 3. Числа ожидаемые → `RETENTION_PURGE` = `on`.
-4. На следующий день: `components.retention` → `mode: "on"`, `ok: true`; в логах есть
-   `account_purge.complete`.
+4. На следующий день: `components.retention` → `mode: "on"`, `ok: true` — это и есть
+   признак, что всё работает. В логах будет `account_purge.complete` (кто-то был удалён)
+   или `account_purge.no_candidates` (ни у кого ещё не прошло 30 дней — это нормально).
 
 Подробно: [`docs/runbooks/data-retention.md`](runbooks/data-retention.md). Откат —
 `RETENTION_PURGE=off`.

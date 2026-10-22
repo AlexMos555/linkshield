@@ -67,8 +67,11 @@ GitHub менять в этом PR нельзя). Если режим не `off`
    (сколько аккаунтов ждут удаления дольше 30 дней). Ошибки (`error`) —
    прислать в чат.
 3. Если числа ожидаемые — `RETENTION_PURGE=on`. Первый проход через 15
-   минут удалит всё накопившееся; в логе будут `account_purge.complete` и
-   `retention.pass_complete` с полями `deleted`.
+   минут удалит всё накопившееся; в логе будут `retention.pass_complete` с
+   полями `deleted` и `account_purge.complete` — или
+   `account_purge.no_candidates`, если ни один аккаунт не ждёт дольше 30 дней
+   (это нормально). Признак успеха — `/health/deep` → `components.retention`:
+   `mode: "on"`, `ok: true`.
 4. По желанию — применить миграцию `supabase/migrations/017_audit_log_retention.sql`
    (индекс по `audit_log.created_at` ускоряет очистку журнала; функция из
    неё больше не нужна). Только версию после 2026-10-22: в прежней функция
