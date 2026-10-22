@@ -24,6 +24,7 @@ import httpx
 
 from api.config import get_settings
 from api.services import supabase_keys
+from api.services.tls_contexts import client_tls_context
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ async def check_typosquat_alert(domain: str) -> dict:
         return neutral
 
     try:
-        async with httpx.AsyncClient(timeout=WATCHTOWER_LOOKUP_TIMEOUT_S) as client:
+        async with httpx.AsyncClient(timeout=WATCHTOWER_LOOKUP_TIMEOUT_S, verify=client_tls_context()) as client:
             resp = await client.get(
                 f"{settings.supabase_url}/rest/v1/typosquat_alerts",
                 params={

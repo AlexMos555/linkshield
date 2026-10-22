@@ -23,6 +23,7 @@ import httpx
 
 from api.services import security_alerts
 from api.services.domain_validator import DomainValidationError, SSRFBlocked, resolve_public
+from api.services.tls_contexts import client_tls_context
 
 Resolver = Callable[[str, int], Awaitable[list[str]]]
 
@@ -35,6 +36,7 @@ class PinnedTransport(httpx.AsyncBaseTransport):
     def __init__(self, resolver: Optional[Resolver] = None, inner: Optional[httpx.AsyncBaseTransport] = None):
         self._resolver = resolver
         self._inner = inner or httpx.AsyncHTTPTransport(
+            verify=client_tls_context(),
             limits=httpx.Limits(max_keepalive_connections=0), retries=0,
         )
 

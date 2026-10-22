@@ -44,6 +44,11 @@ class Metrics:
         self.latency[bisect_left(_BUCKETS_MS, seconds * 1000)] += 1
 
     def _quantile(self, q: float) -> Optional[float]:
+        """Upper bound of the bucket holding quantile `q`; None with no data or
+        when it falls past the last bucket (see `over_ms` in the snapshot).
+        Never inf: JSON has no infinity, and returning it made /health/doh
+        answer 500 once 1% of queries had ever taken over 5 s — the probe a
+        monitor or load balancer reads as "DNS is down"."""
         total = sum(self.latency)
         if not total:
             return None
@@ -52,7 +57,7 @@ class Metrics:
         for i, n in enumerate(self.latency):
             acc += n
             if acc >= target:
-                return float(_BUCKETS_MS[i]) if i < len(_BUCKETS_MS) else float("inf")
+                return float(_BUCKETS_MS[i]) if i < len(_BUCKETS_MS) else None
         return None
 
     def snapshot(self) -> dict:
@@ -60,9 +65,12 @@ class Metrics:
             "since": int(self.started),
             "counts": dict(self.counts),
             # Upper bucket bounds, i.e. "p50 <= x ms". Server-side time only.
+            # null = no queries yet, or slower than the last bucket.
             "p50_ms_le": self._quantile(0.5),
             "p95_ms_le": self._quantile(0.95),
             "p99_ms_le": self._quantile(0.99),
+            # Queries slower than the last bucket bound, since start.
+            "over_ms": {str(_BUCKETS_MS[-1]): self.latency[-1]},
         }
 
 

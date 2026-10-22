@@ -38,6 +38,7 @@ import httpx
 
 from api.config import get_settings
 from api.services.cache import get_redis
+from api.services.tls_contexts import client_tls_context
 
 logger = logging.getLogger("cleanway.safe_browsing")
 
@@ -237,7 +238,7 @@ async def _request_with_retry(payload: dict, api_key: str, timeout: float) -> di
     last_exc: Optional[Exception] = None
     for attempt in range(GSB_RETRY_COUNT + 1):
         try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
+            async with httpx.AsyncClient(timeout=timeout, verify=client_tls_context()) as client:
                 return await _do_request(client, payload, api_key)
         except httpx.HTTPStatusError as e:
             status = e.response.status_code

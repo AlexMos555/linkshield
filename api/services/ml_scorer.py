@@ -58,6 +58,21 @@ def _load_meta() -> None:
                 len(_feature_names), meta.get("test_auc"))
 
 
+def onnx_session_options(ort):
+    """One thread, no spinning. Every call scores ONE row of 27 features — a
+    sub-millisecond tree walk. onnxruntime's default pool has a thread per
+    core the container can SEE (the whole Railway host) and spin-waits after
+    each run: measured 41 ms of CPU per prediction against 0.2 ms with one
+    thread, and 3.5 ms of wall time on the event loop against 1 ms. Same
+    model, same outputs. See docs/runbooks/capacity.md."""
+    opts = ort.SessionOptions()
+    opts.intra_op_num_threads = 1
+    opts.inter_op_num_threads = 1
+    opts.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+    opts.add_session_config_entry("session.intra_op.allow_spinning", "0")
+    return opts
+
+
 def _try_load_onnx() -> bool:
     """Preferred prod path: onnxruntime + phishing_model.onnx."""
     global _onnx_session, _onnx_input_name, _backend
@@ -69,7 +84,7 @@ def _try_load_onnx() -> bool:
         return False
     try:
         _onnx_session = ort.InferenceSession(
-            _ONNX_PATH, providers=["CPUExecutionProvider"]
+            _ONNX_PATH, sess_options=onnx_session_options(ort), providers=["CPUExecutionProvider"]
         )
         _onnx_input_name = _onnx_session.get_inputs()[0].name
         _load_meta()

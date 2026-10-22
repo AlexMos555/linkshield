@@ -361,3 +361,32 @@ def test_health_doh_reports_aggregates_only(monkeypatch):
     assert body["ok"] is True
     assert body["stats"]["counts"]["queries"] == 1
     assert "example" not in str(body)
+
+
+def test_health_doh_stays_valid_json_after_very_slow_queries(monkeypatch):
+    """Over 1% of queries past the last latency bucket (5 s) made the p99
+    float('inf'), which JSON cannot encode: /health/doh answered 500 — what a
+    monitor or a load balancer reads as "DNS is down" — for the rest of the
+    process's life."""
+    use_redis(monkeypatch, None)
+    _stub_upstream(monkeypatch)
+    for _ in range(5):
+        doh_metrics.METRICS.observe(9.0)
+    doh_metrics.METRICS.observe(0.003)
+    resp = _client().get("/health/doh")
+    assert resp.status_code == 200
+    stats = resp.json()["stats"]
+    assert stats["p99_ms_le"] is None and stats["p50_ms_le"] is None
+    assert stats["over_ms"] == {"5000": 5}
+
+
+def test_latency_quantiles_report_bucket_bounds():
+    m = doh_metrics.Metrics()
+    assert m.snapshot()["p50_ms_le"] is None
+    for _ in range(98):
+        m.observe(0.0015)
+    m.observe(0.3)
+    m.observe(7.0)
+    snap = m.snapshot()
+    assert (snap["p50_ms_le"], snap["p95_ms_le"], snap["p99_ms_le"]) == (2.0, 2.0, 500.0)
+    assert snap["over_ms"] == {"5000": 1}
