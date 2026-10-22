@@ -15,7 +15,8 @@
 // After FAIL_THRESHOLD consecutive failures it emails the founder once
 // (Cloudflare Email Routing send_email binding, destination must be a verified
 // address), and once more when the check is back. A send that fails is
-// retried the next minute and recorded as `alert_error`. State lives in KV,
+// retried the next minute and recorded as `alert_error` until a mail goes
+// out or none is owed any more. State lives in KV,
 // written on change and at least every HEARTBEAT_MS; GET / shows it, and the
 // DNS canary (scripts/dns_canary.py) fails when the heartbeat is stale, so a
 // dead monitor is noticed too.
@@ -291,7 +292,6 @@ async function tick(env, now = Date.now()) {
   const recovered = down.filter((n) => !failing.includes(n));
   const stamp = new Date(now).toISOString();
   let sendError = null;
-  let sent = false;
 
   if (newlyDown.length) {
     try {
@@ -303,7 +303,6 @@ async function tick(env, now = Date.now()) {
           `\n\nЧто делать: docs/runbooks/monitoring.md. Письмо придёт ещё раз, когда всё восстановится.`,
       );
       down = [...down, ...newlyDown];
-      sent = true;
     } catch (e) {
       sendError = String((e && e.message) || e); // not marked as told: retried next minute
     }
@@ -316,12 +315,14 @@ async function tick(env, now = Date.now()) {
         `Проверка ${stamp} UTC: ${recovered.join(", ")} отвечает нормально.`,
       );
       down = down.filter((n) => !recovered.includes(n));
-      sent = true;
     } catch (e) {
       sendError = sendError || String((e && e.message) || e);
     }
   }
-  const alertError = sendError ? { at: stamp, error: sendError.slice(0, 300) } : sent ? null : prev.alert_error;
+  // No send was tried this minute only when no mail is owed (down matches
+  // failing), so an earlier send error is history: kept, it would leave the
+  // DNS canary red after a check that recovered before anyone was told.
+  const alertError = sendError ? { at: stamp, error: sendError.slice(0, 300) } : null;
 
   const heartbeatDue = !prev.heartbeat_at || now - Date.parse(prev.heartbeat_at) >= HEARTBEAT_MS;
   const changed =

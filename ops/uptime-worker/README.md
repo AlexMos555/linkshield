@@ -27,7 +27,8 @@ After two failed runs in a row it emails `amoskotin@gmail.com` from
 destination must stay a verified Email Routing address), and once more when the
 check recovers. The mail says what the check means and points at
 `docs/runbooks/monitoring.md`. A send that fails is retried the next minute and
-recorded as `alert_error`.
+recorded as `alert_error` until a mail goes out or none is owed any more (the
+check recovered before the founder was told).
 
 State is kept in the KV namespace `cleanway-uptime`: written when it changes and
 at least every 10 minutes (`heartbeat_at`). `GET

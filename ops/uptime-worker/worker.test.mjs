@@ -242,6 +242,36 @@ test("a failed send is recorded and retried the next minute", async () => {
   assert.equal(w.state().alert_error, null);
 });
 
+test("a failed send is forgotten once nothing is owed: the check recovered before the retry", async () => {
+  // The founder was never told it was down, so no recovery mail is owed
+  // either; a stale alert_error would keep the DNS canary red until the next
+  // real outage (scripts/dns_canary.py fails on any alert_error).
+  const w = world();
+  w.pages["https://cleanway.ai/"] = 500;
+  w.sendFails = 1;
+  await minutes(w, T0, 2);
+  assert.equal(w.state().alert_error.error, "destination address not verified");
+  w.pages["https://cleanway.ai/"] = 200;
+  await w.tick(T0 + 2 * MIN);
+  assert.equal(w.sent.length, 0);
+  assert.deepEqual(w.state().down, []);
+  assert.equal(w.state().alert_error, null);
+});
+
+test("a failed recovery mail stays recorded until it goes out", async () => {
+  const w = world();
+  w.pages["https://cleanway.ai/"] = 500;
+  await minutes(w, T0, 2);
+  w.pages["https://cleanway.ai/"] = 200;
+  w.sendFails = 1;
+  await w.tick(T0 + 2 * MIN);
+  assert.deepEqual(w.state().down, ["landing"]);
+  assert.ok(w.state().alert_error);
+  await w.tick(T0 + 3 * MIN);
+  assert.deepEqual(w.subjects(), ["Cleanway: не работает landing", "Cleanway: снова работает landing"]);
+  assert.equal(w.state().alert_error, null);
+});
+
 test("a long outage does not write KV every minute", async () => {
   const w = world();
   w.pages["https://cleanway.ai/"] = 500;
