@@ -1329,9 +1329,9 @@ async def delete_account(
     #      cache deletion_requested_at (PATCHed above), which is what the
     #      gate reads whenever the flag is missing — expired, evicted, or
     #      never written because Redis was down here. A "not deleted"
-    #      left behind by a failure here is trusted for at most 5 minutes
-    #      (longer only while the database can't be read), and the global
-    #      sign-out below means no refresh token survives.
+    #      left behind by a failure here lives at most 5 minutes (its
+    #      TTL), and the global sign-out below means no refresh token
+    #      survives.
     try:
         from api.services.cache import get_redis
 

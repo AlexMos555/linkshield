@@ -367,3 +367,9 @@ if (failures) {
   process.exit(1);
 }
 console.log("\nall passed");
+
+// "Download my data" on the same screen has its own table
+// (test-account-export.mjs); it runs from here because CI runs this file.
+// It sets process.exitCode on a failure.
+console.log("\naccount-export:");
+await import("./test-account-export.mjs");

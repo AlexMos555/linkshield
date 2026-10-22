@@ -163,6 +163,25 @@ def test_timeouts_mid_export_are_flagged_per_table_never_shown_as_empty(client, 
     assert set(body["tables"]) == EXPORT_KEYS
 
 
+def test_auth_and_redis_failures_mid_export_are_flagged_never_shown_as_empty(client, sb, fake_redis, monkeypatch):
+    """The sign-in record and the Redis records are read outside the tables;
+    a failure there is an error in the file, never an empty list that would
+    tell the person we hold nothing."""
+    async def _smembers(_key):
+        raise ConnectionError("reset")
+
+    monkeypatch.setattr(fake_redis, "smembers", _smembers)
+    sb.on("GET", "/auth/v1/admin/users/", exc=httpx.ReadTimeout("slow"))
+
+    body = client.get("/api/v1/user/export", headers=_auth()).json()
+
+    assert body["auth_user"] == {"error": "ReadTimeout"}
+    assert body["whitelist"] == {"error": "ConnectionError"}
+    # Read on its own: the referral records still answer.
+    assert body["referral"]["record"] is None
+    assert set(body["tables"]) == EXPORT_KEYS
+
+
 # ─── DELETE /account: the reauth window ──────────────────────────
 
 NOW_TS = 1_800_000_000

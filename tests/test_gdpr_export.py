@@ -11,6 +11,8 @@ from Settings." This file pins:
   - upstream Supabase failure on one table → other tables still
     populate; failure surfaces per-table, not 500 for the whole export
   - 503 when Supabase env is absent (no silent empty exports)
+  - beyond the tables: the Supabase Auth record (allow-listed) and the
+    Redis whitelist / referral records are in it too
 """
 from __future__ import annotations
 
@@ -55,6 +57,9 @@ class _SupabaseStub:
                 for needle, status in stub.status_overrides.items():
                     if needle in url:
                         return _Resp(status, {})
+                if "/auth/v1/admin/users/" in url:
+                    return _Resp(200, {"email": "alice@gmail.com", "created_at": "2026-09-01T10:00:00Z",
+                                       "identities": [{"provider": "email"}], "recovery_token": "secret"})
                 # Default: 200 with one fake row echoing the table name
                 table = url.rsplit("/", 1)[-1]
                 return _Resp(200, [{"_table": table}])
@@ -158,6 +163,8 @@ def test_export_filters_by_user_id_per_table(client, supabase_ok, supabase_stub)
     client.get("/api/v1/user/export")
     queried = []
     for got in supabase_stub.gets:
+        if "/rest/v1/" not in got["url"]:
+            continue
         table = got["url"].rsplit("/", 1)[-1]
         eq = {k: v for k, v in got["params"].items() if v.startswith("eq.")}
         assert eq and set(eq.values()) == {"eq.user-42"}, f"{table}: {got['params']}"
@@ -167,11 +174,33 @@ def test_export_filters_by_user_id_per_table(client, supabase_ok, supabase_stub)
     assert sorted(queried) == expected
 
 
+def test_export_includes_the_auth_record_and_the_redis_records(client, supabase_ok, supabase_stub, fake_redis):
+    """Not only the tables: the sign-in record (Supabase Auth) of the caller,
+    and the sites they marked safe (Redis, a year) — both promised by
+    "everything the server holds"."""
+    import asyncio
+
+    asyncio.run(fake_redis.sadd("whitelist:user-42", "my-bank.example"))
+
+    body = client.get("/api/v1/user/export").json()
+
+    (auth_read,) = [g for g in supabase_stub.gets if "/auth/v1/" in g["url"]]
+    assert auth_read["url"].endswith("/auth/v1/admin/users/user-42")
+    assert body["auth_user"]["email"] == "alice@gmail.com"
+    assert body["auth_user"]["identities"] == [
+        {"provider": "email", "created_at": None, "last_sign_in_at": None, "updated_at": None}
+    ]
+    assert "secret" not in str(body["auth_user"])
+    assert body["whitelist"] == ["my-bank.example"]
+    assert body["referral"]["record"] is None
+
+
 def test_secrets_are_left_out_of_the_export(client, supabase_ok, supabase_stub):
     """Invite code and PIN hashes are secrets (a 4-digit PIN's bcrypt is
     brute-forced in seconds), an org's SSO config holds credentials."""
     client.get("/api/v1/user/export")
-    selects = {(g["url"].rsplit("/", 1)[-1], g["params"]["select"]) for g in supabase_stub.gets}
+    selects = {(g["url"].rsplit("/", 1)[-1], g["params"]["select"]) for g in supabase_stub.gets
+               if "/rest/v1/" in g["url"]}
     by_table = {}
     for table, select in selects:
         by_table.setdefault(table, []).append(select)

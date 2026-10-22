@@ -11,13 +11,25 @@ Two ways in:
     docs/runbooks/data-requests.md.
 
 Every table that holds the account id is read, filtered on that id and
-nothing else. Left out on purpose: ciphertext of family alerts (useless
-without the device's private key), the hashes of family invite codes and
-PINs (secrets, not data about the person), an org's SSO configuration
-(credentials of the organisation). Payment records held by Stripe are the
-Stripe Customer Portal's (linked from the account page); the RevenueCat and
-Supabase Auth records hold only the account id, email and the purchase
-status already in `entitlements` / `users`.
+nothing else. Beyond the tables:
+  * `auth_user` — the Supabase Auth record: sign-up, confirmation and last
+    sign-in times, phone, the sign-in methods (identities). An allow-list:
+    the password hash, tokens and MFA secrets never leave;
+  * `whitelist` — the sites the person marked safe (Redis, a year);
+  * `referral` — their referral code's record (who redeemed it is only a
+    count) and the code they redeemed themselves (Redis, a year).
+
+Left out on purpose: ciphertext of family alerts (useless without the
+device's private key), the hashes of family invite codes and PINs (secrets,
+not data about the person), an org's SSO configuration (credentials of the
+organisation); short-lived Redis caches and counters (plan tier, percentile,
+deletion flags, rate-limit windows: copies of rows above, or minutes-long);
+logs (docs/PRIVACY.md, "Hosting request logs"), Supabase Auth's sign-in log
+among them (auth.audit_log_entries: not reachable over the REST or Admin
+API — the runbook has the SQL for a request that asks for everything).
+Payment records held by Stripe are the Stripe Customer Portal's (linked from
+the account page); RevenueCat holds the account id and the purchase status
+already in `entitlements`.
 """
 from __future__ import annotations
 
@@ -28,6 +40,7 @@ import re
 import sys
 from datetime import datetime, timezone
 from typing import Any, Optional
+from urllib.parse import quote
 
 from api.config import get_settings
 from api.services import supabase_keys
@@ -67,6 +80,21 @@ EXPORT_TABLES: tuple[tuple[str, str, str, str], ...] = (
     ("audit_log", "audit_log", "actor_user_id", "*"),
 )
 
+# The Supabase Auth record, field by field (GET /auth/v1/admin/users/{id}):
+# what describes the person, never a hash, token or factor secret.
+AUTH_USER_FIELDS = (
+    "email",
+    "phone",
+    "created_at",
+    "confirmed_at",
+    "email_confirmed_at",
+    "phone_confirmed_at",
+    "last_sign_in_at",
+    "updated_at",
+    "user_metadata",
+)
+AUTH_IDENTITY_FIELDS = ("provider", "created_at", "last_sign_in_at", "updated_at")
+
 # Per-table row cap: five years of weekly rows or thousands of audit rows
 # must not become a 100 MB download that times out, and a future filter bug
 # must not read a whole table into memory.
@@ -87,9 +115,10 @@ def _base() -> tuple[str, dict]:
 
 
 async def build_export(user_id: str, email: Optional[str]) -> dict[str, Any]:
-    """Read every table for `user_id`. A table that fails is marked with its
-    error instead of failing the whole export (never shown as empty).
-    Raises ExportUnavailable when Supabase isn't configured."""
+    """Read every table, the Auth record and the Redis records for
+    `user_id`. A part that fails is marked with its error instead of failing
+    the whole export (never shown as empty). Raises ExportUnavailable when
+    Supabase isn't configured."""
     import httpx
 
     base, headers = _base()
@@ -98,9 +127,13 @@ async def build_export(user_id: str, email: Optional[str]) -> dict[str, Any]:
         "user_id": user_id,
         "email": email,
         "schema_version": SCHEMA_VERSION,
+        "auth_user": None,
+        "whitelist": None,
+        "referral": None,
         "tables": {},
     }
     async with httpx.AsyncClient(timeout=10.0) as client:
+        export["auth_user"] = await _auth_user(client, base, headers, user_id)
         for key, table, column, select in EXPORT_TABLES:
             try:
                 resp = await client.get(
@@ -124,7 +157,72 @@ async def build_export(user_id: str, email: Optional[str]) -> dict[str, Any]:
                     "export_table_exception",
                     extra={"user_id": user_id, "table": key, "error": str(e)},
                 )
+    export["whitelist"], export["referral"] = await _redis_records(user_id, email)
     return export
+
+
+def failed_parts(export: dict[str, Any]) -> list[str]:
+    """Names of the parts that could not be read (an export to redo before
+    it answers a request)."""
+    parts = {k: export.get(k) for k in ("auth_user", "whitelist", "referral")}
+    parts.update(export.get("tables", {}))
+    return [k for k, v in parts.items() if isinstance(v, dict) and "error" in v]
+
+
+async def _auth_user(client: Any, base: str, headers: dict, user_id: str) -> Any:
+    """The account's Supabase Auth record, allow-listed (AUTH_USER_FIELDS);
+    None when Auth has no record for it (404)."""
+    try:
+        resp = await client.get(f"{base}/auth/v1/admin/users/{quote(user_id, safe='')}", headers=headers)
+        if resp.status_code == 404:
+            return None
+        if resp.status_code != 200:
+            logger.warning("export_auth_failed", extra={"user_id": user_id, "status": resp.status_code})
+            return {"error": f"upstream returned {resp.status_code}"}
+        record = resp.json()
+        if not isinstance(record, dict):
+            raise ValueError("not an object")
+    except Exception as e:  # noqa: BLE001 — flagged like a table
+        logger.warning("export_auth_exception", extra={"user_id": user_id, "error": str(e)})
+        return {"error": type(e).__name__}
+    out: dict[str, Any] = {f: record.get(f) for f in AUTH_USER_FIELDS}
+    out["identities"] = [
+        {f: identity.get(f) for f in AUTH_IDENTITY_FIELDS}
+        for identity in record.get("identities") or []
+        if isinstance(identity, dict)
+    ]
+    return out
+
+
+async def _redis_records(user_id: str, email: Optional[str]) -> tuple[Any, Any]:
+    """(whitelist, referral) from Redis, each read on its own: one that
+    fails is {"error": ...}, never an empty answer. The referral code is
+    derived from id + email, as /referral/generate does."""
+    from api.routers.referral import referral_code
+
+    async def _read(what: str, fn) -> Any:
+        try:
+            from api.services.cache import get_redis
+
+            return await fn(await get_redis())
+        except Exception as e:  # noqa: BLE001
+            logger.warning("export_redis_failed", extra={"user_id": user_id, "part": what, "error": str(e)})
+            return {"error": type(e).__name__}
+
+    async def _whitelist(r: Any) -> list[str]:
+        return sorted(await r.smembers(f"whitelist:{user_id}") or ())
+
+    code = referral_code(user_id, email)
+
+    async def _referral(r: Any) -> dict[str, Any]:
+        raw = await r.get(f"referral:{code}")
+        try:
+            record = json.loads(raw) if raw else None
+        except (TypeError, ValueError):
+            record = raw  # unreadable as JSON: still what we hold
+        return {"code": code, "record": record, "redeemed_code": await r.get(f"redeemed:{user_id}")}
+
+    return await _read("whitelist", _whitelist), await _read("referral", _referral)
 
 
 async def find_account(identifier: str) -> Optional[dict]:
@@ -186,13 +284,19 @@ def main(argv: Optional[list[str]] = None) -> int:
             return 1
         export = await build_export(str(account["id"]), account.get("email"))
         text = json.dumps(export, ensure_ascii=False, indent=2, default=str)
+        failed = failed_parts(export)
         if args.out:
             with open(args.out, "w", encoding="utf-8") as fh:
                 fh.write(text + "\n")
-            failed = [k for k, v in export["tables"].items() if isinstance(v, dict) and "error" in v]
-            print(f"wrote {args.out} ({len(export['tables'])} tables; failed: {failed or 'none'})", file=sys.stderr)
+            print(
+                f"wrote {args.out} ({len(export['tables'])} tables + auth_user, whitelist, referral; "
+                f"failed: {failed or 'none'})",
+                file=sys.stderr,
+            )
         else:
             print(text)
+            if failed:
+                print(f"failed: {failed}", file=sys.stderr)
         return 0
 
     try:
