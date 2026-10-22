@@ -37,7 +37,7 @@ Railway → проект `honest-playfulness` → сервис `web` → Variabl
 | `paid_budget_exhausted` | 1 раз в сутки на источник | Дневной бюджет IPQS / LLM кончился | Логи `paid_budget_exhausted`, `ip_rate_limit_exceeded`: бот или рост трафика? Сбросится в полночь UTC |
 | `rate_limited` | 1000 отказов 429 за 5 мин на категорию | Всплеск упёршихся в лимит запросов (бот, DDoS) | Логи `ip_rate_limit_exceeded`, категория — в письме |
 | `admin_or_service_key_use` | 30 за 5 мин; 5 за час на пользователя | Сервисный ключ Supabase выпускает сессии расширения от имени запросов | Логи `extension_session_*`; при подозрении — завершить сессии пользователя |
-| `webhook_processing_failed` | 1 за час на провайдера (`stripe`, `revenuecat`) | Не атака: вебхук с верной подписью не обработан — оплата или отмена не дошла до аккаунта. Провайдер повторяет доставку | Логи `webhook_processing_failed` (Stripe) / `revenuecat_webhook_failed`: поле `error`. Обычно недоступна база или не работает серверный ключ — `/health/deep` (`supabase`, `supabase_server_key`). После исправления повтор провайдера применит событие сам (в RevenueCat — Retry у события) |
+| `webhook_processing_failed` | 1 за час на провайдера (`stripe`, `revenuecat`) | Не атака: вебхук с верной подписью не обработан — оплата или отмена не дошла до аккаунта. Провайдер повторяет доставку | Логи `webhook_processing_failed` (Stripe) / `revenuecat_webhook_failed`, `revenuecat_dedupe_lookup_failed`, `revenuecat_webhook_no_database` (RevenueCat): поле `error`. Обычно недоступна база или не работает серверный ключ — `/health/deep` (`supabase`, `supabase_server_key`). После исправления повтор провайдера применит событие сам (в RevenueCat — Retry у события) |
 
 ## Первые шаги (10 минут)
 

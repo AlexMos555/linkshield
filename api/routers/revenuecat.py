@@ -75,9 +75,12 @@ async def revenuecat_webhook(request: Request):
     event_id = str(event["id"])[:255]
     event_type = str(event["type"])[:64]
 
+    # A database that is down or unreachable with our key is the usual reason
+    # a purchase does not land, and these are its first reads: alert here too.
     store = account_store.get_account_store()
     if store is None:
         logger.error("revenuecat_webhook_no_database", extra={"event_id": event_id})
+        await security_alerts.record("webhook_processing_failed", key="revenuecat")
         raise HTTPException(503, "Database not configured; RevenueCat will retry")
     try:
         if await store.is_event_processed(event_id):
@@ -85,6 +88,7 @@ async def revenuecat_webhook(request: Request):
             return {"status": "ok", "duplicate": True}
     except AccountStoreError as e:
         logger.error("revenuecat_dedupe_lookup_failed", extra={"event_id": event_id, "error": str(e)})
+        await security_alerts.record("webhook_processing_failed", key="revenuecat")
         raise HTTPException(503, "Database unavailable; RevenueCat will retry")
 
     logger.info("revenuecat_webhook_received", extra={"event_id": event_id, "type": event_type,

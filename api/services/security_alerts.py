@@ -125,7 +125,8 @@ EVENT_INFO: dict[str, tuple[str, str]] = {
     "webhook_processing_failed": (
         "Платёжный вебхук пришёл с верной подписью, но мы не смогли его обработать.",
         "Оплата или отмена не дошла до аккаунта; провайдер будет повторять доставку. Посмотрите "
-        "в логах Railway webhook_processing_failed (Stripe) или revenuecat_webhook_failed: поле "
+        "в логах Railway webhook_processing_failed (Stripe) или revenuecat_webhook_failed, "
+        "revenuecat_dedupe_lookup_failed, revenuecat_webhook_no_database (RevenueCat): поле "
         "error. Чаще всего недоступна база (Supabase) или ключ — проверьте /health/deep. Когда "
         "причина устранена, повтор провайдера применит событие сам; в RevenueCat можно нажать Retry.",
     ),
