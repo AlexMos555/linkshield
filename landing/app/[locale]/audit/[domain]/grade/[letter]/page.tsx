@@ -9,6 +9,7 @@ import { routing, type Locale } from "@/i18n/routing";
 import { hostFromSegment } from "@/lib/check-host";
 import { displayHost } from "@/lib/display-host";
 import { safeJsonLd } from "@/lib/json-ld";
+import { localePath } from "@/lib/locale-path";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -16,41 +17,17 @@ const SITE_URL = "https://cleanway.ai";
 const VALID_LETTERS = ["A", "B", "C", "D", "F"] as const;
 type GradeLetter = (typeof VALID_LETTERS)[number];
 
-const GRADE_INFO: Record<
-  GradeLetter,
-  { color: string; glow: string; label: string; description: string }
-> = {
-  A: {
-    color: "#22c55e",
-    glow: "rgba(34,197,94,0.25)",
-    label: "Excellent privacy",
-    description: "Minimal tracking. No fingerprinting. Few or no third-party trackers detected.",
-  },
-  B: {
-    color: "#84cc16",
-    glow: "rgba(132,204,22,0.25)",
-    label: "Good privacy",
-    description: "Some tracking, but mostly first-party. Manageable footprint for everyday use.",
-  },
-  C: {
-    color: "#eab308",
-    glow: "rgba(234,179,8,0.25)",
-    label: "Average privacy",
-    description: "Moderate tracker count. Common analytics + ads stack. Worth reviewing what's collected.",
-  },
-  D: {
-    color: "#f97316",
-    glow: "rgba(249,115,22,0.25)",
-    label: "Heavy tracking",
-    description: "Many third-party trackers. Fingerprinting attempts likely. Limit personal data here.",
-  },
-  F: {
-    color: "#ef4444",
-    glow: "rgba(239,68,68,0.25)",
-    label: "Poor privacy",
-    description: "Aggressive tracking, fingerprinting, or data collection patterns detected.",
-  },
+// Colours only: each grade's label and description are in the page's
+// language (Audit.grades.<letter>), not hard-coded English.
+const GRADE_COLOR: Record<GradeLetter, { color: string; glow: string }> = {
+  A: { color: "#22c55e", glow: "rgba(34,197,94,0.25)" },
+  B: { color: "#84cc16", glow: "rgba(132,204,22,0.25)" },
+  C: { color: "#eab308", glow: "rgba(234,179,8,0.25)" },
+  D: { color: "#f97316", glow: "rgba(249,115,22,0.25)" },
+  F: { color: "#ef4444", glow: "rgba(239,68,68,0.25)" },
 };
+
+type GradeText = Record<GradeLetter, { label: string; description: string }>;
 
 type Props = {
   params: Promise<{ domain: string; letter: string; locale: string }>;
@@ -76,22 +53,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { domain, letter, locale } = await params;
   const grade = normalizeLetter(letter);
   const host = hostFromSegment(domain);
-  if (!grade || !host) {
-    // The page itself redirects or 404s; keep it out of the index.
-    return { title: "Privacy Audit — Cleanway", robots: { index: false, follow: false } };
-  }
-  const decoded = displayHost(host);
   const isLocaleKnown = (routing.locales as readonly string[]).includes(locale);
   const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
+  const t = await getTranslations({ locale: safeLocale, namespace: "Audit" });
+  if (!grade || !host) {
+    // The page itself redirects or 404s; keep it out of the index.
+    return { title: t("fallback_title"), robots: { index: false, follow: false } };
+  }
+  const decoded = displayHost(host);
   const canonical = urlFor(safeLocale, host, grade);
 
   const languages: Record<string, string> = {};
   for (const loc of routing.locales) languages[loc] = urlFor(loc as Locale, host, grade);
   languages["x-default"] = urlFor(routing.defaultLocale as Locale, host, grade);
 
-  const info = GRADE_INFO[grade];
-  const title = `${decoded} — Privacy Grade ${grade} · Cleanway`;
-  const description = `${decoded} got a privacy grade of ${grade}. ${info.label}. ${info.description}`;
+  const info = (t.raw("grades") as GradeText)[grade];
+  const title = t("grade_meta_title", { domain: decoded, grade });
+  const description = t("grade_meta_description", { domain: decoded, grade, label: info.label, description: info.description });
+  const ogTitle = t("grade_og_title", { domain: decoded, grade });
 
   return {
     title,
@@ -99,7 +78,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     metadataBase: new URL(SITE_URL),
     alternates: { canonical, languages },
     openGraph: {
-      title: `Grade ${grade}: ${decoded}`,
+      title: ogTitle,
       description,
       url: canonical,
       siteName: "Cleanway",
@@ -108,7 +87,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      title: `Grade ${grade}: ${decoded}`,
+      title: ogTitle,
       description,
       site: "@cleanwayai",
     },
@@ -133,11 +112,13 @@ export default async function GradePage({ params }: Props) {
   if (host !== domain || grade !== letter) redirect(pathFor(safeLocale, host, grade));
   const decoded = displayHost(host);
   const canonical = urlFor(safeLocale, host, grade);
-  const info = GRADE_INFO[grade];
   // Android-only labels for the primary install CTA (see PrimaryInstallLink).
   const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
   const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
   const check = await getTranslations({ locale: safeLocale, namespace: "Check" });
+  const t = await getTranslations({ locale: safeLocale, namespace: "Audit" });
+  const grades = t.raw("grades") as GradeText;
+  const info = { ...GRADE_COLOR[grade], ...grades[grade] };
 
   // JSON-LD Review with the grade as ratingValue. Schema.org accepts
   // string ratings, but Google prefers numeric — map A=5, B=4, ..., F=1.
@@ -149,7 +130,7 @@ export default async function GradePage({ params }: Props) {
         "@type": "WebPage",
         "@id": `${canonical}#webpage`,
         url: canonical,
-        name: `${decoded} — Privacy Grade ${grade}`,
+        name: t("grade_meta_title", { domain: decoded, grade }),
         description: info.description,
         inLanguage: safeLocale,
         isPartOf: { "@id": `${SITE_URL}#website` },
@@ -171,7 +152,7 @@ export default async function GradePage({ params }: Props) {
           ratingValue: ratingMap[grade],
           bestRating: 5,
           worstRating: 1,
-          alternateName: `Grade ${grade}`,
+          alternateName: t("grade_rating_name", { grade }),
         },
       },
     ],
@@ -188,7 +169,7 @@ export default async function GradePage({ params }: Props) {
     >
       <nav style={{ background: "#0f172af0", borderBottom: "1px solid #1e293b", padding: "14px 24px" }}>
         <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <a href="/" style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>
+          <a href={localePath(safeLocale, "/")} style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>
             Cleanway
           </a>
           <PrimaryInstallLink
@@ -221,7 +202,7 @@ export default async function GradePage({ params }: Props) {
           }}
         >
           <div style={{ fontSize: 14, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 2, marginBottom: 16 }}>
-            Privacy Audit
+            {t("grade_eyebrow")}
           </div>
           <div
             style={{
@@ -272,10 +253,13 @@ export default async function GradePage({ params }: Props) {
           }}
         >
           <h2 style={{ fontSize: 20, fontWeight: 700, color: "#f8fafc", margin: "0 0 8px" }}>
-            Want to grade any site?
+            {t("want_title")}
           </h2>
+          {/* The audit ships with the browser extension, which is not
+              published yet — no "install Cleanway to run it" next to a
+              button that leads to the DNS page or the Android app. */}
           <p style={{ fontSize: 14, color: "#94a3b8", margin: "0 0 20px", lineHeight: 1.6 }}>
-            Install Cleanway to run Privacy Audit on any page. The grade is computed entirely on your device — your browsing data never reaches our servers.
+            {t("want_body")}
           </p>
           <PrimaryInstallLink
             androidLabel={hero("cta_android")}
@@ -303,11 +287,11 @@ export default async function GradePage({ params }: Props) {
         {/* Grade scale legend */}
         <div style={{ marginTop: 32, padding: "20px", background: "#1e293b80", borderRadius: 12, border: "1px solid #1e293b" }}>
           <div style={{ fontSize: 12, color: "#8796ab", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12 }}>
-            How grades work
+            {t("scale_title")}
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {VALID_LETTERS.map((g) => {
-              const i = GRADE_INFO[g];
+              const i = { ...GRADE_COLOR[g], ...grades[g] };
               return (
                 <div
                   key={g}
@@ -330,8 +314,8 @@ export default async function GradePage({ params }: Props) {
         </div>
 
         <p style={{ textAlign: "center", fontSize: 12, color: "#8796ab", marginTop: 32 }}>
-          Privacy Audit runs 100% on your device. We see only the domain name you scanned, never the page content.{" "}
-          <a href="/privacy-policy" style={{ color: "#60a5fa", textDecoration: "underline" }}>Privacy Policy</a>
+          {t("footer_note")}{" "}
+          <a href={localePath(safeLocale, "/privacy-policy")} style={{ color: "#60a5fa", textDecoration: "underline" }}>{t("privacy_link")}</a>
         </p>
 
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />

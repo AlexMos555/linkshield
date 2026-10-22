@@ -16,15 +16,25 @@
  * The APK URL is env-driven (NEXT_PUBLIC_APK_URL) so the founder points it at
  * the CDN/GitHub-Release once the signed APK is hosted, with no code change.
  * Until then the button renders as a "coming soon" pill rather than a dead link.
+ * Next to the button: the version (from the file's own name) and the SHA-256
+ * from NEXT_PUBLIC_APK_SHA256, shown only for that same file
+ * (lib/apk-release.ts), and the host the file really comes from — the page
+ * says "download only with this button", and the browser shows github.com.
  */
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { routing, type Locale } from "@/i18n/routing";
+import { apkReleaseFrom } from "@/lib/apk-release";
 import { installScreenshotSrc, type InstallScreenshotSlot } from "@/lib/install-screenshots";
 import { localePath } from "@/lib/locale-path";
 import { DEFAULT_OG_IMAGE, localeAlternates } from "@/lib/seo";
 
-const APK_URL = process.env.NEXT_PUBLIC_APK_URL || "";
+// Spelled out literally: Next inlines NEXT_PUBLIC_* only for a literal
+// `process.env.X`, never for `process.env` passed as an object.
+const APK = apkReleaseFrom({
+  NEXT_PUBLIC_APK_URL: process.env.NEXT_PUBLIC_APK_URL,
+  NEXT_PUBLIC_APK_SHA256: process.env.NEXT_PUBLIC_APK_SHA256,
+});
 
 function resolveLocale(locale: string): Locale {
   return (routing.locales as readonly string[]).includes(locale) ? (locale as Locale) : routing.defaultLocale;
@@ -75,6 +85,7 @@ const card: React.CSSProperties = {
 const cardTitle: React.CSSProperties = { color: "#e2e8f0", fontSize: 16, fontWeight: 600, marginBottom: 8 };
 const cardBody: React.CSSProperties = { margin: 0, color: "#cbd5e1", fontSize: 14.5 };
 const link: React.CSSProperties = { color: "#34d399", textDecoration: "underline" };
+const fileNote: React.CSSProperties = { color: "#8796ab", fontSize: 12.5, textAlign: "center", margin: "6px 0 0" };
 
 interface Warning {
   slot: InstallScreenshotSlot;
@@ -141,9 +152,9 @@ export default async function AndroidPage({
 
       {/* Primary CTA */}
       <div style={{ marginBottom: 20 }}>
-        {APK_URL ? (
+        {APK ? (
           <a
-            href={APK_URL}
+            href={APK.url}
             data-testid="android-download"
             style={{
               display: "block",
@@ -178,8 +189,20 @@ export default async function AndroidPage({
           {/* Without a hosted APK the steps below describe a button that is not
               on the page — say so plainly instead of letting the reader hunt
               for a download that does not exist yet. */}
-          {APK_URL ? t("download_note") : t("download_soon_note")}
+          {APK ? t("download_note") : t("download_soon_note")}
         </p>
+        {APK && (APK.version || APK.host) && (
+          <p data-testid="android-file" style={fileNote}>
+            {APK.version && <span>{t("file_version", { version: APK.version })}. </span>}
+            {APK.host && t("file_host", { host: APK.host })}
+          </p>
+        )}
+        {APK?.sha256 && (
+          <p data-testid="android-sha256" style={fileNote}>
+            {t("file_sha256")}{" "}
+            <code style={{ fontFamily: "ui-monospace, SF Mono, Menlo, monospace", wordBreak: "break-all" }}>{APK.sha256}</code>
+          </p>
+        )}
       </div>
 
       {/* Benefits — and the honest limit right under them. */}

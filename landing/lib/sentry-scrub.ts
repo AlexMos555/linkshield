@@ -29,14 +29,29 @@ const SITE_PATH: PiiPattern = {
   replacement: "$1[site]",
 };
 
+/**
+ * A family invite link carries its secret in the fragment
+ * (/family/join#code=…&pin=…). Browsers never send a fragment to a server, and
+ * the page says the code and PIN do not reach Cleanway — but the browser SDK
+ * records page URLs (breadcrumbs, the event's URL) with the fragment, so an
+ * error on that page would hand both to Sentry.
+ */
+const INVITE_FRAGMENT: PiiPattern = {
+  pattern: /(\/family\/join)#[^\s"']*/g,
+  replacement: "$1#[invite]",
+};
+
 export function scrubSitePaths(s: string): string {
-  return s.replace(SITE_PATH.pattern, SITE_PATH.replacement);
+  return s
+    .replace(SITE_PATH.pattern, SITE_PATH.replacement)
+    .replace(INVITE_FRAGMENT.pattern, INVITE_FRAGMENT.replacement);
 }
 
 // Order matters — JWT must match BEFORE the generic Bearer header so
 // the token gets replaced rather than the literal word "Bearer".
 const PII_PATTERNS: PiiPattern[] = [
   SITE_PATH,
+  INVITE_FRAGMENT,
   {
     pattern: /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
     replacement: "[redacted-jwt]",

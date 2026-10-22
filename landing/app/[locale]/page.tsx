@@ -138,7 +138,7 @@ export default async function Home({ params }: HomeProps) {
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-200 overflow-x-clip">
       {/* Skip-link — keyboard users bypass the sticky nav. WCAG 2.4.1. */}
-      <a href="#main" className="skip-link">Skip to main content</a>
+      <a href="#main" className="skip-link">{nav("skip_to_content")}</a>
       {/* Nav */}
       <nav aria-label="Primary" className="sticky top-0 z-50 bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">

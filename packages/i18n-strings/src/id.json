@@ -1559,7 +1559,8 @@
       "install_short": "Pasang",
       "install_android": "Unduh aplikasi Android",
       "install_android_short": "Aplikasi Android",
-      "support": "Bantuan"
+      "support": "Bantuan",
+      "skip_to_content": "Langsung ke konten utama"
     },
     "hero": {
       "badge": "Dalam pengukuran terakhir, server kami menandai {recall}% tautan phishing baru sebagai berbahaya",
@@ -1658,7 +1659,7 @@
       }
     },
     "privacy": {
-      "heading": "Privacy is not a feature. It's the architecture.",
+      "heading": "Privasi bukan sekadar fitur. Privasi adalah arsitekturnya.",
       "server_heading": "Yang sampai ke server kami",
       "server_items": [
         "Nama situs yang diperiksa (misalnya example.com), tidak pernah tautan lengkap atau halamannya",
@@ -1751,16 +1752,18 @@
     },
     "success": {
       "page_title": "Selamat datang di Cleanway",
-      "page_description": "Langganan Anda aktif. Tambahkan Cleanway ke browser untuk mulai memblokir tautan penipuan.",
+      "page_description": "Langganan Anda aktif. Begini cara memasang Cleanway di perangkat Anda.",
       "heading": "Berhasil!",
       "subheading": "Langganan Anda aktif. Tanda terima dan email selamat datang sedang dikirim.",
       "next_steps_heading": "Selanjutnya: dapatkan perlindungan",
-      "step1_title": "Tambahkan ke browser",
-      "step1_body": "Satu klik. Cleanway segera memeriksa tautan.",
-      "step2_title": "Dapatkan aplikasi seluler",
-      "step2_body": "iOS dan Android. Perlindungan yang sama saat bepergian.",
-      "step3_title": "Undang keluarga (paket Family)",
-      "step3_body": "Masuk di telepon anggota keluarga dan kirim undangan dari Settings → Family Hub.",
+      "step1_title": "Pasang aplikasi Android",
+      "step1_body": "Cleanway memblokir situs penipuan di semua aplikasi pada ponsel dan memeriksa tautan yang Anda ketuk.",
+      "step1_cta": "Unduh aplikasi Android →",
+      "step2_title": "iPhone, Mac, atau Windows: Cleanway DNS",
+      "step2_body": "Filter DNS memblokir situs penipuan yang dikenal di iPhone dan Mac, serta di browser pada Windows. Aplikasi iPhone dan ekstensi browser segera hadir:",
+      "step2_cta": "Atur Cleanway DNS →",
+      "step3_title": "Undang keluarga Anda",
+      "step3_body": "Di aplikasi: Pengaturan → Ruang Keluarga → “Buat undangan”. Anggota keluarga bergabung dari ponselnya lewat “Gabung dengan kode”.",
       "support_question": "Pertanyaan tentang langganan Anda? Kirim email ke",
       "reference_label": "Referensi"
     },
@@ -2005,13 +2008,13 @@
     },
     "dns": {
       "page_title": "DNS pemblokir phishing — satu ketuk, tanpa aplikasi",
-      "page_description": "Pasang filter DNS Cleanway dalam 30 detik di iPhone, Mac, atau Windows. Perlindungan seluruh sistem — tanpa VPN dan tanpa aplikasi. Di Android, gunakan aplikasi Cleanway gratis.",
+      "page_description": "Pasang filter DNS Cleanway dalam 30 detik: untuk semua aplikasi di iPhone dan Mac, di browser pada Windows. Tanpa VPN dan tanpa aplikasi. Di Android, gunakan aplikasi Cleanway gratis.",
       "hero_title": "Blokir phishing di setiap aplikasi — tanpa memasang aplikasi apa pun",
       "hero_subtitle": "Cleanway menjalankan resolver DNS yang menyaring phishing. Arahkan ponsel atau laptop Anda ke sana, maka setiap aplikasi di perangkat — Safari, Chrome, Mail, aplikasi perbankan — mendapat perlindungan yang sama.",
-      "hero_meta": "Berfungsi di iOS 14+, iPadOS 14+, macOS 11+, dan Windows 11. Tanpa VPN. Hemat baterai. Di Android: aplikasi Cleanway gratis.",
+      "hero_meta": "Melindungi semua aplikasi di iOS 14+, iPadOS 14+, dan macOS 11+, serta situs yang Anda buka di Chrome, Edge, dan Firefox pada Windows. Tanpa VPN. Hemat baterai. Di Android: aplikasi Cleanway gratis.",
       "ios_intro": "Ketuk tombol di bawah dari iPhone atau iPad Anda. iOS akan meminta izin untuk memasang sebuah profil konfigurasi.",
       "ios_step1": "Ketuk “Izinkan” saat iOS meminta untuk mengunduh profil.",
-      "ios_step2": "Buka Pengaturan → Umum → VPN &amp; Manajemen Perangkat → Cleanway DNS.",
+      "ios_step2": "Buka Pengaturan → Umum → VPN & Manajemen Perangkat → Cleanway DNS.",
       "ios_step3": "Ketuk “Pasang” dua kali, lalu masukkan kode sandi perangkat Anda.",
       "ios_cta": "Pasang profil Cleanway DNS",
       "ios_unsigned_note": "Jika iOS menampilkan “Tidak ditandatangani”, itu memang wajar — program penandatanganan Apple berbayar, dan kami memilih tidak membebankan biayanya kepada Anda. Profil itu sendiri tetap sama, baik ditandatangani maupun tidak.",
@@ -2019,10 +2022,14 @@
       "android_app_cta": "Unduh Cleanway untuk Android",
       "android_undo_title": "Sudah memasukkan dns.cleanway.ai di “DNS pribadi”?",
       "android_undo_body": "Kembalikan pengaturannya: buka “DNS pribadi” di Setelan (di Samsung: Koneksi → Pengaturan koneksi lainnya) lalu pilih “Otomatis”. Cara ini belum didukung, dan dengannya ponsel Anda bisa kehilangan internet.",
-      "win_intro": "Windows 11 mendukung DNS-over-HTTPS secara native. Versi Windows sebelumnya memerlukan alat pihak ketiga seperti Cloudflare 1.1.1.1 — mohon maaf.",
-      "win_step1": "Buka Setelan → Jaringan &amp; internet → Wi-Fi → klik jaringan Anda → Penetapan server DNS → Edit.",
-      "win_step2": "Ubah ke Manual, aktifkan IPv4, isi DNS pilihan dengan 1.1.1.1 dan setel DNS melalui HTTPS ke “Aktif (templat manual)”.",
-      "win_step3": "Tempel templat DoH ini:",
+      "win_heading": "Windows: di browser",
+      "win_intro": "Di Windows, Cleanway DNS bekerja di dalam browser: Chrome, Edge, dan Firefox dapat mengirim permintaannya ke sana. Yang terlindungi adalah situs yang Anda buka di browser itu, bukan program lain di komputer.",
+      "win_chrome": "Chrome: Setelan → Privasi dan keamanan → Keamanan → “Gunakan DNS aman” → pilih penyedia khusus, lalu tempel alamat di bawah.",
+      "win_edge": "Edge: Pengaturan → Privasi, pencarian, dan layanan → Keamanan → “Gunakan DNS aman” → “Pilih penyedia layanan” → tempel alamat di bawah.",
+      "win_firefox": "Firefox: Pengaturan → Privasi & Keamanan → “DNS melalui HTTPS” → “Perlindungan Maksimal” → penyedia “Khusus” → tempel alamat di bawah.",
+      "win_address": "Alamat yang perlu ditempel:",
+      "win_undo_title": "Sudah mengatur Cleanway di pengaturan jaringan Windows?",
+      "win_undo_body": "Pengaturan “DNS melalui HTTPS” bawaan Windows memerlukan alamat IP server yang tetap, dan Cleanway DNS belum memilikinya, jadi dengan cara itu tidak ada yang tersaring. Buka Setelan → Jaringan & internet → jaringan Anda → Penetapan server DNS → Edit, pilih “Otomatis (DHCP)”, lalu atur browser seperti dijelaskan di atas.",
       "benefits_heading": "Dari apa hal ini melindungi saya?",
       "benefit_1": "Tautan phishing di SMS, email, dan Telegram terbuka sebagai “situs tidak ditemukan”, bukan halaman pencuri kredensial.",
       "benefit_2": "Server kendali malware yang diketahui dihentikan sebelum HP kamu menjangkaunya — selama ada di daftar.",
@@ -2034,11 +2041,11 @@
       "privacy_more": "Arsitektur dan metodologi lengkap:",
       "transparency_link": "laporan transparansi",
       "privacy_policy_link": "Kebijakan privasi",
-      "layer_heading": "Where DNS fits in your protection",
-      "layer_body": "DNS is the widest layer — it protects every app on your device, not just the browser. It is also the shallowest: it can only block a domain that is already on our phishing blocklist. It cannot read a page, so on its own it will not catch a brand-new phishing kit the moment it appears, or a credential form hiding on a trusted-but-hacked site.",
-      "layer_extension": "For that deeper protection, add the Cleanway browser extension. It runs the full per-page analysis on every site you open, spots look-alike login forms in real time, and warns you before you type a password. DNS covers the widest surface; the extension adds the deepest checks — together they cover both.",
-      "layer_generic": "This is not a generic DNS filter. Cleanway DNS is tuned specifically for phishing and credential theft, driven by the same threat intelligence that powers the extension — not a repurposed ad-blocking list.",
-      "layer_extension_cta": "Pasang ekstensi browser Cleanway →"
+      "layer_heading": "Posisi DNS dalam perlindungan Anda",
+      "layer_body": "DNS adalah lapisan terluas: di iPhone, iPad, dan Mac, DNS melindungi semua aplikasi, bukan hanya browser. Namun DNS juga lapisan yang paling dangkal: DNS hanya bisa memblokir domain yang sudah ada di daftar situs phishing kami. DNS tidak membaca halaman, jadi sendirian ia tidak akan menangkap situs phishing yang baru muncul, atau formulir login palsu di situs tepercaya yang diretas.",
+      "layer_extension": "Pemeriksaan yang lebih dalam melihat situsnya sendiri, bukan hanya namanya. Di Android, aplikasi Cleanway gratis memeriksa tautan yang Anda ketuk. Ekstensi browser Cleanway yang akan memeriksa setiap halaman yang Anda buka dan memperingatkan Anda sebelum mengetik kata sandi di halaman login palsu segera hadir. DNS mencakup permukaan terluas; pemeriksaan ini menambah kedalaman.",
+      "layer_generic": "Ini bukan filter DNS biasa. Cleanway DNS disetel khusus untuk melawan phishing dan pencurian kredensial, dan memakai data ancaman yang sama dengan aplikasi Cleanway — bukan daftar pemblokir iklan yang dialihfungsikan.",
+      "layer_app_cta": "Dapatkan Cleanway untuk Android →"
     },
     "install": {
       "browser_label": "Ekstensi peramban",
@@ -2136,6 +2143,9 @@
       "benefit_3": "Memeriksa SMS mencurigakan langsung di ponsel: teksnya tidak dikirim ke mana pun.",
       "download_cta": "Unduh aplikasinya",
       "download_note": "File .apk · Android 7 atau lebih baru · file besar, sebaiknya pakai Wi-Fi",
+      "file_version": "Versi {version}",
+      "file_host": "Tombol ini mengunduh file dari {host}, tempat Cleanway menyimpan rilisnya — browser Anda mungkin menampilkan alamat itu.",
+      "file_sha256": "Checksum SHA-256 file ini:",
       "download_soon": "Tautan unduhan akan segera muncul.",
       "steps_title": "Cara memasang",
       "step_1": "Ketuk \"Unduh aplikasi\" dan tunggu sampai file selesai diunduh.",
@@ -2167,7 +2177,7 @@
       "screenshot_alt_samsung": "Layar pengaturan Pemblokir Otomatis Samsung",
       "screenshot_alt_protect": "Peringatan Play Protect dengan \"Detail lainnya\" dan \"Tetap instal\"",
       "never_calls_title": "Cleanway tidak pernah mengirim tautan lewat SMS dan tidak pernah menelepon",
-      "never_calls_body": "Jika ada yang menelepon atau mengirim pesan atas nama Cleanway dan meminta Anda memasang sesuatu, menyebutkan kode, atau mematikan perlindungan, itu penipuan. Unduh Cleanway hanya dari situs ini, cleanway.ai.",
+      "never_calls_body": "Jika ada yang menelepon atau mengirim pesan atas nama Cleanway dan meminta Anda memasang sesuatu, menyebutkan kode, atau mematikan perlindungan, itu penipuan. Unduh Cleanway hanya lewat tombol di halaman cleanway.ai ini; filenya sendiri disimpan di halaman Cleanway di GitHub.",
       "links_privacy": "Kebijakan privasi",
       "links_support": "Bantuan dan dukungan"
     },
@@ -2699,10 +2709,10 @@
       "brand": "Cleanway",
       "badge": "Untuk tim",
       "title": "Perlindungan dari penipuan untuk ponsel dan browser tim Anda",
-      "subtitle": "Cleanway memblokir situs penipuan dan phishing yang dikenal di ponsel Android dan memperingatkan tentang situs itu di browser. Cleanway menghitung perangkat, bukan orang, jadi tim kecil hanya membayar perangkat yang dilindunginya.",
+      "subtitle": "Cleanway memblokir situs penipuan dan phishing yang dikenal di ponsel Android dan, di komputer, di browser melalui Cleanway DNS. Cleanway menghitung perangkat, bukan orang, jadi tim kecil hanya membayar perangkat yang dilindunginya.",
       "how_heading": "Cara kerjanya untuk tim",
       "how_items": [
-        "Setiap orang memasang aplikasi Cleanway di ponsel Android-nya atau ekstensi di browser-nya.",
+        "Setiap orang memasang aplikasi Cleanway di ponsel Android-nya. Di komputer, browser bisa memakai Cleanway DNS; ekstensi browser segera hadir.",
         "Memblokir situs penipuan yang dikenal itu gratis di setiap perangkat, tanpa akun dan tanpa batas.",
         "Paket berbayar menambahkan pemeriksaan detail tautan dan pesan tanpa batas. Satu akun mencakup beberapa perangkat, dan Anda bisa menambah lagi.",
         "Di akun Anda di cleanway.ai/account, Anda melihat setiap perangkat dan bisa melepaskan perangkat yang tidak dipakai lagi."
@@ -2714,7 +2724,108 @@
       "contact_live": "Jika Anda ingin melindungi banyak perangkat, atau memerlukan faktur, tulis kepada kami:",
       "contact_not_live": "Kotak surat kami untuk sementara tidak berfungsi, jadi saat ini kami tidak bisa menerima permintaan lewat email. Sementara itu, gunakan paket di halaman Harga; alamat kami akan muncul lagi di halaman ini begitu berfungsi.",
       "honest_heading": "Yang tidak dilakukan Cleanway",
-      "honest_body": "Cleanway bukan paket keamanan korporat: tidak ada konsol admin, single sign-on, kebijakan terpusat, atau pelatihan phishing. Cleanway tidak melihat aktivitas browsing, pesan, atau kata sandi tim Anda. Tidak ada alat yang bisa menangkap setiap situs penipuan baru, jadi tetap pegang aturan biasa: jangan pernah membagikan kode dari SMS, dan pastikan permintaan pembayaran yang mendesak lewat telepon."
+      "honest_body": "Cleanway bukan paket keamanan korporat: tidak ada konsol admin, single sign-on, kebijakan terpusat, atau pelatihan phishing. Cleanway tidak melihat aktivitas browsing, pesan, atau kata sandi tim Anda. Tidak ada alat yang bisa menangkap setiap situs penipuan baru, jadi tetap pegang aturan biasa: jangan pernah membagikan kode dari SMS, dan pastikan permintaan pembayaran yang mendesak lewat telepon.",
+      "free": {
+        "meta_description": "Lindungi ponsel dan komputer tim Anda dari situs penipuan dan phishing. Di negara Anda Cleanway gratis: saat ini tidak ada paket berbayar.",
+        "subtitle": "Cleanway memblokir situs penipuan dan phishing yang dikenal di ponsel Android dan, di komputer, di browser melalui Cleanway DNS. Di negara Anda, Cleanway gratis untuk tim seperti untuk siapa pun: saat ini tidak ada paket berbayar.",
+        "how_items": [
+          "Setiap orang memasang aplikasi Cleanway di ponsel Android-nya. Di komputer, browser bisa memakai Cleanway DNS; ekstensi browser segera hadir.",
+          "Memblokir situs penipuan yang dikenal itu gratis di setiap perangkat, tanpa akun dan tanpa batas.",
+          "Memeriksa tautan dan pesan juga gratis dan tidak perlu akun.",
+          "Jika Anda membuat akun, di cleanway.ai/account Anda melihat setiap perangkat dan bisa melepaskan perangkat yang tidak dipakai lagi."
+        ],
+        "pricing_body": "Saat ini tidak ada paket berbayar di negara Anda, baik untuk tim maupun siapa pun. Halaman Harga menjelaskan apa saja yang termasuk.",
+        "pricing_cta": "Apa yang termasuk"
+      },
+      "operator": {
+        "meta_description": "Lindungi ponsel tim Anda dari situs penipuan dan phishing. Pemblokiran berdasarkan daftar berjalan tanpa bayar; langganan untuk pemeriksaan detail ditagihkan ke pulsa ponsel.",
+        "subtitle": "Cleanway memblokir situs penipuan dan phishing yang dikenal di ponsel Android dan, di komputer, di browser melalui Cleanway DNS. Pemblokiran berdasarkan daftar berjalan tanpa bayar; langganan menghapus batas pemeriksaan detail.",
+        "how_items": [
+          "Setiap orang memasang aplikasi Cleanway di ponsel Android-nya. Di komputer, browser bisa memakai Cleanway DNS; ekstensi browser segera hadir.",
+          "Pemblokiran situs penipuan yang dikenal berjalan di setiap perangkat tanpa bayar, tanpa akun, dan tanpa batas.",
+          "Langganan menghapus batas pemeriksaan detail tautan dan pesan. Langganan diaktifkan di aplikasi pada ponsel dan ditagihkan ke pulsa nomor itu; satu langganan mencakup beberapa perangkat dalam satu akun.",
+          "Di akun Anda di cleanway.ai/account, Anda melihat setiap perangkat dan bisa melepaskan perangkat yang tidak dipakai lagi."
+        ],
+        "pricing_body": "Tim berlangganan paket yang sama seperti siapa pun: diaktifkan di aplikasi Cleanway dan ditagihkan ke pulsa ponsel. Harga dan ketentuannya ada di halaman Harga."
+      }
+    },
+    "ref": {
+      "meta_title": "Teman Anda mengundang Anda ke Cleanway",
+      "meta_description": "Cleanway memblokir situs penipuan dan phishing yang dikenal. Pemblokiran tidak dipungut biaya dan tidak perlu akun.",
+      "heading": "Teman Anda mengundang Anda ke Cleanway",
+      "body": "Cleanway memblokir situs penipuan dan phishing yang dikenal di semua aplikasi pada ponsel Android dan memeriksa tautan yang Anda ketuk. Di iPhone, Mac, dan Windows, filter DNS Cleanway juga memblokir situs penipuan yang dikenal. Pemblokiran tidak dipungut biaya dan tidak perlu akun.",
+      "code_label": "Kode undangan",
+      "code_note": "Tidak ada yang perlu dimasukkan: perlindungan berjalan tanpa kode ini."
+    },
+    "family_join": {
+      "meta_title": "Gabung ke keluarga di Cleanway",
+      "meta_description": "Anda diundang ke grup keluarga Cleanway. Pasang Cleanway lalu gabung dengan kode dan PIN dari undangan.",
+      "incomplete_title": "Tautan undangan tampaknya tidak lengkap",
+      "incomplete_body": "Tautan yang Anda buka tidak berisi kode undangan. Minta orang yang mengundang Anda untuk mengirim yang baru. Tautannya seharusnya seperti ini:",
+      "back_home": "Kembali ke Cleanway",
+      "title": "Anda diundang ke keluarga di Cleanway",
+      "intro": "Cleanway melindungi keluarga dari situs penipuan dan phishing. Orang yang mengundang Anda ingin Anda bergabung di lingkaran keluarga pribadinya, agar kalian bisa saling memperingatkan saat penipuan diblokir.",
+      "code_label": "Kode",
+      "pin_label": "PIN",
+      "how_title": "Cara bergabung",
+      "ios_soon": "Aplikasi Cleanway untuk iPhone segera hadir. Sementara itu Anda bisa bergabung dari ponsel Android: buka tautan ini di sana.",
+      "android_step1": "Pasang aplikasi Cleanway untuk Android.",
+      "android_link": "Halaman unduhan →",
+      "app_step2": "Buka Cleanway → Pengaturan → Ruang Keluarga, masuk ke akun, lalu ketuk “Gabung dengan kode”.",
+      "app_step3": "Ketik kode dan PIN yang tampil di atas.",
+      "desktop_soon": "Di komputer, Anda akan bergabung lewat ekstensi browser Cleanway, yang segera hadir.",
+      "desktop_phone": "Hari ini Anda sudah bisa bergabung dari ponsel Android: buka tautan ini di sana.",
+      "copy_link": "Salin tautan undangan",
+      "copied": "Tersalin ✓",
+      "privacy_note": "Kode dan PIN ada di bagian tautan setelah “#”, yang tidak pernah dikirim browser ke server, jadi halaman ini tidak meneruskannya ke Cleanway. Undangan kedaluwarsa 7 hari setelah dibuat."
+    },
+    "audit": {
+      "meta_title": "Audit privasi {domain} — Cleanway",
+      "meta_description": "Audit privasi {domain}: pelacak, cookie, pengumpulan data, dan sidik jari browser, dengan nilai A sampai F. Audit ini akan berjalan di ekstensi browser Cleanway, di perangkat Anda.",
+      "og_title": "Audit privasi {domain}",
+      "og_description": "Berapa banyak data yang dikumpulkan {domain}? Audit privasi Cleanway menilai pelacak, cookie, dan sidik jari browser dari A sampai F.",
+      "heading": "Audit privasi: {domain}",
+      "intro": "Audit privasi adalah bagian dari ekstensi browser Cleanway, yang segera hadir.",
+      "grade_hidden": "Nilai: belum tersedia",
+      "teaser_body": "Ekstensi akan menampilkan pelacak, cookie, formulir pengumpulan data, dan sidik jari browser yang ditemukannya di {domain}.",
+      "label_trackers": "Pelacak",
+      "label_cookies": "Cookie",
+      "label_fields": "Kolom data",
+      "label_fingerprinting": "Sidik jari browser",
+      "on_device_note": "Audit privasi berjalan di perangkat Anda, di dalam ekstensi browser: isi halaman tidak dikirim ke Cleanway.",
+      "fallback_title": "Audit privasi — Cleanway",
+      "grade_meta_title": "{domain} — nilai privasi {grade} · Cleanway",
+      "grade_meta_description": "{domain} mendapat nilai privasi {grade}. {label}. {description}",
+      "grade_og_title": "Nilai {grade}: {domain}",
+      "grade_eyebrow": "Audit privasi",
+      "grade_rating_name": "Nilai {grade}",
+      "want_title": "Ingin menilai situs mana pun?",
+      "want_body": "Audit privasi akan hadir bersama ekstensi browser Cleanway, yang segera tersedia. Nilainya dihitung di perangkat Anda: isi halaman tidak dikirim ke Cleanway.",
+      "scale_title": "Cara kerja nilai",
+      "footer_note": "Audit privasi berjalan di perangkat Anda. Isi halaman tidak pernah dikirim ke Cleanway.",
+      "privacy_link": "Kebijakan privasi",
+      "grades": {
+        "A": {
+          "label": "Privasi sangat baik",
+          "description": "Pelacakan minimal. Tanpa sidik jari browser. Sedikit atau tanpa pelacak pihak ketiga."
+        },
+        "B": {
+          "label": "Privasi baik",
+          "description": "Ada pelacakan, tetapi sebagian besar milik situs sendiri. Jejak yang wajar untuk pemakaian sehari-hari."
+        },
+        "C": {
+          "label": "Privasi sedang",
+          "description": "Jumlah pelacak sedang. Paket analitik dan iklan yang umum. Ada baiknya memeriksa apa yang dikumpulkan."
+        },
+        "D": {
+          "label": "Pelacakan berat",
+          "description": "Banyak pelacak pihak ketiga. Kemungkinan ada upaya sidik jari browser. Batasi data pribadi Anda di sini."
+        },
+        "F": {
+          "label": "Privasi buruk",
+          "description": "Terdeteksi pelacakan agresif, sidik jari browser, atau pola pengumpulan data yang mencurigakan."
+        }
+      }
     }
   },
   "email": {

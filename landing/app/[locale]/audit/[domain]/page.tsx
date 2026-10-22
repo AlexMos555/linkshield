@@ -8,6 +8,7 @@ import { routing, type Locale } from "@/i18n/routing";
 import { hostFromSegment } from "@/lib/check-host";
 import { displayHost } from "@/lib/display-host";
 import { safeJsonLd } from "@/lib/json-ld";
+import { localePath } from "@/lib/locale-path";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -36,8 +37,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   for (const loc of routing.locales) languages[loc] = urlFor(loc as Locale, host);
   languages["x-default"] = urlFor(routing.defaultLocale as Locale, host);
 
-  const title = `${decoded} Privacy Audit — Cleanway`;
-  const description = `Privacy report for ${decoded}. See trackers, cookies, data collection, and fingerprinting. Grade A through F, runs 100% on your device.`;
+  const t = await getTranslations({ locale: safeLocale, namespace: "Audit" });
+  const title = t("meta_title", { domain: decoded });
+  const description = t("meta_description", { domain: decoded });
+  const ogTitle = t("og_title", { domain: decoded });
+  const ogDescription = t("og_description", { domain: decoded });
 
   return {
     title,
@@ -45,20 +49,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     metadataBase: new URL(SITE_URL),
     alternates: { canonical, languages },
     openGraph: {
-      title: `${decoded} Privacy Audit`,
-      description: `How much data does ${decoded} collect? Cleanway grades trackers, cookies, fingerprinting A-F.`,
+      title: ogTitle,
+      description: ogDescription,
       url: canonical,
       siteName: "Cleanway",
       type: "article",
+      locale: safeLocale,
     },
     twitter: {
       card: "summary_large_image",
-      title: `${decoded} Privacy Audit`,
-      description: `How much data does ${decoded} collect? Cleanway grades trackers, cookies, fingerprinting A-F.`,
+      title: ogTitle,
+      description: ogDescription,
       site: "@cleanwayai",
     },
-    // Never indexed: the page is a teaser ("Grade: Hidden") with the same
-    // English text for every site and every locale — thousands of thin,
+    // Never indexed: the page is a teaser (no grade until the extension
+    // ships) with the same text for every site — thousands of thin,
     // near-duplicate pages. Links on it are still followed.
     robots: { index: false, follow: true },
   };
@@ -77,6 +82,8 @@ export default async function AuditPage({ params }: Props) {
   const canonical = urlFor(safeLocale, host);
   // Android-only label for the primary install CTA (see PrimaryInstallLink).
   const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
+  const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
+  const t = await getTranslations({ locale: safeLocale, namespace: "Audit" });
 
   // JSON-LD: WebPage describing the audit + the Cleanway WebSite
   const jsonLd = {
@@ -86,8 +93,8 @@ export default async function AuditPage({ params }: Props) {
         "@type": "WebPage",
         "@id": `${canonical}#webpage`,
         url: canonical,
-        name: `${d} Privacy Audit — Cleanway`,
-        description: `Privacy practices analysis for ${d}.`,
+        name: t("meta_title", { domain: d }),
+        description: t("og_description", { domain: d }),
         inLanguage: safeLocale,
         isPartOf: { "@id": `${SITE_URL}#website` },
       },
@@ -112,7 +119,7 @@ export default async function AuditPage({ params }: Props) {
     >
       <nav style={{ background: "#0f172af0", borderBottom: "1px solid #1e293b", padding: "14px 24px" }}>
         <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <a href="/" style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>
+          <a href={localePath(safeLocale, "/")} style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>
             Cleanway
           </a>
           <PrimaryInstallLink
@@ -133,28 +140,27 @@ export default async function AuditPage({ params }: Props) {
       </nav>
 
       <main style={{ maxWidth: 600, margin: "0 auto", padding: "48px 24px", textAlign: "center" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "#f8fafc", marginBottom: 8 }}>
-          Privacy Audit: {d}
+        <h1 style={{ fontSize: 28, fontWeight: 800, color: "#f8fafc", marginBottom: 8, wordBreak: "break-word" }}>
+          {t("heading", { domain: d })}
         </h1>
-        <p style={{ color: "#94a3b8", marginBottom: 32 }}>
-          Install Cleanway to see the full privacy report for this site.
-        </p>
+        {/* The audit lives in the browser extension, and no extension is
+            published yet (lib/install-urls.ts): say so, instead of "install
+            Cleanway to see the full report" next to a button that leads to
+            the DNS page or the Android app, neither of which has it. */}
+        <p style={{ color: "#94a3b8", marginBottom: 32 }}>{t("intro")}</p>
 
         {/* Teaser Card */}
         <div style={{ background: "#1e293b", borderRadius: 16, padding: 32, marginBottom: 24, border: "1px solid #334155" }}>
-          <div style={{ fontSize: 64, fontWeight: 800, color: "#8796ab", marginBottom: 8 }}>?</div>
-          <p style={{ fontSize: 18, color: "#f8fafc", fontWeight: 600, marginBottom: 4 }}>Grade: Hidden</p>
-          <p style={{ fontSize: 14, color: "#94a3b8" }}>
-            Install the extension to see trackers, cookies, data collection forms,
-            and fingerprinting for {d}.
-          </p>
+          <div aria-hidden="true" style={{ fontSize: 64, fontWeight: 800, color: "#8796ab", marginBottom: 8 }}>?</div>
+          <p style={{ fontSize: 18, color: "#f8fafc", fontWeight: 600, marginBottom: 4 }}>{t("grade_hidden")}</p>
+          <p style={{ fontSize: 14, color: "#94a3b8" }}>{t("teaser_body", { domain: d })}</p>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 20 }}>
             {[
-              { label: "Trackers", value: "?" },
-              { label: "Cookies", value: "?" },
-              { label: "Data Fields", value: "?" },
-              { label: "Fingerprinting", value: "?" },
+              { label: t("label_trackers"), value: "?" },
+              { label: t("label_cookies"), value: "?" },
+              { label: t("label_fields"), value: "?" },
+              { label: t("label_fingerprinting"), value: "?" },
             ].map((item, i) => (
               <div key={i} style={{ background: "#111827", borderRadius: 10, padding: 12, textAlign: "center" }}>
                 <div style={{ fontSize: 24, fontWeight: 800, color: "#8796ab" }}>{item.value}</div>
@@ -165,7 +171,7 @@ export default async function AuditPage({ params }: Props) {
         </div>
 
         <PrimaryInstallLink
-          androidLabel={nav("install_android")}
+          androidLabel={hero("cta_android")}
           style={{
             display: "inline-block",
             background: "#22c55e",
@@ -177,7 +183,7 @@ export default async function AuditPage({ params }: Props) {
             textDecoration: "none",
           }}
         >
-          Install Cleanway to See Full Report
+          {hero("cta_primary")}
         </PrimaryInstallLink>
 
         <div style={{ marginTop: 24 }}>
@@ -187,9 +193,7 @@ export default async function AuditPage({ params }: Props) {
           <InstallButtons platforms={["ios", "android"]} size="sm" />
         </div>
 
-        <p style={{ fontSize: 12, color: "#8796ab", marginTop: 20 }}>
-          Privacy Audit runs 100% on your device. No data sent to our servers.
-        </p>
+        <p style={{ fontSize: 12, color: "#8796ab", marginTop: 20 }}>{t("on_device_note")}</p>
 
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
       </main>

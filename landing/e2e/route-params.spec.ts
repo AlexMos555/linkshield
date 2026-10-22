@@ -34,7 +34,7 @@ test("a real site's audit page still renders, with its JSON-LD", async ({ reques
   expect(response.status()).toBe(200);
   const body = await response.text();
   expect(body).toContain("application/ld+json");
-  expect(body).toContain("example.com Privacy Audit");
+  expect(body).toContain("example.com privacy audit");
 });
 
 test("a real site's grade page still renders", async ({ request }) => {

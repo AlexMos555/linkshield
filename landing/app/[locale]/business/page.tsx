@@ -10,12 +10,22 @@
  * page carries no price at all (scripts/check-landing-claims.py forbids a
  * hand-written one in landing.business) and says plainly what Cleanway does
  * not do for a company.
+ *
+ * It sells only what /pricing sells to the same reader. /ru/business used to
+ * describe "the paid plan, priced per device" while /ru/pricing said there
+ * are no paid plans in Russia. The copy now follows the same pricing variant
+ * as the home page's teaser (lib/billing-config.ts, by locale, so the page
+ * stays static): the device plan where it is sold, "free, no paid plans" where
+ * it is not, and the subscription billed to the phone account once the
+ * operator billing is switched on (Business.free.* / Business.operator.*).
  */
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { routing, type Locale } from "@/i18n/routing";
+import { pricingVariantFor } from "@/lib/billing-config";
+import type { PricingVariant } from "@/lib/billing";
 import { localePath } from "@/lib/locale-path";
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_LIVE } from "@/lib/support";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo";
@@ -32,9 +42,15 @@ function resolveLocale(locale: string): Locale {
 
 type Props = { params: Promise<{ locale: string }> };
 
+/** Key prefix of the copy for a pricing variant: the device plan's is the base. */
+function copyPrefix(variant: PricingVariant): "" | "free." | "operator." {
+  return variant === "stripe" ? "" : `${variant}.`;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const safeLocale = resolveLocale((await params).locale);
   const t = await getTranslations({ locale: safeLocale, namespace: "Business" });
+  const copy = copyPrefix(pricingVariantFor({ locale: safeLocale }));
   const canonical = urlFor(safeLocale, "/business");
 
   const languages: Record<string, string> = {};
@@ -42,7 +58,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   languages["x-default"] = urlFor(routing.defaultLocale, "/business");
 
   const title = t("meta_title");
-  const description = t("meta_description");
+  const description = t(`${copy}meta_description`);
 
   return {
     title,
@@ -58,7 +74,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BusinessPage({ params }: Props) {
   const locale = resolveLocale((await params).locale);
   const t = await getTranslations({ locale, namespace: "Business" });
-  const how = t.raw("how_items") as string[];
+  const variant = pricingVariantFor({ locale });
+  const copy = copyPrefix(variant);
+  const how = t.raw(`${copy}how_items`) as string[];
 
   return (
     <div style={page}>
@@ -74,7 +92,7 @@ export default async function BusinessPage({ params }: Props) {
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <div style={badge}>{t("badge")}</div>
           <h1 style={{ fontSize: 36, fontWeight: 800, color: "#f8fafc", lineHeight: 1.2, margin: "0 0 16px" }}>{t("title")}</h1>
-          <p style={{ ...body, fontSize: 18, maxWidth: 640, margin: "0 auto" }}>{t("subtitle")}</p>
+          <p style={{ ...body, fontSize: 18, maxWidth: 640, margin: "0 auto" }}>{t(`${copy}subtitle`)}</p>
         </div>
 
         <section style={card} aria-labelledby="how-h">
@@ -86,8 +104,10 @@ export default async function BusinessPage({ params }: Props) {
 
         <section style={card} aria-labelledby="price-h" data-testid="business-pricing">
           <h2 id="price-h" style={h2}>{t("pricing_heading")}</h2>
-          <p style={body}>{t("pricing_body")}</p>
-          <a href={localePath(locale, "/pricing")} style={button}>{t("pricing_cta")}</a>
+          <p style={body}>{t(`${copy}pricing_body`)}</p>
+          <a href={localePath(locale, "/pricing")} style={button}>
+            {variant === "free" ? t("free.pricing_cta") : t("pricing_cta")}
+          </a>
         </section>
 
         <section style={card} aria-labelledby="contact-h">

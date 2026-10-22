@@ -382,11 +382,19 @@ BILLING_SCOPES: tuple[str, ...] = (
     "landing.terms.billing",
     "landing.privacy_policy.billing",
     "landing.pricing_teaser.operator",
+    # /business with the flag on (2026-10-22: it used to sell the world's
+    # per-device plan on /ru/business while /ru/pricing sold nothing).
+    "landing.business.operator",
 )
 # The pages that sell: the operator bills the phone account in rubles, so
 # Stripe and dollar prices have no place on them (the legal sections may still
 # describe Stripe for other countries).
-BILLING_SALES_SCOPES: tuple[str, ...] = ("landing.billing", "landing.cancel", "landing.pricing_teaser.operator")
+BILLING_SALES_SCOPES: tuple[str, ...] = (
+    "landing.billing",
+    "landing.cancel",
+    "landing.pricing_teaser.operator",
+    "landing.business.operator",
+)
 
 FREE_WORDS: Mapping[str, str] = {
     "en": r"\bfree\b",
@@ -429,6 +437,7 @@ BILLING_ON_EXEMPT: tuple[str, ...] = (
     "landing.pricing_teaser.free_only",
     "landing.pricing_teaser.free_body_with_plans",
     "landing.pricing_teaser.plans_link",
+    "landing.business.free",
 )
 
 
