@@ -71,8 +71,29 @@ GitHub менять в этом PR нельзя). Если режим не `off`
    `retention.pass_complete` с полями `deleted`.
 4. По желанию — применить миграцию `supabase/migrations/017_audit_log_retention.sql`
    (индекс по `audit_log.created_at` ускоряет очистку журнала; функция из
-   неё больше не нужна).
+   неё больше не нужна). Только версию после 2026-10-22: в прежней функция
+   `purge_old_audit_log` оставалась доступной анонимам через `/rest/v1/rpc`
+   (любой мог очистить журнал). Если 017 уже применяли раньше — выполнить в
+   SQL Editor:
+   `REVOKE ALL ON FUNCTION public.purge_old_audit_log(integer) FROM PUBLIC, anon, authenticated;`
 5. Проверить в Cloudflare R2, что у бакета `cleanway-db-backups` есть
    правило «удалять через 35 дней».
 
 Откат: `RETENTION_PURGE=off` — цикл больше не запускается.
+
+## Проверка без логов
+
+`GET https://api.cleanway.ai/health/deep` → `components.retention`:
+
+- `mode` — что сейчас стоит в `RETENTION_PURGE` (`off` / `dry_run` / `on`);
+- `last_ok_at`, `last_ok_mode` — когда проход последний раз прошёл без ошибок;
+- `last_pass_at`, `last_pass_failed` — последний проход и какие правила в нём
+  упали (`accounts` — удаление аккаунтов).
+
+`ok: true` только в режиме `on`, если успешный проход был не дольше ~13 ч
+назад; иначе `error`: `off`, `dry_run`, `no_recent_pass` или
+`redis_unavailable`. Это только для глаз: в `warnings` компонент не входит и
+монитор из-за него не пишет. Чисел там нет (эндпоинт публичный) — они в
+строке лога `retention.pass_complete`: с 2026-10-22 JSON-лог сохраняет
+`tables`, `accounts_would_delete`, `accounts_deleted` и `failed` (раньше
+выбрасывал).
