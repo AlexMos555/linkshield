@@ -81,13 +81,23 @@ class _SupabaseJWKClient(jwt.PyJWKClient):
     def fetch_data(self) -> Any:
         try:
             data = self._as_jwk_set_payload(self._download())
+            if self.jwk_set_cache is not None:
+                # Parses the set: raises PyJWKSetError when no key is usable.
+                self.jwk_set_cache.put(data)
         except jwt.PyJWKClientConnectionError:
             if self._last_good is None:
                 raise
             logger.warning("jwks_fetch_failed_serving_cached_keys")
             return self._last_good
-        if self.jwk_set_cache is not None:
-            self.jwk_set_cache.put(data)
+        except (ValueError, jwt.PyJWKClientError, jwt.PyJWKSetError) as e:
+            # A 200 that is not a usable key set (a proxy's HTML error page,
+            # a truncated or empty document, a bare JSON array) is an outage
+            # too: keep the last good keys, else 503 — never a 500 (invalid
+            # JSON) or a 401 that would sign every user out.
+            if self._last_good is None:
+                raise jwt.PyJWKSetError(f"unusable JWKS response: {type(e).__name__}") from e
+            logger.warning("jwks_malformed_serving_cached_keys", extra={"error": type(e).__name__})
+            return self._last_good
         self._last_successful_fetch = time.monotonic()
         self._last_good = data
         return data
