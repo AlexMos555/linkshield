@@ -41,6 +41,7 @@ from api.config import get_settings
 from api.services import licensed_intel, paid_budget, security_alerts
 from api.services import verdict_basis as vb
 from api.services.analysis_budget import MIN_STEP_S, Deadline, run_within_budget
+from api.services.tls_contexts import client_tls_context
 from api.services.hosting_platforms import is_user_content_service
 from api.services.scoring import (
     calculate_score, calculate_confidence, calculate_confidence_pct, is_hosting_platform_site,
@@ -605,7 +606,7 @@ from api.services.safe_browsing import check_safe_browsing  # noqa: E402,F401
 # ═══════════════════════════════════════════════════════════════
 
 async def check_phishtank(domain: str) -> bool:
-    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.post(
             "https://checkurl.phishtank.com/checkurl/",
             data={"url": f"http://{domain}/", "format": "json", "app_key": get_settings().phishtank_api_key or ""},
@@ -626,7 +627,7 @@ async def check_urlhaus(domain: str) -> bool:
     LICENSED_INTEL=all. Since 2026-10-21 abuse.ch answers 401 without a
     personal Auth-Key: a non-2xx answer raises (a failed, unmeasured check),
     never reads as "not listed"."""
-    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.post(
             "https://urlhaus-api.abuse.ch/v1/host/",
             data={"host": domain},
@@ -646,7 +647,7 @@ async def check_urlhaus(domain: str) -> bool:
 # ═══════════════════════════════════════════════════════════════
 
 async def check_whois_age(domain: str) -> dict:
-    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.get(f"https://rdap.org/domain/{domain}")
         if resp.status_code != 200:
             return {}
@@ -691,7 +692,7 @@ _PHISHSTATS_PAGE = 20
 
 async def check_phishstats(domain: str) -> bool:
     """Check domain against PhishStats API (free, no key, 20 req/min)."""
-    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.get(
             "https://phishstats.info:2096/api/phishing"
             f"?_where=(url,like,~{domain}~)&_size={_PHISHSTATS_PAGE}"
@@ -729,7 +730,7 @@ def _without_www(host: str) -> str:
 async def check_threatfox(domain: str) -> bool:
     """Check domain against ThreatFox IOC database. Only consulted with
     LICENSED_INTEL=all; a non-2xx answer (401 without a key) raises."""
-    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.post(
             "https://threatfox-api.abuse.ch/api/v1/",
             json={"query": "search_ioc", "search_term": domain},
@@ -755,7 +756,7 @@ async def check_malware_bazaar(domain: str) -> bool:
     when MalwareBazaar has at least one malware sample tied to this
     host (delivery URL, payload download, or C2 callback).
     """
-    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.post(
             "https://mb-api.abuse.ch/api/v1/",
             data={"query": "get_taginfo", "tag": domain, "limit": "1"},
@@ -804,7 +805,7 @@ async def _refresh_feodo_cache() -> None:
     now = _time.time()
     if now - _FEODO_CACHE["fetched_at"] < _FEODO_TTL_SECONDS:
         return
-    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.get(_FEODO_URL)
         if resp.status_code != 200:
             return
@@ -860,7 +861,7 @@ async def check_alienvault_otx(domain: str) -> dict:
     Check domain reputation via AlienVault OTX (free, no key for basic lookup).
     Returns reputation data including pulse count (community threat reports).
     """
-    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.get(
             f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/general",
             headers={"Accept": "application/json"},
@@ -895,7 +896,7 @@ async def check_ipqualityscore(domain: str) -> dict:
     if not await paid_budget.take("ipqs", settings.ipqs_daily_budget):
         return {}
 
-    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S) as client:
+    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.get(
             f"https://ipqualityscore.com/api/json/url/{ipqs_key}/{domain}",
         )

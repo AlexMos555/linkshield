@@ -21,6 +21,8 @@ from typing import Optional
 
 import httpx
 
+from api.services.tls_contexts import client_tls_context
+
 logger = logging.getLogger(__name__)
 
 CLOUDFLARE_FAMILIES_URL = "https://family.cloudflare-dns.com/dns-query"
@@ -29,7 +31,43 @@ CLOUDFLARE_FAMILIES_URL = "https://family.cloudflare-dns.com/dns-query"
 CLOUDFLARE_UNFILTERED_URL = "https://cloudflare-dns.com/dns-query"
 TIMEOUT_S = 3.0
 _NXDOMAIN = 3
+# Connections kept open to Cloudflare per process. Every public-check response
+# asks Families (and sometimes the unfiltered resolver), so a client per call
+# paid a new TLS context (~45 ms CPU, see tls_contexts) and a TCP+TLS
+# handshake each time.
+_MAX_CONNECTIONS = 16
 _SINKHOLE = {"0.0.0.0", "::"}  # nosec B104 — sinkhole-IP set, not a bind address
+
+
+_client: Optional[httpx.AsyncClient] = None
+_client_loop: object = None
+
+
+def _shared_client() -> httpx.AsyncClient:
+    """One pooled keep-alive client per event loop (a uvicorn worker has one;
+    each asyncio.run in a test gets a fresh client)."""
+    global _client, _client_loop
+    loop = asyncio.get_running_loop()
+    if _client is None or _client_loop is not loop:
+        _client = httpx.AsyncClient(
+            timeout=TIMEOUT_S,
+            verify=client_tls_context(),
+            limits=httpx.Limits(max_connections=_MAX_CONNECTIONS,
+                                max_keepalive_connections=_MAX_CONNECTIONS, keepalive_expiry=60.0),
+        )
+        _client_loop = loop
+    return _client
+
+
+async def close_client() -> None:
+    """Release the pooled connections (app shutdown)."""
+    global _client, _client_loop
+    client, _client, _client_loop = _client, None, None
+    if client is not None:
+        try:
+            await client.aclose()
+        except Exception:  # noqa: BLE001
+            logger.debug("competitor client close failed", exc_info=True)
 
 
 @dataclass
@@ -86,35 +124,35 @@ async def check_cloudflare_families(
         out.detail = "bad_domain"
         return out
     try:
-        async with httpx.AsyncClient(timeout=TIMEOUT_S) as client:
-            resp = await _doh_get(client, CLOUDFLARE_FAMILIES_URL, domain)
-            if resp.status_code != 200:
-                out.detail = f"status={resp.status_code}"
-                return out
-            data = resp.json()
-            status = int(data.get("Status", 0))
-            answers = data.get("Answer", []) or []
-            ip_blocked = any(
-                (a.get("data") or "").strip() in _SINKHOLE
-                for a in answers if a.get("type") in (1, 28)
-            )
-            if ip_blocked:
+        client = _shared_client()
+        resp = await _doh_get(client, CLOUDFLARE_FAMILIES_URL, domain)
+        if resp.status_code != 200:
+            out.detail = f"status={resp.status_code}"
+            return out
+        data = resp.json()
+        status = int(data.get("Status", 0))
+        answers = data.get("Answer", []) or []
+        ip_blocked = any(
+            (a.get("data") or "").strip() in _SINKHOLE
+            for a in answers if a.get("type") in (1, 28)
+        )
+        if ip_blocked:
+            out.verdict, out.detail = "dangerous", "blocked"
+        elif status == _NXDOMAIN:
+            exists = domain_exists
+            if exists is None:
+                everywhere = await _nxdomain_everywhere(client, domain)
+                exists = None if everywhere is None else not everywhere
+            if exists is False:
+                out.verdict, out.detail = "not_found", "nxdomain"
+            elif exists is True:
                 out.verdict, out.detail = "dangerous", "blocked"
-            elif status == _NXDOMAIN:
-                exists = domain_exists
-                if exists is None:
-                    everywhere = await _nxdomain_everywhere(client, domain)
-                    exists = None if everywhere is None else not everywhere
-                if exists is False:
-                    out.verdict, out.detail = "not_found", "nxdomain"
-                elif exists is True:
-                    out.verdict, out.detail = "dangerous", "blocked"
-                else:
-                    out.detail = "nxdomain_unverified"
-            elif status == 0 and answers:
-                out.verdict, out.detail = "safe", "resolved"
             else:
-                out.detail = f"status={status}"
+                out.detail = "nxdomain_unverified"
+        elif status == 0 and answers:
+            out.verdict, out.detail = "safe", "resolved"
+        else:
+            out.detail = f"status={status}"
     except Exception as exc:
         logger.debug("cloudflare_families check failed for %s: %s", domain, exc)
         out.detail = f"err:{type(exc).__name__}"

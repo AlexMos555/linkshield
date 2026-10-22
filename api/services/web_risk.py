@@ -42,6 +42,7 @@ import httpx
 from api.services.safe_browsing import (
     NEGATIVE_CACHE_TTL, POSITIVE_CACHE_TTL, CheckResult, CheckStatus, ThreatMatch, _cache_get, _cache_set,
 )
+from api.services.tls_contexts import client_tls_context
 
 logger = logging.getLogger("cleanway.web_risk")
 
@@ -105,7 +106,7 @@ async def _request_with_retry(domain: str, api_key: str, timeout: float) -> dict
     last_exc: Optional[Exception] = None
     for attempt in range(WEB_RISK_RETRY_COUNT + 1):
         try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
+            async with httpx.AsyncClient(timeout=timeout, verify=client_tls_context()) as client:
                 resp = await client.get(WEB_RISK_API_URL, params=_params(domain),
                                         headers={"x-goog-api-key": api_key})
                 resp.raise_for_status()

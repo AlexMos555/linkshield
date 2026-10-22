@@ -122,6 +122,8 @@ async def lifespan(app: FastAPI):
     # blocklist refresher + stats logger, release the upstream connections.
     from api.routers.doh import shutdown as doh_shutdown
     await doh_shutdown()
+    from api.services.competitor_verdicts import close_client as close_competitor_client
+    await close_competitor_client()
     await close_redis()
     # The billing role's database pool (None on the api role — nothing to close).
     from api.billing.deps import close_context as close_billing_context
