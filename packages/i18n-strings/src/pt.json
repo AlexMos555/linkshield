@@ -2442,7 +2442,8 @@
           ],
           "after": [
             "Você entra em cleanway.ai com um código ou link de uso único enviado para o seu e-mail. Depois, a extensão guarda as chaves de login (tokens), o seu endereço de e-mail e o identificador da sua conta no armazenamento de extensões do navegador e os usa só para se comunicar com os nossos servidores. “Sair” nas Configurações da extensão apaga esses dados.",
-            "Seu histórico de verificações (apagado após 30 dias), os contadores e as configurações ficam no seu navegador. Remover a extensão apaga tudo o que ela guardou."
+            "Seu histórico de verificações (apagado após 30 dias), os contadores e as configurações ficam no seu navegador. Remover a extensão apaga tudo o que ela guardou.",
+            "O suplemento do Cleanway para o Outlook (ainda não publicado) verifica um e-mail só quando você toca em “Scan email”: ele envia ao nosso servidor o nome e o endereço do remetente, o endereço de resposta, o assunto, o texto e o HTML desse e-mail, e os resultados de SPF, DKIM e DMARC dos cabeçalhos. O servidor verifica o e-mail na memória e não o guarda; os nomes dos sites para os quais ele aponta são verificados como descrito na seção 5. “Report phishing” envia apenas o domínio do remetente. O suplemento lê só o e-mail aberto e não guarda nada no Outlook."
           ]
         },
         {
@@ -2534,6 +2535,7 @@
             "registro de segurança das ações da conta (com endereços IP em hash) — 2 anos;",
             "contadores semanais das contas (só números, sem nomes de sites) — 1 ano;",
             "alertas criptografados da família — até 30 dias;",
+            "denúncias de resultado errado ou de e-mail de phishing (o domínio do site ou do remetente e o ID da sua conta, se você estava conectado) — 1 ano;",
             "sua lista de dispositivos e os registros de compras — até você excluir a conta; a Stripe e as lojas de apps mantêm os próprios registros de pagamento como a lei exige;",
             "o histórico de verificações da extensão — 30 dias, no seu navegador;",
             "dados no seu celular ou no seu navegador — até você apagá-los ou remover o app ou a extensão."

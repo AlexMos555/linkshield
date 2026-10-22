@@ -2442,7 +2442,8 @@
           ],
           "after": [
             "Accedi su cleanway.ai con un codice o un link monouso inviato alla tua email. L'estensione conserva poi le sue chiavi di accesso (token), il tuo indirizzo email e l'identificativo del tuo account nella memoria delle estensioni del browser e li usa solo per comunicare con i nostri server. «Esci» nelle Impostazioni dell'estensione li cancella.",
-            "La cronologia dei controlli (cancellata dopo 30 giorni), i contatori e le impostazioni restano nel tuo browser. Rimuovere l'estensione cancella tutto ciò che aveva salvato."
+            "La cronologia dei controlli (cancellata dopo 30 giorni), i contatori e le impostazioni restano nel tuo browser. Rimuovere l'estensione cancella tutto ciò che aveva salvato.",
+            "Il componente aggiuntivo Cleanway per Outlook (non ancora pubblicato) controlla un'email solo quando premi «Scan email»: invia al nostro server il nome e l'indirizzo del mittente, l'indirizzo di risposta, l'oggetto, il testo e l'HTML di quell'email e i risultati SPF, DKIM e DMARC delle sue intestazioni. Il server la controlla in memoria e non la conserva; i nomi dei siti a cui rimanda vengono controllati come descritto nella sezione 5. «Report phishing» invia solo il dominio del mittente. Il componente legge solo l'email aperta e non conserva nulla in Outlook."
           ]
         },
         {
@@ -2534,6 +2535,7 @@
             "registro di sicurezza delle azioni sull'account (con indirizzi IP sotto forma di hash): 2 anni;",
             "contatori settimanali degli account (solo numeri, senza nomi di siti): 1 anno;",
             "avvisi di famiglia cifrati: fino a 30 giorni;",
+            "segnalazioni di un risultato errato o di un'email di phishing (il dominio del sito o del mittente e l'ID del tuo account, se avevi effettuato l'accesso): 1 anno;",
             "l'elenco dei tuoi dispositivi e le registrazioni degli acquisti: finché non elimini l'account; Stripe e gli store delle app conservano le proprie registrazioni dei pagamenti, come richiesto dalla legge;",
             "la cronologia dei controlli dell'estensione: 30 giorni, nel tuo browser;",
             "dati sul tuo telefono o nel tuo browser: finché non li cancelli o rimuovi l'app o l'estensione."

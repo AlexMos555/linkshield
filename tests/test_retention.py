@@ -5,7 +5,8 @@ Pinned here:
   - each table rule deletes exactly what the policy says is expired
     (audit_log 2 years, weekly_aggregates 1 year, family_alerts past
     expires_at / legacy rows past 30 days, family_invites past expiry or
-    redeemed more than a day ago) and nothing without a filter;
+    redeemed more than a day ago, feedback_reports 1 year) and nothing
+    without a filter;
   - dry-run counts and never deletes;
   - "off" (the default) does nothing at all;
   - one failing table doesn't stop the others and is reported;
@@ -93,8 +94,12 @@ def test_rules_match_the_policy():
         },
         "family_invites_expired": {"expires_at": f"lt.{NOW.isoformat()}"},
         "family_invites_redeemed": {"redeemed_at": f"lt.{(NOW - timedelta(days=1)).isoformat()}"},
+        # Wrong-result and phishing reports (the app, the extension, the
+        # Outlook add-in) had no end date at all; the policy now says 1 year.
+        "feedback_reports_1y": {"created_at": f"lt.{(NOW - timedelta(days=365)).isoformat()}"},
     }
     tables = {r.name: r.table for r in retention.TABLE_RULES}
+    assert tables["feedback_reports_1y"] == "feedback_reports"
     assert tables["audit_log_2y"] == "audit_log"
     assert tables["weekly_aggregates_1y"] == "weekly_aggregates"
     assert tables["family_alerts_expired"] == tables["family_alerts_legacy_30d"] == "family_alerts"
@@ -109,6 +114,7 @@ def test_windows_agree_with_the_code_that_sets_them():
     assert account_purge.GRACE_DAYS == user._DELETION_GRACE_DAYS == 30
     assert retention.AUDIT_LOG_DAYS == 730
     assert retention.WEEKLY_AGGREGATES_DAYS == 365
+    assert retention.FEEDBACK_REPORTS_DAYS == 365
 
 
 @pytest.mark.asyncio

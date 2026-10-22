@@ -891,7 +891,8 @@
         ],
         "after": [
           "Anda masuk di cleanway.ai dengan kode atau tautan sekali pakai yang dikirim ke email Anda. Setelah itu ekstensi menyimpan kunci masuknya (token), alamat email Anda, dan ID akun Anda di penyimpanan ekstensi di browser, dan hanya memakainya untuk berkomunikasi dengan server kami. “Keluar” di Pengaturan ekstensi menghapusnya.",
-          "Riwayat pemeriksaan Anda (dihapus setelah 30 hari), penghitung, dan pengaturan tetap di browser Anda. Menghapus ekstensi akan menghapus semua yang disimpannya."
+          "Riwayat pemeriksaan Anda (dihapus setelah 30 hari), penghitung, dan pengaturan tetap di browser Anda. Menghapus ekstensi akan menghapus semua yang disimpannya.",
+          "Add-in Cleanway untuk Outlook (belum diterbitkan) memeriksa email hanya saat Anda menekan “Scan email”: add-in mengirim nama dan alamat pengirim, alamat balasan, subjek, teks dan HTML email itu, serta hasil SPF, DKIM, dan DMARC dari header-nya ke server kami. Server memeriksanya di memori dan tidak menyimpannya; nama situs dari tautannya diperiksa seperti dijelaskan di bagian 5. “Report phishing” hanya mengirim domain pengirim. Add-in hanya membaca email yang sedang Anda buka dan tidak menyimpan apa pun di Outlook."
         ]
       },
       {
@@ -983,6 +984,7 @@
           "log keamanan untuk tindakan akun (dengan alamat IP dalam bentuk hash): 2 tahun;",
           "penghitung mingguan akun (hanya angka, tanpa nama situs): 1 tahun;",
           "peringatan keluarga terenkripsi: hingga 30 hari;",
+          "laporan hasil yang keliru atau email phishing (domain situs atau pengirim, dan ID akun Anda jika Anda masuk): 1 tahun;",
           "daftar perangkat dan catatan pembelian Anda: sampai Anda menghapus akun; Stripe dan toko aplikasi menyimpan catatan pembayaran mereka sendiri sesuai yang diwajibkan hukum kepada mereka;",
           "riwayat pemeriksaan ekstensi: 30 hari, di browser Anda;",
           "data di ponsel atau browser Anda: sampai Anda menghapusnya atau mencopot aplikasi atau ekstensinya."

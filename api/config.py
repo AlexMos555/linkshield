@@ -66,14 +66,18 @@ class Settings(BaseSettings):
 
     # CORS — comma-separated allowed origins.
     # Default covers cleanway web + all webmail providers the extension
-    # content-script targets. Keep in sync with:
+    # content-script targets + the Outlook add-in's own host (its task pane
+    # is a page on addin.cleanway.ai — email-plugin-outlook/manifest.xml).
+    # Keep in sync with:
     #   packages/extension-core/src/content/webmail.js  (host allowlist)
     #   extension/manifest.json                         (host_permissions)
-    # Production can override via env ALLOWED_ORIGINS="...comma-list..."
+    # Production can override via env ALLOWED_ORIGINS="...comma-list..." —
+    # an override must list the add-in host too.
     allowed_origins: str = (
         "https://cleanway.ai,"
         "https://www.cleanway.ai,"
         "https://staging.cleanway.ai,"
+        "https://addin.cleanway.ai,"
         "https://mail.google.com,"
         "https://outlook.office.com,"
         "https://outlook.live.com,"

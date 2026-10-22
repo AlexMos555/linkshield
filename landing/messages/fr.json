@@ -891,7 +891,8 @@
         ],
         "after": [
           "Vous vous connectez sur cleanway.ai avec un code ou un lien à usage unique envoyé à votre adresse e-mail. L'extension garde ensuite ses clés de connexion (jetons), votre adresse e-mail et l'identifiant de votre compte dans le stockage des extensions du navigateur, et ne les utilise que pour communiquer avec nos serveurs. « Se déconnecter » dans les Paramètres de l'extension les supprime.",
-          "Votre historique de vérifications (supprimé au bout de 30 jours), vos compteurs et vos réglages restent dans votre navigateur. Supprimer l'extension efface tout ce qu'elle avait enregistré."
+          "Votre historique de vérifications (supprimé au bout de 30 jours), vos compteurs et vos réglages restent dans votre navigateur. Supprimer l'extension efface tout ce qu'elle avait enregistré.",
+          "Le complément Cleanway pour Outlook (pas encore publié) vérifie un e-mail uniquement quand vous appuyez sur « Scan email » : il envoie à notre serveur le nom et l'adresse de l'expéditeur, l'adresse de réponse, l'objet, le texte et le HTML de cet e-mail, ainsi que les résultats SPF, DKIM et DMARC de ses en-têtes. Le serveur le vérifie en mémoire et ne le conserve pas ; les noms des sites vers lesquels il renvoie sont vérifiés comme décrit à la section 5. « Report phishing » n'envoie que le domaine de l'expéditeur. Le complément ne lit que l'e-mail ouvert et ne conserve rien dans Outlook."
         ]
       },
       {
@@ -983,6 +984,7 @@
           "journal de sécurité des actions du compte (avec adresses IP sous forme d'empreintes) — 2 ans ;",
           "compteurs hebdomadaires des comptes (uniquement des chiffres, sans noms de sites) — 1 an ;",
           "alertes familiales chiffrées — jusqu'à 30 jours ;",
+          "signalements d'un résultat erroné ou d'un e-mail d'hameçonnage (le domaine du site ou de l'expéditeur, et l'identifiant de votre compte si vous étiez connecté) — 1 an ;",
           "votre liste d'appareils et vos enregistrements d'achats — jusqu'à la suppression du compte ; Stripe et les boutiques d'applications conservent leurs propres enregistrements de paiement, comme la loi les y oblige ;",
           "l'historique de vérifications de l'extension — 30 jours, dans votre navigateur ;",
           "données sur votre téléphone ou dans votre navigateur — jusqu'à ce que vous les effaciez ou supprimiez l'appli ou l'extension."

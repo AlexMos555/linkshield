@@ -891,7 +891,8 @@
         ],
         "after": [
           "Du meldest dich auf cleanway.ai mit einem Einmal-Code oder -Link an, der an deine E-Mail-Adresse geschickt wird. Die Erweiterung bewahrt dann ihre Anmeldeschlüssel (Tokens), deine E-Mail-Adresse und deine Konto-ID im Erweiterungsspeicher des Browsers auf und nutzt sie nur für die Verbindung zu unseren Servern. „Abmelden“ in den Einstellungen der Erweiterung löscht sie.",
-          "Dein Prüfverlauf (wird nach 30 Tagen gelöscht), Zähler und Einstellungen bleiben in deinem Browser. Wenn du die Erweiterung entfernst, wird alles gelöscht, was sie gespeichert hat."
+          "Dein Prüfverlauf (wird nach 30 Tagen gelöscht), Zähler und Einstellungen bleiben in deinem Browser. Wenn du die Erweiterung entfernst, wird alles gelöscht, was sie gespeichert hat.",
+          "Das Cleanway-Add-in für Outlook (noch nicht veröffentlicht) prüft eine E-Mail nur, wenn du auf „Scan email“ tippst: Es sendet Namen und Adresse des Absenders, die Antwortadresse, den Betreff, Text und HTML dieser E-Mail sowie die SPF-, DKIM- und DMARC-Ergebnisse aus ihren Kopfzeilen an unseren Server. Der Server prüft sie im Arbeitsspeicher und speichert sie nicht; die Namen der verlinkten Seiten werden wie in Abschnitt 5 beschrieben geprüft. „Report phishing“ sendet nur die Domain des Absenders. Das Add-in liest nur die geöffnete E-Mail und speichert nichts in Outlook."
         ]
       },
       {
@@ -983,6 +984,7 @@
           "das Sicherheitsprotokoll der Kontoaktionen (mit gehashten IP-Adressen) – 2 Jahre;",
           "wöchentliche Zähler für Konten (nur Zahlen, keine Seitennamen) – 1 Jahr;",
           "verschlüsselte Familienwarnungen – bis zu 30 Tage;",
+          "Meldungen eines falschen Ergebnisses oder einer Phishing-E-Mail (die Domain der Seite oder des Absenders und deine Konto-ID, falls du angemeldet warst) – 1 Jahr;",
           "deine Geräteliste und Kaufeinträge – bis du das Konto löschst; Stripe und die App-Stores bewahren ihre eigenen Zahlungsunterlagen so auf, wie das Gesetz es von ihnen verlangt;",
           "der Prüfverlauf der Erweiterung – 30 Tage, in deinem Browser;",
           "Daten auf deinem Handy oder in deinem Browser – bis du sie löschst oder die App bzw. die Erweiterung entfernst."

@@ -15,6 +15,9 @@ and what enforces it here:
                       → family_invites_expired, family_invites_redeemed
                         (a day after redemption: the accept flow may roll
                         a redemption back within the same request)
+  feedback_reports    1 year — a reported site's or sender's domain, the
+                      kind of report, and the account ID if signed in
+                      → feedback_reports_1y
 
 Redis data carries its own TTLs and the nightly backups age out by the R2
 lifecycle rule (35 days) — nothing to do here for those.
@@ -57,6 +60,7 @@ Mode = Literal["off", "dry_run", "on"]
 
 AUDIT_LOG_DAYS = 730
 WEEKLY_AGGREGATES_DAYS = 365
+FEEDBACK_REPORTS_DAYS = 365
 FAMILY_ALERT_LEGACY_DAYS = 30  # == family.ALERT_DEFAULT_TTL_DAYS
 REDEEMED_INVITE_KEEP_DAYS = 1
 
@@ -119,6 +123,11 @@ TABLE_RULES: tuple[TableRule, ...] = (
         "family_invites_redeemed",
         "family_invites",
         lambda now: {"redeemed_at": f"lt.{_iso(now - timedelta(days=REDEEMED_INVITE_KEEP_DAYS))}"},
+    ),
+    TableRule(
+        "feedback_reports_1y",
+        "feedback_reports",
+        lambda now: {"created_at": f"lt.{_iso(now - timedelta(days=FEEDBACK_REPORTS_DAYS))}"},
     ),
 )
 

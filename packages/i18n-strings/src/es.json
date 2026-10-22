@@ -2442,7 +2442,8 @@
           ],
           "after": [
             "Inicias sesión en cleanway.ai con un código o un enlace de un solo uso que se envía a tu correo. Después, la extensión guarda sus claves de inicio de sesión (tokens), tu dirección de correo y el identificador de tu cuenta en el almacenamiento de extensiones del navegador y solo los usa para comunicarse con nuestros servidores. «Cerrar sesión» en los Ajustes de la extensión los borra.",
-            "Tu historial de comprobaciones (se borra a los 30 días), los contadores y los ajustes se quedan en tu navegador. Desinstalar la extensión borra todo lo que guardó."
+            "Tu historial de comprobaciones (se borra a los 30 días), los contadores y los ajustes se quedan en tu navegador. Desinstalar la extensión borra todo lo que guardó.",
+            "El complemento de Cleanway para Outlook (aún no publicado) revisa un correo solo cuando pulsas «Scan email»: envía a nuestro servidor el nombre y la dirección del remitente, la dirección de respuesta, el asunto, el texto y el HTML de ese correo, y los resultados de SPF, DKIM y DMARC de sus encabezados. El servidor lo revisa en memoria y no lo guarda; los nombres de los sitios a los que enlaza se comprueban como se describe en la sección 5. «Report phishing» solo envía el dominio del remitente. El complemento solo lee el correo que tienes abierto y no guarda nada en Outlook."
           ]
         },
         {
@@ -2534,6 +2535,7 @@
             "registro de seguridad de las acciones de la cuenta (con direcciones IP en hash): 2 años;",
             "contadores semanales de las cuentas (solo números, sin nombres de sitios): 1 año;",
             "alertas familiares cifradas: hasta 30 días;",
+            "denuncias de un resultado erróneo o de un correo de phishing (el dominio del sitio o del remitente, y el ID de tu cuenta si habías iniciado sesión): 1 año;",
             "tu lista de dispositivos y los registros de compras: hasta que elimines la cuenta; Stripe y las tiendas de apps guardan sus propios registros de pagos como les exige la ley;",
             "el historial de comprobaciones de la extensión: 30 días, en tu navegador;",
             "datos en tu teléfono o en tu navegador: hasta que los borres o desinstales la app o la extensión."

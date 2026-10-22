@@ -23,21 +23,29 @@ Gmail content script, so findings are consistent across both clients.
 
 ## Privacy contract
 
-Only the **minimum headers + body text** leave Outlook:
+On **Scan email**, only the **minimum headers + body** leave Outlook:
 
 - `from_address`, `from_display`, `reply_to`, `subject`
 - `spf` / `dkim` / `dmarc` (parsed from `Authentication-Results`)
 - `body_text` + (if available) `body_html`
 
+The server checks them in memory and stores none of it (the one log line
+holds the verdict, score and counts — `api/routers/email.py`).
+
+On **Report phishing** (ribbon or task pane), only the sender's **domain**
+goes to `POST /api/v1/feedback/report`, with `comment: "[outlook]"`. Reports
+are kept for 1 year (`api/services/retention.py`, policy section 15).
+
 **Not sent:** recipients, CC/BCC, attachment content, thread metadata,
 routing headers, tenant identifiers. The Outlook Permissions declaration
 is `ReadItem` — the narrowest scope that still lets us read the open
-message.
+message. `manifest.xml`'s descriptions say the same, and
+`tests/test_outlook_addin.py` holds the code and the manifest to it.
 
 Domain-reputation lookups (Safe Browsing, our ML model) happen on the
 backend so the anon key never ships to end users. See
-[`docs/runbooks/email-plugin.md`](../docs/runbooks/email-plugin.md) for
-the deploy pipeline.
+[`docs/runbooks/addin-cleanway-ai-setup.md`](../docs/runbooks/addin-cleanway-ai-setup.md)
+for the hosting (DNS, CSP, CORS) and the sideload test.
 
 ## Local dev
 
@@ -68,7 +76,7 @@ Revert `manifest.xml` before committing.
 ## Production deploy
 
 1. Build the taskpane/commands bundle (no bundler today — assets are raw HTML/CSS/JS, served as-is).
-2. Push to the `addin.cleanway.ai` CDN (Vercel subdomain of landing; see `landing/vercel.json` routes).
+2. Deploy the landing: its `prebuild` copies this folder to `landing/public/outlook/`, served on `cleanway.ai/outlook/` and — once the DNS record and the Vercel alias exist — on `addin.cleanway.ai/outlook/` (`docs/runbooks/addin-cleanway-ai-setup.md`).
 3. Submit `manifest.xml` to the [Microsoft 365 Admin Center](https://admin.microsoft.com) (for org-managed distribution) or to [AppSource](https://appsource.microsoft.com/) (for general availability).
 4. AppSource review typically takes 5–10 business days.
 
@@ -85,7 +93,8 @@ Functional smoke for each platform:
 - [ ] Clean email (plain newsletter) → verdict = safe, ~0 findings
 - [ ] Known phishing fixture (e.g., PayPal-spoof from `tests/fixtures/phishing-*.eml`) → verdict = dangerous, findings highlight sender_spoofing + body_pattern
 - [ ] Offline (VPN disconnected) → surfaces the "couldn't reach server" error with a Rescan button
-- [ ] Report phishing button → success notification + the sender appears in the backend's `feedback_reports` table
+- [ ] Report phishing button → success notification + the sender's **domain** (only) appears in the backend's `feedback_reports` table, with comment `[outlook]`
+- [ ] DevTools console of the task pane (Outlook on the web: F12 on the pane's frame) shows no `Content-Security-Policy` violation
 
 ## Roadmap
 

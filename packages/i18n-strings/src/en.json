@@ -2444,7 +2444,8 @@
           ],
           "after": [
             "You sign in on cleanway.ai with a one-time code or link sent to your email. The extension then keeps its sign-in keys (tokens), your email address and your account ID in the browser's extension storage and uses them only to talk to our servers. “Sign out” in the extension's Settings deletes them.",
-            "Your check history (deleted after 30 days), counters and settings stay in your browser. Removing the extension deletes everything it stored."
+            "Your check history (deleted after 30 days), counters and settings stay in your browser. Removing the extension deletes everything it stored.",
+            "The Cleanway add-in for Outlook (not published yet) checks an email only when you press “Scan email”: it sends that email's sender name and address, reply-to address, subject, text and HTML, and the SPF, DKIM and DMARC results from its headers, to our server, which checks it in memory and does not store it; the names of the sites it links to are checked as described in section 5. “Report phishing” sends only the sender's domain. The add-in reads only the email you have open and keeps nothing in Outlook."
           ]
         },
         {
@@ -2536,6 +2537,7 @@
             "the security log of account actions (with hashed IP addresses) — 2 years;",
             "weekly counters for accounts (numbers only, no site names) — 1 year;",
             "encrypted family alerts — up to 30 days;",
+            "reports of a wrong result or of a phishing email (the site's or the sender's domain, and your account ID if you were signed in) — 1 year;",
             "your device list and purchase records — until you delete the account; Stripe and the app stores keep their own payment records as the law requires them to;",
             "the extension's check history — 30 days, in your browser;",
             "data on your phone or in your browser — until you clear it or remove the app or the extension."
