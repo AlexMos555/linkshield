@@ -48,7 +48,7 @@ Do not copy records from a template: Resend shows the exact SPF / DKIM records f
 There is no test-email endpoint. Check the real paths:
 
 - **Sign-in code** (Supabase → Resend SMTP): the checks in `sign-in-email.md`.
-- **API mail**: Railway → `web` → Logs, search `email.send` — since 2026-10-22 the JSON log keeps `send_id`, `template`, `provider` and `error` (never the address or subject). The welcome mail is sent once per account on `POST /api/v1/user/welcome` (idempotent; `welcome.sent` in the log).
+- **API mail**: Railway → `web` → Logs, search `email.` (never the address or subject). A successful send logs nothing in the API — Resend shows it. What is logged: `email.provider.initialized` at start-up (`provider`: `resend`, `ses` or `noop`); a rejected Resend send as `email.send.resend.error` with `send_id`, `status` and `error` — Resend's own reason, e.g. `validation_error` (since 2026-10-22; before, the reason was dropped); a crash as `email.send.resend.exception` / `email.send.ses.exception` with `send_id` and the traceback; a skipped send as `email.skipped_unsubscribed` / `email.skipped_rate_limited` with `template` and `send_id`. The welcome mail is sent once per account on `POST /api/v1/user/welcome` (idempotent; `welcome.sent` with `user_id` in the log).
 - **Resend** → Emails: Sent / Delivered / Bounced per message, in real time.
 
 ### How to check: are bounces happening?
@@ -66,15 +66,16 @@ If either rate climbs above threshold, SES will throttle you. Act before that.
 **Likely causes in order of frequency:**
 
 1. **Provider key expired / revoked.** Check `EMAIL_PROVIDER` env, try sending test. If 401 in logs, rotate key.
-2. **Send failed silently.** Grep logs for `email.send.resend.error` / `email.send.ses.exception`. Correlate with `send_id` from the triggering event.
+2. **Send failed silently.** Grep logs for `email.send.resend.error` (its `error` field is Resend's reason) / `email.send.resend.exception` / `email.send.ses.exception`. The address is never logged; for one person, find their `user_id` on `welcome.*` lines.
 3. **Template build stale.** Verify `packages/email-templates/out/manifest.json` exists in the deployed container. If not, `build-emails.mjs` didn't run at build time.
 4. **Landed in spam.** Ask user to check spam folder. If confirmed, check DMARC alignment + DKIM signatures pass in received headers.
 5. **User previously unsubscribed.** Check user_settings.email_prefs in Supabase.
 
 **Triage sequence:**
 ```bash
-# 1. Most recent email attempts for this user
-railway logs --filter "email.send" --since 24h | grep <email-or-user-id>
+# 1. Most recent email attempts (addresses are never logged)
+railway logs --filter "email." --since 24h
+railway logs --filter "welcome." --since 24h | grep <user-id>
 
 # 2. Confirm template exists
 ls packages/email-templates/out/welcome/

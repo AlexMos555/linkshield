@@ -275,9 +275,11 @@ class ResendProvider(EmailProvider):
                     json=payload,
                 )
             if resp.status_code >= 400:
+                # Resend's error object (name + message), not the mail: under
+                # `error` it is printed, scrubbed; `body` never is.
                 logger.error(
                     "email.send.resend.error",
-                    extra={"send_id": send_id, "status": resp.status_code, "body": resp.text[:500]},
+                    extra={"send_id": send_id, "status": resp.status_code, "error": resp.text[:300]},
                 )
                 return SendResult(ok=False, provider_message_id=None, error=f"Resend {resp.status_code}", send_id=send_id)
             data = resp.json()
