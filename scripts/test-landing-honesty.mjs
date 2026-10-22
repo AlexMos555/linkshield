@@ -15,7 +15,9 @@
  *   6. A scorecard lists each plain-language reason once.
  *   7. No false-positive rate from a legitimate sample our server auto-trusts.
  *   8. Every client component's messages reach the browser — and only those.
- *   9. Legal documents attach links by section id, the same in every locale.
+ *   9. Legal documents attach links by section id, the same in every locale,
+ *      keep the GDPR sections (legal bases, rights), and name the company
+ *      that runs Cleanway — as does the home footer.
  *  10. Sentry never receives the site name from a /check or /audit page URL.
  *  11. The operator-billed subscription (Russia) is sold only behind its flag,
  *      at prices that come from settings, with the same ICU arguments in every
@@ -74,6 +76,7 @@ import { scrubSitePaths } from "../landing/lib/sentry-scrub.ts";
 import { switchLocaleHref } from "../landing/lib/switch-locale.ts";
 import { INDEXED_CHECK_DOMAINS, isIndexedCheckHost } from "../landing/lib/seo-domains.ts";
 import { isFlagOn } from "../landing/lib/support.ts";
+import { APP_STORE_SELLER, OPERATOR } from "../landing/lib/operator.ts";
 import {
   DEFAULT_PRICING,
   checkoutPlanKey,
@@ -342,7 +345,12 @@ check("legal text, methodology and the rest stay on the server", () => {
 });
 
 console.log("legal documents (links attach by section id)");
-const LEGAL_IDS = { privacy_policy: ["payments", "contact"], terms: ["payments", "privacy", "contact"] };
+// "legal_bases" and "rights" carry the GDPR Art. 13 items (backlog rank 23):
+// a locale that drops one of them fails here, not in a regulator's letter.
+const LEGAL_IDS = {
+  privacy_policy: ["legal_bases", "rights", "payments", "contact"],
+  terms: ["payments", "privacy", "contact"],
+};
 check("every locale has the same sections, and the ids the pages attach links to", () => {
   const reference = landingSource("en");
   for (const [doc, required] of Object.entries(LEGAL_IDS)) {
@@ -353,6 +361,43 @@ check("every locale has the same sections, and the ids the pages attach links to
       assert.deepEqual(ids, refIds, `${locale} ${doc}: sections differ from en (count or ids)`);
     }
   }
+});
+
+console.log("who runs Cleanway (lib/operator.ts)");
+check("the policy and the terms name the operator, its address and registration number in every locale", () => {
+  for (const locale of LOCALES) {
+    const landing = landingSource(locale);
+    for (const doc of ["privacy_policy", "terms"]) {
+      const text = JSON.stringify(landing[doc].sections);
+      for (const part of [OPERATOR.name, OPERATOR.address, OPERATOR.registration]) {
+        assert.ok(text.includes(part), `${locale} ${doc}: does not spell out ${JSON.stringify(part)}`);
+      }
+    }
+  }
+});
+// The App Store shows whoever holds the developer account as the seller. While
+// that is the founder personally, terms section 1 must say so next to the
+// company it names as "we" (2026-10-22 review of PR #274).
+check("terms section 1 says who sells the iPhone app in the App Store, in every locale", () => {
+  for (const locale of LOCALES) {
+    const text = JSON.stringify(landingSource(locale).terms.sections[0]);
+    if (APP_STORE_SELLER === "founder") {
+      assert.ok(text.includes("App Store"), `${locale} terms §1: does not say the App Store seller is the founder`);
+    } else {
+      assert.ok(!text.includes("App Store"), `${locale} terms §1: still says the App Store seller is the founder`);
+    }
+  }
+});
+check("the home footer fills the operator in from lib/operator.ts in every locale", () => {
+  for (const locale of LOCALES) {
+    const line = landingSource(locale).footer.operator;
+    assert.equal(typeof line, "string", `${locale}: landing.footer.operator`);
+    for (const arg of ["{name}", "{address}", "{registration}"]) {
+      assert.ok(line.includes(arg), `${locale}: landing.footer.operator has no ${arg}`);
+    }
+  }
+  const page = fs.readFileSync(path.join(ROOT, "landing", "app", "[locale]", "page.tsx"), "utf-8");
+  assert.match(page, /footer\("operator",\s*OPERATOR\)/, "the home footer does not render landing.footer.operator");
 });
 
 console.log("operator-billed subscription (lib/billing.ts)");

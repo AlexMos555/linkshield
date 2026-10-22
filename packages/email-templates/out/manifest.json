@@ -13,10 +13,7 @@
       "ar": "مرحباً بك في Cleanway — أنت محمي الآن"
     },
     "fixture_props": {
-      "firstName": "Alex",
-      "scanInboxUrl": "https://cleanway.example/scan",
-      "unsubscribeUrl": "https://cleanway.example/u/abc123",
-      "viewInBrowserUrl": "https://cleanway.example/emails/welcome/abc123"
+      "unsubscribeUrl": "https://cleanway.example/u/abc123"
     }
   },
   "receipt": {

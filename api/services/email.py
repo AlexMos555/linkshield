@@ -90,6 +90,28 @@ def _load_template_file(template: TemplateKey, locale: str, ext: Literal["html",
     return candidate.read_text(encoding="utf-8")
 
 
+# Every fixture link in scripts/build-emails.mjs lives on this reserved
+# (RFC 2606) domain. Seen in a rendered email, it means a per-user value was
+# never substituted — 2026-10-22: every welcome email carried three of them.
+FIXTURE_MARKER = "cleanway.example"
+
+
+def fixture_overrides_for(template: TemplateKey, **props: Any) -> dict[str, Any]:
+    """Build the {fixture_value: real_value} map from template prop names.
+
+    `_substitute` replaces the fixture VALUES the template was rendered with,
+    so a caller has to know them; this reads them from the manifest instead of
+    copying strings out of build-emails.mjs. An unknown prop name raises
+    KeyError — the welcome endpoint once passed "unsubscribe_url", which
+    replaced nothing.
+
+        fixture_overrides_for("welcome", unsubscribeUrl=url)
+        → {"https://cleanway.example/u/abc123": url}
+    """
+    fixtures = _load_manifest()[template]["fixture_props"]
+    return {str(fixtures[name]): value for name, value in props.items()}
+
+
 def _substitute(raw: str, props: dict[str, Any]) -> str:
     """Replace {{key}} placeholders with runtime values.
 
@@ -120,7 +142,8 @@ def render_template(
         template: key from the registry
         locale: target language; falls back to English if not rendered
         fixture_overrides: {fixture_value: real_value} pairs, e.g.
-            {"Alex": user.first_name, "https://cleanway.ai/scan": scan_link}
+            {"https://cleanway.example/u/abc123": unsubscribe_url} — build
+            them with fixture_overrides_for() rather than by hand
     """
     if locale not in SUPPORTED_LOCALES:
         logger.warning("email.locale.unknown", extra={"locale": locale, "fallback": "en"})
@@ -420,27 +443,42 @@ async def send_template(
                 skip_reason="user_unsubscribed",
             )
 
-        if not await _check_email_rate_limit(user_id, template):
-            send_id = str(uuid.uuid4())
-            logger.warning(
-                "email.skipped_rate_limited",
-                extra={"template": template, "send_id": send_id},
-            )
-            return SendResult(
-                ok=True,
-                provider_message_id=None,
-                error=None,
-                send_id=send_id,
-                skipped=True,
-                skip_reason="rate_limited",
-            )
-
     rendered = render_template(template, locale, fixture_overrides)
+
+    if any(FIXTURE_MARKER in part for part in (rendered.subject, rendered.html, rendered.text, unsubscribe_url)):
+        # A fixture link left in means the caller's overrides missed a value.
+        # Mailing it would send the reader to a domain that does not exist.
+        # Checked before the rate limit so a refused email uses up no budget.
+        send_id = str(uuid.uuid4())
+        logger.error(
+            "email.unfilled_placeholder",
+            extra={"template": template, "locale": rendered.locale, "send_id": send_id},
+        )
+        return SendResult(ok=False, provider_message_id=None, error="unfilled_placeholder", send_id=send_id)
+
+    if user_id is not None and not await _check_email_rate_limit(user_id, template):
+        send_id = str(uuid.uuid4())
+        logger.warning(
+            "email.skipped_rate_limited",
+            extra={"template": template, "send_id": send_id},
+        )
+        return SendResult(
+            ok=True,
+            provider_message_id=None,
+            error=None,
+            send_id=send_id,
+            skipped=True,
+            skip_reason="rate_limited",
+        )
 
     settings = _get_settings()
     headers = {
-        # RFC 2369 + RFC 8058 one-click unsubscribe — critical for inbox placement
-        "List-Unsubscribe": f"<{unsubscribe_url}>, <mailto:unsubscribe@{settings['from_domain']}?subject=unsubscribe>",
+        # RFC 2369 + RFC 8058 one-click unsubscribe — critical for inbox
+        # placement. The signed HTTPS link only: no mailto, because no
+        # unsubscribe@ mailbox exists (Cloudflare Email Routing forwards
+        # support@, hello@, security@ and conduct@), and a client that chose
+        # the mailto would send the request nowhere.
+        "List-Unsubscribe": f"<{unsubscribe_url}>",
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
         # Signal this is automated so replies don't create support tickets
         "Auto-Submitted": "auto-generated",

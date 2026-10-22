@@ -284,6 +284,60 @@ CLAIMS: tuple[Claim, ...] = (
               "hi": r"ब्लॉक",
               "ar": r"حظر|محظور",
           }, scope="landing.hero.badge"),
+    # 2026-10-22 (backlog rank 20): commit 1983d12c moved the policy to the
+    # app's real order — the network's own DNS first, Cloudflare / Quad9 only
+    # when it does not answer (UnderlyingDns.kt) — but the home page's privacy
+    # note and the VPN FAQ kept saying "instead of your operator's".
+    Claim("says the Android app looks up unblocked sites in Cloudflare / Quad9 instead of the network's DNS — "
+          "it asks the network's (operator's or router's) DNS first and falls back to them (UnderlyingDns.kt, "
+          "policy section 3)", {
+              "en": r"instead of your operator's|(aren't|not) blocked in a public DNS",
+              "ru": r"вместо DNS вашего оператора|незаблокированных сайтов (телефон )?узнаёт у публичной DNS",
+              "es": r"en lugar del de tu operador|bloqueados en un servicio DNS p[uú]blico",
+              "pt": r"em vez do DNS da sua operadora|bloqueados em um servi[cç]o de DNS p[uú]blico",
+              "fr": r"au lieu de celui de votre op[ée]rateur|bloqu[ée]s aupr[èe]s d'un service DNS public",
+              "de": r"statt beim DNS deines Anbieters|nicht blockierte Namen bei einem [öo]ffentlichen DNS-Dienst",
+              "it": r"invece di quello del tuo operatore|non bloccati presso un servizio DNS pubblico",
+              "id": r"bukan DNS operator Anda|tidak diblokir melalui layanan DNS publik",
+              "hi": r"ऑपरेटर के DNS के बजाय|ब्लॉक नहीं हैं, उन्हें एक सार्वजनिक DNS सेवा",
+              "ar": r"بدلًا من DNS مشغّلك|غير المحظورة لدى خدمة DNS عامة",
+          }),
+    # 2026-10-22 (backlog rank 8): the iPhone app's text filter, once turned
+    # on in Settings, receives every SMS from an unknown number
+    # (ILMessageFilterExtension, docs/IOS.md §5). The policy may no longer say
+    # that Cleanway never reads text messages by itself.
+    Claim("says Cleanway never reads text messages by itself — the iPhone app's text filter, once turned on, "
+          "is handed every SMS from an unknown number (checked on the phone, never sent)", {
+              "en": r"Cleanway does not read your text messages by itself",
+              "ru": r"Cleanway сам не читает",
+              "es": r"Cleanway no lee tus SMS por su cuenta",
+              "pt": r"Cleanway n[aã]o l[eê] seus SMS por conta pr[oó]pria",
+              "fr": r"Cleanway ne lit pas vos SMS de lui-m[eê]me",
+              "de": r"Cleanway liest deine SMS nicht von sich aus",
+              "it": r"Cleanway non legge i tuoi SMS di sua iniziativa",
+              "id": r"Cleanway tidak membaca SMS Anda dengan sendirinya",
+              "hi": r"Cleanway अपने आप आपके SMS नहीं पढ़ता",
+              "ar": r"لا يقرأ Cleanway رسائلك القصيرة من تلقاء نفسه",
+          }, scope="landing.privacy_policy"),
+    # 2026-10-22 review of PR #274: policy section 14 said the transfer to every
+    # US processor "relies on" the DPF or on standard contractual clauses "which
+    # are part of the company's data processing terms". Nobody has checked which
+    # processor relies on which, or that each DPA is in force (docs/PRIVACY.md,
+    # "Transfers"); until then the policy names the safeguards without saying
+    # they are in place.
+    Claim("states that every US processor's transfer already rests on the DPF or on standard contractual "
+          "clauses in its data processing terms — not confirmed per processor (docs/PRIVACY.md, Transfers)", {
+              "en": r"the transfer relies on|which are part of the company's data processing terms",
+              "ru": r"передача опирается на|которые входят в условия обработки данных",
+              "es": r"la transferencia se apoya en|que forman parte de las condiciones de tratamiento",
+              "pt": r"a transfer[eê]ncia se apoia|que fazem parte dos termos de tratamento",
+              "fr": r"le transfert repose sur|qui font partie des conditions de traitement",
+              "de": r"st[üu]tzt sich die [ÜU]bermittlung|die Teil der Datenverarbeitungsbedingungen",
+              "it": r"il trasferimento si basa|che fanno parte delle condizioni di trattamento",
+              "id": r"transfer tersebut bersandar|yang menjadi bagian dari ketentuan pemrosesan data",
+              "hi": r"ट्रांसफ़र EU–US Data Privacy Framework पर टिका|डेटा प्रोसेसिंग शर्तों का हिस्सा हैं",
+              "ar": r"يستند النقل إلى|وهي جزء من شروط معالجة البيانات",
+          }, scope="landing.privacy_policy"),
     # 2026-10-08 store readiness: an "automatic SMS check" exists only on the
     # unmerged RuStore branch (feat/sms-auto-rustore); the site and the Google
     # Play build check a message only when the person shares or pastes it, and

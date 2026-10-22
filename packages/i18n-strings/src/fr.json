@@ -1584,7 +1584,8 @@
       "contact": "Aide",
       "github": "GitHub",
       "tagline": "Protection contre les sites d'arnaque.",
-      "methodology": "Méthodologie"
+      "methodology": "Méthodologie",
+      "operator": "Cleanway est exploité par {name}, {address}. Numéro d'enregistrement : {registration}."
     },
     "language_switcher": {
       "label": "Langue"
@@ -1674,7 +1675,7 @@
       ],
       "device_note": "Vous pouvez effacer l'historique des vérifications dans les Réglages de l'appli.",
       "dns_heading": "Qui d'autre voit les noms des sites",
-      "dns_note": "Tant que la protection est active, votre téléphone cherche l'adresse des sites qu'il ne bloque pas auprès d'un service DNS public — Cloudflare ou Quad9 — au lieu de celui de votre opérateur. Comme tout service DNS, il voit le nom du site et l'adresse IP de votre connexion. Cleanway ne reçoit pas ces requêtes."
+      "dns_note": "Sur Android, tant que la protection est active, votre téléphone cherche l'adresse des sites qu'il ne bloque pas comme il le ferait sans Cleanway : auprès du DNS de votre réseau — celui de votre opérateur mobile ou de votre box Wi-Fi — et, seulement s'il ne répond pas, auprès de Cloudflare ou de Quad9. Comme tout service DNS, ceux-ci voient le nom du site et l'adresse IP de votre connexion ; Cleanway ne reçoit pas ces requêtes. Si vous configurez le filtre DNS de Cleanway sur un iPhone, un Mac ou un ordinateur Windows, les noms de sites vont alors au serveur DNS de Cleanway (section 11 de la politique de confidentialité)."
     },
     "testimonials": {
       "heading": "Nos engagements",
@@ -1709,7 +1710,7 @@
         },
         {
           "q": "Puis-je l'utiliser avec un VPN ?",
-          "a": "Pas en même temps. La protection de Cleanway n'utilise le mécanisme VPN d'Android que pour les noms de sites : le téléphone compare chaque nom à la liste et cherche ceux qui ne sont pas bloqués auprès d'un service DNS public (Cloudflare ou Quad9). Le reste de votre trafic passe comme d'habitude — ni par Cleanway, ni par un autre pays. Android ne fait tourner qu'un seul service de ce type à la fois : si vous activez un autre VPN, la protection de Cleanway se coupe. Une fois terminé, ouvrez Cleanway et réactivez la protection. La vérification manuelle d'un site ou d'un message dans l'appli fonctionne dans tous les cas."
+          "a": "Pas en même temps. La protection de Cleanway n'utilise le mécanisme VPN d'Android que pour les noms de sites : le téléphone compare chaque nom à la liste et cherche ceux qui n'y figurent pas comme il le ferait sans Cleanway, auprès du DNS de votre réseau ou, s'il ne répond pas, de Cloudflare ou de Quad9. Le reste de votre trafic passe comme d'habitude — ni par Cleanway, ni par un autre pays. Android ne fait tourner qu'un seul service de ce type à la fois : si vous activez un autre VPN, la protection de Cleanway se coupe. Une fois terminé, ouvrez Cleanway et réactivez la protection. La vérification manuelle d'un site ou d'un message dans l'appli fonctionne dans tous les cas."
         },
         {
           "q": "Quelle différence avec Google Safe Browsing ?",
@@ -2227,7 +2228,7 @@
       "meta_description": "Les règles d'utilisation de Cleanway : ce que le service promet et ne promet pas, l'offre gratuite, les comptes et les appareils, les offres payantes, la résiliation et les remboursements, et l'utilisation acceptable.",
       "back": "Retour à Cleanway",
       "title": "Conditions d'utilisation",
-      "updated": "Dernière mise à jour : 8 octobre 2026",
+      "updated": "Dernière mise à jour : 22 octobre 2026",
       "privacy_link": "Lire la politique de confidentialité",
       "contact_live": "Questions sur ces conditions :",
       "contact_not_live": "Notre boîte d'assistance est temporairement hors service : nous ne pouvons donc pas recevoir d'e-mails pour le moment. La page d'aide répond aux questions fréquentes.",
@@ -2236,7 +2237,9 @@
         {
           "title": "1. Qu'est-ce que Cleanway",
           "paragraphs": [
-            "Cleanway vous aide à vous protéger des sites d'arnaque et de phishing. Il se compose de l'appli Android, de l'extension de navigateur, de la vérification de sites sur cleanway.ai et d'un filtre DNS pour iPhone, Mac et Windows. Cleanway compare les noms de sites à des listes de menaces connues et à d'autres signaux, et vous dit ce qu'il a trouvé."
+            "Cleanway vous aide à vous protéger des sites d'arnaque et de phishing. Il se compose des applis Android et iPhone, de l'extension de navigateur, de la vérification de sites sur cleanway.ai et d'un filtre DNS pour iPhone, Mac et Windows. Cleanway compare les noms de sites à des listes de menaces connues et à d'autres signaux, et vous dit ce qu'il a trouvé.",
+            "Cleanway est exploité par ACECORE GLOBAL TECHNOLOGIES – FZCO, numéro d'enregistrement 43029, Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE (« nous »).",
+            "Tant que le compte développeur App Store n'a pas été transféré à l'entreprise, l'app iPhone y est publiée sous le compte personnel du fondateur de Cleanway ; l'App Store indique donc le fondateur comme vendeur."
           ]
         },
         {
@@ -2342,7 +2345,7 @@
       "meta_description": "Ce que Cleanway reçoit, ce qui reste sur votre téléphone ou dans votre navigateur, qui d'autre voit quoi, et combien de temps tout est conservé.",
       "back": "Retour à Cleanway",
       "title": "Politique de confidentialité",
-      "updated": "Dernière mise à jour : 15 octobre 2026",
+      "updated": "Dernière mise à jour : 22 octobre 2026",
       "intro": "Cette politique explique en termes simples quelles données Cleanway traite, pourquoi et qui d'autre les voit. Elle décrit le service tel qu'il fonctionne aujourd'hui. Si quelque chose ici ne correspond pas à ce que fait réellement Cleanway, c'est une erreur et nous voulons le savoir.",
       "contact_live": "Questions et demandes concernant vos données :",
       "contact_not_live": "Notre boîte d'assistance est temporairement hors service : nous ne pouvons donc pas recevoir d'e-mails pour le moment. L'adresse réapparaîtra ici dès qu'elle fonctionnera.",
@@ -2359,7 +2362,8 @@
         {
           "title": "2. Qui nous sommes",
           "paragraphs": [
-            "Cleanway (cleanway.ai) protège contre les sites d'arnaque et de phishing. Il se compose d'une appli Android, d'une extension de navigateur, d'une vérification de sites sur cleanway.ai et d'un filtre DNS pour iPhone, Mac et Windows. La façon de nous contacter figure à la fin de cette politique."
+            "Cleanway (cleanway.ai) protège contre les sites d'arnaque et de phishing. Il se compose des applis Android et iPhone, d'une extension de navigateur, d'une vérification de sites sur cleanway.ai et d'un filtre DNS pour iPhone, Mac et Windows. La façon de nous contacter figure à la fin de cette politique.",
+            "Cleanway est exploité par ACECORE GLOBAL TECHNOLOGIES – FZCO, numéro d'enregistrement 43029, Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE. Cette société décide pourquoi et comment les données décrites dans cette politique sont traitées : au sens de la protection des données, elle en est le responsable du traitement. « Nous » désigne cette société dans cette politique."
           ]
         },
         {
@@ -2398,8 +2402,9 @@
         {
           "title": "6. Vérification des messages",
           "paragraphs": [
-            "Cleanway ne lit pas vos SMS de lui-même et ne demande pas à y accéder. Il ne vérifie que le message que vous lui partagez ou que vous collez.",
-            "Le texte est analysé sur le téléphone et n'est envoyé nulle part — ni à nous, ni à personne. Jusqu'à trois noms de sites issus des liens du message peuvent être vérifiés sur notre serveur comme décrit ci-dessus, sans le reste du lien. L'Historique conserve le verdict et les noms de sites, jamais le texte."
+            "L'appli Android ne lit pas vos SMS d'elle-même et ne demande pas à y accéder : elle ne vérifie que le message que vous lui partagez ou que vous collez. La vérification des messages dans l'appli iPhone fonctionne de la même façon.",
+            "Ce message est analysé sur le téléphone et n'est envoyé nulle part — ni à nous, ni à personne. Jusqu'à trois noms de sites issus de ses liens peuvent être vérifiés sur notre serveur comme décrit ci-dessus, sans le reste du lien. L'Historique conserve le verdict et les noms de sites, jamais le texte.",
+            "L'appli iPhone contient aussi un filtre de SMS, désactivé tant que vous ne choisissez pas Cleanway comme filtre de messages dans les Réglages de l'iPhone (sous Messages, dans la partie sur les expéditeurs inconnus). Dès lors, iOS transmet à Cleanway chaque SMS et MMS venant d'un numéro qui n'est pas dans vos contacts — jamais les iMessage ni les messages de vos contacts — et Cleanway décide sur le téléphone s'il va dans le dossier Indésirables. Le filtre ne se connecte pas à internet : le texte et l'expéditeur ne sont envoyés nulle part — ni à nous, ni à personne — et ne sont pas enregistrés. Vous pouvez désactiver le filtre au même endroit dans les Réglages."
           ]
         },
         {
@@ -2490,11 +2495,27 @@
             "Stripe — paiements sur le site web ; Google Play, l'App Store et RevenueCat — achats dans l'appli (aucun paiement n'est proposé en Russie)."
           ],
           "after": [
-            "Ces entreprises sont situées hors de Russie, principalement aux États-Unis et dans l'UE : les données qu'elles traitent sont donc transférées à l'étranger. Notre serveur et les sauvegardes de la base de données se trouvent dans l'UE."
+            "Ces entreprises sont situées hors de Russie, principalement aux États-Unis et dans l'UE : les données qu'elles traitent sont donc transférées à l'étranger. Notre serveur et les sauvegardes de la base de données se trouvent dans l'UE.",
+            "Certaines de ces entreprises sont situées aux États-Unis. Selon le RGPD, les données personnelles de personnes de l'Espace économique européen (EEE) ne peuvent être transmises à une telle entreprise qu'avec une garantie : le cadre de protection des données UE–États-Unis (EU–US Data Privacy Framework), si l'entreprise y est certifiée, ou les clauses contractuelles types approuvées par la Commission européenne. Nous le vérifions pour chacune de ces entreprises et indiquerons dans cette section la garantie de chacune. Vous pouvez nous interroger à ce sujet (section 19)."
           ]
         },
         {
-          "title": "15. Durée de conservation",
+          "id": "legal_bases",
+          "title": "15. Sur quelle base nous utilisons vos données",
+          "paragraphs": [
+            "Les lois sur la protection des données, comme le RGPD européen, exigent une base légale pour chaque utilisation de données personnelles. Voici les nôtres :"
+          ],
+          "items": [
+            "fournir le service que vous avez demandé (exécution d'un contrat) : votre compte et la connexion, votre liste d'appareils, les fonctions famille, les offres payantes, le filtre DNS une fois que vous l'avez configuré, et les e-mails de service qui vont avec ;",
+            "notre intérêt légitime à un service qui fonctionne et qui soit sûr à utiliser : vérifier les noms des sites que vous ouvrez ou consultez, limiter le nombre de vérifications par connexion ou par téléphone, la vérification Turnstile, le journal de sécurité des actions du compte et les alertes de sécurité, les rapports d'erreurs et les mesures de temps, et les sauvegardes. Sans vérifications, pas de protection, et sans limites ni journaux, le service pourrait être détourné ;",
+            "votre consentement : la vérification des e-mails dans la messagerie web, désactivée tant que vous ne l'activez pas dans l'extension de navigateur, et, dans Firefox, le consentement aux données que demande le module. Vous pouvez le retirer à tout moment : les vérifications s'arrêtent aussitôt, et ce qui a été fait avant reste licite."
+          ],
+          "after": [
+            "Vous pouvez vous opposer à toute utilisation fondée sur notre intérêt légitime — voir la section 17."
+          ]
+        },
+        {
+          "title": "16. Durée de conservation",
           "items": [
             "résultats de vérification dans le cache du serveur — jusqu'à 24 heures ;",
             "votre adresse IP dans le compteur qui limite les vérifications — une heure au plus ;",
@@ -2509,22 +2530,24 @@
           ]
         },
         {
-          "title": "16. Vos droits",
+          "id": "rights",
+          "title": "17. Vos droits",
           "paragraphs": [
-            "Vous pouvez demander quelles données vous concernant nous détenons, nous demander de les corriger ou de les supprimer, et retirer votre consentement.",
+            "Vous avez le droit : de savoir quelles données vous concernant nous détenons et d'en obtenir une copie (accès) ; de les faire corriger (rectification) ; de les faire supprimer (effacement) ; d'en faire limiter l'utilisation, par exemple le temps de vérifier leur exactitude (limitation) ; de recevoir les données que vous nous avez fournies dans un format lisible par machine, ou de les faire transmettre à un autre service lorsque c'est techniquement possible (portabilité) ; de vous opposer à une utilisation fondée sur notre intérêt légitime (opposition) ; et de retirer un consentement donné.",
             "Pour supprimer votre compte vous-même, connectez-vous sur cleanway.ai/account et choisissez « Supprimer le compte », ou utilisez « Supprimer le compte » dans les Réglages de l'appli. La page cleanway.ai/delete-account explique les étapes, ce qui est supprimé et ce qui est conservé.",
-            "Sans compte, nous ne savons pas qui vous êtes : nous n'avons ni votre nom, ni votre e-mail, ni votre numéro de téléphone — seulement les données techniques décrites plus haut, comme votre adresse IP dans le compteur de vérifications et dans les journaux d'hébergement. Pour toute autre demande, contactez-nous comme indiqué ci-dessous. Supprimer l'appli ou l'extension efface tout ce qu'elle avait enregistré sur votre appareil."
+            "Sans compte, nous ne savons pas qui vous êtes : nous n'avons ni votre nom, ni votre e-mail, ni votre numéro de téléphone — seulement les données techniques décrites plus haut, comme votre adresse IP dans le compteur de vérifications et dans les journaux d'hébergement. Pour toute autre demande, contactez-nous comme indiqué ci-dessous. Supprimer l'appli ou l'extension efface tout ce qu'elle avait enregistré sur votre appareil.",
+            "Si vous estimez que nous traitons vos données de manière illicite, vous avez le droit d'introduire une réclamation auprès d'une autorité de contrôle de la protection des données, notamment dans le pays où vous vivez ou travaillez, ou dans celui où le problème s'est produit. Vous pouvez aussi nous écrire d'abord."
           ]
         },
         {
-          "title": "17. Enfants",
+          "title": "18. Enfants",
           "paragraphs": [
             "Cleanway n'est pas conçu pour être utilisé seul par des enfants de moins de 13 ans ; les fonctions familiales sont gérées par un adulte."
           ]
         },
         {
           "id": "contact",
-          "title": "18. Modifications et contact",
+          "title": "19. Modifications et contact",
           "paragraphs": [
             "Si nous modifions cette politique, nous publierons la nouvelle version sur cette page avec une nouvelle date.",
             "Les e-mails que vous envoyez à nos adresses en cleanway.ai passent par Cloudflare, qui les transfère vers notre boîte."
@@ -2707,12 +2730,15 @@
         },
         "_needs_native_review": true
       },
+      "greeting_neutral": {
+        "text": "Hi there,"
+      },
       "signature": {
         "text": "— The Cleanway team",
         "_needs_native_review": true
       },
       "trust_footer": {
-        "text": "Cleanway · Protection that stays on your device",
+        "text": "Cleanway · Protection from scam sites",
         "_needs_native_review": true
       },
       "unsubscribe_link": {
@@ -2736,7 +2762,7 @@
         "_needs_native_review": true
       },
       "footer_address": {
-        "text": "Cleanway · San Francisco, CA",
+        "text": "Cleanway is operated by ACECORE GLOBAL TECHNOLOGIES – FZCO · Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE",
         "_needs_native_review": true
       }
     },
@@ -2746,7 +2772,7 @@
         "_needs_native_review": true
       },
       "preheader": {
-        "text": "Every link you see is being checked, automatically.",
+        "text": "What Cleanway checks, and how to check a site yourself.",
         "_needs_native_review": true
       },
       "hero_title": {
@@ -2754,31 +2780,31 @@
         "_needs_native_review": true
       },
       "body_p1": {
-        "text": "We'll quietly check every link you encounter. The dangerous ones get a red mark — you'll see them before clicking. That's it.",
+        "text": "Cleanway checks site names against lists of known scam and phishing sites and other warning signs, and tells you plainly when a site looks dangerous.",
         "_needs_native_review": true
       },
       "body_p2": {
-        "text": "Your browsing data never leaves your device. We only check domain names, and your history is yours alone.",
+        "text": "We only check domain names, not your full URLs or page content, and we don't keep a history of the sites you visit.",
         "_needs_native_review": true
       },
-      "cta_scan": {
-        "text": "Scan my inbox for hidden scams",
+      "cta_check": {
+        "text": "Check a site or link",
         "_needs_native_review": true
       },
       "list_item_1": {
-        "text": "Automatic link checking on every page you visit",
+        "text": "Known scam sites are blocked in every app on Android",
         "_needs_native_review": true
       },
       "list_item_2": {
-        "text": "Block dangerous sites before they steal your data",
+        "text": "Check any site or link before you open it — with the reasons in plain words",
         "_needs_native_review": true
       },
       "list_item_3": {
-        "text": "Works across Chrome, Firefox, Safari, and your phone",
+        "text": "Blocking known scam sites is free and works without an account",
         "_needs_native_review": true
       },
       "list_item_4": {
-        "text": "Your data stays on your device — always",
+        "text": "No ads, and we never sell your data",
         "_needs_native_review": true
       }
     },

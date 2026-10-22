@@ -12,7 +12,8 @@ Adds defense-in-depth HTTP headers to every response:
 
 The CSP is tuned for our API — mostly a JSON backend with an optional
 Swagger UI at /docs. Swagger loads CSS + JS from jsdelivr.net via CDN,
-so we allowlist it but only for those specific paths.
+so we allowlist it but only for those specific paths. The email
+unsubscribe page gets its own CSP: inline styles and a same-origin form.
 
 Rationale: we're protecting people from scammers. If OUR server gets
 compromised (session hijack, MITM, supply-chain), we become the phish.
@@ -33,6 +34,19 @@ _API_CSP = (
     "frame-ancestors 'none'; "
     "base-uri 'none'; "
     "form-action 'none'"
+)
+
+# The unsubscribe page every email links to (api/routers/email_unsubscribe.py)
+# is the API's only HTML form: a POST back to its own URL, styled by an inline
+# <style>. Under _API_CSP the browser refused to submit it, so the link in the
+# email body could not unsubscribe anyone. Still no scripts, images or frames.
+_UNSUBSCRIBE_PATH = "/api/v1/email/unsubscribe/"
+_UNSUBSCRIBE_CSP = (
+    "default-src 'none'; "
+    "style-src 'unsafe-inline'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none'; "
+    "base-uri 'none'"
 )
 
 # Swagger UI (served at /docs) needs jsdelivr CDN for css + js.
@@ -115,6 +129,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if path.startswith("/docs") or path.startswith("/redoc") or path == "/openapi.json":
             response.headers["Content-Security-Policy"] = _DOCS_CSP
+        elif path.startswith(_UNSUBSCRIBE_PATH):
+            response.headers["Content-Security-Policy"] = _UNSUBSCRIBE_CSP
         else:
             response.headers["Content-Security-Policy"] = _API_CSP
 

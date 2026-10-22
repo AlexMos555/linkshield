@@ -52,6 +52,7 @@ import {
   manageSubscriptionUrl, storeCopyKeys, storeErrorNoteKey, type PlanPeriod,
 } from "../src/utils/store-billing";
 import { sourceKey } from "../src/utils/account-session";
+import { PRIVACY_POLICY_URL, TERMS_URL } from "../src/utils/legal-urls";
 import { StorePlans, type StorePlansState } from "../src/components/paywall/StorePlans";
 import { PublishedPrice } from "../src/components/paywall/PublishedPrice";
 
@@ -68,8 +69,6 @@ const BENEFITS: Record<PaywallBenefit, { icon: IconName; key: string }> = {
 // the iPhone app has no message analyzer or call guard (paywallBenefits).
 const SHOWN_BENEFITS = paywallBenefits(FREEMIUM.distribution).map((b) => BENEFITS[b]);
 
-const TERMS_URL = "https://cleanway.ai/terms";
-const PRIVACY_URL = "https://cleanway.ai/privacy-policy";
 const ANDROID_PACKAGE = Constants.expoConfig?.android?.package ?? "ai.cleanway.app";
 
 /** A store build (Google Play, the iPhone app): prices and purchases come from the store. */
@@ -407,7 +406,7 @@ function PaywallScreen() {
             <Pressable onPress={() => void Linking.openURL(TERMS_URL).catch(() => undefined)} style={s.legal} accessibilityRole="link">
               <Text style={s.legalLabel}>{t("mobile.settings.terms")}</Text>
             </Pressable>
-            <Pressable onPress={() => void Linking.openURL(PRIVACY_URL).catch(() => undefined)} style={s.legal} accessibilityRole="link">
+            <Pressable onPress={() => void Linking.openURL(PRIVACY_POLICY_URL).catch(() => undefined)} style={s.legal} accessibilityRole="link">
               <Text style={s.legalLabel}>{t("mobile.settings.privacy_policy")}</Text>
             </Pressable>
           </View>

@@ -8,6 +8,14 @@
 > welcome page and block page no longer say that data stays on the device;
 > `scripts/test-extension-core.mjs` fails if they start again. Rows 3–4
 > (e-mail, landing) are not part of that PR.
+>
+> **Status 2026-10-22:** row 3 is applied to the welcome email in all 10
+> locales ("We only check domain names, not your full URLs or page content,
+> and we don't keep a history of the sites you visit"), together with the
+> same claim in its list ("Your data stays on your device — always") and the
+> shared footer ("Protection that stays on your device"). The email had a
+> second problem: every link in it was a cleanway.example fixture — see
+> `tests/test_welcome_email.py`.
 
 Everything below is **code-grounded**. This session already fixed the landing hero,
 the testimonial, and 4 landing claims (commits `eb756da`, `82a3d3a`). This doc covers

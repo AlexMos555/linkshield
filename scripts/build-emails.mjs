@@ -28,12 +28,14 @@ const OUT_DIR = resolve(__dirname, "../packages/email-templates/out");
 
 // Fixture props — realistic values so rendered HTML is representative.
 // Real sends use per-user props; these are for CI snapshots + dev preview.
+// Every fixture link is on cleanway.example: api/services/email.py refuses
+// to send an email that still contains one (FIXTURE_MARKER).
 const FIXTURES = {
+  // Welcome is live (POST /api/v1/user/welcome): only the unsubscribe link is
+  // per-user. No name (accounts carry none, so the greeting is neutral) and
+  // no "view in browser" (no page serves one) — tests/test_welcome_email.py.
   welcome: {
-    firstName: "Alex",
-    scanInboxUrl: "https://cleanway.example/scan",
     unsubscribeUrl: "https://cleanway.example/u/abc123",
-    viewInBrowserUrl: "https://cleanway.example/emails/welcome/abc123",
   },
   receipt: {
     firstName: "Alex",

@@ -6,6 +6,7 @@ import { InstallButtons } from "@/components/InstallButtons";
 import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
 import { loadLiveRecall } from "@/lib/live-recall";
 import { localePath } from "@/lib/locale-path";
+import { OPERATOR } from "@/lib/operator";
 import { billingMessageArgs } from "@/lib/billing";
 import { BILLING_TERMS, pricingVariantFor } from "@/lib/billing-config";
 import { routing, type Locale } from "@/i18n/routing";
@@ -406,6 +407,7 @@ export default async function Home({ params }: HomeProps) {
             <a href="https://github.com/AlexMos555/linkshield" className="text-sm text-slate-400 hover:text-white transition">{footer("github")}</a>
           </div>
           <p className="text-xs text-slate-400">&copy; 2026 Cleanway. {footer("tagline")}</p>
+          <p className="text-xs text-slate-400 mt-2">{footer("operator", OPERATOR)}</p>
         </div>
       </footer>
     </div>

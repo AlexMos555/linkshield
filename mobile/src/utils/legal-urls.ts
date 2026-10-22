@@ -1,0 +1,8 @@
+/**
+ * The legal pages the app links to: from sign-in (app/auth.tsx, where the
+ * email address is collected — GDPR Art. 13 wants the policy at that point),
+ * the paywall (App Store Review 3.1.2) and Settings. One place, so the three
+ * cannot drift apart.
+ */
+export const PRIVACY_POLICY_URL = "https://cleanway.ai/privacy-policy";
+export const TERMS_URL = "https://cleanway.ai/terms";

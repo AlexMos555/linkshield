@@ -1080,20 +1080,22 @@ async def trigger_welcome_email(user: AuthUser = Depends(get_current_user)) -> W
     # next time the user authenticates just because the email provider
     # wasn't ready yet.
     try:
-        from api.services.email import send_template
+        from api.services.email import fixture_overrides_for, send_template
 
-        # Build the unsubscribe URL using existing token mint helper.
-        from api.routers.email_unsubscribe import mint_token
+        from api.routers.email_unsubscribe import mint_token, unsubscribe_url
 
-        unsub_token = mint_token(user_id=user.id, email_template="welcome")
-        unsub_url = f"https://cleanway.ai/api/v1/email/unsubscribe/{unsub_token}"
+        unsub_url = unsubscribe_url(mint_token(user_id=user.id, email_template="welcome"))
 
+        # The unsubscribe link is the only per-user value. Accounts carry no
+        # real name (sign-in is by email code; users.display_name is just the
+        # address's local part), so the template greets neutrally, and its
+        # check link is fixed per locale at build time.
         result = await send_template(
             to=user.email or "",
             user_id=user.id,
             template="welcome",
             locale=user_locale,
-            fixture_overrides={"unsubscribe_url": unsub_url},
+            fixture_overrides=fixture_overrides_for("welcome", unsubscribeUrl=unsub_url),
             unsubscribe_url=unsub_url,
         )
     except Exception as e:
@@ -1103,6 +1105,11 @@ async def trigger_welcome_email(user: AuthUser = Depends(get_current_user)) -> W
 
     if not result.ok:
         return WelcomeResponse(sent=False, reason="send_failed")
+    if result.skip_reason == "rate_limited":
+        # Nothing went out, yet a send was counted — e.g. one the provider
+        # failed. Marking it sent would end the retries; left unmarked, the
+        # first sign-in after the window sends it.
+        return WelcomeResponse(sent=False, reason="rate_limited")
 
     # Mark sent. Even when the provider was "noop" we mark — the only
     # thing the timestamp protects against is double-sends, and the

@@ -27,7 +27,7 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-import { isRTL, t, type Locale } from "../helpers/i18n.js";
+import { isRTL, siteUrl, t, type Locale } from "../helpers/i18n.js";
 
 export interface ShellProps {
   locale: Locale;
@@ -131,13 +131,20 @@ export function Shell({
               {t(locale, "email.common.trust_footer")}
             </Text>
             <Text style={{ ...footer, margin: "4px 0" }}>
+              {/* The spaces around "·" end each link in the plain-text part,
+                  where links are written out as "label URL": glued to the
+                  separator, the signed unsubscribe link was read as
+                  "…/<token>·Contact" and failed to verify
+                  (tests/test_welcome_email.py). */}
               {unsubscribeUrl && (
-                <Link href={unsubscribeUrl} style={footerLink}>
-                  {t(locale, "email.common.unsubscribe_link")}
-                </Link>
+                <>
+                  <Link href={unsubscribeUrl} style={footerLink}>
+                    {t(locale, "email.common.unsubscribe_link")}
+                  </Link>{" "}
+                  <span style={{ color: "#cbd5e1" }}>·</span>{" "}
+                </>
               )}
-              <span style={{ color: "#cbd5e1" }}>·</span>
-              <Link href="https://cleanway.ai/support" style={footerLink}>
+              <Link href={siteUrl(locale, "/support")} style={footerLink}>
                 {t(locale, "email.common.support_link")}
               </Link>
             </Text>

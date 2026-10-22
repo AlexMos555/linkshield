@@ -462,7 +462,9 @@ def test_welcome_sends_in_the_users_locale_and_keeps_other_settings(client, sb, 
 
     (mail,) = mailer.sent
     assert mail["locale"] == "ru" and mail["to"] == USER.email and mail["template"] == "welcome"
-    assert mail["unsubscribe_url"].startswith("https://cleanway.ai/api/v1/email/unsubscribe/")
+    # The route lives on the API only; cleanway.ai/api/... answered 404.
+    assert mail["unsubscribe_url"].startswith("https://api.cleanway.ai/api/v1/email/unsubscribe/")
+    assert list(mail["fixture_overrides"].values()) == [mail["unsubscribe_url"]]
     # The locale column lives on users (migration 003), not user_settings.
     assert sb.to("GET", "/rest/v1/user_settings")[0]["params"]["select"] == "settings"
     assert sb.to("GET", "/rest/v1/users")[0]["params"]["id"] == f"eq.{USER.id}"
