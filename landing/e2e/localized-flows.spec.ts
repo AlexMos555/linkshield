@@ -22,6 +22,33 @@ test("/ru/dns: Windows uses the browser's Secure DNS, never 1.1.1.1 with our tem
   await expect(windows).toContainText("Автоматически (DHCP)");
 });
 
+test("/dns promises every app only where it is true: iPhone, iPad and Mac, not Windows", async ({ page }) => {
+  // The Windows section says only the browser is covered; the hero and the
+  // benefits on the same page used to promise "every app" on a "laptop".
+  // English first: after /ru the locale cookie sends /dns on to /ru/dns.
+  await page.goto("/dns");
+  const en = page.locator("body");
+  await expect(en).not.toContainText("phone or laptop");
+  await expect(en).not.toContainText("Works on every app, not just your browser");
+  await expect(en).toContainText("Point your iPhone, iPad or Mac at it");
+  await expect(en).toContainText("On iPhone, iPad and Mac it works in every app");
+  await page.goto("/ru/dns");
+  const ru = page.locator("body");
+  await expect(ru).not.toContainText("телефон или ноутбук");
+  await expect(ru).not.toContainText("Работает в любом приложении, не только в браузере");
+  await expect(ru).toContainText("Направьте на него iPhone, iPad или Mac");
+  await expect(ru).toContainText("На iPhone, iPad и Mac работает в любом приложении");
+});
+
+test("the privacy policy says Windows sends only the browser's lookups, not every DNS query", async ({ page }) => {
+  await page.goto("/privacy-policy");
+  await expect(page.locator("main")).not.toContainText("Mac or Windows computer, all of your device's DNS queries");
+  await expect(page.locator("main")).toContainText("on a Windows computer, those of the browser you set it up in");
+  await page.goto("/ru/privacy-policy");
+  await expect(page.locator("main")).not.toContainText("на iPhone, Mac или компьютере с Windows, все DNS-запросы устройства");
+  await expect(page.locator("main")).toContainText("на компьютере с Windows — запросы браузера, в котором вы его настроили");
+});
+
 test("/ru/dns is Russian top to bottom and keeps the locale in its links", async ({ page }) => {
   await page.goto("/ru/dns");
   const body = page.locator("body");
@@ -102,6 +129,9 @@ test("/ru/family/join on a computer: Russian, the extension is 'coming soon', An
   await expect(steps.getByRole("link")).toHaveAttribute("href", "/ru/android");
   await expect(page.locator("main")).not.toContainText("Google Play");
   await expect(page.locator("main")).not.toContainText("Chrome");
+  // The app sends no family alerts; only the extension (not out yet) will.
+  await expect(page.locator("main")).not.toContainText("предупреждали друг друга");
+  await expect(page.locator("main")).toContainText("будут приходить из расширения Cleanway для браузера");
 });
 
 test("/ru/family/join with a broken link says so in Russian", async ({ page }) => {
@@ -132,6 +162,8 @@ test("/ru/success shows what installs today, in Russian, and no dead anchor", as
   await expect(main).not.toContainText("in store review");
   await expect(main).not.toContainText("Settings → Family Hub");
   await expect(page.locator('a[href*="#install"]')).toHaveCount(0);
+  // An owner with no family sees "Create family" first; "Generate invite" comes after it.
+  await expect(main).toContainText("Настройки → Семейный центр → «Создать семью», затем «Создать приглашение»");
 });
 
 test("/ru/audit pages are Russian and do not sell an extension nobody can install", async ({ page }) => {
@@ -150,6 +182,25 @@ test("/ru/audit pages are Russian and do not sell an extension nobody can instal
     await expect(grade).not.toContainText(english);
   }
   await expect(page.locator('a[href="/ru/privacy-policy"]')).toBeVisible();
+});
+
+test("/business from Russia, in any page language, sells only what /pricing sells there", async ({ page }) => {
+  // /pricing reads Vercel's geo header; /business used to read the locale only,
+  // so /business from Russia sold the device plan that /pricing then refused.
+  await page.setExtraHTTPHeaders({ "x-vercel-ip-country": "RU" });
+  await page.goto("/business");
+  const en = page.getByTestId("business-pricing");
+  await expect(en).not.toContainText("The price is per device");
+  if (BILLING_ON) await expect(en).toContainText("billed to a mobile phone account");
+  else await expect(en).toContainText("There are no paid plans in your country right now");
+  await expect(en.getByRole("link")).toHaveAttribute("href", "/pricing");
+
+  await page.goto("/de/business");
+  const de = page.getByTestId("business-pricing");
+  await expect(de).not.toContainText("Der Preis gilt pro Gerät");
+  if (BILLING_ON) await expect(de).toContainText("bezahlt über ein Mobilfunkkonto");
+  else await expect(de).toContainText("In Ihrem Land gibt es derzeit keine kostenpflichtigen Tarife");
+  await expect(de.getByRole("link")).toHaveAttribute("href", "/de/pricing");
 });
 
 test("/business (world) still prices per device and links /pricing", async ({ page }) => {

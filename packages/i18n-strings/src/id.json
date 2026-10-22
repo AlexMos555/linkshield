@@ -1763,7 +1763,7 @@
       "step2_body": "Filter DNS memblokir situs penipuan yang dikenal di iPhone dan Mac, serta di browser pada Windows. Aplikasi iPhone dan ekstensi browser segera hadir:",
       "step2_cta": "Atur Cleanway DNS →",
       "step3_title": "Undang keluarga Anda",
-      "step3_body": "Di aplikasi: Pengaturan → Ruang Keluarga → “Buat undangan”. Anggota keluarga bergabung dari ponselnya lewat “Gabung dengan kode”.",
+      "step3_body": "Di aplikasi: Pengaturan → Ruang Keluarga → “Buat keluarga”, lalu “Buat undangan”. Anggota keluarga bergabung dari ponselnya lewat “Gabung dengan kode”.",
       "support_question": "Pertanyaan tentang langganan Anda? Kirim email ke",
       "reference_label": "Referensi"
     },
@@ -2010,7 +2010,7 @@
       "page_title": "DNS pemblokir phishing — satu ketuk, tanpa aplikasi",
       "page_description": "Pasang filter DNS Cleanway dalam 30 detik: untuk semua aplikasi di iPhone dan Mac, di browser pada Windows. Tanpa VPN dan tanpa aplikasi. Di Android, gunakan aplikasi Cleanway gratis.",
       "hero_title": "Blokir phishing di setiap aplikasi — tanpa memasang aplikasi apa pun",
-      "hero_subtitle": "Cleanway menjalankan resolver DNS yang menyaring phishing. Arahkan ponsel atau laptop Anda ke sana, maka setiap aplikasi di perangkat — Safari, Chrome, Mail, aplikasi perbankan — mendapat perlindungan yang sama.",
+      "hero_subtitle": "Cleanway menjalankan resolver DNS yang menyaring phishing. Arahkan iPhone, iPad, atau Mac Anda ke sana, maka setiap aplikasi di perangkat — Safari, Chrome, Mail, aplikasi perbankan — mendapat perlindungan yang sama. Di Windows, resolver ini melindungi browser tempat Anda menyiapkannya.",
       "hero_meta": "Melindungi semua aplikasi di iOS 14+, iPadOS 14+, dan macOS 11+, serta situs yang Anda buka di Chrome, Edge, dan Firefox pada Windows. Tanpa VPN. Hemat baterai. Di Android: aplikasi Cleanway gratis.",
       "ios_intro": "Ketuk tombol di bawah dari iPhone atau iPad Anda. iOS akan meminta izin untuk memasang sebuah profil konfigurasi.",
       "ios_step1": "Ketuk “Izinkan” saat iOS meminta untuk mengunduh profil.",
@@ -2034,7 +2034,7 @@
       "benefit_1": "Tautan phishing di SMS, email, dan Telegram terbuka sebagai “situs tidak ditemukan”, bukan halaman pencuri kredensial.",
       "benefit_2": "Server kendali malware yang diketahui dihentikan sebelum HP kamu menjangkaunya — selama ada di daftar.",
       "benefit_3": "Domain peniru merek (paypal-secure-login.com) diblokir di tingkat resolver — peramban Anda bahkan tidak sempat memuatnya.",
-      "benefit_4": "Berfungsi di setiap aplikasi, bukan hanya peramban. Tautan WhatsApp, aplikasi perbankan, peramban dalam aplikasi — semuanya terlindungi.",
+      "benefit_4": "Di iPhone, iPad, dan Mac, berfungsi di setiap aplikasi, bukan hanya peramban: tautan WhatsApp, aplikasi perbankan, peramban dalam aplikasi — semuanya terlindungi.",
       "privacy_heading": "Privasi — apa yang kami lihat dan apa yang tidak",
       "privacy_body": "Cleanway DNS hanya melakukan resolusi domain. Kami tidak pernah mencatat kueri ke disk, tidak pernah mengirimnya ke Sentry, dan tidak pernah menjualnya kepada siapa pun. Kueri hanya berada di memori selama waktu yang dibutuhkan untuk menjawab permintaan.",
       "privacy_logs": "Yang kami SIMPAN: penghitung harian anonim untuk total kueri dan total pemblokiran, digunakan untuk menerbitkan laporan transparansi triwulanan kami. Tanpa domain, tanpa IP, tanpa pengguna.",
@@ -2145,6 +2145,7 @@
       "download_note": "File .apk · Android 7 atau lebih baru · file besar, sebaiknya pakai Wi-Fi",
       "file_version": "Versi {version}",
       "file_host": "Tombol ini mengunduh file dari {host}, tempat Cleanway menyimpan rilisnya — browser Anda mungkin menampilkan alamat itu.",
+      "file_host_via": "Tombol ini mengunduh file dari rilis Cleanway di {host}. GitHub mengirimkan file itu dari {servedFrom}, jadi browser Anda mungkin menampilkan alamat itu sebagai sumbernya.",
       "file_sha256": "Checksum SHA-256 file ini:",
       "download_soon": "Tautan unduhan akan segera muncul.",
       "steps_title": "Cara memasang",
@@ -2467,7 +2468,7 @@
           "title": "11. Situs web dan filter DNS",
           "paragraphs": [
             "cleanway.ai tidak memiliki iklan maupun pelacak analitik. Penyedia hosting kami, Vercel untuk situs web dan Railway untuk server, menyimpan log teknis permintaan yang biasa, yang dapat berisi alamat yang diminta dan alamat IP Anda. Server kami, termasuk filter DNS yang dijelaskan di bawah, berjalan di UE, di Amsterdam (Belanda).",
-            "Jika Anda memasang filter DNS Cleanway (dns.cleanway.ai) di iPhone, Mac, atau komputer Windows, semua permintaan DNS perangkat dikirim ke server kami. Server memblokir nama yang ada di daftar dan meneruskan sisanya ke Cloudflare untuk mencari alamatnya. Permintaan tidak ditulis ke disk maupun ke log apa pun: server kami hanya menyimpan jumlah total, seperti berapa permintaan yang dijawab dan berapa yang diblokir. Agar pertanyaan yang berulang dijawab lebih cepat, server menyimpan jawaban terbaru di memorinya, berdasarkan pertanyaannya saja (nama situs dan jenis catatan), tidak pernah berdasarkan siapa yang bertanya: selama jawabannya berlaku, paling lama satu jam, dan hingga 6 jam lagi sebagai cadangan jika Cloudflare berhenti menjawab. Jawaban itu tidak pernah ditulis ke disk atau database dan hilang saat server dimulai ulang.",
+            "Jika Anda memasang filter DNS Cleanway (dns.cleanway.ai), permintaan DNS yang diaturnya dikirim ke server kami: di iPhone, iPad, atau Mac, semua permintaan perangkat; di komputer Windows, permintaan dari browser tempat Anda memasangnya. Server memblokir nama yang ada di daftar dan meneruskan sisanya ke Cloudflare untuk mencari alamatnya. Permintaan tidak ditulis ke disk maupun ke log apa pun: server kami hanya menyimpan jumlah total, seperti berapa permintaan yang dijawab dan berapa yang diblokir. Agar pertanyaan yang berulang dijawab lebih cepat, server menyimpan jawaban terbaru di memorinya, berdasarkan pertanyaannya saja (nama situs dan jenis catatan), tidak pernah berdasarkan siapa yang bertanya: selama jawabannya berlaku, paling lama satu jam, dan hingga 6 jam lagi sebagai cadangan jika Cloudflare berhenti menjawab. Jawaban itu tidak pernah ditulis ke disk atau database dan hilang saat server dimulai ulang.",
             "Aplikasi Cleanway untuk iPhone dapat memasang filter DNS yang sama ini untuk Anda sebagai “Perlindungan DNS”: aplikasi menyimpan pengaturan DNS terenkripsi Cleanway di iPhone, dan pengaturan itu baru bekerja setelah Anda memilihnya di Pengaturan iPhone. Berbeda dengan aplikasi Android, yang mencocokkan nama situs dengan daftar yang tersimpan di ponsel, di iPhone pencocokan dilakukan di server kami: selama perlindungan DNS aktif, iPhone mengirim ke server kami, terenkripsi, nama setiap situs yang dicari aplikasi apa pun, dan server menanganinya seperti dijelaskan di paragraf sebelumnya. Untuk membatasi berapa banyak permintaan dari satu koneksi, server kami menghitungnya di memori dengan kode acak yang dibuat dari alamat IP Anda (hash berkunci), bukan dengan alamat itu sendiri, dan mengosongkan hitungan setiap jam; hitungan itu tidak pernah disimpan bersama nama yang Anda cari. Di iOS 26 dan yang lebih baru, jika server kami tidak menjawab, iPhone dapat bertanya ke server DNS jaringan itu sendiri, seperti tanpa Cleanway. Anda dapat mematikan perlindungan DNS di Pengaturan iPhone atau menghapusnya di aplikasi kapan saja."
           ]
         },
@@ -2517,7 +2518,7 @@
             "Undang-undang perlindungan data, seperti GDPR di Eropa, mensyaratkan dasar hukum untuk setiap penggunaan data pribadi. Dasar kami adalah:"
           ],
           "items": [
-            "menyediakan layanan yang Anda minta (pelaksanaan kontrak): akun dan proses masuk Anda, daftar perangkat Anda, fitur keluarga, paket berbayar, filter DNS setelah Anda menyiapkannya, dan email layanan yang terkait;",
+            "menyediakan layanan yang Anda minta (pelaksanaan kontrak): akun dan proses masuk Anda, daftar perangkat Anda, fitur keluarga, paket berbayar, filter DNS setelah Anda menyiapkannya, “Scan email” dan “Report phishing” di add-in untuk Outlook saat Anda menekannya, dan email layanan yang terkait;",
             "kepentingan sah kami atas layanan yang berfungsi dan aman digunakan: memeriksa nama situs yang Anda buka atau tanyakan, batas jumlah pemeriksaan per koneksi atau per ponsel, pemeriksaan Turnstile, log keamanan tindakan akun dan pemberitahuan keamanan, laporan kesalahan dan pengukuran waktu, serta cadangan data. Tanpa pemeriksaan tidak ada perlindungan, dan tanpa batas serta log, layanan ini bisa disalahgunakan;",
             "persetujuan Anda: pemeriksaan email di webmail, yang nonaktif sampai Anda menyalakannya di ekstensi browser, dan, di Firefox, persetujuan data yang diminta oleh add-on. Anda dapat menarik persetujuan kapan saja: pemeriksaan langsung berhenti, dan apa yang dilakukan sebelumnya tetap sah."
           ],
@@ -2766,7 +2767,7 @@
       "incomplete_body": "Tautan yang Anda buka tidak berisi kode undangan. Minta orang yang mengundang Anda untuk mengirim yang baru. Tautannya seharusnya seperti ini:",
       "back_home": "Kembali ke Cleanway",
       "title": "Anda diundang ke keluarga di Cleanway",
-      "intro": "Cleanway melindungi keluarga dari situs penipuan dan phishing. Orang yang mengundang Anda ingin Anda bergabung di lingkaran keluarga pribadinya, agar kalian bisa saling memperingatkan saat penipuan diblokir.",
+      "intro": "Cleanway melindungi keluarga dari situs penipuan dan phishing. Orang yang mengundang Anda ingin Anda bergabung di lingkaran keluarga pribadinya. Peringatan keluarga — pemberitahuan untuk keluarga saat situs penipuan diblokir — akan datang dari ekstensi browser Cleanway, yang segera hadir.",
       "code_label": "Kode",
       "pin_label": "PIN",
       "how_title": "Cara bergabung",

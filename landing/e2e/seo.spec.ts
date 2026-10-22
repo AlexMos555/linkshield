@@ -76,6 +76,21 @@ for (const path of ["/support", "/signup", "/delete-account"]) {
   }
 }
 
+// Pages with no openGraph block of their own inherit the layout's. The
+// file-convention app/[locale]/opengraph-image.tsx used to give them
+// /en/opengraph-image?… — a 307 to /opengraph-image — instead of /og.png.
+for (const path of ["/success", "/cancel", "/transparency/methodology"]) {
+  for (const locale of ["en", "ru"]) {
+    test(`${local(locale, path)}: the inherited share image is /og.png, not a redirecting file-convention URL`, async ({ request }) => {
+      const telegram = { "user-agent": "TelegramBot (like TwitterBot)" };
+      const head = (await (await request.get(local(locale, path), { headers: telegram })).text()).split("</head>")[0];
+      expect(ogTag(head, "og:image")).toBe(`${SITE}/og.png`);
+      expect(head).not.toContain("opengraph-image");
+      expect(head).toContain(`name="twitter:image" content="${SITE}/og.png"`);
+    });
+  }
+}
+
 test("the share image answers 200 in every language, for a bot with no cookies", async ({ playwright, baseURL }) => {
   // /opengraph-image went through the locale middleware: "Accept-Language: ru"
   // got a 307 to /ru/opengraph-image. A preview bot does not follow it.

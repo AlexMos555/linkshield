@@ -38,7 +38,7 @@ export async function generateMetadata({
     metadataBase: new URL(SITE_URL),
     alternates: { canonical, languages },
     // Its own share preview (the site-wide one named no page and no URL), and
-    // the share image by its locale-free URL: /en/opengraph-image is a 307.
+    // the share image by its locale-free URL, /og.png (lib/seo.ts).
     openGraph: {
       title,
       description,

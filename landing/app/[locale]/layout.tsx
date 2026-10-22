@@ -6,6 +6,7 @@ import { getMessages, getTranslations, setRequestLocale } from "next-intl/server
 import { notFound } from "next/navigation";
 import { routing, RTL_LOCALES, type Locale } from "@/i18n/routing";
 import { pickClientMessages } from "@/lib/client-messages";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 /**
  * Site-wide default metadata, in the page's language.
@@ -49,12 +50,16 @@ export async function generateMetadata({
       // Per-page generateMetadata overrides url with the locale-correct canonical.
       // Omit url here so a non-default-locale page that forgets to override
       // doesn't inherit the apex URL and leak a wrong canonical to OG consumers.
+      // The share card by its URL that never redirects (lib/seo.ts); a page
+      // with its own openGraph block names it again (Next replaces the block).
+      images: [DEFAULT_OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
       site: "@cleanwayai",
+      images: [DEFAULT_OG_IMAGE.url],
     },
     // Search Console / Yandex Webmaster ownership by meta tag — only when the
     // founder sets the code in Vercel env. Verifying by a DNS TXT record on

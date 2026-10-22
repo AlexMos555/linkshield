@@ -13,14 +13,18 @@
  *
  * It sells only what /pricing sells to the same reader. /ru/business used to
  * describe "the paid plan, priced per device" while /ru/pricing said there
- * are no paid plans in Russia. The copy now follows the same pricing variant
- * as the home page's teaser (lib/billing-config.ts, by locale, so the page
- * stays static): the device plan where it is sold, "free, no paid plans" where
- * it is not, and the subscription billed to the phone account once the
- * operator billing is switched on (Business.free.* / Business.operator.*).
+ * are no paid plans in Russia. The copy now follows the pricing variant
+ * /pricing picks (lib/billing-config.ts), from the page's locale AND the
+ * visitor's country (Vercel's x-vercel-ip-country header): the device plan
+ * where it is sold, "free, no paid plans" where it is not, and the
+ * subscription billed to the phone account once the operator billing is
+ * switched on (Business.free.* / Business.operator.*). Reading the header
+ * makes the page dynamic, as /pricing is; by locale alone, /business or
+ * /de/business opened from Russia sold the plan /pricing then refused.
  */
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { getTranslations } from "next-intl/server";
 
 import { routing, type Locale } from "@/i18n/routing";
@@ -47,10 +51,16 @@ function copyPrefix(variant: PricingVariant): "" | "free." | "operator." {
   return variant === "stripe" ? "" : `${variant}.`;
 }
 
+/** The variant /pricing gives this visitor: page locale plus Vercel's geo header. */
+async function variantFor(locale: Locale): Promise<PricingVariant> {
+  const country = (await headers()).get("x-vercel-ip-country");
+  return pricingVariantFor({ locale, country });
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const safeLocale = resolveLocale((await params).locale);
   const t = await getTranslations({ locale: safeLocale, namespace: "Business" });
-  const copy = copyPrefix(pricingVariantFor({ locale: safeLocale }));
+  const copy = copyPrefix(await variantFor(safeLocale));
   const canonical = urlFor(safeLocale, "/business");
 
   const languages: Record<string, string> = {};
@@ -74,7 +84,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BusinessPage({ params }: Props) {
   const locale = resolveLocale((await params).locale);
   const t = await getTranslations({ locale, namespace: "Business" });
-  const variant = pricingVariantFor({ locale });
+  const variant = await variantFor(locale);
   const copy = copyPrefix(variant);
   const how = t.raw(`${copy}how_items`) as string[];
 

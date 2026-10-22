@@ -1,5 +1,5 @@
 """Server-side retention promised by the privacy policy (docs/PRIVACY.md,
-landing.privacy_policy section 15) — enforced by api/services/retention.py.
+landing.privacy_policy section 16) — enforced by api/services/retention.py.
 
 Pinned here:
   - each table rule deletes exactly what the policy says is expired
@@ -11,16 +11,22 @@ Pinned here:
   - "off" (the default) does nothing at all;
   - one failing table doesn't stop the others and is reported;
   - the account purge runs only in "on" mode; dry-run counts candidates;
-  - the background loop is not started unless RETENTION_PURGE is set.
+  - the background loop is not started unless RETENTION_PURGE is set;
+  - the docs that point a reader at the policy's retention list name the
+    section it has today.
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Dict, List
 
 import pytest
 
 from api.services import retention
+
+ROOT = Path(__file__).resolve().parent.parent
 
 NOW = datetime(2026, 10, 21, 12, 0, tzinfo=timezone.utc)
 
@@ -115,6 +121,27 @@ def test_windows_agree_with_the_code_that_sets_them():
     assert retention.AUDIT_LOG_DAYS == 730
     assert retention.WEEKLY_AGGREGATES_DAYS == 365
     assert retention.FEEDBACK_REPORTS_DAYS == 365
+
+
+def _policy_section_number(title: str) -> int:
+    """Number of the English policy section titled ``title`` ("16. How long…")."""
+    source = json.loads((ROOT / "packages" / "i18n-strings" / "src" / "en.json").read_text(encoding="utf-8"))
+    for section in source["landing"]["privacy_policy"]["sections"]:
+        number, _, name = section["title"].partition(". ")
+        if name == title:
+            return int(number)
+    raise AssertionError(f"no policy section titled {title!r}")
+
+
+def test_docs_name_the_policy_section_that_lists_retention():
+    # #274 inserted "15. Why we may use your data", so the retention list moved
+    # to 16 and every "section 15" pointer started naming the legal bases.
+    n = _policy_section_number("How long we keep data")
+    assert f"public policy section {n}," in (retention.__doc__ or "")
+    runbook = (ROOT / "docs" / "runbooks" / "data-retention.md").read_text(encoding="utf-8")
+    assert f"раздел {n} `landing.privacy_policy`" in runbook
+    readme = (ROOT / "email-plugin-outlook" / "README.md").read_text(encoding="utf-8")
+    assert f"policy section {n})" in readme
 
 
 @pytest.mark.asyncio

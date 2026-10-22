@@ -12,11 +12,10 @@
 // (where Microsoft AppSource reviewers expect to see it). The
 // `landing/public/outlook/` directory is build artifact, gitignored.
 //
-// The manifest.xml references `https://addin.cleanway.ai/outlook/...`
+// The manifest.xml references `https://cleanway.ai/outlook/...`
 // so files MUST land at `landing/public/outlook/<same-relative-path>`.
-// `addin.cleanway.ai` is set up in Vercel as an alias domain pointing at
-// the landing project — Vercel serves /public files for ANY domain
-// aliased to the project, no rewrite needed.
+// The site serves them as static files (a path with a dot is outside the
+// locale middleware), with the /outlook/* headers from landing/next.config.ts.
 
 const fs = require("fs");
 const path = require("path");

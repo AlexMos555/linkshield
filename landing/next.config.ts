@@ -64,9 +64,9 @@ const CSP_DIRECTIVES = [
   // `*.ingest.sentry.io` does not match — a wildcard covers one label, so
   // every browser event was blocked by this CSP and never reached Sentry.
   "connect-src 'self' https://api.cleanway.ai https://*.supabase.co https://*.supabase.in https://api.stripe.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://*.ingest.us.sentry.io",
-  // Stripe Checkout + the Outlook add-in iframe surface (addin domain
-  // sits on the same Vercel deploy) + the Turnstile widget iframe.
-  "frame-src https://js.stripe.com https://hooks.stripe.com https://addin.cleanway.ai https://challenges.cloudflare.com",
+  // Stripe Checkout + the Turnstile widget iframe. (The site never frames the
+  // Outlook add-in; Outlook does — see OUTLOOK_ADDIN_CSP below.)
+  "frame-src https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com",
   "frame-ancestors 'none'",
   "form-action 'self' https://checkout.stripe.com",
   "base-uri 'self'",
@@ -98,7 +98,8 @@ const SECURITY_HEADERS = [
 
 /**
  * The Outlook add-in (email-plugin-outlook/, copied to public/outlook/ by the
- * prebuild step). Outlook shows its task pane inside its own frame, and the
+ * prebuild step and named by its manifest at https://cleanway.ai/outlook/…).
+ * Outlook shows its task pane inside its own frame, and the
  * pane must load Microsoft's office.js from appsforoffice.microsoft.com — the
  * site-wide policy above forbids both (frame-ancestors 'none' + X-Frame-Options
  * DENY, a script-src without that host), so the add-in could not start. These
@@ -137,9 +138,6 @@ const OUTLOOK_ADDIN_CSP = [
 
 const OUTLOOK_ADDIN_HEADERS = [{ key: "Content-Security-Policy", value: OUTLOOK_ADDIN_CSP }, ...COMMON_HEADERS];
 
-/** Host the add-in manifest names (email-plugin-outlook/manifest.xml). */
-const ADDIN_HOST = "addin.cleanway.ai";
-
 /**
  * Crawlers and link-preview bots that read <title>/<meta> from the raw HTML
  * <head> and never run JavaScript. Next 15 streams metadata into <body> for
@@ -164,15 +162,6 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         has: [{ type: "host", value: "www.cleanway.ai" }],
         destination: "https://cleanway.ai/:path*",
-        permanent: true,
-      },
-      {
-        // addin.cleanway.ai is an alias of this project so Outlook can load
-        // /outlook/* from the host the manifest names; anything else there
-        // would be a second copy of the site.
-        source: "/:path((?!outlook/).*)",
-        has: [{ type: "host", value: ADDIN_HOST }],
-        destination: "https://cleanway.ai/:path",
         permanent: true,
       },
     ];

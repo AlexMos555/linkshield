@@ -31,7 +31,10 @@
  *  15. Every indexable page has a title and description in every locale, no
  *      two share a title, and only the curated /check sites are indexable.
  *  16. /android shows the version and SHA-256 of the file its button
- *      downloads — never the checksum of another file.
+ *      downloads — never the checksum of another file — and, for a GitHub
+ *      release, the file store the browser really shows as the source.
+ *  17. /success and /family/join name the app's own Family Hub buttons in
+ *      every language, and promise no family alerts the app does not send.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -868,6 +871,30 @@ console.log("\npages reached from a shared link or a checkout (/ref, /family/joi
       }
     }
   });
+  check("the menu path they give is the app's own buttons, in every locale", () => {
+    // An owner with no family first sees "Create family" (mobile/app/family.tsx);
+    // "Generate invite" appears only after it, so a path without it dead-ends.
+    for (const locale of LOCALES) {
+      const app = JSON.parse(fs.readFileSync(path.join(SOURCE_DIR, `${locale}.json`), "utf-8")).mobile.family;
+      const success = served(locale).Success.step3_body;
+      for (const key of ["title", "create", "generate_invite", "join_with_code"]) {
+        assert.ok(success.includes(app[key]), `${locale}: Success.step3_body lacks the app's "${app[key]}" (mobile.family.${key})`);
+      }
+      assert.ok(success.indexOf(app.create) < success.indexOf(app.generate_invite), `${locale}: "${app.create}" must come before "${app.generate_invite}"`);
+      const join = served(locale).FamilyJoin.app_step2;
+      for (const key of ["title", "join_with_code"]) {
+        assert.ok(join.includes(app[key]), `${locale}: FamilyJoin.app_step2 lacks the app's "${app[key]}" (mobile.family.${key})`);
+      }
+    }
+  });
+  check("the invite does not promise family alerts from the app, which sends none", () => {
+    // Only the browser extension sends alerts (packages/extension-core/src/utils/family-fanout.js);
+    // the app's submitAlerts has no caller. The intro says where alerts will come from.
+    assert.ok(!/warn each other/i.test(served("en").FamilyJoin.intro), "en: 'warn each other'");
+    assert.ok(!/предупреждали друг друга/.test(served("ru").FamilyJoin.intro), "ru: 'предупреждали друг друга'");
+    assert.match(served("en").FamilyJoin.intro, /browser extension[^.]*coming soon/);
+    assert.match(served("ru").FamilyJoin.intro, /расширени[^.]*скоро появится/);
+  });
   check("no stale promise survives in them, in any language", () => {
     for (const locale of LOCALES) {
       const text = JSON.stringify([served(locale).Ref, served(locale).FamilyJoin, served(locale).Success]);
@@ -915,11 +942,31 @@ console.log("\napkReleaseFrom (the /android button, its version and its checksum
     assert.equal(release.versionCode, null);
     assert.equal(release.host, "get.cleanway.ai");
   });
+  check("a GitHub release link names the host the browser really shows: GitHub's file store", () => {
+    // github.com answers the release URL with a 302 to release-assets.githubusercontent.com,
+    // and that is the source the download list shows.
+    const release = apkReleaseFrom({ NEXT_PUBLIC_APK_URL: URL_103 });
+    assert.equal(release.host, "github.com");
+    assert.equal(release.servedFrom, "release-assets.githubusercontent.com");
+    // Any other host serves the file itself.
+    assert.equal(apkReleaseFrom({ NEXT_PUBLIC_APK_URL: "https://get.cleanway.ai/latest.apk" }).servedFrom, null);
+    // A github.com link that is not a release asset is not redirected there.
+    assert.equal(apkReleaseFrom({ NEXT_PUBLIC_APK_URL: "https://github.com/AlexMos555/linkshield/raw/main/app.apk" }).servedFrom, null);
+  });
+  check("both host lines exist in every locale, with their arguments", () => {
+    for (const locale of LOCALES) {
+      const android = JSON.parse(fs.readFileSync(path.join(ROOT, "landing", "messages", `${locale}.json`), "utf-8")).Android;
+      assert.ok(android.file_host.includes("{host}"), `${locale}: Android.file_host has no {host}`);
+      assert.ok(android.file_host_via.includes("{host}"), `${locale}: Android.file_host_via has no {host}`);
+      assert.ok(android.file_host_via.includes("{servedFrom}"), `${locale}: Android.file_host_via has no {servedFrom}`);
+    }
+  });
   check("not a web address → the link as given, nothing derived from it", () => {
     const release = apkReleaseFrom({ NEXT_PUBLIC_APK_URL: "cleanway-1.0.3-103-arm.apk" });
     assert.equal(release.url, "cleanway-1.0.3-103-arm.apk");
     assert.equal(release.version, null);
     assert.equal(release.host, null);
+    assert.equal(release.servedFrom, null);
     assert.equal(release.sha256, null);
   });
 }

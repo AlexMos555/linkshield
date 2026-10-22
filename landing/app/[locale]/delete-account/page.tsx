@@ -48,8 +48,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     metadataBase: new URL(SITE_URL),
     alternates: { canonical, languages },
     // Support sends this link to people asking how to delete an account: its
-    // own preview, and the share image by its locale-free URL (the file
-    // route's /en/opengraph-image is a 307).
+    // own preview, and the share image by its locale-free URL, /og.png
+    // (lib/seo.ts).
     openGraph: {
       title,
       description,

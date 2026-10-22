@@ -34,7 +34,7 @@ holds the verdict, score and counts — `api/routers/email.py`).
 
 On **Report phishing** (ribbon or task pane), only the sender's **domain**
 goes to `POST /api/v1/feedback/report`, with `comment: "[outlook]"`. Reports
-are kept for 1 year (`api/services/retention.py`, policy section 15).
+are kept for 1 year (`api/services/retention.py`, policy section 16).
 
 **Not sent:** recipients, CC/BCC, attachment content, thread metadata,
 routing headers, tenant identifiers. The Outlook Permissions declaration
@@ -44,8 +44,8 @@ message. `manifest.xml`'s descriptions say the same, and
 
 Domain-reputation lookups (Safe Browsing, our ML model) happen on the
 backend so the anon key never ships to end users. See
-[`docs/runbooks/addin-cleanway-ai-setup.md`](../docs/runbooks/addin-cleanway-ai-setup.md)
-for the hosting (DNS, CSP, CORS) and the sideload test.
+[`docs/runbooks/outlook-addin-hosting.md`](../docs/runbooks/outlook-addin-hosting.md)
+for the hosting (`cleanway.ai/outlook/`, CSP, CORS) and the sideload test.
 
 ## Local dev
 
@@ -65,7 +65,7 @@ npx --yes http-server ./email-plugin-outlook \
 ```
 
 Then edit `manifest.xml` temporarily: replace every
-`https://addin.cleanway.ai/` with `https://localhost:3443/`, sideload
+`https://cleanway.ai/outlook/` with `https://localhost:3443/`, sideload
 via the Outlook web UI:
 
 1. Outlook on the web → gear icon → **Get Add-ins** → **My Add-ins** → **Custom add-ins** → **Add from file…** → pick `manifest.xml`.
@@ -76,7 +76,7 @@ Revert `manifest.xml` before committing.
 ## Production deploy
 
 1. Build the taskpane/commands bundle (no bundler today — assets are raw HTML/CSS/JS, served as-is).
-2. Deploy the landing: its `prebuild` copies this folder to `landing/public/outlook/`, served on `cleanway.ai/outlook/` and — once the DNS record and the Vercel alias exist — on `addin.cleanway.ai/outlook/` (`docs/runbooks/addin-cleanway-ai-setup.md`).
+2. Deploy the landing: its `prebuild` copies this folder to `landing/public/outlook/`, served on `cleanway.ai/outlook/` — the URLs the manifest names (`docs/runbooks/outlook-addin-hosting.md`).
 3. Submit `manifest.xml` to the [Microsoft 365 Admin Center](https://admin.microsoft.com) (for org-managed distribution) or to [AppSource](https://appsource.microsoft.com/) (for general availability).
 4. AppSource review typically takes 5–10 business days.
 

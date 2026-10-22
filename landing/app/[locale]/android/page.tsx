@@ -18,8 +18,10 @@
  * Until then the button renders as a "coming soon" pill rather than a dead link.
  * Next to the button: the version (from the file's own name) and the SHA-256
  * from NEXT_PUBLIC_APK_SHA256, shown only for that same file
- * (lib/apk-release.ts), and the host the file really comes from — the page
- * says "download only with this button", and the browser shows github.com.
+ * (lib/apk-release.ts), and the hosts the file really comes from — the page
+ * says "download only with this button", and for a GitHub release the browser
+ * shows GitHub's file store (release-assets.githubusercontent.com), not
+ * cleanway.ai or even github.com.
  */
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
@@ -194,7 +196,10 @@ export default async function AndroidPage({
         {APK && (APK.version || APK.host) && (
           <p data-testid="android-file" style={fileNote}>
             {APK.version && <span>{t("file_version", { version: APK.version })}. </span>}
-            {APK.host && t("file_host", { host: APK.host })}
+            {APK.host &&
+              (APK.servedFrom
+                ? t("file_host_via", { host: APK.host, servedFrom: APK.servedFrom })
+                : t("file_host", { host: APK.host }))}
           </p>
         )}
         {APK?.sha256 && (

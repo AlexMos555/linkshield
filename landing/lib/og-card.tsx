@@ -1,8 +1,14 @@
 /**
- * Static Open Graph image for the landing and every page that doesn't
- * override opengraph-image at its segment (/android, /pricing, /support,
- * /privacy-policy, /terms, /dns, /transparency, ...). Per-domain scan pages
- * have their own dynamic image at app/[locale]/check/[domain]/opengraph-image.tsx.
+ * The site's share card, served at /og.png (app/og.png/route.ts) and named by
+ * every page through DEFAULT_OG_IMAGE (lib/seo.ts) — the locale layout's
+ * openGraph carries it, so a page without its own block inherits it too.
+ * Per-domain scan and audit pages have their own dynamic image
+ * (app/[locale]/check/[domain]/opengraph-image.tsx and the /audit ones).
+ *
+ * Not a file convention on purpose. As app/[locale]/opengraph-image.tsx it
+ * put og:image=/en/opengraph-image?… on every page without its own image
+ * (/success, /cancel, /transparency/methodology, the 404…), a URL that
+ * answers 307 through the locale middleware — a preview bot does not follow it.
  *
  * Deliberately wordless beyond the brand: this one picture is shown for all
  * ten locales, so any sentence on it is wrong for nine of them — the Russian
@@ -14,12 +20,9 @@
  */
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
-export const alt = "Cleanway";
-export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
+export const OG_CARD_SIZE = { width: 1200, height: 630 } as const;
 
-export default function OpenGraphImage() {
+export function renderOgCard(): ImageResponse {
   return new ImageResponse(
     (
       <div
@@ -82,6 +85,6 @@ export default function OpenGraphImage() {
         </div>
       </div>
     ),
-    { ...size },
+    { ...OG_CARD_SIZE },
   );
 }

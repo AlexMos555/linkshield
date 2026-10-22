@@ -212,7 +212,7 @@
     "step2_body": "The DNS filter blocks known scam sites on iPhone and Mac, and in the browser on Windows. The iPhone app and the browser extensions are coming soon:",
     "step2_cta": "Set up Cleanway DNS →",
     "step3_title": "Invite your family",
-    "step3_body": "In the app: Settings → Family Hub → “Generate invite”. Your family member joins on their phone with “Join with code”.",
+    "step3_body": "In the app: Settings → Family Hub → “Create family”, then “Generate invite”. Your family member joins on their phone with “Join with code”.",
     "support_question": "Questions about your subscription? Email",
     "reference_label": "Reference"
   },
@@ -459,7 +459,7 @@
     "page_title": "Phishing-blocking DNS — one tap, no app",
     "page_description": "Install the Cleanway DNS filter in 30 seconds: for every app on iPhone and Mac, in the browser on Windows. No VPN, no app. On Android, use the free Cleanway app.",
     "hero_title": "Block phishing on every app — without installing one",
-    "hero_subtitle": "Cleanway runs a phishing-blocking DNS resolver. Point your phone or laptop at it and every app on the device — Safari, Chrome, Mail, banking apps — gets the same protection.",
+    "hero_subtitle": "Cleanway runs a phishing-blocking DNS resolver. Point your iPhone, iPad or Mac at it and every app on the device — Safari, Chrome, Mail, banking apps — gets the same protection. On Windows it protects the browser you set it up in.",
     "hero_meta": "Protects every app on iOS 14+, iPadOS 14+ and macOS 11+, and on Windows the sites you open in Chrome, Edge and Firefox. No VPN. Won’t drain your battery. On Android — the free Cleanway app.",
     "ios_intro": "Tap the button below on your iPhone or iPad. iOS will ask permission to install a configuration profile.",
     "ios_step1": "Tap “Allow” when iOS asks to download the profile.",
@@ -483,7 +483,7 @@
     "benefit_1": "Phishing links in SMS, email, and Telegram open as a “site not found” instead of a credential-stealing page.",
     "benefit_2": "Known malware command-and-control hosts are stopped before your phone can reach them — as long as they are on the list.",
     "benefit_3": "Brand-impersonation domains (paypal-secure-login.com) are blocked at the resolver level — your browser never even loads them.",
-    "benefit_4": "Works on every app, not just your browser. WhatsApp links, banking apps, in-app browsers — all protected.",
+    "benefit_4": "On iPhone, iPad and Mac it works in every app, not just your browser: WhatsApp links, banking apps, in-app browsers — all protected.",
     "privacy_heading": "Privacy — what we see and what we don’t",
     "privacy_body": "Cleanway DNS resolves the domain only. We never log the queries to disk, never send them to Sentry, never sell them to anyone. Queries stay in memory just long enough to answer the request.",
     "privacy_logs": "What we DO keep: an anonymous daily counter of total queries and total blocks, used to publish our quarterly transparency report. No domains, no IPs, no users.",
@@ -594,6 +594,7 @@
     "download_note": ".apk file · Android 7 and newer · large file, Wi-Fi is best",
     "file_version": "Version {version}",
     "file_host": "The button downloads the file from {host}, where Cleanway keeps its releases — your browser may show that address.",
+    "file_host_via": "The button downloads the file from Cleanway's releases on {host}. GitHub hands the file over from {servedFrom}, so your browser may show that address as the source.",
     "file_sha256": "SHA-256 checksum of this file:",
     "download_soon": "The download link is coming very soon.",
     "steps_title": "How to install",
@@ -916,7 +917,7 @@
         "title": "11. The website and the DNS filter",
         "paragraphs": [
           "cleanway.ai has no advertising or analytics trackers. Our hosting providers — Vercel for the website, Railway for the server — keep standard technical request logs, which can include the requested address and your IP address. Our server, including the DNS filter described below, runs in the EU, in Amsterdam (the Netherlands).",
-          "If you set up the Cleanway DNS filter (dns.cleanway.ai) on an iPhone, Mac or Windows computer, all of your device's DNS queries go to our server. It blocks names from the list and passes the rest to Cloudflare to find the address. Queries are not written to disk or to any log: our server keeps only totals, such as how many queries it answered and how many it blocked. To answer repeat questions faster, it holds recent answers in its memory, stored by the question alone (the site name and the kind of record), never by who asked — for as long as the answer is valid, at most an hour, and up to 6 more hours as a backup in case Cloudflare stops answering. They are never written to disk or a database and are gone when the server restarts.",
+          "If you set up the Cleanway DNS filter (dns.cleanway.ai), the DNS queries it is set up for go to our server: on an iPhone, iPad or Mac, all of your device's queries; on a Windows computer, those of the browser you set it up in. The server blocks names from the list and passes the rest to Cloudflare to find the address. Queries are not written to disk or to any log: our server keeps only totals, such as how many queries it answered and how many it blocked. To answer repeat questions faster, it holds recent answers in its memory, stored by the question alone (the site name and the kind of record), never by who asked — for as long as the answer is valid, at most an hour, and up to 6 more hours as a backup in case Cloudflare stops answering. They are never written to disk or a database and are gone when the server restarts.",
           "The Cleanway app for iPhone can set up the same DNS filter for you as “DNS protection”: the app saves Cleanway's encrypted DNS setting on the iPhone, and it starts working only after you choose it in the iPhone's Settings. Unlike the Android app, which compares site names with a list stored on the phone, on iPhone the comparison happens on our server: while DNS protection is on, the iPhone sends our server, encrypted, the name of every site any app looks up, and the server handles it as described in the previous paragraph. To limit how many queries one connection can make, our server counts them in its memory under a scrambled code made from your IP address (a keyed hash), not under the address itself, and clears the count every hour; it is never stored together with the names you look up. On iOS 26 and later, if our server does not answer, the iPhone may ask the network's own DNS server instead, as without Cleanway. You can turn DNS protection off in the iPhone's Settings or remove it in the app at any time."
         ]
       },
@@ -966,7 +967,7 @@
           "Data-protection laws such as the EU's GDPR require a legal basis for each use of personal data. Ours are:"
         ],
         "items": [
-          "providing the service you asked for (performance of a contract): your account and sign-in, your device list, family features, paid plans, the DNS filter once you set it up, and the service emails that go with them;",
+          "providing the service you asked for (performance of a contract): your account and sign-in, your device list, family features, paid plans, the DNS filter once you set it up, the Outlook add-in's “Scan email” and “Report phishing” when you press them, and the service emails that go with them;",
           "our legitimate interest in a service that works and is safe to use: checking the names of sites you open or ask about, the limits on how many checks one connection or phone can make, the Turnstile check, the security log of account actions and security notices, error reports and timing measurements, and backups. Without the checks there is no protection, and without the limits and logs the service could be abused;",
           "your consent: the email check in web mail, which stays off until you switch it on in the browser extension, and, in Firefox, the data consent the add-on asks for. You can withdraw consent at any time: the checks stop at once, and what was done before stays lawful."
         ],
@@ -1215,7 +1216,7 @@
     "incomplete_body": "The link you opened doesn't carry an invite code. Ask the person who invited you to send a new one. The link should look like this:",
     "back_home": "Back to Cleanway",
     "title": "You've been invited to a Cleanway family",
-    "intro": "Cleanway protects families from scam and phishing sites. The person who invited you wants you in their private family circle, so you can warn each other when a scam is blocked.",
+    "intro": "Cleanway protects families from scam and phishing sites. The person who invited you wants you in their private family circle. Family alerts — a note to the family when a scam site is blocked — will come from the Cleanway browser extension, which is coming soon.",
     "code_label": "Code",
     "pin_label": "PIN",
     "how_title": "How to join",

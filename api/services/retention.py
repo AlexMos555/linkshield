@@ -1,7 +1,7 @@
 """Server-side retention: delete what the privacy policy says we no longer keep.
 
 What the policy promises (docs/PRIVACY.md "What we store, and for how long";
-public policy section 15, landing.privacy_policy in packages/i18n-strings)
+public policy section 16, landing.privacy_policy in packages/i18n-strings)
 and what enforces it here:
 
   accounts            erased 30 days after a deletion request

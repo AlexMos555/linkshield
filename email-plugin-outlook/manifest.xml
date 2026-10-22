@@ -7,13 +7,13 @@
   we'll mirror this into `manifest.json` alongside.
 
   Hosting contract:
-    https://addin.cleanway.ai/outlook/taskpane/taskpane.html
-    https://addin.cleanway.ai/outlook/commands/commands.html
-  The domain `addin.cleanway.ai` is an alias of the landing's Vercel
-  project; /outlook/* there gets its own CSP (office.js, Outlook framing —
-  landing/next.config.ts) and the API lets the origin in (api/config.py).
-  The DNS record and the alias are set up by hand — see
-  docs/runbooks/addin-cleanway-ai-setup.md.
+    https://cleanway.ai/outlook/taskpane/taskpane.html
+    https://cleanway.ai/outlook/commands/commands.html
+  The landing serves these files (scripts/sync-addin.cjs copies this folder
+  to landing/public/outlook/); /outlook/* gets its own CSP (office.js,
+  Outlook framing — landing/next.config.ts), and the API already allows the
+  https://cleanway.ai origin (api/config.py). No extra host, DNS record or
+  alias — see docs/runbooks/outlook-addin-hosting.md.
 
   The descriptions below are what Microsoft shows people before they
   install: they must say what leaves Outlook (tests/test_outlook_addin.py).
@@ -31,8 +31,8 @@
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Cleanway — Phishing protection"/>
   <Description DefaultValue="Checks the email you open for phishing: links, sender spoofing, credential-theft patterns. When you scan, its sender, subject, text, HTML and links go to Cleanway's server, are checked in memory and are not stored."/>
-  <IconUrl DefaultValue="https://addin.cleanway.ai/outlook/assets/icon-64.png"/>
-  <HighResolutionIconUrl DefaultValue="https://addin.cleanway.ai/outlook/assets/icon-128.png"/>
+  <IconUrl DefaultValue="https://cleanway.ai/outlook/assets/icon-64.png"/>
+  <HighResolutionIconUrl DefaultValue="https://cleanway.ai/outlook/assets/icon-128.png"/>
   <SupportUrl DefaultValue="https://cleanway.ai/support"/>
 
   <AppDomains>
@@ -54,7 +54,7 @@
   <FormSettings>
     <Form xsi:type="ItemRead">
       <DesktopSettings>
-        <SourceLocation DefaultValue="https://addin.cleanway.ai/outlook/taskpane/taskpane.html"/>
+        <SourceLocation DefaultValue="https://cleanway.ai/outlook/taskpane/taskpane.html"/>
         <RequestedHeight>450</RequestedHeight>
       </DesktopSettings>
     </Form>
@@ -128,13 +128,13 @@
 
     <Resources>
       <bt:Images>
-        <bt:Image id="icon16" DefaultValue="https://addin.cleanway.ai/outlook/assets/icon-16.png"/>
-        <bt:Image id="icon32" DefaultValue="https://addin.cleanway.ai/outlook/assets/icon-32.png"/>
-        <bt:Image id="icon80" DefaultValue="https://addin.cleanway.ai/outlook/assets/icon-80.png"/>
+        <bt:Image id="icon16" DefaultValue="https://cleanway.ai/outlook/assets/icon-16.png"/>
+        <bt:Image id="icon32" DefaultValue="https://cleanway.ai/outlook/assets/icon-32.png"/>
+        <bt:Image id="icon80" DefaultValue="https://cleanway.ai/outlook/assets/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="functionFileUrl" DefaultValue="https://addin.cleanway.ai/outlook/commands/commands.html"/>
-        <bt:Url id="taskpaneUrl" DefaultValue="https://addin.cleanway.ai/outlook/taskpane/taskpane.html"/>
+        <bt:Url id="functionFileUrl" DefaultValue="https://cleanway.ai/outlook/commands/commands.html"/>
+        <bt:Url id="taskpaneUrl" DefaultValue="https://cleanway.ai/outlook/taskpane/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="groupLabel" DefaultValue="Cleanway"/>

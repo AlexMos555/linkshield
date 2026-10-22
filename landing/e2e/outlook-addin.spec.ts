@@ -4,8 +4,10 @@ import { test, expect } from "@playwright/test";
  * The Outlook add-in (email-plugin-outlook/, served from /outlook/ by the
  * prebuild copy). The 2026-10-22 sweep found it could not start: the site's
  * CSP blocked office.js and, with frame-ancestors 'none' plus
- * X-Frame-Options DENY, refused the Outlook frame. next.config.ts now gives
- * /outlook/* a policy of its own — and only /outlook/*.
+ * X-Frame-Options DENY, refused the Outlook frame; and its manifest named
+ * addin.cleanway.ai, which has no DNS record. next.config.ts now gives
+ * /outlook/* a policy of its own — and only /outlook/* — and the manifest
+ * names these same files on cleanway.ai.
  */
 
 const PAGES = ["/outlook/taskpane/taskpane.html", "/outlook/commands/commands.html"];
@@ -37,33 +39,26 @@ test("the rest of the site still refuses to be framed", async ({ request }) => {
   }
 });
 
-test("addin.cleanway.ai serves the add-in and sends everything else to the site", async ({ request }) => {
-  const addin = { host: "addin.cleanway.ai" };
-  const manifest = await request.get("/outlook/manifest.xml", { headers: addin, maxRedirects: 0 });
-  expect(manifest.status()).toBe(200);
-  for (const [path, location] of [["/ru/pricing", "https://cleanway.ai/ru/pricing"], ["/", "https://cleanway.ai/"]]) {
-    const response = await request.get(path, { headers: addin, maxRedirects: 0 });
-    expect(response.status(), path).toBe(308);
-    expect(response.headers()["location"], path).toBe(location);
-  }
-});
-
 test("the privacy policy says what the add-in sends and how long reports are kept", async ({ page }) => {
   await page.goto("/privacy-policy");
   const extension = page.locator("section#extension");
   await expect(extension).toContainText("add-in for Outlook");
   await expect(extension).toContainText("sends only the sender's domain");
   await expect(page.locator("main")).toContainText("reports of a wrong result or of a phishing email");
+  // And on what basis (GDPR Art. 13): both buttons, not only the webmail scan.
+  await expect(page.locator("section#legal_bases")).toContainText("Outlook add-in's “Scan email” and “Report phishing”");
   await page.goto("/ru/privacy-policy");
   await expect(page.locator("section#extension")).toContainText("Надстройка Cleanway для Outlook");
+  await expect(page.locator("section#legal_bases")).toContainText("«Scan email» и «Report phishing» в надстройке для Outlook");
 });
 
-test("every URL in the manifest is a file the site serves", async ({ request }) => {
+test("every URL in the manifest is a file the site serves, without a redirect", async ({ request }) => {
   const xml = await (await request.get("/outlook/manifest.xml")).text();
-  const urls = [...xml.matchAll(/DefaultValue="(https:\/\/addin\.cleanway\.ai\/[^"]+)"/g)].map((m) => m[1]);
+  expect(xml).not.toContain("addin.cleanway.ai");
+  const urls = [...xml.matchAll(/DefaultValue="(https:\/\/cleanway\.ai\/outlook\/[^"]+)"/g)].map((m) => m[1]);
   expect(urls.length).toBeGreaterThan(5);
   for (const url of urls) {
-    const response = await request.get(new URL(url).pathname, { headers: { host: "addin.cleanway.ai" }, maxRedirects: 0 });
+    const response = await request.get(new URL(url).pathname, { maxRedirects: 0 });
     expect(response.status(), url).toBe(200);
   }
 });

@@ -33,8 +33,8 @@ export async function generateMetadata({
   const description = t("subtitle");
   const alternates = localeAlternates(safeLocale, "/support");
   // A link people forward ("write to support"): its own preview, not the
-  // site-wide one, and the share image by its locale-free URL — the file
-  // route's own /en/opengraph-image answers 307.
+  // site-wide one, and the share image by its locale-free URL, /og.png
+  // (lib/seo.ts).
   return {
     title,
     description,
