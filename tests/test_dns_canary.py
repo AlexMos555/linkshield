@@ -92,13 +92,22 @@ def _gateway_answer(rcode: int, soa=None):
     return canary.DnsAnswer(rcode, 1 if rcode == 0 else 0, None)
 
 
+def _uptime_state(age_s: float = 60, **extra) -> bytes:
+    """What ops/uptime-worker answers on GET /: its KV state."""
+    import datetime as _dt
+
+    at = _dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(seconds=age_s)
+    return json.dumps({"fails": {}, "down": [], "heartbeat_at": at.isoformat().replace("+00:00", "Z"),
+                       "alert_error": None, **extra}).encode()
+
+
 DOH_HEALTH_OK = json.dumps({"ok": True, "filter": {"loaded": True, "count": 470000}}).encode()
 
 
 def _install(monkeypatch, *, rcodes, artifact_text, etag=None, count_hdr=None,
              health=(200, HEALTH_OK), landing=(200, b"<html>"), requests=None,
              doh_health=None,
-             soa=None, public=None, live_feed=(200, b"")):
+             soa=None, public=None, live_feed=(200, b""), uptime=None):
     """Stub every network call: DoH lookups (our gateway, and the public
     resolver the live probe asks), the artifact fetch, the live-probe feed,
     /health/deep and the landing page. `soa` overrides the SOA of a gateway
@@ -136,6 +145,8 @@ def _install(monkeypatch, *, rcodes, artifact_text, etag=None, count_hdr=None,
             return _http(url, *landing)
         if url == canary.DEFAULT_LIVE_SOURCE:
             return _http(url, *live_feed)
+        if url == canary.DEFAULT_UPTIME_WORKER:
+            return _http(url, *(uptime or (200, _uptime_state())))
         raise AssertionError(f"canary probed an unexpected URL: {url}")
 
     monkeypatch.setattr(canary.urllib.request, "urlopen", _urlopen)
@@ -485,3 +496,53 @@ def test_doh_filter_not_loaded_fails(monkeypatch, capsys):
                      artifact_text=HEALTHY, doh_health=(200, body))
     assert code == 1
     assert "DOH FILTER NOT LOADED" in out and "artifact missing" in out
+
+
+# ── 2026-10-22: who watches the minute-level monitor? ──────────────────────
+# ops/uptime-worker writes `heartbeat_at` at least every 10 minutes. If it
+# dies (Cloudflare account, binding, a bad upload), nothing would say so.
+
+def test_a_recent_uptime_heartbeat_passes(monkeypatch, capsys):
+    code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3}, artifact_text=HEALTHY)
+    assert code == 0, out
+    assert "uptime-monitor-check: heartbeat" in out
+
+
+def test_a_silent_uptime_monitor_fails(monkeypatch, capsys):
+    code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3}, artifact_text=HEALTHY,
+                     uptime=(200, _uptime_state(age_s=canary.MAX_HEARTBEAT_AGE_S + 120)))
+    assert code == 1
+    assert "UPTIME MONITOR SILENT" in out
+
+
+def test_an_unreachable_uptime_monitor_fails(monkeypatch, capsys):
+    code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3}, artifact_text=HEALTHY,
+                     uptime=(404, b"not found"))
+    assert code == 1
+    assert "UPTIME MONITOR UNREACHABLE" in out
+
+
+def test_an_uptime_monitor_that_cannot_send_mail_fails(monkeypatch, capsys):
+    state = _uptime_state(alert_error={"at": "2026-10-22T12:00:00Z", "error": "destination not verified"})
+    code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3}, artifact_text=HEALTHY,
+                     uptime=(200, state))
+    assert code == 1
+    assert "UPTIME MONITOR CANNOT SEND MAIL" in out and "destination not verified" in out
+
+
+def test_the_old_worker_without_heartbeats_is_a_note(monkeypatch, capsys):
+    """Until the founder uploads the new worker.js its state has no
+    heartbeat_at: say so, do not turn every canary run red."""
+    old = json.dumps({"fails": {"landing": 0}, "down": [], "at": "2026-10-18T18:32:22.804Z"}).encode()
+    code, out = _run(monkeypatch, capsys, rcodes={"list-canary.cleanway.ai": 3}, artifact_text=HEALTHY,
+                     uptime=(200, old))
+    assert code == 0, out
+    assert "no heartbeat_at yet" in out
+
+
+def test_the_uptime_probe_can_be_switched_off(monkeypatch, capsys):
+    seen: list = []
+    code, out = _run(monkeypatch, capsys, argv=["--uptime-worker", ""], rcodes={"list-canary.cleanway.ai": 3},
+                     artifact_text=HEALTHY, requests=seen)
+    assert code == 0
+    assert canary.DEFAULT_UPTIME_WORKER not in [r.full_url for r in seen]

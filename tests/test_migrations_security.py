@@ -221,5 +221,45 @@ def test_trigger_and_rpc_functions_are_not_client_callable(lockdown):
     assert "GRANT EXECUTE ON FUNCTION public.report_phone(TEXT, TEXT, TEXT, TEXT) TO service_role;" in lockdown
 
 
+# SECURITY DEFINER functions that signed-in clients must be able to run:
+# RLS policies call them on the caller's behalf.
+_CLIENT_CALLABLE_DEFINERS = {"is_org_member", "shares_family_with"}
+
+
+def _security_definer_functions() -> dict[str, str]:
+    found: dict[str, str] = {}
+    for path in _migrations():
+        sql = _sql(path)
+        for m in re.finditer(r"CREATE (?:OR REPLACE )?FUNCTION public\.(\w+)\s*\((.*?)\$\$", sql, flags=re.I | re.S):
+            if re.search(r"\bSECURITY DEFINER\b", m.group(2), flags=re.I):
+                found.setdefault(m.group(1).lower(), path.name)
+    return found
+
+
+def _revoked_from(name: str) -> set[str]:
+    roles: set[str] = set()
+    for path in _migrations():
+        for m in re.finditer(rf"REVOKE ALL ON FUNCTION public\.{name}\b[^;]*? FROM ([^;]*);", _sql(path), flags=re.I):
+            roles |= {r.strip().lower() for r in m.group(1).split(",")}
+    return roles
+
+
+def test_every_security_definer_function_is_revoked_from_clients():
+    """Supabase grants EXECUTE on every new function to anon and
+    authenticated explicitly, so `REVOKE ... FROM PUBLIC` alone leaves a
+    SECURITY DEFINER function callable by anyone through /rest/v1/rpc. 017's
+    purge_old_audit_log did exactly that (any visitor could have emptied
+    audit_log); it has never been applied to production (data-retention.md)."""
+    definers = _security_definer_functions()
+    assert {"register_device", "handle_new_auth_user", "purge_old_audit_log"} <= set(definers)
+    open_to_clients = {}
+    for name, where in definers.items():
+        revoked = _revoked_from(name)
+        needed = {"anon"} if name in _CLIENT_CALLABLE_DEFINERS else {"anon", "authenticated"}
+        if not needed <= revoked:
+            open_to_clients[name] = (where, sorted(needed - revoked))
+    assert not open_to_clients, f"SECURITY DEFINER functions still executable by clients: {open_to_clients}"
+
+
 def test_lockdown_runs_in_one_transaction(lockdown):
     assert lockdown.strip().startswith("BEGIN;") and lockdown.strip().endswith("COMMIT;")

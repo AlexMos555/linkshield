@@ -244,10 +244,24 @@ def test_every_wired_event_has_rules_and_an_explanation():
     for event in (
         "auth_invalid_token", "reauth_required", "user_export", "account_delete",
         "webhook_signature_invalid", "ssrf_blocked", "paid_budget_exhausted",
-        "rate_limited", "admin_or_service_key_use",
+        "rate_limited", "admin_or_service_key_use", "webhook_processing_failed",
     ):
         assert sa.rules_for(event), event
         assert event in sa.EVENT_INFO, event
+
+
+def test_one_failed_webhook_alerts_once_an_hour_per_provider(fake_redis, alerts):
+    """Money that moved but did not reach the account: the first failure is
+    worth an email, a provider retrying all night is worth one an hour."""
+    (rule,) = sa.rules_for("webhook_processing_failed")
+    assert (rule.threshold, rule.window_s, rule.per_key, rule.public_key, rule.cooldown_s) == (
+        1, 3600, True, True, 3600,
+    )
+    asyncio.run(_record_n("webhook_processing_failed", 2, key="stripe"))
+    asyncio.run(_record_n("webhook_processing_failed", 1, key="revenuecat"))
+    _clear_counters(fake_redis)  # the next hour: the cooldown still holds
+    asyncio.run(_record_n("webhook_processing_failed", 1, key="stripe"))
+    assert [a.key_label for a in alerts] == ["stripe", "revenuecat"]
 
 
 # ─── Redis trouble never reaches the request ────────────────────

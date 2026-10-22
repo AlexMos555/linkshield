@@ -22,3 +22,9 @@ d71fc05b6a79468265771e602c21d539c799e3af:scripts/test-extension-auth.mjs:generic
 # Verified 2026-10-08: a made-up RevenueCat public-key fixture ("goog_AbCdEf…")
 # in the store-billing table test; replaced by an assembled value in the next commit.
 ab1484456a593151b69861abd175b51400924e0c:mobile/scripts/test-store-billing.mjs:generic-api-key:70
+
+# Verified 2026-10-22: the weekly benchmark's URL list — "token=" in a public
+# phishing feed's URL (spraypray.com/?email=phish@phish.com&token=…). The
+# benchmark files are now allowlisted by name in .gitleaks.toml; this entry
+# keeps the finding silenced if that allowlist is ever narrowed.
+fdfc7ebb2ab225241f1526a53e3d6a7341a59ba1:docs/benchmarks/2026-10-18-fresh-urls.json:generic-api-key:14449

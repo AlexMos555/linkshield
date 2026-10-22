@@ -246,6 +246,7 @@ android --clean`, как в `docs/RUSTORE_SUBMISSION.md` §2). Gradle кешир
 |---|---|---|
 | `revenuecat_webhook_unauthorized` | заголовок не совпал | сверить `REVENUECAT_WEBHOOK_AUTH` и значение в RevenueCat |
 | `revenuecat_webhook_failed` | запись в базу не прошла, ответ 500 | RevenueCat повторит; если повторы кончились — Retry в RevenueCat |
+| `revenuecat_dedupe_lookup_failed`, `revenuecat_webhook_no_database` | база недоступна (или не настроена) уже на первом чтении, ответ 503 | то же; придёт письмо `webhook_processing_failed` — смотреть `/health/deep` (`supabase`, `supabase_server_key`) |
 | `revenuecat_purchase_without_account` | покупка с анонимным id | человек должен войти и нажать «Восстановить покупки» |
 | `revenuecat_unknown_product` | продукт не из списка | добавить его в `REVENUECAT_PRODUCTS`, затем Retry события в RevenueCat (оно не помечено обработанным) или «Восстановить покупки» |
 | `subscription_duplicate_detected` | купил в Play, уже платя иначе | вернуть деньги за одну из подписок |

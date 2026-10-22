@@ -55,8 +55,12 @@ COMMENT ON FUNCTION public.purge_old_audit_log(integer) IS
      manually during compliance review.';
 
 -- Grant execute to service_role only — this is a privileged operation.
--- The anon / authenticated roles cannot trigger it.
-REVOKE ALL ON FUNCTION public.purge_old_audit_log(integer) FROM public;
+-- The anon / authenticated roles cannot trigger it. Supabase grants EXECUTE
+-- on new functions to anon and authenticated explicitly, so revoking from
+-- PUBLIC alone left this SECURITY DEFINER function callable by any visitor
+-- through /rest/v1/rpc (retention_days => 0 empties audit_log). Fixed
+-- 2026-10-22, before the migration was ever applied to production.
+REVOKE ALL ON FUNCTION public.purge_old_audit_log(integer) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.purge_old_audit_log(integer) TO service_role;
 
 COMMIT;

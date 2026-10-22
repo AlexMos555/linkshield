@@ -462,6 +462,36 @@ def test_wrong_authorization_is_reported(client, security_events):
     assert security_events == [("webhook_signature_invalid", "revenuecat")]
 
 
+def test_a_processing_failure_is_reported(client, account_store, settings, security_events, monkeypatch):
+    """A purchase RevenueCat keeps retrying never reaches the account: until
+    2026-10-22 only a log line said so."""
+    from api.services.revenuecat import RevenueCatError
+
+    async def failing_sync(account_id):
+        raise RevenueCatError("RevenueCat answered 503")
+
+    monkeypatch.setattr("api.services.revenuecat_sync.sync_account", failing_sync)
+    monkeypatch.setattr(settings, "revenuecat_secret_api_key", "sk_test")
+    assert post(client, load("transfer")).status_code == 500
+    assert security_events == [("webhook_processing_failed", "revenuecat")]
+
+
+def test_a_database_outage_at_the_dedupe_lookup_is_reported(client, account_store, security_events):
+    """Supabase or the server key down is the most common reason a purchase
+    does not land, and the dedupe lookup is the first database read: until
+    2026-10-22 that 503 raised no alert."""
+    account_store.fail = True
+    assert post(client, load("initial_purchase")).status_code == 503
+    assert security_events == [("webhook_processing_failed", "revenuecat")]
+
+
+def test_an_unconfigured_database_is_reported(settings, fake_redis, security_events):
+    from api.main import app
+
+    assert post(TestClient(app), load("initial_purchase")).status_code == 503
+    assert security_events == [("webhook_processing_failed", "revenuecat")]
+
+
 def test_good_authorization_is_not_reported(client, security_events):
     assert post(client, load("initial_purchase")).status_code == 200
     assert security_events == []

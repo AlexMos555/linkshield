@@ -46,20 +46,11 @@ logger = logging.getLogger("cleanway.app")
 # Sentry retains events for up to 90 days; raw emails / JWTs / Stripe
 # IDs would contradict our privacy-first marketing. The scrubber walks
 # every event + breadcrumb payload before Sentry sees it. See
-# api/services/sentry_scrubber.py for the redaction rules.
-_sentry_dsn = get_settings().sentry_dsn
-if _sentry_dsn:
-    try:
-        import sentry_sdk
+# api/services/sentry_scrubber.py for the redaction rules, and
+# api/services/sentry_setup.py for release / environment / role.
+from api.services.sentry_setup import init_sentry  # noqa: E402
 
-        from api.services.sentry_scrubber import sentry_init_options
-
-        # Errors, breadcrumbs AND sampled performance transactions all go
-        # through the scrubber; no trace headers leave on outgoing requests.
-        sentry_sdk.init(**sentry_init_options(_sentry_dsn, get_settings().debug))
-        logger.info("Sentry initialized with PII scrubber")
-    except ImportError:
-        logger.debug("sentry-sdk not installed, skipping")
+init_sentry(get_settings())
 
 
 async def _warm_ml_model() -> None:
@@ -379,9 +370,11 @@ async def health_deep_check(request: Request):
     """
     # (Kept out of the docstring, which is the published OpenAPI description.)
     # Also in the body, never paging: `blocklist` (the artifact phones sync —
-    # published, non-empty, under 13 h old) and `doh` (the list canary through
-    # the gateway's decision code, in process → our NXDOMAIN), both listed in
-    # `warnings` when not ok; `ml` (model loaded), informational.
+    # published, non-empty, under 13 h old), `doh` (the list canary through
+    # the gateway's decision code, in process → our NXDOMAIN) and
+    # `supabase_server_key` (acts as service_role), each listed in `warnings`
+    # when not ok; `ml` (model loaded) and `retention` (RETENTION_PURGE and
+    # the last successful pass), informational.
     #
     # Public and unauthenticated (the canary and uptime monitors call it), so
     # results are reused for 30 s and one IP triggers at most one fresh probe
@@ -450,10 +443,11 @@ async def _probe_deep_health() -> tuple[int, dict]:
         except Exception as e:
             components["supabase"] = {"ok": False, "error": type(e).__name__}
 
-    # Informational, never paging: does the server key (SUPABASE_SECRET_KEY,
-    # else the legacy service_role key) act as service_role? `kind` says
-    # which generation is live — the check before disabling legacy keys
-    # (docs/runbooks/supabase-jwt-signing-keys.md).
+    # Never paging, but a warning: does the server key (SUPABASE_SECRET_KEY,
+    # else the legacy service_role key) act as service_role? Without it every
+    # server write and account deletion fails while Supabase itself answers.
+    # `kind` says which generation is live — the check before disabling
+    # legacy keys (docs/runbooks/supabase-jwt-signing-keys.md).
     components["supabase_server_key"] = await supabase_keys.probe_server_key(settings)
 
     # The ML model is deliberately NOT part of the paging decision: scoring
@@ -472,18 +466,20 @@ async def _probe_deep_health() -> tuple[int, dict]:
     # gateway's own block decision. Visible, never paging — each has a watcher
     # that runs the whole path from outside (the DNS canary, the refresh job).
     # See api/services/health_probes.py.
-    from api.services.health_probes import blocklist_component, doh_component
+    # `retention`: RETENTION_PURGE and the last successful pass — the founder
+    # console's answer to "are the published retention periods enforced?".
+    from api.services.health_probes import blocklist_component, doh_component, retention_component
 
-    components["blocklist"], components["doh"] = await asyncio.gather(
-        blocklist_component(), doh_component(),
+    components["blocklist"], components["doh"], components["retention"] = await asyncio.gather(
+        blocklist_component(), doh_component(), retention_component(),
     )
 
     # Only these can page. Anything else in `components` is informational;
     # the non-paging checks that failed are listed in `warnings`, so a keyword
     # monitor can alert on protection without paging on it
-    # (docs/runbooks/monitoring.md).
+    # (docs/runbooks/monitoring.md; ops/uptime-worker alerts per warning).
     PAGING_COMPONENTS = ("redis", "supabase")
-    WARNING_COMPONENTS = ("blocklist", "doh")
+    WARNING_COMPONENTS = ("blocklist", "doh", "supabase_server_key")
     all_ok = all(components[name].get("ok") for name in PAGING_COMPONENTS)
     warnings = [name for name in WARNING_COMPONENTS if not components[name].get("ok")]
     body = {"status": "ok" if all_ok else "degraded", "warnings": warnings, "components": components}

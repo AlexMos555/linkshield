@@ -128,7 +128,7 @@ async def analyze(
         "email_analyzed",
         extra={
             "user_id": user.id if user else "anon",
-            "level": result.level.value,
+            "verdict": result.level.value,
             "score": result.score,
             "findings": len(result.findings),
             "links": len(result.links),

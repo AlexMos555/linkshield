@@ -24,6 +24,9 @@ Five questions, all against the LIVE endpoints:
   4. Is the API healthy end to end?  (/health/deep — /health is always-200)
      and is the DoH gateway iPhones resolve through healthy? (/health/doh)
   5. Is the landing page people install from up?  (/ru/android)
+  6. Is the minute-level uptime monitor itself alive?  (ops/uptime-worker:
+     its state's heartbeat_at, written at least every 10 minutes; a version
+     from before heartbeats is a note until the founder uploads the new one)
 
 Schedule: GitHub runs '*/15' crons best-effort. Measured 2026-09-18..25:
 46–47 runs in 7 days (about one every 3.5 h) instead of 672. Treat this as a
@@ -42,6 +45,7 @@ Usage:
     python3 scripts/dns_canary.py [--base https://api.cleanway.ai]
                                   [--landing-base https://cleanway.ai]
                                   [--live-source https://phishunt.io/feed.txt]
+                                  [--uptime-worker https://cleanway-uptime.amoskotin.workers.dev/]
 """
 from __future__ import annotations
 
@@ -54,6 +58,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -71,6 +76,11 @@ DEFAULT_LIVE_SOURCE = "https://phishunt.io/feed.txt"
 PUBLIC_DOH_BASE = "https://cloudflare-dns.com"
 MAX_LIVE_LOOKUPS = 10  # public-DNS questions per run, at most
 MAX_LIVE_PROBES = 3
+
+# The minute-level monitor (ops/uptime-worker). It writes heartbeat_at at
+# least every 10 minutes; three missed heartbeats mean it is not running.
+DEFAULT_UPTIME_WORKER = "https://cleanway-uptime.amoskotin.workers.dev/"
+MAX_HEARTBEAT_AGE_S = 30 * 60
 
 sys.path.insert(0, str(ROOT))
 from api.services.blocklist_artifact import (  # noqa: E402
@@ -343,6 +353,37 @@ def check_landing(landing_base: str) -> list[str]:
     return []
 
 
+def check_uptime_worker(url: str, now: float | None = None) -> tuple[list[str], str]:
+    """(problems, note). The uptime Worker watches production every minute;
+    this watches the Worker. Its GET / is its state (no secrets)."""
+    if not url:
+        return [], "skipped (disabled)"
+    try:
+        status, body = http_get(url)
+    except Exception as exc:  # noqa: BLE001
+        return [f"UPTIME MONITOR UNREACHABLE: {url}: {exc}"], ""
+    if status != 200:
+        return [f"UPTIME MONITOR UNREACHABLE: {url} -> HTTP {status}"], ""
+    try:
+        state = json.loads(body)
+    except ValueError:
+        return [f"UPTIME MONITOR UNREACHABLE: {url} answered something that is not JSON"], ""
+    beat = state.get("heartbeat_at") if isinstance(state, dict) else None
+    if not beat:
+        return [], "no heartbeat_at yet (old Worker version: upload ops/uptime-worker/worker.js)"
+    try:
+        at = datetime.fromisoformat(str(beat).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return [f"UPTIME MONITOR: heartbeat_at {beat!r} is not a time"], ""
+    age = (time.time() if now is None else now) - at
+    if age > MAX_HEARTBEAT_AGE_S:
+        return [f"UPTIME MONITOR SILENT: last heartbeat {int(age // 60)} min ago — the minute-level "
+                "monitor is not running (Cloudflare → Workers & Pages → cleanway-uptime)"], ""
+    if state.get("alert_error"):
+        return [f"UPTIME MONITOR CANNOT SEND MAIL: {state['alert_error']}"], ""
+    return [], f"heartbeat {int(age)} s ago"
+
+
 def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default=os.environ.get("CANARY_BASE", DEFAULT_BASE),
@@ -352,6 +393,9 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--live-source", default=os.environ.get("CANARY_LIVE_SOURCE", DEFAULT_LIVE_SOURCE),
                     help="URL-per-line phishing feed for the live block probe; '' disables "
                          "(env CANARY_LIVE_SOURCE)")
+    ap.add_argument("--uptime-worker", default=os.environ.get("CANARY_UPTIME_WORKER", DEFAULT_UPTIME_WORKER),
+                    help="the uptime Worker's state URL, for its heartbeat; '' disables "
+                         "(env CANARY_UPTIME_WORKER)")
     return ap.parse_args()
 
 
@@ -400,6 +444,11 @@ def main() -> int:
     print("health-check: /health/deep")
     problems += check_landing(landing_base)
     print(f"landing-check: {LANDING_PATH}")
+
+    # 6. The minute-level monitor, which nothing else watches.
+    uptime_problems, note = check_uptime_worker(args.uptime_worker)
+    problems += uptime_problems
+    print(f"uptime-monitor-check: {note or 'failed'}")
 
     if problems:
         print("\nDNS CANARY FAILED:")

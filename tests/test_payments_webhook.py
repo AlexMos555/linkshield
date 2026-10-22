@@ -1541,3 +1541,16 @@ def test_bad_stripe_signature_is_reported(client, supabase_ok, security_events):
                        headers={"stripe-signature": "t=1,v1=deadbeef"})
     assert resp.status_code == 400
     assert security_events == [("webhook_signature_invalid", "stripe")]
+
+
+def test_a_processing_failure_is_reported(client, supabase_ok, fake_subscriptions, fake_redis,
+                                          security_events):
+    """A paid checkout Stripe keeps retrying never reaches the account: until
+    2026-10-22 only a log line said so (Sentry, if a DSN is set)."""
+    import httpx as _httpx
+
+    fake_subscriptions.post_error = _httpx.ConnectTimeout("supabase timed out")
+    resp = _post_event(client, "customer.subscription.deleted",
+                       {"id": "sub_gone", "metadata": {"user_id": "user-timeout"}}, event_id="evt_alert")
+    assert resp.status_code >= 500
+    assert security_events == [("webhook_processing_failed", "stripe")]

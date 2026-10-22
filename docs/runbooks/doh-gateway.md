@@ -172,9 +172,11 @@ Today `dns.cleanway.ai` is a DNS-only CNAME to Railway: one region, one
 service. In order of value per effort:
 
 1. **Now (before iOS install volume): replicas + monitoring.** Replicas ≥ 2,
-   `WEB_CONCURRENCY` per vCPU, an external monitor on
-   `GET https://api.cleanway.ai/health/doh` every minute (alert on non-200,
-   or `"loaded":false`, or `age_s` > 46800 — the 13 h artifact threshold).
+   `WEB_CONCURRENCY` per vCPU, and a minute-level monitor of the DNS path —
+   since 2026-10-22 the uptime Worker (`ops/uptime-worker/`): a real query
+   must resolve (`doh_resolve`), the list canary must get our NXDOMAIN
+   (`doh_block`, which also fails when the filter is not loaded), and the
+   artifact must be under 13 h old (`blocklist`, from `/health/deep`).
 2. **Before the iOS public release: Cloudflare proxy + edge fail-open.**
    Turn the proxy ON for `dns.cleanway.ai` and route `dns.cleanway.ai/dns-query*`
    to a Worker that forwards to the origin with a ~2 s timeout and, on a

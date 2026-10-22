@@ -2,7 +2,8 @@
 
 How the stack holds up under real load, what fails gracefully, what to
 monitor. This doc is for the operator — when something breaks, start
-here.
+here. (Partly refreshed 2026-10-22: deploy chain, component map, uptime
+monitoring. Capacity numbers: `capacity.md`.)
 
 ## Deploy chain — the happy path
 
@@ -12,7 +13,8 @@ developer push                      │
         ├→ GitHub Actions: CI      (pytest + ruff + coverage)
         ├→ GitHub Actions: Security (gitleaks, bandit, pip-audit, trivy, hadolint)
         ├→ GitHub Actions: E2E      (Playwright landing suite)
-        ├→ GitHub Actions: deploy-staging  (optional — manual dispatch)
+        ├→ (deploy-staging / deploy-production workflows: unused, see deploy.md)
+        ├→ Vercel auto-deploy       (main branch → production landing)
         └→ Railway auto-deploy      (main branch → production API)
              ├→ builds the root Dockerfile (python:3.11-slim, non-root)
              ├→ Railway security scanner blocks on CVE (e.g., next@CVE-*)
@@ -23,8 +25,8 @@ developer push                      │
 
 | Component | Where | Health probe | Failure mode |
 |---|---|---|---|
-| API (FastAPI) | Railway `honest-playfulness-web` | `GET /health` → 200 "ok"/"degraded" | Rolling deploy — old pod stays up until new passes healthcheck |
-| Redis (rate limiter) | Not provisioned yet | — | Rate limiters fail-open; requests always served |
+| API (FastAPI) + DNS gateway | Railway project `honest-playfulness`, service `web` (EU West, 2 replicas) | Railway liveness: `GET /health` (always 200 while the process lives). Monitors: `GET /health/deep` (503 when Redis or Supabase is down; protection problems in `warnings`) and `GET /health/doh` | Rolling deploy — old pod stays up until new passes healthcheck |
+| Redis (rate limiter, caches, blocklist) | Railway service `Redis` (EU West, volume) | `/health/deep` → `components.redis` | DNS stays up but may stop blocking; other limiters follow `rate_limit_fail_closed` |
 | Supabase Postgres EU | `bpyqgzzclsbfvxthyfsf.supabase.co` | `supabase projects api list --project-ref bpyqgzzclsbfvxthyfsf` | API endpoints that hit Supabase return 503 degraded; reads of `users`/`subscriptions` fall back to defaults |
 | Landing (Next.js 15.1.11) | Vercel project `cleanway-landing` | Prod URL → 200 | Last-known-good SSG served; deployments auto-promote |
 | Extension (Chrome/FF/Safari) | Self-hosted until store publish | Built via `bash scripts/build-extensions.sh` | User reloads from `chrome://extensions` |
@@ -34,9 +36,9 @@ developer push                      │
 
 These failures are **handled** — service stays available in a reduced mode:
 
-- **Redis down** (current production state): rate limiter returns full quota
-  and logs a warning. Request processing untouched. Side-effect: user can
-  burn through daily quota in a burst.
+- **Redis down**: the DoH limiter fails open (DNS must never 503); the
+  other limiters follow `rate_limit_fail_closed`. The gateway may stop
+  blocking (`/health/deep` lists `doh` in `warnings`).
 - **Supabase down**: user-scoped endpoints return defaults (empty whitelist,
   default skill level). Writes fail with 503; client retries on reconnect.
 - **Safe Browsing API quota exhausted**: circuit breaker opens for 60s
@@ -123,8 +125,7 @@ Pending (operator actions — I cannot do these without credentials):
       `supabase db push --project-ref bpyqgzzclsbfvxthyfsf` — or paste the
       SQL into the Supabase SQL Editor. Until this lands, the phone/scam
       endpoints will return 503 or silently accept-no-op.
-- [ ] **Wire Redis** (Upstash free tier works). Set `REDIS_URL` in
-      Railway env. Rate limiter goes from fail-open to enforce.
+- [x] **Redis** — Railway service `Redis` (EU West) since 2026-10-09.
 - [ ] **Set `ENVIRONMENT=production`** on Railway when we go paid. Right
       now default development tolerates missing sk_live_ keys etc.
 - [ ] **Rotate Vercel API tokens + enable 2FA** (incident response —
@@ -134,10 +135,12 @@ Pending (operator actions — I cannot do these without credentials):
       sending first production email.
 - [ ] **Sentry DSN** in Railway env (`SENTRY_DSN=...`). Sentry is wired
       but dormant without the DSN.
-- [ ] **Uptime probe** (UptimeRobot free tier or Better Stack). Hit
-      `/health` every 5 min; alert on >60s downtime.
+- [x] **Uptime probe** — the Cloudflare Worker `cleanway-uptime`
+      (`ops/uptime-worker/`) checks `/health/deep`, each protection warning,
+      the public DNS path and the landing every minute and emails the
+      founder. Not `/health`: it is always 200.
 
-## If /health returns 5xx or the pod crash-loops
+## If a deploy fails or the pod crash-loops
 
 1. `gh api repos/AlexMos555/linkshield/commits/<sha>/status` — look at
    `honest-playfulness - web` for the Railway deploy URL.
@@ -150,8 +153,8 @@ Pending (operator actions — I cannot do these without credentials):
    - `ConfigError: <env var> is required in environment=production` —
      either set the env var in Railway, or unset `ENVIRONMENT` to drop
      to dev rules.
-3. **Rollback**: Railway dashboard → Deployments → last green → Redeploy.
-   RTO: ~90 seconds.
+3. **Rollback**: Railway dashboard → Deployments → last green → Redeploy
+   (`rollback.md`). RTO: ~2 minutes.
 4. **If Railway dashboard is down**: the API's last successful deploy
    keeps serving (Railway does zero-downtime rollouts). New pushes just
    queue.

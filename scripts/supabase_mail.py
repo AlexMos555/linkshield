@@ -2,7 +2,7 @@
 """Wire Supabase Auth mail for Cleanway: SMTP provider, Russian templates, DNS.
 
 Entry point: ``bash scripts/wire-supabase-smtp.sh`` (same flags, finds python3).
-Founder checklist: docs/EMAIL_SIGNIN.md.
+Founder checklist: docs/runbooks/sign-in-email.md.
 
 Sign-in by email code is dead until Supabase stops using its built-in mailer
 (2 messages per hour, project members only). This script is everything that

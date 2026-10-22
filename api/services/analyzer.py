@@ -232,7 +232,7 @@ async def _judge(
     )
     basis = vb.derive_verdict_basis(result, ml_consulted=_ml_available())
     logger.info("analysis_complete", extra={
-        "domain": domain, "score": score, "level": level.value,
+        "domain": domain, "score": score, "verdict": level.value,
         "confidence": confidence.value, "confidence_pct": confidence_pct,
         "checks": measured, "basis": basis, "incomplete": result.checks_incomplete,
     })

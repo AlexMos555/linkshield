@@ -21,13 +21,41 @@ from api.services import analyzer, dns_checks
 from api.services.analysis_budget import Deadline, run_within_budget
 
 BUDGET = 0.5
-SLACK = 0.6  # event-loop scheduling + scoring; far below any real-world source
+# Event-loop scheduling only. The analysis's own work after the deadline
+# (scoring, and the process's one-time costs on its first run) is measured on
+# the same analysis with nothing slow and added on top: on a loaded machine
+# both runs slow down together instead of the slow one failing alone
+# (2026-10-22: the first analysis of a run took 0.74 s of a 1.1 s limit idle).
+SLACK = 0.4
 
 
 def _timed(coro):
     t0 = time.monotonic()
     out = asyncio.run(coro)
     return out, time.monotonic() - t0
+
+
+def _fast_run_seconds(domain: str) -> float:
+    """The same analysis with nothing slow: what its own work costs here, now."""
+    _, elapsed = _timed(analyzer.analyze_domain(domain, budget_s=5.0))
+    return elapsed
+
+
+def _traced(spans: dict, name: str, fn):
+    """`fn`, recording when it ran as spans[name] = (start, end)."""
+    async def _run(*args, **kwargs):
+        start = time.monotonic()
+        try:
+            return await fn(*args, **kwargs)
+        finally:
+            spans[name] = (start, time.monotonic())
+    return _run
+
+
+def _overlapped(spans) -> bool:
+    """Every span started before every other one ended: they ran at once."""
+    spans = list(spans)
+    return max(s for s, _ in spans) < min(e for _, e in spans)
 
 
 # ── The helper ──
@@ -57,10 +85,12 @@ def test_deadline_never_goes_negative():
 # ── The analyzer ──
 
 def test_slow_source_is_cut_and_named(offline_analyzer):
+    offline_analyzer(site="reachable")
+    own_work = _fast_run_seconds("obscure-shop.ru")
     offline_analyzer(site="reachable", delays={"whois": 10, "safe_browsing": 10})
     result, elapsed = _timed(analyzer.analyze_domain("obscure-shop.ru", budget_s=BUDGET))
 
-    assert elapsed < BUDGET + SLACK
+    assert elapsed < BUDGET + own_work + SLACK
     assert {"whois", "safe_browsing"} <= set(result.checks_incomplete)
     reason = next(r for r in result.reasons if r.signal == "checks_incomplete")
     assert reason.weight == 0
@@ -80,20 +110,27 @@ def test_slow_llm_judge_is_cut_off(offline_analyzer, monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
     from api.services import llm_judge
 
+    async def _instant(*a, **k):
+        return None
+
     async def _slow(*a, **k):
         await asyncio.sleep(10)
 
+    monkeypatch.setattr(llm_judge, "judge_ambiguous_verdict", _instant)
+    own_work = _fast_run_seconds("sberbank-bonus.ru")
     monkeypatch.setattr(llm_judge, "judge_ambiguous_verdict", _slow)
     result, elapsed = _timed(analyzer.analyze_domain("sberbank-bonus.ru", budget_s=BUDGET))
-    assert elapsed < BUDGET + SLACK
+    assert elapsed < BUDGET + own_work + SLACK
     assert "llm_judge" in result.checks_incomplete
 
 
 def test_slow_ssrf_resolution_skips_the_site_probes(offline_analyzer):
     """Never connect to a site whose address we could not vet in time."""
+    offline_analyzer(site="reachable")
+    own_work = _fast_run_seconds("obscure-shop.ru")
     offline_analyzer(site="reachable", delays={"resolution": 10})
     result, elapsed = _timed(analyzer.analyze_domain("obscure-shop.ru", budget_s=BUDGET))
-    assert elapsed < BUDGET + SLACK
+    assert elapsed < BUDGET + own_work + SLACK
     assert {"ssl", "headers", "redirect", "favicon"} <= set(result.checks_incomplete)
     assert result.has_ssl is None
 
@@ -134,24 +171,34 @@ def test_hanging_source_fails_inside_its_breaker(offline_analyzer, monkeypatch):
     """httpx's timeout is per phase: a source that accepts the connection and
     then trickles never times out by itself, and a check cancelled at the
     deadline is invisible to its breaker (CancelledError is not an
-    Exception). The source's TOTAL limit fires first, as a counted failure."""
+    Exception). The source's TOTAL limit fires first, as a counted failure.
+    The deadline is far (3 s), so "ended by its own 0.2 s limit" cannot be
+    mistaken for "cancelled at the deadline" on a slow machine."""
     from api.services.circuit_breaker import CircuitState, phishstats_breaker
 
     monkeypatch.setattr(phishstats_breaker, "_failure_count", 0)
     monkeypatch.setattr(phishstats_breaker, "_state", CircuitState.CLOSED)
     monkeypatch.setattr(analyzer, "SOURCE_TIMEOUT_S", 0.2)
     offline_analyzer(site="reachable", delays={"phishstats": 30})
-    result, elapsed = _timed(analyzer.analyze_domain("obscure-shop.ru", budget_s=1.0))
+    result, elapsed = _timed(analyzer.analyze_domain("obscure-shop.ru", budget_s=3.0))
     assert elapsed < 1.0
     assert phishstats_breaker._failure_count == 1
 
 
-def test_existence_and_ssrf_lookups_run_in_parallel(offline_analyzer):
+def test_existence_and_ssrf_lookups_run_in_parallel(offline_analyzer, monkeypatch):
     """Both resolve the same name, each capped at 1.5 s: in sequence a slow
     name server spent the whole 3 s budget before any check started."""
+    offline_analyzer(site="reachable")
+    own_work = _fast_run_seconds("obscure-shop.ru")
     offline_analyzer(site="reachable", delays={"exists": 1.0, "resolution": 1.0})
+    spans: dict = {}
+    for name, attr in (("exists", "check_domain_exists"), ("resolution", "validate_domain_resolution")):
+        monkeypatch.setattr(analyzer, attr, _traced(spans, name, getattr(analyzer, attr)))
     result, elapsed = _timed(analyzer.analyze_domain("obscure-shop.ru", budget_s=3.0))
-    assert elapsed < 1.6
+    assert set(spans) == {"exists", "resolution"}
+    assert _overlapped(spans.values()), spans
+    # In sequence the second lookup would add a whole second.
+    assert elapsed < 1.0 + own_work + SLACK
     assert result.checks_incomplete == []
 
 
@@ -163,15 +210,20 @@ def test_nxdomain_does_not_wait_for_the_ssrf_lookup(offline_analyzer):
 
 
 def test_dns_enrichment_lookups_run_concurrently():
+    spans = []
+
     def _slow_resolve(domain, rdtype):
+        start = time.monotonic()
         time.sleep(0.3)
+        spans.append((start, time.monotonic()))
         raise Exception("no answer")
 
     resolver = MagicMock()
     resolver.resolve.side_effect = _slow_resolve
     with patch.object(dns_checks, "_resolver", return_value=resolver):
         out, elapsed = _timed(dns_checks.check_dns("obscure-shop.ru"))
-    assert elapsed < 0.75  # three sequential lookups would take 0.9 s
+    assert len(spans) == 3 and _overlapped(spans), spans
+    assert elapsed < 0.9  # three lookups in sequence cannot take less
     assert out["has_mx"] is False and out["a_count"] == 0
 
 
