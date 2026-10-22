@@ -8,28 +8,36 @@ DNS canary could not fail and ran every ~3.5 h instead of every 15 min.
 
 | Job | Scheduled | Really runs | Red means |
 |---|---|---|---|
-| `dns-canary.yml` | 4× per hour | ~1 per 3.5 h (46–47 runs in 7 days, measured 2026-09-18..25) | a must-resolve name is dark, the gateway resolves nothing, a listed name is not blocked **by us**, the phone artifact is stale/broken, `/health/deep` is degraded, or `/ru/android` is down |
+| Cloudflare Worker `cleanway-uptime` (`ops/uptime-worker/`) | every minute | every minute (Cloudflare cron); writes a heartbeat every 10 min | an email `Cleanway: не работает <check>` after two failed minutes: `api` (`/health/deep` not 200/ok — Redis or Supabase), `blocklist` / `dns_filter` / `server_key` / `warnings_other` (one per `/health/deep` warning), `doh_resolve` (the gateway resolves nothing), `doh_block` (the list canary is not NXDOMAIN'd **by us** on the public path), `landing`, `install_page` (`/ru/android`), `backup` (newest R2 backup over 30 h, only with the `BACKUPS` binding). Table: `ops/uptime-worker/README.md` |
+| `dns-canary.yml` | 4× per hour | ~1 per 3.5 h (46–47 runs in 7 days, measured 2026-09-18..25; 6 on 2026-10-21) | a must-resolve name is dark, the gateway resolves nothing, a listed name is not blocked **by us**, the phone artifact is stale/broken, `/health/deep` is degraded, `/ru/android` is down, or the uptime Worker's heartbeat is older than 30 min / it cannot send mail |
 | `refresh-dangerous-domains.yml` | every 6 h | on time so far (199 of 200 runs green) | exit 2: no feed readable · 4: a gate kept the previous set · 5: post-publish check failed, rolled back · **6: published, but a feed has been down or truncated for 12 h+** |
 | `security.yml` → gitleaks | every push + weekly | on time | a committed secret — or a new false positive (see below) |
 | `weekly-benchmark.yml` | Sundays 15:15 UTC; a scheduled start after 23:00 UTC Sunday is skipped (yellow warning, `window` job) so the run never spends Monday's paid-source budgets | not yet measured on the new schedule; the old Monday 05:15 cron started 0.5–6.3 h late (last 5 runs) | the run crashed or hit its 150-min timeout (VirusTotal alone takes ~105 min at sample 200; a cancelled run writes nothing). A failed "Check the legitimate sample" step (the job still passes) means a site in `data/benchmark_legit_ru.txt` stopped resolving or is now auto-trusted: prune it (the run itself still counts it as no answer / drops it). A small or rate-limited run is not red — it just leaves `latest.json` alone |
 
 **GitHub scheduled workflows are best-effort.** GitHub drops scheduled runs
 under load; nothing in the repository can make the canary run every 15
-minutes. Treat it as a periodic audit, not a pager.
+minutes. Treat it as a periodic audit, not a pager — the pager is the
+uptime Worker, and the canary is what notices when the Worker itself dies.
+
+**Payment webhooks** that arrive with a valid signature but fail to apply
+email the founder through the security alerts (`webhook_processing_failed`,
+`security-incident.md`). **Sign-in codes** (Supabase SMTP via Resend) are not
+watched yet — `sign-in-email.md` has the checks and the canary design.
 
 ## What only the founder can set up
 
-1. **External uptime monitor (minute-level alerting).** Any free monitor
-   (UptimeRobot, Better Stack, Healthchecks.io …) with two checks, every 5
-   minutes, alerting to your email or Telegram:
-   - `GET https://api.cleanway.ai/health/deep` — alert unless HTTP 200 and the
-     body contains `"status":"ok"`;
-   - `GET https://cleanway.ai/ru/android` — alert unless HTTP 200.
-   Use GET, not HEAD: the API answers HEAD with 405.
+1. **Upload the uptime Worker after a change to it.** The minute-level
+   monitor is the Cloudflare Worker `cleanway-uptime`; its source is
+   `ops/uptime-worker/worker.js` and it is deployed by hand (README there).
+   Since 2026-10-22 it probes `/health/deep` and each of its warnings, our
+   block on the public DNS path and `/ru/android`; until that version is
+   uploaded the live Worker still probes `/health` (the DNS canary prints
+   "no heartbeat_at yet"). Optional: bind the R2 bucket `cleanway-db-backups`
+   as `BACKUPS` to get the backup-age alert.
 
-   **Grandma's protection, too (optional third check).** Since 2026-09-27
-   `/health/deep` also reports two components that never page (never turn
-   it into a 503) but are listed in `warnings` when they fail:
+   **What `/health/deep` warns about.** Components that never page (never turn
+   it into a 503) but are listed in `warnings` when they fail — the Worker
+   alerts on each one separately:
    - `blocklist` — the artifact phones sync: published, more than the list
      canary alone, and younger than 13 h (`MAX_HEALTHY_AGE_S`, the canary's
      threshold). `error`: `unavailable` (nothing servable in Redis),
@@ -39,23 +47,47 @@ minutes. Treat it as a periodic audit, not a pager.
      our NXDOMAIN. `error: listed_name_not_blocked` means the DNS profile
      blocks nothing right now: `dangerous_domains` expired or lost the
      canary, or Redis is down and the gateway is failing open.
-   A keyword check on the same URL — alert unless the body contains
-   `"warnings":[]` — turns those into an alert without waking anyone for a
-   Redis-only blip. It needs no new endpoint and no secret.
+   - `supabase_server_key` (since 2026-10-22) — the server key no longer acts
+     as service_role (`GET /auth/v1/admin/users` is not 200): account deletion
+     and every server write fail while Supabase itself answers. `kind` says
+     which key generation is live (`supabase-jwt-signing-keys.md`).
+   Informational, never in `warnings`: `ml` (model loaded) and `retention`
+   (`RETENTION_PURGE` and the last successful pass, `data-retention.md`).
 
-   **What this monitor still does not see.** The in-process DoH probe proves
-   the decision code and the Redis set, not the public path (Railway routing,
-   TLS, the `/dns-query` route, the upstream resolver); the DNS canary still
-   covers those end to end (really about once every 3.5 h, see the table).
+   **What the Worker does not see.** The in-process DoH probe proves the
+   decision code and the Redis set; the Worker's `doh_block` adds the public
+   path for one name (Railway routing, TLS, `/dns-query`). Real listed hosts
+   from a live feed, the artifact's self-consistency and the must-resolve
+   list are only in the DNS canary (about once every 3.5 h, see the table).
 2. **Optional: run the DNS canary on a real clock.** An external cron (e.g.
    cron-job.org) can call GitHub's `workflow_dispatch` for `dns-canary.yml`
    every 15 minutes. It needs a fine-grained token with *Actions: read and
    write* on this repository only — create it yourself and store it only in
    that service; it never goes into the repository.
-3. **Let the favicon job open its PR.** `refresh-brand-favicons.yml` failed
-   15 of 15 runs with "GitHub Actions is not permitted to create or approve
-   pull requests". Settings → Actions → General → Workflow permissions →
-   tick **Allow GitHub Actions to create and approve pull requests** → Save.
+3. ~~Let the favicon job open its PR~~ — done: `refresh-brand-favicons.yml`
+   has been green since 2026-10-12.
+
+## Когда пришло письмо «Cleanway: не работает …»
+
+Письмо шлёт `cleanway-uptime` после двух неудачных минут подряд; второе
+письмо — «снова работает» — придёт само. Первым делом —
+`curl -s https://api.cleanway.ai/health/deep`.
+
+| Проверка | Что сделать первым |
+|---|---|
+| `api` | В письме — какой компонент: `redis` → Railway → сервис `Redis` (жив ли, Restart); `supabase` → status.supabase.com, Supabase → проект → не на паузе ли. Совпало с деплоем — `rollback.md` |
+| `landing`, `install_page` | Vercel → Deployments: последний деплой упал? Откат — Promote предыдущего (`rollback.md`) |
+| `blocklist` | GitHub → Actions → Refresh dangerous domains: последние запуски красные? Ниже — «When the blocklist refresh exits 6» |
+| `dns_filter`, `doh_block` | DNS-профиль ничего не блокирует. `components.doh` и `components.blocklist` в `/health/deep`; набор `dangerous_domains` мог истечь (TTL 3 дня) — запустить Refresh dangerous domains вручную. `dns_filter` зелёный, а `doh_block` красный — сломан публичный путь (маршрут Railway, `/dns-query`) |
+| `doh_resolve` | `dns.cleanway.ai` не отвечает: `/health/doh` (`ok`, `upstreams`). У iPhone с DNS-защитой не открываются сайты — это срочно |
+| `server_key` | Серверный ключ Supabase отклонён: `supabase-jwt-signing-keys.md`; сверить `SUPABASE_SECRET_KEY` / `SUPABASE_SERVICE_KEY` в Railway с Supabase → API Keys |
+| `warnings_other` | В `/health/deep` новое предупреждение — посмотреть `warnings` и `components`; дописать проверку в `ops/uptime-worker/worker.js` |
+| `backup` | GitHub → Actions → DB backup: последний запуск красный или не стартовал? Запустить вручную (Run workflow); `restore.md` |
+
+Монитор молчит, а DNS canary пишет `UPTIME MONITOR SILENT` или `CANNOT SEND
+MAIL` — Cloudflare → Workers & Pages → `cleanway-uptime`: на месте ли cron
+`* * * * *`, привязки `STATE`, `ALERT`, `ALERT_TO`, подтверждён ли адрес в
+Email Routing (`ops/uptime-worker/README.md`).
 
 ## When the blocklist refresh exits 6 (a feed is down)
 
@@ -199,4 +231,8 @@ log). A real secret: rotate it, then remove it from history. A false
 positive: add its exact fingerprint (`commit:file:rule:line`, printed in the
 log) to `.gitleaksignore` with a comment saying what the line really is.
 Never widen `.gitleaks.toml` to a whole directory, and never allowlist a
-secret instead of rotating it.
+secret instead of rotating it. The one file-name exception: the weekly
+benchmark's generated `docs/benchmarks/<date>-fresh-urls.{json,md}` (public
+phishing URLs whose tracking tokens took a new shape every week and kept the
+scheduled scan red) are allowlisted by that exact name pattern; every other
+file under `docs/benchmarks/` is still scanned.

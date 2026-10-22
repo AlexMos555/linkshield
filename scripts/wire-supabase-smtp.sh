@@ -18,7 +18,7 @@
 #   SUPABASE_ACCESS_TOKEN, SMTP_PROVIDER=yandex|resend|custom, SMTP_PASS,
 #   SMTP_SENDER (default no-reply@cleanway.ai), optional SMTP_HOST/PORT/USER,
 #   SMTP_SENDER_NAME, SMTP_RATE_LIMIT, SMTP_MIN_INTERVAL.
-# Founder checklist: docs/EMAIL_SIGNIN.md.
+# Founder checklist: docs/runbooks/sign-in-email.md.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

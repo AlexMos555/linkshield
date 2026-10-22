@@ -18,7 +18,7 @@
 | 1 | dns | Reframe /dns landing as "one layer in a stack" | claude_supervised | s | high | All 10 locales drop "system-wide" claim; honest gap table vs NextDNS |
 | 1 | privacy | Scrub domain from /public/check/{domain} logs | claude_now | xs | high | Test asserts {domain} placeholder; Railway log 24h grep = 0 raw domains |
 | 1 | speed | Add /metrics Prometheus endpoint (bearer-gated) | claude_now | xs | high | Grafana shows live p50/p95/p99 within 24h |
-| 1 | speed | Wire SENTRY_RELEASE from Railway commit SHA | claude_supervised | xs | medium | Test error tagged with SHA appears in Sentry |
+| 1 | speed | ~~Wire SENTRY_RELEASE from Railway commit SHA~~ — done 2026-10-22 (`api/services/sentry_setup.py`) | claude_supervised | xs | medium | Test error tagged with SHA appears in Sentry |
 | 1 | suite | AV-Comparatives Q3 submit email + budget approval | user_only | m | critical | Lab ack within 7d; EUR 4-8K budget pre-approved |
 | 1 | suite | MS Founders Hub signup (only — no AppSource featured claim) | claude_supervised | xs | medium | Approval within 2 weeks |
 | 1 | ux | Trash welcome-flow PROTOTYPE (HTML mockup, no production wire) | claude_now | xs | high | Clickable mockup ready for grandparent test |
@@ -62,7 +62,7 @@ This week has one strategic purpose: **stop grooming, start submitting**. Every 
 
 ### claude_supervised — instrumentation and honest copy
 
-- **SENTRY_RELEASE wiring.** Railway env var `SENTRY_RELEASE=${{RAILWAY_GIT_COMMIT_SHA}}` + `release=os.environ.get('SENTRY_RELEASE')` in `sentry_sdk.init()`.
+- ~~**SENTRY_RELEASE wiring.**~~ Done 2026-10-22: `release` is `SENTRY_RELEASE` when set, else `cleanway-api@<RAILWAY_GIT_COMMIT_SHA[:12]>` (Railway sets it; no env var to add), plus `environment` from settings and a `role` tag (`api/services/sentry_setup.py`).
 - **Reframe /dns landing.** First step: edit `landing/app/[locale]/dns/page.tsx` hero to "Phishing-tuned DoH. One layer in a multi-surface defense." Grep for the DNS hero key in `landing/messages/en.json`, update all 10 locale files. **Important caveat the verifier caught:** the 93.5% recall number belongs to the extension fan-out, not DoH. Before publishing any DNS comparison table, run a separate DNS-only recall benchmark via `doh.py` blocklist path. Do not import the extension number.
 
 ---

@@ -177,6 +177,57 @@ outward-поведения privacy-бренда**, поэтому решение
 
 ---
 
+## 🔴 №7 — Включить удаление данных по срокам (`RETENTION_PURGE`) *(добавлено 2026-10-22)*
+**Время:** 5 мин + проверка через 20 мин и на следующий день. **Разблокирует:** честность
+политики конфиденциальности и деклараций удаления аккаунта в App Store / Google Play.
+
+### Зачем
+Все обещанные сроки хранения (аккаунт стирается через 30 дней после запроса, журнал —
+2 года, счётчики — год, семейные оповещения — 30 дней) исполняет только цикл
+`api/services/retention.py`, а он **выключен по умолчанию** (`RETENTION_PURGE=off`).
+Пока переменная не задана, обещание на `/delete-account` («через 30 дней всё будет
+стёрто навсегда») не выполняется. Лучше включать после PR про жизненный цикл аккаунта
+(блокировка удалённого аккаунта, блокеры удаления).
+
+### Как
+1. Railway → `honest-playfulness` → `web` → **Variables** → `RETENTION_PURGE` = `dry_run`
+   (сервис перезапустится сам).
+2. Через ~20 минут открыть `https://api.cleanway.ai/health/deep` → `components.retention`:
+   `mode: "dry_run"`, `last_ok_at` с сегодняшним временем. Числа «сколько удалилось бы» —
+   Railway → `web` → Logs, поиск `retention.pass_complete` (поля `tables`,
+   `accounts_would_delete`), или Railway → `web` → Shell:
+   `python -m api.services.retention --dry-run`. Ошибки (`error`, `last_pass_failed`) —
+   прислать мне.
+3. Числа ожидаемые → `RETENTION_PURGE` = `on`.
+4. На следующий день: `components.retention` → `mode: "on"`, `ok: true`; в логах есть
+   `account_purge.complete`.
+
+Подробно: [`docs/runbooks/data-retention.md`](runbooks/data-retention.md). Откат —
+`RETENTION_PURGE=off`.
+
+---
+
+## 🟠 №8 — Залить новый минутный монитор (Cloudflare) *(добавлено 2026-10-22)*
+**Время:** 5 мин. **Разблокирует:** письма о том, что действительно сломалось у людей.
+
+### Зачем
+Монитор `cleanway-uptime` сейчас смотрит `/health` (он всегда 200) и не видит падения
+Supabase, выключенного DNS-фильтра, мёртвого серверного ключа и пропавших бэкапов. Новая
+версия (`ops/uptime-worker/worker.js`) проверяет всё это и сама пишет «сердцебиение»;
+DNS canary заметит, если монитор умрёт.
+
+### Как
+1. Cloudflare → **Workers & Pages** → `cleanway-uptime` → **Edit code** → вставить весь
+   `ops/uptime-worker/worker.js` → **Deploy**.
+2. По желанию (проверка возраста бэкапа): **Settings → Bindings → Add → R2 bucket**,
+   имя переменной `BACKUPS`, бакет `cleanway-db-backups`.
+3. Через 2–3 минуты открыть `https://cleanway-uptime.amoskotin.workers.dev/` — в ответе
+   есть `heartbeat_at`, все `fails` — 0.
+
+Подробно: [`ops/uptime-worker/README.md`](../ops/uptime-worker/README.md).
+
+---
+
 ## Что уже сделано за тебя (чтобы не искал)
 - ✅ Детект-движок: закалён, adversarially-проверен, **995 тестов**, в проде (ML onnx, AUC 0.9885).
 - ✅ CI зелёный; починен openapi-drift, testimonials-E2E, favicon-cron (падал 4 недели).
@@ -186,3 +237,4 @@ outward-поведения privacy-бренда**, поэтому решение
 
 ## Порядок, если коротко
 **№0 (10 мин — гейт) → №1 (20 мин — ГЛАВНОЕ) → №3 + №4 (короткие ответы) → №5 (когда сядешь за код) → №2 (30 сек, не срочно) → №6.**
+**С 2026-10-22: №7 (сроки хранения) и №8 (монитор) — по 5 минут, сделать в ближайшие дни.**

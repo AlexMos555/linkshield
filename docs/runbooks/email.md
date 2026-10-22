@@ -2,7 +2,9 @@
 
 ## What this is
 
-Operational procedures for Cleanway's transactional email system. For how the code works, see `packages/email-templates/README.md`.
+Operational procedures for the API's own transactional email (welcome, receipts, security alerts). For how the code works, see `packages/email-templates/README.md`.
+
+**Sign-in codes are not sent by this code:** Supabase Auth sends them through Resend's SMTP — see [`sign-in-email.md`](sign-in-email.md). Both share the Resend account and API key.
 
 ## Provider switch
 
@@ -18,25 +20,11 @@ Operational procedures for Cleanway's transactional email system. For how the co
 
 ## First-time setup per environment
 
-### 1. Pick a sending domain
-We don't own `cleanway.ai` — that's the dev placeholder. Before prod send:
-- Decide the marketing domain (see brand decision in `.planning/STATE.md`)
-- Subdomain for transactional: `mail.<domain>` or `send.<domain>` — keeps marketing domain clean of bounces
-- Set `EMAIL_FROM_DOMAIN=mail.yourdomain.com` in prod env
+### 1. Sending domain
+Production sends from `cleanway.ai` (ours; DNS in Cloudflare): `EMAIL_FROM_ADDR` defaults to `no-reply@cleanway.ai`, `EMAIL_FROM_DOMAIN` to `cleanway.ai` (`api/services/email.py`), and security alerts come from `alerts@cleanway.ai`. The domain is verified in Resend (region `eu-west-1`).
 
-### 2. DNS records (both Resend and SES require these)
-```
-# SPF (authorize provider's SMTP)
-mail.yourdomain.com.  TXT  "v=spf1 include:_spf.resend.com ~all"
-
-# DKIM (signs outgoing — provider gives the public key)
-resend._domainkey.mail.yourdomain.com.  TXT  "v=DKIM1; k=rsa; p=..."
-
-# DMARC (policy for receivers)
-_dmarc.mail.yourdomain.com.  TXT  "v=DMARC1; p=quarantine; rua=mailto:dmarc@yourdomain.com; fo=1"
-```
-
-Start with `p=quarantine`; upgrade to `p=reject` after 30 days of clean DMARC reports.
+### 2. DNS records
+Do not copy records from a template: Resend shows the exact SPF / DKIM records for `cleanway.ai` under Domains, and `bash scripts/wire-supabase-smtp.sh --provider resend --step dns --check-dns` prints them and checks they are live. Add or fix them in Cloudflare → DNS (DNS only, grey cloud). DMARC: start with `p=quarantine`; move to `p=reject` after 30 days of clean reports.
 
 ### 3. Provider-specific
 
@@ -49,7 +37,7 @@ Start with `p=quarantine`; upgrade to `p=reject` after 30 days of clean DMARC re
 **SES:**
 1. AWS console → SES → verify domain (automatic DKIM)
 2. Request production access (SES starts in sandbox, 200 emails/day, only to verified addresses)
-3. IAM role attached to Railway container has `ses:SendRawEmail` permission scoped to `arn:aws:ses:REGION:ACCOUNT:identity/mail.yourdomain.com`
+3. IAM role attached to Railway container has `ses:SendRawEmail` permission scoped to `arn:aws:ses:REGION:ACCOUNT:identity/cleanway.ai`
 4. `EMAIL_PROVIDER=ses`, `AWS_REGION=us-east-1` (or wherever your domain is verified)
 5. Verify production access granted: AWS will email you; typical lead time 24h
 
@@ -57,17 +45,11 @@ Start with `p=quarantine`; upgrade to `p=reject` after 30 days of clean DMARC re
 
 ### How to check: is email working?
 
-```bash
-# Send a welcome email to yourself via production API
-curl -X POST https://api.yourdomain.com/api/v1/admin/test-email \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -d '{"template":"welcome","to":"you@example.com","locale":"en"}'
+There is no test-email endpoint. Check the real paths:
 
-# (That admin endpoint doesn't exist yet — TODO in Phase E₃ when staging runbook matures)
-# For now: create a test user account, trigger the onboarding flow, check inbox.
-```
-
-Alternative: Resend/SES dashboards show "Sent / Delivered / Opened / Bounced" per send in real-time.
+- **Sign-in code** (Supabase → Resend SMTP): the checks in `sign-in-email.md`.
+- **API mail**: Railway → `web` → Logs, search `email.send` — since 2026-10-22 the JSON log keeps `send_id`, `template`, `provider` and `error` (never the address or subject). The welcome mail is sent once per account on `POST /api/v1/user/welcome` (idempotent; `welcome.sent` in the log).
+- **Resend** → Emails: Sent / Delivered / Bounced per message, in real time.
 
 ### How to check: are bounces happening?
 
@@ -97,9 +79,10 @@ railway logs --filter "email.send" --since 24h | grep <email-or-user-id>
 # 2. Confirm template exists
 ls packages/email-templates/out/welcome/
 
-# 3. Test provider directly (bypasses our code)
+# 3. Test provider directly (bypasses our code); RESEND_API_KEY from Railway → web → Variables
 curl -X POST https://api.resend.com/emails -H "Authorization: Bearer $RESEND_API_KEY" \
-  -d '{"from":"test@mail.yourdomain.com","to":"you@example.com","subject":"test","html":"hi"}'
+  -H "Content-Type: application/json" \
+  -d '{"from":"no-reply@cleanway.ai","to":"<your address>","subject":"test","html":"hi"}'
 ```
 
 ### "Users complaining about spam from us"
@@ -108,7 +91,7 @@ curl -X POST https://api.resend.com/emails -H "Authorization: Bearer $RESEND_API
 2. Turn off outbound by setting `EMAIL_PROVIDER=noop` in Railway env.
 3. Check Resend/SES dashboard for send volume spike — there should be one; that's the smoking gun.
 4. Find source: was there a rate-limit gap? Did we ship a new cron that fires to all users instead of segment?
-5. Incident postmortem in `.planning/incidents/YYYY-MM-DD-email-spam.md`.
+5. Incident note in `CHANGELOG.md` or a write-up under `docs/runbooks/`.
 6. If complaint rate > 0.5%, expect SES to suspend. Contact AWS support.
 
 ### "Unsubscribe link returns 400"
@@ -133,8 +116,8 @@ At 10K paying users + 2× that free, ~40K sends/month. Stay on Resend Pro until 
 
 ## Security checklist before first prod send
 
-- [ ] `EMAIL_FROM_DOMAIN` set to real owned domain (not `.example`)
-- [ ] SPF + DKIM + DMARC records active (check via `dig TXT mail.yourdomain.com`)
+- [x] Sending domain is `cleanway.ai` (owned; `EMAIL_FROM_DOMAIN` default)
+- [ ] SPF + DKIM + DMARC records active (`bash scripts/wire-supabase-smtp.sh --provider resend --step dns --check-dns`)
 - [ ] Provider dashboard shows "verified" status on sending domain
 - [ ] `EMAIL_PROVIDER=resend` OR `ses` in prod Railway only — NOT in staging/dev
 - [ ] `RESEND_API_KEY` / AWS IAM credentials in Railway, not in git
