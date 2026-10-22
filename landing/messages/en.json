@@ -528,7 +528,7 @@
     "col_fpr": "False-alarm rate",
     "col_fp": "False alarms",
     "col_tn": "Correct",
-    "dataset_phishing_desc": "fresh links from the URLhaus and PhishTank public feeds, downloaded at each run and de-duplicated by domain.",
+    "dataset_phishing_desc": "fresh links from the PhishTank public feed (until October 2026 also URLhaus), downloaded at each run and de-duplicated by domain.",
     "dataset_safe_desc": "random domains from the Tranco top-1M list, ranks 100 to 100,000, with a fixed random seed so the sample can be reproduced.",
     "dataset_safe_desc_curated": "real Russian sites outside the Tranco top 100,000 — regional and city administrations, universities, .рф sites, small banks and businesses, museums and theatres — from a published list that gives the source of every site, sampled with a fixed random seed.",
     "mapping_cleanway": "Cleanway: \"dangerous\" counts as dangerous, \"safe\" as safe, \"caution\" as unknown.",
@@ -813,7 +813,7 @@
         "paragraphs": [
           "When you turn on protection, Cleanway starts a local filter using Android's VPN mechanism. Only DNS queries pass through it — the questions your phone asks to find a site's address, such as \"where is example.com?\". The contents of pages, your messages and calls do not go through the filter and are not read.",
           "Each site name is compared with the list of scam sites stored on the phone. If it is on the list, the phone doesn't open the site, and a note (the site's name, the time and what happened) is saved on the phone for the app's History.",
-          "Names that are not on the list are passed on to find the site's address: first to the DNS server of the network the phone is on — your mobile operator's or your Wi-Fi router's — as without Cleanway. Only if it does not answer do they go to Cloudflare (1.1.1.1), then Quad9 (9.9.9.9), and as a last resort Cloudflare's encrypted DNS-over-HTTPS. This is how app versions 1.0.2 to 1.0.4 work; version 1.0.1 asked Cloudflare first. These services see the site name and your connection's IP address, as any DNS service does; their own privacy policies apply. Cleanway does not receive or store these queries.",
+          "Names that are not on the list are passed on to find the site's address: first to the DNS server of the network the phone is on — your mobile operator's or your Wi-Fi router's — as without Cleanway. Only if it does not answer do they go to Cloudflare (1.1.1.1), then Quad9 (9.9.9.9), and as a last resort Cloudflare's encrypted DNS-over-HTTPS. This is how app versions 1.0.2 to 1.0.5 work; version 1.0.1 asked Cloudflare first. These services see the site name and your connection's IP address, as any DNS service does; their own privacy policies apply. Cleanway does not receive or store these queries.",
           "From version 1.0.2 the app carries a copy of the scam-site list, used only until the phone downloads a fresh one."
         ]
       },

@@ -8,7 +8,6 @@ so DNS-level blocking actually works.
 
 Sources (bulk, no API key unless said). The licence of each is quoted beside
 its URL constant below and in docs/THIRD_PARTY_FEEDS.md:
-  * URLhaus          — abuse.ch online URL CSV        (non-commercial terms)
   * OpenPhish        — community phishing feed          (non-commercial terms)
   * Phishing.Database — mitchellkrogza phishing-domains-ACTIVE (MIT)
   * phishing.army    — extended blocklist               (CC BY-NC 4.0)
@@ -20,7 +19,13 @@ its URL constant below and in docs/THIRD_PARTY_FEEDS.md:
   * PhishTank        — verified-online dump, ONLY with PHISHTANK_API_KEY
                        (api/services/phishtank_feed.py: one download a day)
 
-Licence switch (docs/THIRD_PARTY_FEEDS.md): the three feeds marked
+Retired: URLhaus (abuse.ch). Since 2026-10-21 its bulk exports answer
+410 Gone without a personal Auth-Key, and its terms (2025-11-04) allow
+not-for-profit use only — Cleanway sells plans, so it is gone for good
+rather than keyed (see RETIRED_FEEDS). The published names only it backed
+leave on the first publish without it, exactly like a switched-off feed.
+
+Licence switch (docs/THIRD_PARTY_FEEDS.md): the two feeds marked
 non-commercial were fine while the product was free and are not once it
 charges. BLOCKLIST_LICENSED_ONLY=1 leaves them out of the build entirely —
 not downloaded, not consulted, so they are not an outage either: their
@@ -85,7 +90,7 @@ Env:
     REDIS_URL                  — connection string (required unless --dry-run)
     BLOCKLIST_RETAIN_DAYS      — retention window in days, 0 disables (default 14)
     PUBLISH_CONFIRMED_THREATS  — 1/true to publish server-confirmed hosts (default off)
-    BLOCKLIST_LICENSED_ONLY    — 1/true to leave out URLhaus, OpenPhish, phishing.army (default off)
+    BLOCKLIST_LICENSED_ONLY    — 1/true to leave out OpenPhish, phishing.army (default off)
     BLOCKLIST_EXCLUDE_FEEDS    — comma-separated feed names to leave out (measurements only)
     PHISHTANK_API_KEY          — set: PhishTank joins the feeds, one cached download a day
 """
@@ -150,15 +155,84 @@ async def _live_rcode(client: "httpx.AsyncClient", name: str) -> int | None:
         return None
 
 
+# The API workers answer DoH from an in-process copy of the artifact that
+# each re-reads every DOH_FILTER_REFRESH_S (api/config.py, 30 s) — so for up
+# to that long after a publish the gateway still serves the OLD list. On
+# 2026-10-21 the check ran ~3 s after publishing, a name new in that build
+# ("0-105.com") was not blocked yet, and every run from 11:58 UTC on was
+# rolled back. The check now waits until the sampled names are blocked (the
+# proof the new list is live), gives every other worker one more refresh
+# interval, and only then judges the guards — judged against the old list
+# they prove nothing about the new one.
+VERIFY_WAIT_SECONDS = 150.0
+VERIFY_POLL_SECONDS = 5.0
+VERIFY_SETTLE_SECONDS = 35.0
+VERIFY_SAMPLE = 3
+# Indirection so tests can run the waits on a fake clock.
+_sleep = asyncio.sleep
+_monotonic = time.monotonic
+
+
+def verify_sample(blockset: set[str], previous: set[str] | None, k: int = VERIFY_SAMPLE) -> list[str]:
+    """Names to ask the live gateway about. Mostly names NEW in this publish
+    (no suffix of them on the previous list): only those prove the gateway
+    serves this list rather than the last one. One name from both lists
+    shows the rest is still there."""
+    names = sorted(n for n in blockset if n != LIST_CANARY)
+    if not previous:
+        return names[:k]
+
+    def new(name: str) -> bool:
+        parts = name.split(".")
+        return not any(".".join(parts[i:]) in previous for i in range(len(parts) - 1))
+
+    fresh = [n for n in names if new(n)]
+    picks = fresh[:k - 1]
+    picks += [n for n in names if n in previous][:k - len(picks)]
+    picks += [n for n in fresh if n not in picks][:k - len(picks)]
+    return sorted(picks[:k], key=lambda n: (n in previous, n))
+
+
 async def verify_published(sample_listed: list[str]) -> list[str]:
     """Ask the LIVE gateway what it now does. Empty list = healthy.
 
     Publishing is the moment a mistake becomes everyone's problem, so the
     check happens here rather than only in the 15-minute canary: a bad set is
-    rolled back within seconds instead of hours.
+    rolled back within minutes instead of hours. An unreachable gateway is
+    logged, never a failure.
     """
     problems: list[str] = []
+    sample = list(sample_listed[:VERIFY_SAMPLE])
     async with httpx.AsyncClient(timeout=15.0) as client:
+        start = _monotonic()
+        pending: dict[str, int] = {}
+        live = False
+        todo = list(sample)
+        while True:
+            pending = {}
+            for name in todo:
+                rcode = await _live_rcode(client, name)
+                if rcode is None:
+                    logger.warning("verify: %s unreachable — skipping (not treated as failure)", name)
+                elif rcode == 3:
+                    live = True
+                else:
+                    pending[name] = rcode
+            todo = list(pending)
+            if not todo or _monotonic() - start >= VERIFY_WAIT_SECONDS:
+                break
+            await _sleep(VERIFY_POLL_SECONDS)
+        waited = _monotonic() - start
+        for name, rcode in pending.items():
+            problems.append(f"listed {name} is NOT blocked after publish (rcode {rcode}, waited {waited:.0f} s)")
+        if live and not pending:
+            logger.info("verify: the gateway blocks the new names after %.0f s — %.0f s more for every worker",
+                        waited, VERIFY_SETTLE_SECONDS)
+            await _sleep(VERIFY_SETTLE_SECONDS)
+            for name in sample:
+                rcode = await _live_rcode(client, name)
+                if rcode is not None and rcode != 3:
+                    problems.append(f"listed {name} is NOT blocked after publish (rcode {rcode})")
         for name in NEVER_BLOCK_GUARDS:
             rcode = await _live_rcode(client, name)
             if rcode is None:
@@ -166,10 +240,6 @@ async def verify_published(sample_listed: list[str]) -> list[str]:
                 continue
             if rcode == 3:
                 problems.append(f"{name} is NXDOMAIN after publish")
-        for name in sample_listed[:3]:
-            rcode = await _live_rcode(client, name)
-            if rcode is not None and rcode != 3:
-                problems.append(f"listed {name} is NOT blocked after publish (rcode {rcode})")
     return problems
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -180,7 +250,6 @@ _DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 # americanexpress.io). Header of the file has the evidence rule; candidates
 # come from scripts/sweep_brand_owned_fps.py.
 BRAND_OWNED_PATH = os.path.join(_DATA_DIR, "brand_owned_hosts.txt")
-URLHAUS_CSV = "https://urlhaus.abuse.ch/downloads/csv_online/"
 OPENPHISH_FEED = "https://openphish.com/feed.txt"
 
 # Domain-level phishing aggregates. Measured 2026-08-19 on a held-out
@@ -261,15 +330,21 @@ TTL_SECONDS = 60 * 60 * 24 * 3  # 3-day safety TTL: if the cron dies, the set ex
 # Sources whose terms bar shipping their names inside a paid product, read
 # 2026-09-21 and 2026-09-29: OpenPhish (openphish.com/terms.html — no
 # commercial use "including … customer protection", no redistribution),
-# phishing.army (its own file header: CC BY-NC 4.0), URLhaus (abuse.ch
-# terms of use, 2025-11-04: not-for-profit only, no derivative works; the
-# commercial route is a Spamhaus subscription). BLOCKLIST_LICENSED_ONLY=1
-# leaves all three out; unset, they are built in exactly as before.
-NON_COMMERCIAL_FEEDS = frozenset({"URLhaus", "OpenPhish", "phishing.army"})
+# phishing.army (its own file header: CC BY-NC 4.0). BLOCKLIST_LICENSED_ONLY=1
+# leaves both out; unset, they are built in exactly as before.
+NON_COMMERCIAL_FEEDS = frozenset({"OpenPhish", "phishing.army"})
+# Former sources, never fetched again. A name one of them backed on its last
+# healthy run (blocklist_feed_backing) leaves with the next publish instead
+# of being carried as an outage or held in retention — the same path as a
+# switched-off feed. URLhaus: abuse.ch retired anonymous downloads on
+# 2026-10-21 (csv_online/ answers 410 Gone; exports need a personal
+# Auth-Key) and its terms (2025-11-04, §7.3) are not-for-profit only, no
+# derivative works; the commercial route is a Spamhaus subscription.
+RETIRED_FEEDS = frozenset({"URLhaus"})
 LICENSED_ONLY_ENV = "BLOCKLIST_LICENSED_ONLY"
 EXCLUDE_FEEDS_ENV = "BLOCKLIST_EXCLUDE_FEEDS"
 # Every source name a run can have, for validating BLOCKLIST_EXCLUDE_FEEDS.
-FEED_NAMES = frozenset({"URLhaus", "OpenPhish", "Phishing.Database", "phishing.army", "Phishunt",
+FEED_NAMES = frozenset({"OpenPhish", "Phishing.Database", "phishing.army", "Phishunt",
                         "TweetFeed", "CERT Polska", "CSIRT Italia", "PhishDestroy",
                         phishtank_feed.SOURCE_NAME})
 
@@ -285,7 +360,7 @@ def licensed_only(environ=None) -> bool:
 
 
 def excluded_feeds(environ=None) -> frozenset[str]:
-    """The sources this run leaves out entirely: the non-commercial three
+    """The sources this run leaves out entirely: the non-commercial two
     under the licence switch, plus any named in BLOCKLIST_EXCLUDE_FEEDS. A
     name that is not a source is ignored with a warning, never guessed at."""
     env = os.environ if environ is None else environ
@@ -529,17 +604,6 @@ async def _fetch_conditional(url: str, headers) -> tuple[int, dict, bytes]:
     async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as c:
         r = await c.get(url, headers=dict(headers))
         return r.status_code, dict(r.headers), r.content
-
-
-def _hosts_from_urlhaus(text: str):
-    for line in text.splitlines():
-        if line.startswith("#") or not line.strip():
-            continue
-        row = next(csv.reader([line]), [])
-        if len(row) >= 3:
-            h = urlparse(row[2]).hostname
-            if h:
-                yield h.lower()
 
 
 def _hosts_from_domain_list(text: str):
@@ -1021,7 +1085,6 @@ def _feed_specs(excluded: frozenset = frozenset()) -> tuple:
     URL constant is honoured. CSIRT Italia (a MISP manifest) and PhishTank
     (a cached daily download) are fetched by _fetch_feeds itself."""
     specs = (
-        ("URLhaus", URLHAUS_CSV, _hosts_from_urlhaus, True),
         ("OpenPhish", OPENPHISH_FEED, _hosts_from_openphish, True),
         ("Phishing.Database", PHISHING_DATABASE, _hosts_from_domain_list, True),
         ("phishing.army", PHISHING_ARMY, _hosts_from_domain_list, True),
@@ -1365,7 +1428,7 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
     # carried (it is not down) nor held in retention (see _names_leaving).
     # One a degraded live source also backed is that source's to carry, not
     # the switched-off feed's to take.
-    leaving_by_source = _names_leaving(previous, backing, excluded)
+    leaving_by_source = _names_leaving(previous, backing, excluded | RETIRED_FEEDS)
     leaving = set().union(*leaving_by_source.values()) - listed - carry.backed
     if leaving:
         logger.warning("licence switch: %d published names only %s backed leave with this publish",
@@ -1528,7 +1591,7 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
 
         # Now ask production what it actually does. If we just darkened
         # something that must never be dark, put the old set back.
-        sample = sorted(n for n in blockset if n != "list-canary.cleanway.ai")[:3]
+        sample = verify_sample(blockset, previous)
         problems = await verify_published(sample)
         if problems:
             logger.error("POST-PUBLISH VERIFICATION FAILED: %s", problems)

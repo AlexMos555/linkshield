@@ -788,7 +788,7 @@
   "landing.methodology.col_fpr": "Fehlalarmrate",
   "landing.methodology.col_fp": "Fehlalarme",
   "landing.methodology.col_tn": "Richtig",
-  "landing.methodology.dataset_phishing_desc": "frische Links aus den öffentlichen Quellen URLhaus und PhishTank, bei jedem Lauf neu geladen und nach Domain entdoppelt.",
+  "landing.methodology.dataset_phishing_desc": "frische Links aus der öffentlichen Quelle PhishTank (bis Oktober 2026 auch URLhaus), bei jedem Lauf neu geladen und nach Domain entdoppelt.",
   "landing.methodology.dataset_safe_desc": "zufällige Domains aus der Liste Tranco top-1M, Rang 100 bis 100.000, mit festem Zufallsstartwert, damit sich die Stichprobe reproduzieren lässt.",
   "landing.methodology.dataset_safe_desc_curated": "echte russische Seiten außerhalb der Tranco-Top-100.000 – Regional- und Stadtverwaltungen, Hochschulen, .рф-Seiten, kleine Banken und Firmen, Museen und Theater – aus einer veröffentlichten Liste mit der Quelle jeder Seite, gezogen mit festem Zufallsstartwert.",
   "landing.methodology.mapping_cleanway": "Cleanway: „gefährlich“ zählt als gefährlich, „sicher“ als sicher, „Vorsicht“ als unbekannt.",

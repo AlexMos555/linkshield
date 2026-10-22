@@ -22,7 +22,7 @@ names. Redistribution to every phone is the act each licence has to allow.
 
 | Source | URL | Terms (date read) | How we use it | Switch |
 |---|---|---|---|---|
-| **URLhaus** (abuse.ch) | `https://urlhaus.abuse.ch/downloads/csv_online/` | abuse.ch Terms of Use 2025-11-04: free for not-for-profit use only, no derivative works; commercial use through a Spamhaus subscription (read 2026-09-21, 2026-09-29) | Hosts of online malware URLs | **`BLOCKLIST_LICENSED_ONLY=1` removes it** |
+| ~~**URLhaus** (abuse.ch)~~ | ~~`https://urlhaus.abuse.ch/downloads/csv_online/`~~ | abuse.ch Terms of Use 2025-11-04: free for not-for-profit use only, no derivative works; commercial use through a Spamhaus subscription (read 2026-09-21, 2026-09-29). Since 2026-10-21 the anonymous exports answer **410 Gone**; downloads need a personal Auth-Key in the URL | **Retired 2026-10-21** (`RETIRED_FEEDS`): never fetched; the ~900 published names only it backed left with the first publish without it (not carried, not retained). Cleanway sells plans, so we did not request a key | Gone |
 | **OpenPhish** community feed | `https://openphish.com/feed.txt` | openphish.com/terms.html: no commercial use "including … security operations, threat intelligence, detection … customer protection", no redistribution of any part to third parties; lifted only by written consent (read 2026-09-21, 2026-09-29) | Phishing URL hosts | **`BLOCKLIST_LICENSED_ONLY=1` removes it** |
 | **phishing.army** extended | `https://phishing.army/download/phishing_army_blocklist_extended.txt` | CC BY-NC 4.0 (the file's own header). Aggregates PhishTank, OpenPhish, CERT.pl, PhishFindR, urlscan, Phishunt (read 2026-09-21) | ~150k domain names | **`BLOCKLIST_LICENSED_ONLY=1` removes it** |
 | **Phishing.Database** (mitchellkrogza) | `https://raw.githubusercontent.com/mitchellkrogza/Phishing.Database/master/phishing-domains-ACTIVE.txt` | MIT on the compilation; the README does not name its sources, and MIT does not launder PhishTank/OpenPhish terms if the data comes from there (read 2026-09-29) | ~390k active phishing domains — the bulk of the list | Keep. **One e-mail to the maintainer about provenance is open** (plan §4) |
@@ -47,7 +47,7 @@ Unset (default): every row above except PhishTank, byte for byte the list
 published today (proved in the PR on one feed snapshot: same names, same
 count, the only header difference the build timestamp). Set to `1`:
 
-* URLhaus, OpenPhish and phishing.army are not downloaded and not in
+* OpenPhish and phishing.army are not downloaded and not in
   `fetched` — so they are **not an outage**: nothing is carried for them,
   their stored health state is forgotten, and the run does not go red.
 * The published names only they backed (per the last healthy run's backing
@@ -56,6 +56,12 @@ count, the only header difference the build timestamp). Set to `1`:
   phishing site, not for data we may no longer ship.
 * The set changes by more than the 50 % churn gate: the first run after
   flipping needs `--force` (the workflow's `force` input). One run.
+  (Retiring URLhaus did not: ~900 names of ~560k, 0.2 %. Measured
+  2026-10-21 on a dry run against the live artifact, the first publish with
+  PhishDestroy and without URLhaus changes the artifact by ~29 % at most —
+  +114k / −28.6k hashes, and most of the −28.6k are names production keeps
+  in retention, which a Redis-less dry run cannot see — so no allowance was
+  needed.)
 * `BLOCKLIST_EXCLUDE_FEEDS=TweetFeed` (comma-separated names) leaves further
   feeds out — used by `scripts/eval_day_one_coverage.py` to build the
   variants it scores, never in production.
@@ -87,19 +93,20 @@ PhishTank can be ingested and the public number stays measurable.
 ## 2. Lookups the API makes for one `/check`
 
 `api/services/analyzer.py` asks up to 19 sources about the bare domain name
-(never a URL, never who asked). `docs/PRIVACY.md` lists them for users.
+(never a URL, never who asked) — 13 under the default `LICENSED_INTEL=licensed`.
+`docs/PRIVACY.md` lists them for users.
 
 | Source | Endpoint | Terms (date read) | Switch |
 |---|---|---|---|
 | **Google Safe Browsing v4** | `safebrowsing.googleapis.com/v4/threatMatches:find` | developers.google.com/safe-browsing/terms: "Unless you have a separate agreement … you may not use the Safe Browsing API for commercial purposes" (read 2026-09-29). v4 support ends 2027-03-31 (*likely*) | Replaced by Web Risk when `WEB_RISK_API_KEY` is set |
 | **Google Web Risk** Lookup API | `webrisk.googleapis.com/v1/uris:search` | Google Cloud terms; billed per lookup after 100,000 a month (cloud.google.com/web-risk/pricing, read 2026-09-29). Results may not be passed on to third parties — `PUBLISH_CONFIRMED_THREATS` stays off. Needs a Google Cloud project with billing, which may not be open to a Russian legal entity (*uncertain*) | **On with `WEB_RISK_API_KEY`** (`api/services/web_risk.py`); threat types MALWARE, SOCIAL_ENGINEERING, UNWANTED_SOFTWARE; answers cached until Google's `expireTime` |
 | **PhishTank** checkurl | `checkurl.phishtank.com/checkurl/` | FAQ: commercial use OK; key needed for rate limits (read 2026-09-29) | Always on (answers nothing for fresh URLs without a key) |
-| **URLhaus** host API | `urlhaus-api.abuse.ch/v1/host/` | abuse.ch ToU 2025-11-04 (non-commercial) | Not in `LICENSED_INTEL` — **open question**: same terms as ThreatFox; kept for now because the licence audit of 2026-09-21 scoped the runtime cut to the five below. Decide with the others |
-| **ThreatFox** | `threatfox-api.abuse.ch/api/v1/` | abuse.ch ToU 2025-11-04 (non-commercial, no derivative works) | **`LICENSED_INTEL=licensed` switches off** |
-| **MalwareBazaar** | `mb-api.abuse.ch/api/v1/` | abuse.ch ToU 2025-11-04 | **`LICENSED_INTEL=licensed` switches off** |
-| **Feodo Tracker** | `feodotracker.abuse.ch/downloads/ipblocklist.json` | abuse.ch ToU 2025-11-04 | **`LICENSED_INTEL=licensed` switches off** |
-| **Spamhaus DBL** public mirror | DNS `<domain>.dbl.spamhaus.org` | DNSBL fair-use policy: "free of charge for non-commercial use by small and medium sized organisations"; queries must come from an identifiable resolver, not large shared hosting (read 2026-09-29). Through a public resolver the mirror answers `127.255.255.254` — until 2026-09-29 the analyzer read that as "not listed" (`api/services/dnsbl_checks.py` fixes it: an error code is "not consulted") | **`LICENSED_INTEL=licensed` switches off** |
-| **SURBL** multi | DNS `<base>.multi.surbl.org` | surbl.org/guidelines: `127.0.0.1` means access is blocked, sign up for the Sponsored Data Service; the usage policy excludes the free service from paid products (*likely*, read 2026-09-21/29) | **`LICENSED_INTEL=licensed` switches off** |
+| **URLhaus** host API | `urlhaus-api.abuse.ch/v1/host/` | abuse.ch ToU 2025-11-04 (non-commercial). **401 Unauthorized without a personal `Auth-Key` header since 2026-10-21** (probed that day) | **Off by default** (`LICENSED_INTEL=licensed`). The open question of 2026-09-21 is resolved: same terms as ThreatFox, so it goes with them. Until the fix a 401 read as "not listed" on every check; a non-2xx answer now raises (a failed, unmeasured check) |
+| **ThreatFox** | `threatfox-api.abuse.ch/api/v1/` | abuse.ch ToU 2025-11-04 (non-commercial, no derivative works). 401 without a key since 2026-10-21 | **Off by default** (`LICENSED_INTEL=licensed`); a 401 raises |
+| **MalwareBazaar** | `mb-api.abuse.ch/api/v1/` | abuse.ch ToU 2025-11-04. 401 without a key since 2026-10-21 | **Off by default** (`LICENSED_INTEL=licensed`); a 401 raises |
+| **Feodo Tracker** | `feodotracker.abuse.ch/downloads/ipblocklist.json` | abuse.ch ToU 2025-11-04. Still answers 200 without a key (2026-10-21) | **Off by default** (`LICENSED_INTEL=licensed`) |
+| **Spamhaus DBL** public mirror | DNS `<domain>.dbl.spamhaus.org` | DNSBL fair-use policy: "free of charge for non-commercial use by small and medium sized organisations"; queries must come from an identifiable resolver, not large shared hosting (read 2026-09-29). Through a public resolver the mirror answers `127.255.255.254` — until 2026-09-29 the analyzer read that as "not listed" (`api/services/dnsbl_checks.py` fixes it: an error code is "not consulted") | **Off by default** (`LICENSED_INTEL=licensed`) |
+| **SURBL** multi | DNS `<base>.multi.surbl.org` | surbl.org/guidelines: `127.0.0.1` means access is blocked, sign up for the Sponsored Data Service; the usage policy excludes the free service from paid products (*likely*, read 2026-09-21/29) | **Off by default** (`LICENSED_INTEL=licensed`) |
 | **PhishStats** | `phishstats.info:2096/api/phishing` | Free API, no key; terms not located (*uncertain*) | On |
 | **AlienVault / LevelBlue OTX** | `otx.alienvault.com/api/v1/indicators/domain/…` | Free community API; OTX terms of service (*likely*: free use with attribution) | On |
 | **IPQualityScore** | `ipqualityscore.com/api/json/url/…` | Vendor API terms, free tier 5,000/month, paid above; keyed | On with `IPQUALITYSCORE_KEY`, daily budget |
@@ -112,9 +119,18 @@ PhishTank can be ingested and the public number stays measurable.
 
 ### What `LICENSED_INTEL=licensed` does, exactly
 
-The five sources are not in the analyzer's plan at all: not asked, so never
+**The default since 2026-10-21** (it was `all`). That day abuse.ch's APIs
+started answering 401 without a personal key — URLhaus, ThreatFox and
+MalwareBazaar had been reporting "not listed" for every domain, a silent
+miss inflating the measured-check count — and Cleanway sells plans, which
+all six free tiers exclude. `LICENSED_INTEL=all` is the explicit opt-in for
+a not-for-profit deployment; the abuse.ch lookups then also need a key the
+analyzer does not send, and without one they fail as unmeasured checks.
+
+The six sources (SURBL, Spamhaus DBL, URLhaus, ThreatFox, MalwareBazaar,
+Feodo Tracker) are not in the analyzer's plan at all: not asked, so never
 "not listed", and they leave the total a verdict is measured against — an
-analysis is 14 checks of 14, not 14 of 19 with five that were never asked.
+analysis is 13 checks of 13, not 13 of 19 with six that were never asked.
 Scores, levels and `confidence_pct` for the same evidence are identical
 with the switch on or off (pinned in `tests/test_licensed_intel.py`).
 
@@ -125,21 +141,40 @@ caution 1; PHISH 174: caught 142 (caution 108 + dangerous 32). That is
 expected and is the point: the name-only rules never consult these sources.
 What the switch costs is only measurable on live traffic — on 2026-09-21
 SURBL appeared in 9 of 10 dangerous verdicts sampled, but 9 of those 10 also
-rested on our own signals. Measure on the live fan-out before flipping;
-do not re-weight the scorer blind.
+rested on our own signals. That is the cost of the default: verdicts SURBL or
+the DBL alone carried. Watch the weekly benchmark after the flip; the way
+back for those two is a paid feed (Spamhaus DQS / SURBL Sponsored Data), not
+the free mirrors. Do not re-weight the scorer blind.
 
 ## 3. ML training data (`scripts/refresh_training_feeds.py`, weekly)
 
 | Source | Terms | Use |
 |---|---|---|
-| URLhaus full dump `https://urlhaus.abuse.ch/downloads/csv/` | abuse.ch ToU 2025-11-04 (non-commercial, no derivative works — a trained model is a derivative) | Phishing/malware corpus for `ml/train_model.py` |
-| OpenPhish public feed (GitHub mirror) | openphish.com terms (non-commercial) | Phishing corpus |
+| PhishDestroy DestroyList (DNS-verified) | CC0 1.0 dataset, named fit for commercial products and ML training; repo MIT (read 2026-10-21) | Phishing corpus, at most 3,500 hosts |
+| CERT Polska Lista Ostrzeżeń | API spec §1: processing without restriction (read 2026-09-21) | Phishing corpus, at most 3,500 hosts |
+| TweetFeed `year.csv` | CC0 1.0 (README; the abuse.ch `external` block is never read) | Phishing corpus, at most 3,500 hosts |
+| Phishunt `feed.txt` | CC0 1.0 (terms §7) | Phishing corpus (~1,400 hosts, all it carries) |
 | Tranco top-1M | Free research list | Benign corpus |
 
-**Open**: the model shipped in production (`data/phishing_model.onnx`) was
-trained on the two non-commercial corpora. The licence cut for the list and
-the API does not cover it; a retrain on Phishing.Database + Phishunt +
-TweetFeed + PhishTank (with a key) is the clean path. Not in this PR.
+Since 2026-10-21. Before: the URLhaus full dump (abuse.ch ToU 2025-11-04:
+non-commercial, no derivative works — a trained model is a derivative; the
+anonymous download answers 410 Gone since that day) and the OpenPhish public
+feed (terms: no "product development", "detection" or "customer
+protection"). **Not used for training**: Phishing.Database (MIT on the
+compilation, sources unnamed — waits on the provenance e-mail in §1),
+phishing.army (CC BY-NC), PhishTank (needs a key).
+
+**Open — the served model**: `data/phishing_model.onnx` (2026-10-21, AUC
+0.9703) was still trained on URLhaus + OpenPhish. A model trained on the
+clean corpus above is all domain names (URLhaus was ~80% bare IPs) and on
+2026-10-21 it failed the retrain gates — it scored
+official-shop.myshopify.com 0.59 and flagged 6 held-out Russian sites (limit
+3) — and put 69 of 539 held-out real sites above 0.6, where the served model
+puts none. `ml/train_model.py` therefore keeps the served model unless a
+candidate is no worse on those sites (replacement guard), so the weekly job
+stays green and commits nothing until the clean corpus produces a model that
+is. Keeping the old model, switching the model off, or shipping the clean
+one anyway (`--replace-anyway`) is a founder decision.
 
 ## 4. Considered and not used
 
@@ -188,6 +223,7 @@ Cleanway's blocklist includes data from Phishunt.io (CC0), TweetFeed.live
 (CC0), CERT Polska's Lista Ostrzeżeń, CSIRT Italia (TLP:CLEAR),
 Phishing.Database (MIT, © Mitchell Krog), PhishDestroy DestroyList
 (phishdestroy.io, CC0 / MIT) and — until the licence cut —
-phishing.army (CC BY-NC 4.0), OpenPhish and URLhaus (abuse.ch). Domain
+phishing.army (CC BY-NC 4.0) and OpenPhish; until 2026-10-21 also URLhaus
+(abuse.ch). Domain
 popularity from Tranco (Le Pochat et al.). Public suffixes from the Mozilla
 Public Suffix List (MPL 2.0).

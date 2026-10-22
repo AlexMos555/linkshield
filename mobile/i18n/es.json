@@ -788,7 +788,7 @@
   "landing.methodology.col_fpr": "Tasa de falsas alarmas",
   "landing.methodology.col_fp": "Falsas alarmas",
   "landing.methodology.col_tn": "Correctos",
-  "landing.methodology.dataset_phishing_desc": "enlaces recientes de las fuentes públicas URLhaus y PhishTank, descargados en cada ejecución y sin duplicados por dominio.",
+  "landing.methodology.dataset_phishing_desc": "enlaces recientes de la fuente pública PhishTank (hasta octubre de 2026 también URLhaus), descargados en cada ejecución y sin duplicados por dominio.",
   "landing.methodology.dataset_safe_desc": "dominios aleatorios de la lista Tranco top-1M, de la posición 100 a la 100.000, con una semilla aleatoria fija para que la muestra se pueda reproducir.",
   "landing.methodology.dataset_safe_desc_curated": "sitios rusos reales fuera del top 100.000 de Tranco —administraciones regionales y municipales, universidades, sitios .рф, pequeños bancos y empresas, museos y teatros— tomados de una lista publicada que indica la fuente de cada sitio, con una semilla aleatoria fija.",
   "landing.methodology.mapping_cleanway": "Cleanway: «peligroso» cuenta como peligroso, «seguro» como seguro, «precaución» como desconocido.",
