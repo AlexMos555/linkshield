@@ -1992,6 +1992,19 @@
       "contact_title": "Suporte",
       "contact_pending": "A caixa de e-mail do suporte está temporariamente fora do ar; o endereço voltará a aparecer aqui assim que funcionar. Até lá, cancele no app."
     },
+    "subscription_return": {
+      "meta_title": "Voltar ao app",
+      "title": "Volte ao app Cleanway",
+      "intro": "Você voltou da página de pagamento. Abra o app: lá você vê se a assinatura está ativa.",
+      "open_app": "Abrir o Cleanway",
+      "paid_title": "Se o pagamento foi concluído",
+      "paid_body": "A assinatura é ativada no app sozinha assim que o pagamento é confirmado. Você não precisa fazer mais nada.",
+      "failed_title": "Se não foi",
+      "failed_body": "Nada foi cobrado. Abra o app e tente de novo, ou verifique se há saldo suficiente na sua linha de celular.",
+      "get_app": "Ainda não tem o app? Baixe para Android",
+      "cancel_link": "Como cancelar",
+      "support_link": "Suporte"
+    },
     "transparency": {
       "page_title": "Relatório de transparência",
       "page_description": "O que o Cleanway já mediu sobre a própria precisão e o que ainda não mediu.",

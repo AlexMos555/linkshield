@@ -114,12 +114,15 @@ export type PricingVariant = "stripe" | "operator" | "free";
 
 /**
  * Which /pricing a visitor gets. Stripe plans where they are sold
- * (`stripeOffered` = lib/paid-plans.ts); for everyone else — Russian visitors —
- * the operator-billed subscription once the flag is on, and until then the
- * free-only page they see today.
+ * (`stripeOffered` = lib/paid-plans.ts) — once Stripe checkout is live
+ * (`stripeLive`), and until then the free page: a buy button whose checkout
+ * cannot take the payment is a dead end. For everyone else — Russian
+ * visitors — the operator-billed subscription once its flag is on, and until
+ * then the free-only page they see today. The ruble offer is never shown to
+ * the world because Stripe is off.
  */
-export function pricingVariant(stripeOffered: boolean, billingEnabled: boolean): PricingVariant {
-  if (stripeOffered) return "stripe";
+export function pricingVariant(stripeOffered: boolean, billingEnabled: boolean, stripeLive: boolean): PricingVariant {
+  if (stripeOffered) return stripeLive ? "stripe" : "free";
   return billingEnabled ? "operator" : "free";
 }
 

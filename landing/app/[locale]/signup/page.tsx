@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { routing, RTL_LOCALES, type Locale } from "@/i18n/routing";
 import { localePath } from "@/lib/locale-path";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo";
-import { safeSignupNext } from "@/lib/signup-flow";
+import { safeSignupNext, signupInterval, signupPlan } from "@/lib/signup-flow";
 import SignupForm from "./SignupForm";
 
 const SITE_URL = "https://cleanway.ai";
@@ -66,10 +66,9 @@ type Props = {
   params: Promise<{ locale: string }>;
 };
 
-const VALID_PLANS = new Set(["personal", "family", "business"]);
-const VALID_INTERVALS = new Set(["monthly", "yearly"]);
-
-const PLAN_LABELS: Record<string, string> = {
+// The retired plans' names, from old links. The device plan is named in the
+// reader's language (Pricing.plan_name, the name on the /pricing card).
+const RETIRED_PLAN_LABELS: Record<string, string> = {
   personal: "Personal",
   family: "Family",
   business: "Business",
@@ -86,8 +85,11 @@ export default async function SignupPage({ searchParams, params }: Props) {
   // mirrored-wrong in Arabic RTL".)
   const isRtl = (RTL_LOCALES as readonly string[]).includes(safeLocale);
   const backArrow = isRtl ? "→" : "←";
-  const plan = sp.plan && VALID_PLANS.has(sp.plan) ? sp.plan : null;
-  const interval = sp.interval && VALID_INTERVALS.has(sp.interval) ? sp.interval : null;
+  const plan = signupPlan(sp.plan);
+  const interval = signupInterval(sp.interval);
+  const planLabel = plan === "devices"
+    ? (await getTranslations({ locale: safeLocale, namespace: "Pricing" }))("plan_name")
+    : plan ? RETIRED_PLAN_LABELS[plan] : null;
   const storeItems = t.raw("store_items") as string[];
 
   return (
@@ -121,6 +123,7 @@ export default async function SignupPage({ searchParams, params }: Props) {
         {/* Plan context — only shown when arrived from /pricing */}
         {plan && (
           <div
+            data-testid="signup-plan"
             style={{
               background: "#1e293b",
               borderRadius: 12,
@@ -137,7 +140,7 @@ export default async function SignupPage({ searchParams, params }: Props) {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: "#f8fafc" }}>
-                {t("plan_label", { plan: PLAN_LABELS[plan] || plan })}
+                {t("plan_label", { plan: planLabel ?? plan })}
                 {interval ? ` · ${t(interval === "yearly" ? "interval_yearly" : "interval_monthly")}` : ""}
               </div>
               <div style={{ fontSize: 12, color: "#94a3b8" }}>

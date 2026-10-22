@@ -1992,6 +1992,19 @@
       "contact_title": "Dukungan",
       "contact_pending": "Kotak surat dukungan untuk sementara tidak berfungsi; alamatnya akan muncul lagi di sini begitu berfungsi. Sementara itu, batalkan di aplikasi."
     },
+    "subscription_return": {
+      "meta_title": "Kembali ke aplikasi",
+      "title": "Kembali ke aplikasi Cleanway",
+      "intro": "Anda kembali dari halaman pembayaran. Buka aplikasinya: di sana terlihat apakah langganan sudah aktif.",
+      "open_app": "Buka Cleanway",
+      "paid_title": "Jika pembayaran berhasil",
+      "paid_body": "Langganan aktif sendiri di aplikasi begitu pembayaran dikonfirmasi. Anda tidak perlu melakukan apa-apa lagi.",
+      "failed_title": "Jika tidak berhasil",
+      "failed_body": "Tidak ada yang ditagih. Buka aplikasi dan coba lagi, atau pastikan pulsa di nomor ponsel Anda cukup.",
+      "get_app": "Belum punya aplikasinya? Unduh untuk Android",
+      "cancel_link": "Cara membatalkan",
+      "support_link": "Dukungan"
+    },
     "transparency": {
       "page_title": "Laporan transparansi",
       "page_description": "Apa yang sudah diukur Cleanway tentang akurasinya sendiri, dan apa yang belum.",

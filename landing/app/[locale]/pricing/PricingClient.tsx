@@ -14,6 +14,7 @@ interface PricingClientProps {
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "https://api.cleanway.ai";
+const SITE_URL = "https://cleanway.ai";
 
 /**
  * Outcome of a checkout attempt — rendered as inline error UI, never alert().
@@ -45,8 +46,10 @@ async function startCheckout(
   // echoes it). Sent along so checkout charges exactly the shown price.
   country: string | null,
 ): Promise<CheckoutOutcome> {
-  const success_url = "https://cleanway.ai/success?session_id={CHECKOUT_SESSION_ID}";
-  const cancel_url = "https://cleanway.ai/pricing";
+  // In the reader's language, back on the canonical host (the API accepts only
+  // cleanway.ai). The API adds Stripe's ?session_id= to the success URL.
+  const success_url = `${SITE_URL}${localePath(locale, "/success")}`;
+  const cancel_url = `${SITE_URL}${localePath(locale, "/pricing")}`;
 
   // Pull the Supabase session token so the backend's get_current_user
   // dependency accepts the request. If Supabase isn't configured yet

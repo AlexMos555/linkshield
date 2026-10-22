@@ -441,6 +441,19 @@
     "contact_title": "Assistance",
     "contact_pending": "La boîte de l'assistance est temporairement hors service ; l'adresse réapparaîtra ici dès qu'elle fonctionnera. D'ici là, résiliez dans l'application."
   },
+  "SubscriptionReturn": {
+    "meta_title": "Retour à l'application",
+    "title": "Revenez dans l'application Cleanway",
+    "intro": "Vous revenez de la page de paiement. Ouvrez l'application : elle indique si l'abonnement est actif.",
+    "open_app": "Ouvrir Cleanway",
+    "paid_title": "Si le paiement a abouti",
+    "paid_body": "L'abonnement s'active tout seul dans l'application dès que le paiement est confirmé. Vous n'avez rien d'autre à faire.",
+    "failed_title": "S'il n'a pas abouti",
+    "failed_body": "Rien n'a été prélevé. Ouvrez l'application et réessayez, ou vérifiez que le crédit de votre ligne mobile est suffisant.",
+    "get_app": "Pas encore l'application ? Téléchargez-la pour Android",
+    "cancel_link": "Comment résilier",
+    "support_link": "Assistance"
+  },
   "Transparency": {
     "page_title": "Rapport de transparence",
     "page_description": "Ce que Cleanway a mesuré sur sa propre précision, et ce qu'il n'a pas encore mesuré.",

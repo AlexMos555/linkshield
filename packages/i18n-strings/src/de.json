@@ -1992,6 +1992,19 @@
       "contact_title": "Support",
       "contact_pending": "Das Support-Postfach funktioniert vorübergehend nicht; die Adresse erscheint hier wieder, sobald es funktioniert. Bis dahin kündigen Sie in der App."
     },
+    "subscription_return": {
+      "meta_title": "Zurück zur App",
+      "title": "Zurück zur Cleanway-App",
+      "intro": "Sie kommen von der Bezahlseite zurück. Öffnen Sie die App – dort sehen Sie, ob das Abo aktiv ist.",
+      "open_app": "Cleanway öffnen",
+      "paid_title": "Wenn die Zahlung geklappt hat",
+      "paid_body": "Das Abo wird in der App von selbst aktiv, sobald die Zahlung bestätigt ist. Sie müssen nichts weiter tun.",
+      "failed_title": "Wenn nicht",
+      "failed_body": "Es wurde nichts abgebucht. Öffnen Sie die App und versuchen Sie es noch einmal, oder prüfen Sie, ob genug Guthaben auf Ihrem Mobilfunkkonto ist.",
+      "get_app": "Noch keine App? Für Android herunterladen",
+      "cancel_link": "So kündigen Sie",
+      "support_link": "Support"
+    },
     "transparency": {
       "page_title": "Transparenzbericht",
       "page_description": "Was Cleanway über die eigene Genauigkeit gemessen hat – und was noch nicht.",

@@ -155,6 +155,43 @@ export function signupErrorPath(
   return `${prefix}/signup?error=${code}${keep ? `&next=${encodeURIComponent(keep)}` : ""}`;
 }
 
+// ─── /signup?plan=…&interval=… ─────────────────────────────────────
+
+/**
+ * Plans a link to /signup may name. /pricing sends a signed-out buyer with
+ * the device plan, "devices" (PricingClient's 401 branch); the retired plans
+ * are still accepted from old links. Anything else is dropped.
+ */
+export const SIGNUP_PLANS = ["devices", "personal", "family", "business"] as const;
+export type SignupPlan = (typeof SIGNUP_PLANS)[number];
+export type SignupInterval = "monthly" | "yearly";
+
+export function signupPlan(raw: string | null | undefined): SignupPlan | null {
+  return (SIGNUP_PLANS as readonly string[]).includes(raw ?? "") ? (raw as SignupPlan) : null;
+}
+
+export function signupInterval(raw: string | null | undefined): SignupInterval | null {
+  return raw === "monthly" || raw === "yearly" ? raw : null;
+}
+
+/**
+ * Where /signup sends the reader once the code is accepted: a checked `next`
+ * (safeSignupNext) wins; a buyer who came from /pricing goes back there with
+ * the plan and interval, where checkout resumes; everyone else goes home.
+ * `pricingPath` / `homePath` are already in the reader's locale.
+ */
+export function signupDestination(args: {
+  next: string | null;
+  plan: SignupPlan | null;
+  interval: SignupInterval | null;
+  pricingPath: string;
+  homePath: string;
+}): string {
+  if (args.next) return args.next;
+  if (!args.plan) return args.homePath;
+  return `${args.pricingPath}?plan=${args.plan}${args.interval ? `&interval=${args.interval}` : ""}`;
+}
+
 // ─── /signup?next=… ───────────────────────────────────────────────
 
 const CONNECT_STATE_RE = /^[A-Za-z0-9_-]{43}$/;

@@ -441,6 +441,19 @@
     "contact_title": "Soporte",
     "contact_pending": "El buzón de soporte no funciona temporalmente; la dirección volverá a aparecer aquí en cuanto funcione. Hasta entonces, cancela en la app."
   },
+  "SubscriptionReturn": {
+    "meta_title": "Volver a la app",
+    "title": "Vuelve a la app de Cleanway",
+    "intro": "Has vuelto de la página de pago. Abre la app: ahí verás si la suscripción está activa.",
+    "open_app": "Abrir Cleanway",
+    "paid_title": "Si el pago se completó",
+    "paid_body": "La suscripción se activa sola en la app en cuanto se confirma el pago. No tienes que hacer nada más.",
+    "failed_title": "Si no se completó",
+    "failed_body": "No se ha cobrado nada. Abre la app y vuelve a intentarlo, o comprueba que tienes saldo suficiente en tu línea móvil.",
+    "get_app": "¿Aún no tienes la app? Descárgala para Android",
+    "cancel_link": "Cómo cancelar",
+    "support_link": "Soporte"
+  },
   "Transparency": {
     "page_title": "Informe de transparencia",
     "page_description": "Lo que Cleanway ha medido sobre su propia precisión y lo que todavía no ha medido.",

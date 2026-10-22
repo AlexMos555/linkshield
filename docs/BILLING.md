@@ -223,6 +223,7 @@ nothing calls it today.
 | `BILLING_MIXPLAT_PROJECT_ID` / `_API_KEY` / `_TEST` / `_BASE_URL` | — / — / `true` / `https://api.mixplat.com` | `_TEST=true` is the sandbox (no real money): **refused at startup in `ENVIRONMENT=production`** |
 | `BILLING_MIXPLAT_TEST_ALLOWED_IN_PRODUCTION` | `false` | the explicit override for a deliberate sandbox run on the production host (logged as a warning) |
 | `BILLING_MIXPLAT_WEBHOOK_IPS` | — (off) | optional webhook source allowlist, comma-separated IPs / CIDRs; malformed → startup fails |
+| `BILLING_MIXPLAT_RETURN_URL` | `https://cleanway.ai/ru/subscription/return` | where the payment form sends the buyer back — after a payment and after a failed one (it is both `success_url` and `fail_url`). The default page exists on the site only with `NEXT_PUBLIC_BILLING_ENABLED` on (`landing/app/[locale]/subscription/return`); set both together at go-live |
 | `BILLING_PARTNER_HMAC_KEY` | — | `/partner/licenses` |
 | `BILLING_CONSENT_DOC_VERSION` | `ru/v1` | the app must echo the version it showed |
 | `BILLING_*_PER_HOUR` | see `settings.py` | rate limits |

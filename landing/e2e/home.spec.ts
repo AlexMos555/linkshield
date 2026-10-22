@@ -1,6 +1,6 @@
 import { test, expect, Page } from "@playwright/test";
 
-import { BILLING_ON } from "./billing-flag";
+import { BILLING_ON, STRIPE_LIVE } from "./billing-flag";
 
 /**
  * Smoke tests for the marketing home page.
@@ -76,6 +76,8 @@ test("footer links to privacy policy and terms", async ({ page }) => {
 });
 
 test("pricing page shows Free and the one device plan", async ({ page }) => {
+  // Until Stripe checkout is live the world gets the free page (pricing.spec.ts).
+  test.skip(!STRIPE_LIVE, "NEXT_PUBLIC_STRIPE_LIVE is off");
   await page.goto("/en/pricing");
   await expect(page.getByTestId("plan-card-free")).toBeVisible();
   await expect(page.getByTestId("plan-card-unlimited")).toBeVisible();
@@ -108,7 +110,8 @@ test("home pricing block is free-first; plans only via a link, never in Russia",
     await expect(pricing).not.toContainText("$");
     await expect(pricing).not.toContainText(/trial|badges|API checks/i);
     await expect(page.getByTestId("free-only-android")).toHaveAttribute("href", `/${locale === "en" ? "" : `${locale}/`}android`);
-    await expect(page.getByTestId("home-plans-link")).toBeVisible();
+    // A link to plans only where there are plans to buy: Stripe checkout live.
+    await expect(page.getByTestId("home-plans-link")).toHaveCount(STRIPE_LIVE ? 1 : 0);
   }
   // Russia gets no link to plans it cannot buy — until the operator-billed
   // subscription is on, when the link leads to that (billing.spec.ts).

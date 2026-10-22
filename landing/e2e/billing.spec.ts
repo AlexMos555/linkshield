@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-import { BILLING_ON, SUPPORT_LIVE } from "./billing-flag";
+import { BILLING_ON, STRIPE_LIVE, SUPPORT_LIVE } from "./billing-flag";
 
 /**
  * The operator-billed subscription (docs/BILLING.md) on the landing, in both
@@ -38,6 +38,11 @@ test.describe("billing flag off — today's site", () => {
     const response = await page.goto("/ru/cancel");
     expect(response?.status()).toBe(404);
     await expect(page.locator("h1")).toHaveText("Страница не найдена");
+  });
+
+  test("/ru/subscription/return does not exist", async ({ page }) => {
+    const response = await page.goto("/ru/subscription/return");
+    expect(response?.status()).toBe(404);
   });
 
   test("the terms and the policy keep today's payment sections", async ({ page }) => {
@@ -131,11 +136,11 @@ test.describe("billing flag on — the operator-billed subscription", () => {
     await expect(page.locator("body")).not.toContainText(/\$\d/);
   });
 
-  test("/de/pricing without a Russian country stays on Stripe plans", async ({ page }) => {
+  test("/de/pricing without a Russian country never gets the ruble offer", async ({ page }) => {
     await page.goto("/de/pricing");
     await expect(page.getByTestId("operator-pricing")).toHaveCount(0);
-    await expect(page.getByTestId("free-pricing")).toHaveCount(0);
-    await expect(page.getByTestId("world-pricing")).toBeVisible();
+    // Stripe plans once their checkout is live; the free page until then.
+    await expect(page.getByTestId(STRIPE_LIVE ? "world-pricing" : "free-pricing")).toBeVisible();
   });
 
   test("/ru/cancel explains the four channels, what follows, and refunds", async ({ page }) => {
@@ -229,5 +234,20 @@ test.describe("billing flag on — the operator-billed subscription", () => {
     const xml = await (await request.get("/sitemap.xml")).text();
     expect(xml).toContain("https://cleanway.ai/ru/cancel");
     expect(xml).toContain("https://cleanway.ai/cancel");
+    // The payment page's return stop is not a page to find.
+    expect(xml).not.toContain("/subscription/return");
+  });
+
+  // BILLING_MIXPLAT_RETURN_URL's default (api/billing/settings.py): the payment
+  // page sends the buyer here after a payment and after a failed one alike.
+  test("/ru/subscription/return sends the buyer back to the app, whatever the outcome", async ({ page }) => {
+    const response = await page.goto("/ru/subscription/return");
+    expect(response?.status()).toBe(200);
+    await expect(page.locator("h1")).toHaveText("Вернитесь в приложение Cleanway");
+    await expect(page.getByTestId("subscription-return-open-app")).toHaveAttribute("href", "cleanway://");
+    await expect(page.getByTestId("subscription-return-paid")).toContainText("Подписка включится в приложении сама");
+    await expect(page.getByTestId("subscription-return-failed")).toContainText("Деньги не списаны");
+    await expect(page.locator('a[href="/ru/cancel"]')).toBeVisible();
+    expect(await page.locator('meta[name="robots"]').getAttribute("content")).toContain("noindex");
   });
 });

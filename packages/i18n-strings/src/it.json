@@ -1992,6 +1992,19 @@
       "contact_title": "Assistenza",
       "contact_pending": "La casella dell'assistenza è temporaneamente fuori servizio; l'indirizzo ricomparirà qui appena funzionerà. Nel frattempo disdici nell'app."
     },
+    "subscription_return": {
+      "meta_title": "Torna all'app",
+      "title": "Torna all'app Cleanway",
+      "intro": "Sei tornato dalla pagina di pagamento. Apri l'app: lì vedi se l'abbonamento è attivo.",
+      "open_app": "Apri Cleanway",
+      "paid_title": "Se il pagamento è andato a buon fine",
+      "paid_body": "L'abbonamento si attiva da solo nell'app appena il pagamento viene confermato. Non devi fare nient'altro.",
+      "failed_title": "Se non è andato a buon fine",
+      "failed_body": "Non è stato addebitato nulla. Apri l'app e riprova, oppure controlla di avere credito sufficiente sulla tua linea mobile.",
+      "get_app": "Non hai ancora l'app? Scaricala per Android",
+      "cancel_link": "Come disdire",
+      "support_link": "Assistenza"
+    },
     "transparency": {
       "page_title": "Rapporto sulla trasparenza",
       "page_description": "Cosa ha misurato Cleanway sulla propria precisione, e cosa non ha ancora misurato.",

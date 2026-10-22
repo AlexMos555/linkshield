@@ -34,7 +34,10 @@ import {
   queryErrorKey,
   safeSignupNext,
   sendErrorKey,
+  signupDestination,
   signupErrorPath,
+  signupInterval,
+  signupPlan,
   verifyErrorKey,
 } from "../landing/lib/signup-flow.ts";
 import {
@@ -202,6 +205,23 @@ for (const [raw, expected] of [
 ]) {
   check(`${raw} → ${expected}`, () => assert.equal(safeSignupNext(raw, LOCALES), expected));
 }
+
+console.log("/signup?plan=… from /pricing — the buyer comes back to checkout");
+check("the device plan /pricing sends is kept (it used to be dropped, so sign-up ended on the home page)", () => {
+  assert.equal(signupPlan("devices"), "devices");
+  for (const old of ["personal", "family", "business"]) assert.equal(signupPlan(old), old);
+  for (const bad of ["Devices", "devices ", "enterprise", "", null, undefined]) assert.equal(signupPlan(bad), null, String(bad));
+  assert.equal(signupInterval("monthly"), "monthly");
+  assert.equal(signupInterval("yearly"), "yearly");
+  for (const bad of ["weekly", "", null]) assert.equal(signupInterval(bad), null, String(bad));
+});
+check("after the code: next wins, then /pricing with the plan and interval, else home", () => {
+  const paths = { pricingPath: "/de/pricing", homePath: "/de" };
+  assert.equal(signupDestination({ ...paths, next: null, plan: "devices", interval: "monthly" }), "/de/pricing?plan=devices&interval=monthly");
+  assert.equal(signupDestination({ ...paths, next: null, plan: "devices", interval: null }), "/de/pricing?plan=devices");
+  assert.equal(signupDestination({ ...paths, next: "/de/account", plan: "devices", interval: "yearly" }), "/de/account");
+  assert.equal(signupDestination({ ...paths, next: null, plan: null, interval: "yearly" }), "/de");
+});
 
 console.log("extension connect page");
 check("the state is exactly what the extension makes", () => {
