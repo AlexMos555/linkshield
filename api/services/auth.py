@@ -508,7 +508,8 @@ async def _resolve_user_tier(user_id: str) -> UserTier:
     1. Redis cache (tier:{user_id})
     2. On a miss, the entitlements (+ the legacy subscriptions row)
     3. A confirmed answer is cached for 5 minutes; a paid one is also kept
-       as tier_last:{user_id} for a week
+       as tier_last:{user_id} for a week, a free one deletes that key (the
+       plan ended — a refund or cancellation must not come back in step 4)
     4. A FAILED lookup (Supabase down or slow) falls back to that last
        confirmed paid tier, else free, and is cached for 15 s only — a
        short outage must not put a paying user on free limits for five
@@ -536,6 +537,8 @@ async def _resolve_user_tier(user_id: str) -> UserTier:
         await r.setex(f"tier:{user_id}", _TIER_CACHE_TTL if confirmed else _TIER_FAILURE_CACHE_TTL, tier.value)
         if confirmed and tier is not UserTier.free:
             await r.setex(f"tier_last:{user_id}", _TIER_LAST_KNOWN_TTL, tier.value)
+        elif confirmed:
+            await r.delete(f"tier_last:{user_id}")
     except Exception:
         pass
 

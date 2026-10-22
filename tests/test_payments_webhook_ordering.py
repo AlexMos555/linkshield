@@ -9,15 +9,19 @@ an old delivery must not roll a subscription back:
     wrote it (source_event_at, migration 024) and an OLDER update is skipped
     — neither the entitlement nor the legacy subscriptions row is touched;
   * a subscription that has ended for good (cancelled, refunded) is never
-    reopened by an update: Stripe cannot reactivate a canceled subscription;
-  * the Redis tier cache is dropped AFTER the entitlement write, so the next
-    request reads the new plan, not the one cached in between.
+    reopened by an update, nor by a retried checkout.session.completed:
+    Stripe cannot reactivate a canceled subscription;
+  * the Redis tier cache — and the last known paid tier kept for outages —
+    is dropped AFTER the entitlement write, so the next request reads the
+    new plan, not the one cached in between.
 """
 from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
+
+import pytest
 
 from tests import test_payments_webhook as webhook_tests
 from tests.test_payments_webhook import _event, _sign, _stripe_row
@@ -43,6 +47,11 @@ def _post(client, event_type: str, data: Dict[str, Any], *, event_id: str, creat
 
 def _updated(status: str, sub_id: str = "sub_ord", user_id: str = "user-ord") -> Dict[str, Any]:
     return {"id": sub_id, "status": status, "customer": "cus_ord", "metadata": {"user_id": user_id}}
+
+
+def _checkout(sub_id: str = "sub_ord", user_id: str = "user-ord") -> Dict[str, Any]:
+    return {"subscription": sub_id, "customer": "cus_ord",
+            "metadata": {"user_id": user_id, "plan": "personal_monthly", "trial": "1"}}
 
 
 def _iso(epoch: int) -> str:
@@ -133,6 +142,63 @@ def test_the_tier_cache_is_dropped_after_the_entitlement_write(
     assert deletions_at_write, "no entitlement write"
     later = fake_redis.deleted[deletions_at_write[-1]:]
     assert "tier:user-ord" in later
+    assert "tier_last:user-ord" in later  # an outage must not bring the old plan back
+
+
+def test_customer_deleted_drops_the_tier_cache_after_ending_the_entitlements(
+    client, supabase_ok, fake_subscriptions, fake_redis, account_store, monkeypatch
+):
+    fake_subscriptions.rows = [webhook_tests._paid_row("user-ord", "sub_ord", "cus_ord")]
+    account_store.add_entitlement("user-ord", external_id="sub_ord")
+    deletions_at_write: list[int] = []
+    set_status = account_store.set_entitlements_status
+
+    async def _set_status(**kw):
+        deletions_at_write.append(len(fake_redis.deleted))
+        await set_status(**kw)
+
+    monkeypatch.setattr(account_store, "set_entitlements_status", _set_status)
+    resp = _post(client, "customer.deleted", {"id": "cus_ord"}, event_id="evt_cus_gone")
+    assert resp.status_code == 200, resp.text
+    assert deletions_at_write, "no entitlement write"
+    later = fake_redis.deleted[deletions_at_write[-1]:]
+    assert "tier:user-ord" in later and "tier_last:user-ord" in later
+
+
+# ─── checkout.session.completed retried after the subscription ended ─
+
+
+@pytest.mark.parametrize("final", ["cancelled", "refunded"])
+def test_a_retried_checkout_never_reopens_an_ended_subscription(
+    client, supabase_ok, fake_subscriptions, fake_redis, account_store, final
+):
+    """The first delivery failed (Stripe retries it for 3 days) and the buyer
+    cancelled in the meantime: the retry must not hand back an open-ended
+    trial — neither row is written."""
+    account_store.add_entitlement("user-ord", external_id="sub_ord", status=final)
+    resp = _post(client, "checkout.session.completed", _checkout(), event_id="evt_retry")
+    assert resp.status_code == 200, resp.text
+    assert _stripe_row(account_store, "sub_ord")["status"] == final
+    assert fake_subscriptions.posts == []
+
+
+def test_a_checkout_of_a_new_subscription_still_applies(
+    client, supabase_ok, fake_subscriptions, fake_redis, account_store
+):
+    account_store.add_entitlement("user-ord", external_id="sub_old", status="cancelled")
+    resp = _post(client, "checkout.session.completed", _checkout(sub_id="sub_new"), event_id="evt_new_sub")
+    assert resp.status_code == 200, resp.text
+    assert _stripe_row(account_store, "sub_new")["status"] == "trialing"
+    assert fake_subscriptions.posts[-1]["status"] == "active"
+
+
+def test_an_unreadable_entitlement_row_fails_the_checkout_so_stripe_retries(
+    client, supabase_ok, fake_subscriptions, fake_redis, account_store
+):
+    account_store.fail = True
+    resp = _post(client, "checkout.session.completed", _checkout(), event_id="evt_ck_down")
+    assert resp.status_code == 500
+    assert fake_subscriptions.posts == []
 
 
 # ─── the guard on its own ──────────────────────────────────────────

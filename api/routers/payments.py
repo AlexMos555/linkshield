@@ -649,6 +649,13 @@ async def _handle_checkout_completed(session: dict):
         logger.warning("checkout_no_user_id")
         return
 
+    if await _subscription_ended(subscription_id):
+        # A retry of a delivery that failed before the subscription ended
+        # (Stripe retries for 3 days): it must not reopen it — a trial row
+        # without a period end would become an open-ended plan.
+        logger.info("checkout_for_ended_subscription_skipped", extra={"subscription_id": subscription_id})
+        return
+
     tier = _tier_from_plan_key(plan)
 
     from api.services import audit_log
@@ -1019,6 +1026,9 @@ async def _handle_customer_deleted(customer: dict):
             await end_source_entitlements(account_id=user_id, source="stripe")
         except EntitlementError as e:
             raise BillingError(f"entitlement update failed: {e}") from e
+        # Again after this write: a request between the two writes would
+        # cache the plan this one ends (_record_stripe_entitlement).
+        await _drop_tier_cache(user_id)
 
 
 async def _record_stripe_entitlement(
@@ -1062,6 +1072,29 @@ async def _record_stripe_entitlement(
 _FINAL_ENTITLEMENT_STATUSES = frozenset({"cancelled", "refunded"})
 
 
+async def _stripe_entitlement_row(subscription_id: Optional[str]) -> Optional[dict]:
+    """The subscription's entitlement row, None when there is none (or no
+    store / no id). Raises BillingError when it can't be read, so the
+    webhook answers 5xx and Stripe retries."""
+    from api.services import account_store
+    from api.services.account_store import AccountStoreError
+
+    store = account_store.get_account_store()
+    if not subscription_id or store is None:
+        return None
+    try:
+        return await store.get_entitlement(source="stripe", external_id=subscription_id)
+    except AccountStoreError as e:
+        raise BillingError(f"entitlement read failed: {e}") from e
+
+
+async def _subscription_ended(subscription_id: Optional[str]) -> bool:
+    """True when the subscription has ended for good (cancelled, refunded):
+    no later delivery may reopen it."""
+    row = await _stripe_entitlement_row(subscription_id)
+    return bool(row) and row.get("status") in _FINAL_ENTITLEMENT_STATUSES
+
+
 async def _stale_subscription_event(subscription_id: Optional[str], created: Optional[int]) -> bool:
     """True when applying a customer.subscription.updated would roll the
     subscription back. Stripe delivers events out of order and retries a
@@ -1069,16 +1102,7 @@ async def _stale_subscription_event(subscription_id: Optional[str], created: Opt
     it is stale when the subscription's entitlement row has already seen a
     LATER event (source_event_at; the same second is not "later"), or has
     ended for good. Raises BillingError when the row can't be read."""
-    from api.services import account_store
-    from api.services.account_store import AccountStoreError
-
-    store = account_store.get_account_store()
-    if not subscription_id or store is None:
-        return False
-    try:
-        row = await store.get_entitlement(source="stripe", external_id=subscription_id)
-    except AccountStoreError as e:
-        raise BillingError(f"entitlement read failed: {e}") from e
+    row = await _stripe_entitlement_row(subscription_id)
     if not row:
         return False
     if row.get("status") in _FINAL_ENTITLEMENT_STATUSES:
@@ -1204,11 +1228,15 @@ async def _update_subscription(
 
 
 async def _drop_tier_cache(user_id: str) -> None:
-    """Best-effort: the cached tier expires on its own within 5 minutes."""
+    """Best-effort: the cached tier expires on its own within 5 minutes.
+    The last known paid tier (tier_last, the resolver's outage fallback —
+    api/services/auth.py) goes too: after a refund or cancellation it would
+    serve the ended plan for a week. The next paid lookup rewrites it."""
     from api.services.cache import get_redis
 
     try:
         r = await get_redis()
         await r.delete(f"tier:{user_id}")
+        await r.delete(f"tier_last:{user_id}")
     except Exception:
         pass

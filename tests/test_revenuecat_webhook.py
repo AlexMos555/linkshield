@@ -220,12 +220,15 @@ def test_cancellation_keeps_access_until_expiration(client, account_store):
     assert not effective().is_paid
 
 
-def test_refund_cancellation_ends_access_now(client, account_store):
+def test_refund_cancellation_ends_access_now(client, account_store, fake_redis):
     post(client, load("initial_purchase"))
+    fake_redis._kv[f"tier_last:{ACCOUNT}"] = "personal"  # kept for outages (api/services/auth.py)
     resp = post(client, load("cancellation_refund"))
     assert resp.json()["reason"] == "refunded"
     assert row(account_store)["status"] == "refunded"
     assert not effective().is_paid
+    # An outage right after the refund must not serve the refunded plan.
+    assert f"tier_last:{ACCOUNT}" not in fake_redis._kv
 
 
 def test_billing_error_cancellation_is_past_due(client, account_store):

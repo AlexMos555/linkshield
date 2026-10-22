@@ -206,6 +206,22 @@ async def test_confirmed_free_writes_no_last_known_key(fake_redis, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_confirmed_free_forgets_the_last_paid_tier(fake_redis, monkeypatch):
+    """A refund or cancellation ended the plan: a later outage must fall back
+    to free, not to the plan the account no longer has."""
+    from api.services import auth
+
+    await fake_redis.setex("tier_last:u1", 3600, "personal")
+    _lookup_answering(monkeypatch, UserTier.free, True)
+    assert await auth._resolve_user_tier("u1") == UserTier.free
+    assert "tier_last:u1" not in fake_redis._kv
+
+    await fake_redis.delete("tier:u1")  # the 5-minute cache ran out
+    _lookup_answering(monkeypatch, UserTier.free, False)
+    assert await auth._resolve_user_tier("u1") == UserTier.free
+
+
+@pytest.mark.asyncio
 async def test_failed_lookup_is_cached_for_seconds_only(fake_redis, monkeypatch):
     from api.services import auth
 
