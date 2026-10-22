@@ -2174,7 +2174,8 @@
     },
     "meta": {
       "title": "Cleanway — protection from scam sites",
-      "description": "Cleanway for Android blocks known scam and phishing sites in every app on your phone. Free, no account needed."
+      "description": "Cleanway for Android blocks known scam and phishing sites in every app on your phone. Free, no account needed.",
+      "home_title": "Cleanway — Phishing protection that respects your privacy"
     },
     "check": {
       "index_title": "Is this site safe?",
@@ -2213,7 +2214,9 @@
       "share_email": "Email",
       "invalid_input": "That doesn't look like a site name. Type something like example.com.",
       "share_grade_text": "{domain} — Cleanway privacy grade: {grade}",
-      "share_grade_title": "{domain} — privacy grade"
+      "share_grade_title": "{domain} — privacy grade",
+      "index_meta_title": "Is this site safe? — Cleanway",
+      "index_meta_description": "Enter a site's name or a link to see whether it looks like a scam."
     },
     "not_found": {
       "title": "Page not found",

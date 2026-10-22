@@ -135,3 +135,19 @@ test("home JSON-LD: a crawlable logo and the Android app", async ({ page }) => {
   const logo = await page.request.get("/icon-192.png");
   expect(logo.status()).toBe(200);
 });
+
+test("Russian pages name what people search for (links, SMS, site check)", async ({ page }) => {
+  await page.goto("/ru");
+  expect(await page.title()).toBe("Защита от мошенников: проверка ссылок и SMS — Cleanway");
+  expect(await page.locator('meta[name="description"]').getAttribute("content")).toMatch(/^Проверка ссылок и SMS на мошенничество\./);
+  await expect(page.getByText("Как проверить ссылку из SMS на мошенничество?")).toBeVisible();
+  const graph = await page.$$eval('script[type="application/ld+json"]', (scripts) =>
+    scripts.flatMap((s) => (JSON.parse(s.textContent ?? "{}")["@graph"] ?? []) as Array<Record<string, unknown>>),
+  );
+  const questions = (graph.find((n) => n["@type"] === "FAQPage")?.mainEntity as Array<{ name: string }>).map((q) => q.name);
+  expect(questions).toContain("Как проверить ссылку из SMS на мошенничество?");
+
+  await page.goto("/ru/check");
+  expect(await page.title()).toBe("Проверить сайт или ссылку на мошенничество и фишинг — Cleanway");
+  await expect(page.locator("h1")).toHaveText("Проверка сайта на мошенничество");
+});

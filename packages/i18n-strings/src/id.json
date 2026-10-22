@@ -2172,7 +2172,8 @@
     },
     "meta": {
       "title": "Cleanway — perlindungan dari situs penipuan",
-      "description": "Cleanway untuk Android memblokir situs penipuan dan phishing yang sudah dikenal di semua aplikasi ponsel Anda. Gratis, tanpa akun."
+      "description": "Cleanway untuk Android memblokir situs penipuan dan phishing yang sudah dikenal di semua aplikasi ponsel Anda. Gratis, tanpa akun.",
+      "home_title": "Cleanway — Perlindungan dari penipuan yang menghormati privasi Anda"
     },
     "check": {
       "index_title": "Apakah situs ini aman?",
@@ -2211,7 +2212,9 @@
       "share_title": "Apakah {domain} aman?",
       "invalid_input": "Itu tidak terlihat seperti nama situs. Ketik misalnya example.com.",
       "share_grade_text": "{domain}: nilai privasi Cleanway — {grade}",
-      "share_grade_title": "{domain}: nilai privasi"
+      "share_grade_title": "{domain}: nilai privasi",
+      "index_meta_title": "Apakah situs ini aman? — Cleanway",
+      "index_meta_description": "Masukkan nama situs atau tautan untuk melihat apakah itu terlihat seperti penipuan."
     },
     "not_found": {
       "title": "Halaman tidak ditemukan",

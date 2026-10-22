@@ -20,8 +20,8 @@ function resolveLocale(locale: string): Locale {
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const locale = resolveLocale((await params).locale);
   const t = await getTranslations({ locale, namespace: "Check" });
-  const title = `${t("index_title")} — Cleanway`;
-  const description = t("index_subtitle");
+  const title = t("index_meta_title");
+  const description = t("index_meta_description");
   const alternates = localeAlternates(locale, "/check");
   return {
     title,

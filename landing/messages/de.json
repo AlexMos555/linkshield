@@ -621,7 +621,8 @@
   },
   "Meta": {
     "title": "Cleanway – Schutz vor Betrugsseiten",
-    "description": "Cleanway für Android blockiert bekannte Betrugs- und Phishing-Seiten in jeder App auf deinem Handy. Kostenlos, ohne Konto."
+    "description": "Cleanway für Android blockiert bekannte Betrugs- und Phishing-Seiten in jeder App auf deinem Handy. Kostenlos, ohne Konto.",
+    "home_title": "Cleanway — Betrugsschutz, der Ihre Privatsphäre respektiert"
   },
   "Check": {
     "index_title": "Ist diese Seite sicher?",
@@ -660,7 +661,9 @@
     "share_title": "Ist {domain} sicher?",
     "invalid_input": "Das sieht nicht nach einem Seitennamen aus. Gib zum Beispiel example.com ein.",
     "share_grade_text": "{domain}: Cleanway-Datenschutznote {grade}",
-    "share_grade_title": "{domain}: Datenschutznote"
+    "share_grade_title": "{domain}: Datenschutznote",
+    "index_meta_title": "Ist diese Seite sicher? — Cleanway",
+    "index_meta_description": "Gib den Namen einer Seite oder einen Link ein und sieh, ob sie nach Betrug aussieht."
   },
   "NotFound": {
     "title": "Seite nicht gefunden",
