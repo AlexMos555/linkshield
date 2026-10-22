@@ -202,3 +202,62 @@ def test_benchmark_bypass_also_skips_the_fresh_cap(counting_redis, limits, quick
     headers = {**CGNAT_IP, "X-Cleanway-Benchmark": "bench-token-for-tests"}
     codes = [client.get(f"/api/v1/public/check/fresh-c{i}-cwtest.ru", headers=headers).status_code for i in range(3)]
     assert codes == [200, 200, 200]
+
+
+# ── The browser extension's link scan ──
+#
+# The extension checks the page AND every link host on it through this
+# endpoint, one request per host it has no answer for. At 60 an hour per
+# install a news page or two spent the budget, and server-side protection
+# quietly stopped for the rest of the hour. The hourly budget per install is
+# sized for that scan; the fresh-analysis cap (5 a minute) still bounds what
+# one install can make the analyzer spend, and the per-IP ceilings still
+# bound an address that rotates ids.
+
+def _default(name):
+    from api.config import Settings
+
+    return Settings.model_fields[name].default
+
+
+def test_install_budget_is_sized_for_a_link_scan():
+    assert _default("public_install_rate_limit_per_window") >= 600
+    assert _default("public_install_rate_limit_per_window") < _default("public_install_ip_ceiling_per_window")
+    # Nothing loosens for a client without the header, or for fresh analyses.
+    assert _default("public_rate_limit_per_window") == 60
+    assert _default("public_fresh_checks_per_minute") == 5
+
+
+def test_one_install_gets_more_than_sixty_checks_an_hour(counting_redis, limits, quick_analysis):
+    limits.public_install_rate_limit_per_window = _default("public_install_rate_limit_per_window")
+    limits.public_install_ip_ceiling_per_window = _default("public_install_ip_ceiling_per_window")
+    # Every request here is a cache miss: lift the per-minute fresh cap so
+    # only the hourly budget is measured.
+    limits.public_fresh_checks_per_minute = 1000
+    limits.public_fresh_ip_ceiling_per_minute = 1000
+    client = TestClient(app)
+    one = str(uuid.uuid4())
+    codes = [_get(client, one, f"link{i}-cwtest.ru").status_code for i in range(61)]
+    assert codes == [200] * 61
+
+
+def test_hourly_429_says_when_to_retry(counting_redis, limits, quick_analysis):
+    """The extension pauses its link lookups until then (Retry-After)."""
+    client = TestClient(app)
+    one = str(uuid.uuid4())
+    resp = [_get(client, one) for _ in range(4)][-1]
+    assert resp.status_code == 429
+    assert int(resp.headers["retry-after"]) > 0
+    assert resp.json()["detail"]["retry_after_seconds"] == int(resp.headers["retry-after"])
+
+
+def test_fresh_cap_429_says_when_to_retry(counting_redis, limits, quick_analysis):
+    limits.public_rate_limit_per_window = 1000
+    limits.public_install_rate_limit_per_window = 1000
+    limits.public_install_ip_ceiling_per_window = 1000
+    limits.public_fresh_checks_per_minute = 1
+    client = TestClient(app)
+    one = str(uuid.uuid4())
+    answers = [_get(client, one, f"fresh-r{i}-cwtest.ru") for i in range(2)]
+    assert [r.status_code for r in answers] == [200, 429]
+    assert 0 < int(answers[1].headers["retry-after"]) <= 60

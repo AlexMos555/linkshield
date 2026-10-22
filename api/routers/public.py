@@ -237,11 +237,21 @@ async def _enforce_fresh_check_budget(request: Request) -> None:
                     429,
                     f"Rate limit exceeded ({limit} fresh checks per minute). "
                     "Please try again in a minute.",
+                    headers={"Retry-After": str(await _seconds_left(r, key))},
                 )
     except HTTPException:
         raise
     except Exception:
         pass  # Redis down — allow request
+
+
+async def _seconds_left(r, key: str) -> int:
+    """Seconds until a fresh-check window ends, for Retry-After."""
+    try:
+        ttl = int(await r.ttl(key))
+    except Exception:
+        ttl = -1
+    return ttl if 0 < ttl <= _FRESH_WINDOW_SECONDS else _FRESH_WINDOW_SECONDS
 
 
 async def _analyze_once(domain: str) -> DomainResult:

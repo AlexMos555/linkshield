@@ -147,7 +147,7 @@ MIN_INTERVAL_S = {
 # never measured. The public check also takes the header the Android app
 # sends, X-Cleanway-Install: a random per-install UUID
 # (api/services/rate_limiter.install_key). Limits then apply per install —
-# 60 checks an hour, 5 fresh a minute — under a per-IP ceiling of 1,500
+# 600 checks an hour, 5 fresh a minute — under a per-IP ceiling of 1,500
 # checks an hour and 60 fresh a minute (api/config.py).
 #
 # Why this is legitimate for our own benchmark:
@@ -160,7 +160,7 @@ MIN_INTERVAL_S = {
 #     (15 a minute, against 60). It never gets more than one busy carrier
 #     address may.
 #   * Each virtual install behaves like a phone: REQUESTS_PER_INSTALL checks
-#     (under its 60 an hour), one per MIN_INTERVAL_S (under its 5 fresh a
+#     (under its 600 an hour), one per MIN_INTERVAL_S (under its 5 fresh a
 #     minute), then a new id. On a 429 the same install waits and retries
 #     once (check_cleanway holds it through the wait): a limit is never
 #     dodged by switching ids. The other installs go on meanwhile.

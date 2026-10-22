@@ -183,10 +183,15 @@ class Settings(BaseSettings):
     # Carrier-grade NAT: Tele2 puts hundreds to thousands of phones behind one
     # public IPv4, so per-IP limits would 429 a whole city at once. A client
     # that sends a valid `X-Cleanway-Install: <random UUID>` header is limited
-    # per install instead (same 60/h and 5/min as an IP), under a much higher
-    # per-IP ceiling that still bounds one address. Requests without the
-    # header keep the per-IP limits above, unchanged.
-    public_install_rate_limit_per_window: int = 60
+    # per install instead, under a much higher per-IP ceiling that still
+    # bounds one address. Requests without the header keep the per-IP limits
+    # above, unchanged.
+    # The hourly budget per install is 600, not an IP's 60: the browser
+    # extension checks the page AND every link host on it, one request per
+    # host it has no answer for, and 60 was spent by a news page or two.
+    # Cache hits and allowlisted names cost nearly nothing; what an install
+    # can make the analyzer spend is still the 5 fresh analyses a minute.
+    public_install_rate_limit_per_window: int = 600
     public_install_ip_ceiling_per_window: int = 1500
     public_fresh_ip_ceiling_per_minute: int = 60
     # The install id is not authenticated, so one address that rotates random

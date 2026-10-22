@@ -307,13 +307,17 @@ async def _check_window_limit(
                 },
             )
             await security_alerts.record("rate_limited", key=category)
+            retry = max(ttl, 1)
             raise HTTPException(
                 status_code=429,
                 detail={
                     "error": error,
                     "category": category,
-                    "retry_after_seconds": max(ttl, 1),
+                    "retry_after_seconds": retry,
                 },
+                # The standard header too: the extension pauses its link
+                # lookups until then instead of retrying into the limit.
+                headers={"Retry-After": str(retry)},
             )
 
         return limit - current
