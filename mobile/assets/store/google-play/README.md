@@ -1,6 +1,10 @@
-# Google Play graphics — Cleanway Android 1.0.4 (versionCode 104)
+# Google Play graphics — Cleanway Android
 
 Paste order and the listing text: `docs/STORE_SUBMISSION_KIT.md` §1.2–1.3.
+The first Play upload is **1.0.5 (versionCode 106)**,
+`cleanway-1.0.5-106-play.aab` (`docs/RUSTORE_SUBMISSION.md` §2, build C). The
+frames below are from the unpublished 1.0.4 (104) build: before uploading,
+compare the five screens on the 1.0.5 Play build and recapture any that differ.
 Sizes and "no alpha" are checked by `scripts/check_store_submission_kit.py`.
 
 ## Phone screenshots — `en/` (en-US) and `ru/` (ru-RU)
@@ -32,7 +36,8 @@ app colours (`mobile/src/utils/theme.ts`). Made by `store-assets/render-graphics
 
 ## Recapture
 
-Build or install the Play AAB's APK on an emulator, then:
+Install the Play build's check APK (`cleanway-<version>-<code>-play-check.apk`,
+built next to the AAB in `docs/RUSTORE_SUBMISSION.md` §2 C) on an emulator, then:
 
 ```bash
 adb -s emulator-5554 shell wm size 1080x1920

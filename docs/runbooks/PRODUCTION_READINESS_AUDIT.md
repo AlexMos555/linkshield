@@ -2,6 +2,8 @@
 
 **Дата:** 2026-04-20 · **Коммит:** `fe72d42` (main) · **Аудитор:** ccd-agent
 
+> Снимок на 2026-04-20, многое с тех пор изменилось (например, `mobile/eas.json` есть). Чек-листы магазинов ведутся в `docs/STORES.md` и `docs/STORE_SUBMISSION_KIT.md` — при расхождении верны они.
+
 Цель: перестать тушить симптомы Railway 502 и увидеть полную картину. Ниже — что сломано, что работает, и конкретный список действий.
 
 ---
@@ -117,7 +119,7 @@ Minimum для `ENVIRONMENT=production`:
 - [ ] Создать `mobile/eas.json` с профилями `development`, `preview`, `production`, каждый с `env: { EXPO_PUBLIC_API_URL: …, EXPO_PUBLIC_SUPABASE_URL: …, EXPO_PUBLIC_SUPABASE_ANON_KEY: … }`.
 - [ ] `eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "…" --type string` — для anon key (остальные можно в `eas.json`).
 - [ ] App Store Connect: создать app `ai.cleanway.app`, заполнить screenshots (6.5" iPhone + 12.9" iPad), privacy labels (Data Not Collected ✓ для browsing).
-- [ ] Google Play Console: создать app, privacy policy URL = `cleanway.ai/privacy`.
+- [ ] Google Play Console: создать app, privacy policy URL = `https://cleanway.ai/privacy-policy` (`/privacy` отвечает 404; актуальные ответы для консоли — `docs/STORE_SUBMISSION_KIT.md` §1.5 и `docs/STORES.md` §6).
 
 ---
 

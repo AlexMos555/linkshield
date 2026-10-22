@@ -27,6 +27,13 @@
 
 iOS build 4, Android versionCode 106. Ships after 1.0.4 clears App Review.
 
+On Android 1.0.5 is the first release since 1.0.3 (Android 1.0.4 was built but
+never published), so it also carries the Android 1.0.4 changes below. Android
+files, one per store ([docs/RUSTORE_SUBMISSION.md](docs/RUSTORE_SUBMISSION.md) §2):
+`cleanway-1.0.5-106-arm.apk` (site, GitHub release `v1.0.5`),
+`cleanway-1.0.5-106-rustore.apk` (RuStore), `cleanway-1.0.5-106-play.aab`
+(Google Play).
+
 **Что нового**
 - **Приложение больше не «забывает» данные после сна.** Если система закрыла базу на устройстве, приложение открывает её заново, а неудачное чтение больше не считается первым запуском (#184).
 - **iOS 26: обновлены шаги включения фильтра SMS** (#187).
@@ -36,6 +43,7 @@ iOS build 4, Android versionCode 106. Ships after 1.0.4 clears App Review.
 - **Готовность к новому ключу Supabase** (publishable вместо anon JWT) (#215).
 - **Доступность.** У всех кнопок есть роли и подписи для VoiceOver и TalkBack; вердикт проверки и загрузка озвучиваются; онбординг говорит «Шаг N из 3». Контраст текста и кнопок — не ниже AA, области нажатия не меньше 44 pt, крупный шрифт больше не обрезается, при «Уменьшить движение» кольцо оценки и окно защиты от звонков не анимируются (#249).
 - **Политика конфиденциальности в приложении** перечисляет обработчиков данных после переезда инфраструктуры (#228); для сайтов на динамических DNS результат проверки показывает понятную причину (#224).
+- **Android: экран подписки перечисляет только то, что даёт подписка** — без «Автоматической проверки SMS» (её нет ни в одной сборке) и «Защиты во время звонков» (она бесплатна для всех).
 
 **What's new**
 - Reopens a closed on-device database instead of losing data; a failed read is never treated as a first run (#184).
@@ -46,6 +54,8 @@ iOS build 4, Android versionCode 106. Ships after 1.0.4 clears App Review.
 - Supabase publishable-key ready (`*_SUPABASE_PUBLISHABLE_KEY` preferred over the anon JWT) (#215).
 - Accessibility: roles and labels on every touchable for VoiceOver and TalkBack; verdicts and loading states are announced; onboarding says "Step N of 3". Text and button contrast meets AA, touch targets are at least 44 pt, large text is no longer clipped, and Reduce Motion stops the score-ring and call-guard animations (#249).
 - In-app privacy policy lists the subprocessors after the infrastructure move (#228); sites on dynamic DNS get a plain-language reason in the check result (#224).
+- Android: the paywall lists only what the subscription adds — no "Automatic SMS check" (no build has it) and no "Protection during phone calls" (free for everyone).
+- iOS, not in build 4 (needs the next iOS build): the on-demand sign-in captcha opens in an in-app sheet (ASWebAuthenticationSession) instead of switching to Safari.
 
 Enablement order for the server-side switches: [docs/MOBILE_AUTH.md](docs/MOBILE_AUTH.md).
 
@@ -71,9 +81,11 @@ Browser extension for Chrome, Edge, Opera, Firefox and Safari. The first version
 - **Removed unused code** that recognised mail sites by part of the address (an address like `mail.google.com.evil.example` would have fooled it); it never affected protection.
 - **The QR code generator in Settings is the library's official file**: qrcode-generator 1.4.4, unminified, byte for byte as in its npm package, so store reviewers can check it against the release. The QR code looks the same.
 
-## [Android 1.0.4] - 2026-10-08
+## [Android 1.0.4] - built 2026-10-08, not published
 
-Android app, versionCode 104.
+Android app, versionCode 104 (rebuilt as 105). Never published — no GitHub
+release, no store: these changes reach Android phones with App 1.0.5 (106),
+the first Android release after 1.0.3.
 
 **Что нового**
 - **Проверка SMS стала умнее.** Кроме правил, текст сообщения теперь оценивает небольшая модель прямо на телефоне: она замечает мошеннические сообщения, даже если они написаны своими словами. Текст по-прежнему никуда не отправляется.

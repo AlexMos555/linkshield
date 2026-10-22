@@ -155,6 +155,9 @@ android --clean`, как в `docs/RUSTORE_SUBMISSION.md` §2). Gradle кешир
 изменении `package.json` / `package-lock.json` / `react-native.config.js`, но не переменных
 окружения. Иначе получится, например, APK для сайта с разрешением BILLING или сборка Play без
 нативной части SDK (тогда экран оплаты честно пишет «скоро», но продавать не будет).
+Теперь такую сборку останавливает сам gradle (`mobile/plugins/withDistributionGuard.js`): релиз без
+`EXPO_PUBLIC_DISTRIBUTION`, AAB с `site` и `android/`, созданный под другой магазин, не собираются.
+Рецепт трёх сборок (сайт, RuStore, Google Play) — `docs/RUSTORE_SUBMISSION.md` §2.
 
 ### 5.2 Как это работает в приложении
 

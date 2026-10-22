@@ -277,16 +277,26 @@ Google's PEPK tool) keeps one signature everywhere.
       APK download from our server is hidden too (Play forbids self-updates).
       For a plan paid on the site, the Play build only says "Paid on
       cleanway.ai" — no link. Setup and test plan: `docs/runbooks/revenuecat.md` §5.
-- [x] **"Automatic SMS check" in the paywall** is shown only in the RuStore build
-      (`smsBenefitShown`); the site and Play builds never list it.
-- [ ] **Build the Play AAB with the right env** — for the WHOLE build (prebuild,
-      gradle, bundle; `mobile/.env` or the EAS profile):
-      `EXPO_PUBLIC_DISTRIBUTION=play` and
+- [x] **Paywall benefits are only what paying adds in this build**
+      (`paywallBenefits`): no build lists "Automatic SMS check" (none reads SMS
+      by itself — `smsBenefitShown` is false everywhere) or call protection
+      (free for everyone).
+- [x] **A Play AAB can no longer come out as the site build.** Every Android
+      release must name its store: gradle stops at the start when
+      `EXPO_PUBLIC_DISTRIBUTION` is unset or unknown, when an AAB is built as
+      `site`, or when `android/` was generated for another store
+      (`mobile/plugins/withDistributionGuard.js`). The EAS `production` profile
+      carries `play`.
+- [ ] **Build the Play AAB** — `docs/RUSTORE_SUBMISSION.md` §2, build C
+      (`cleanway-<version>-<code>-play.aab`): `EXPO_PUBLIC_DISTRIBUTION=play`
+      for the WHOLE build (prebuild, gradle, bundle) and
       `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=goog_…` (RevenueCat → API keys → Play
-      Store app; never the `sk_` secret). Without `play` the AAB has no billing
-      (no `com.android.vending.BILLING`, `mobile/react-native.config.js`) and its
-      paywall links to the web checkout — Play would reject it. Check an APK
-      built with the same env: `aapt2 dump permissions app-release.apk | grep BILLING`.
+      Store app; never the `sk_` secret; on EAS an environment variable).
+      Without `play` the AAB has no billing (no `com.android.vending.BILLING`,
+      `mobile/react-native.config.js`) and its paywall links to the web
+      checkout — Play would reject it. §2 checks the APK built with the same
+      env: `aapt2 dump permissions … | grep -c BILLING` → 1 for Play, 0 for the
+      site and RuStore APKs.
 - [ ] **Pricing line** in the listing (`docs/STORE_SUBMISSION_KIT.md` §1.2–1.3): the copy says only "Basic
       protection is free." Once the subscriptions are live in Play Console, add
       (confirm numbers first; Play shows its own localised prices in the app): "Blocking known scam sites is free with no limit. 3
