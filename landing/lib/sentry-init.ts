@@ -27,6 +27,11 @@ export function initSentry(dsn: string): SentryModule {
     // before Sentry sees it. Marketing copy says privacy-first; events
     // retain for 90 days and employees have read access.
     sendDefaultPii: false,
+    // No release-health "session" per page view. The SDK's default
+    // BrowserSession integration sent one envelope to Sentry on every visit —
+    // a request per visitor that the privacy policy doesn't list (it names
+    // error reports and timing for about one request in ten, nothing else).
+    integrations: (defaults) => defaults.filter((integration) => integration.name !== "BrowserSession"),
     beforeSend: beforeSendScrub,
     beforeSendTransaction: beforeSendTransactionScrub,
     beforeBreadcrumb: beforeBreadcrumbScrub,
