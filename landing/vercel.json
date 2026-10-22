@@ -3,5 +3,14 @@
   "installCommand": "cd .. && rm -f package-lock.json && npm install --include=optional --legacy-peer-deps --no-audit --no-fund",
   "buildCommand": "npm run build",
   "ignoreCommand": "sh scripts/vercel-ignore.sh",
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "**": false
+    }
+  },
+  "github": {
+    "silent": true
+  },
   "framework": "nextjs"
 }

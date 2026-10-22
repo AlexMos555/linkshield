@@ -11,6 +11,12 @@
 # commit Vercel last built successfully. Anything uncertain builds: no previous
 # deployment, a commit that cannot be fetched, a failing git command.
 #
+# A deployment this script cancels still counts toward Vercel's daily
+# deployment quota (100 on Hobby). So landing/vercel.json also sets
+# git.deploymentEnabled to main only: other branches get no deployment at all,
+# and this script in practice decides only for pushes to main. Its preview
+# rules below stay for the day previews are turned back on.
+#
 # The base to compare with:
 #   VERCEL_GIT_PREVIOUS_SHA  the last SUCCESSFUL deployment of this project and
 #                            branch (a skipped one is not successful, so skips
@@ -98,24 +104,36 @@ fi
 #                                   checked by next build), vercel.json, this script
 #   packages/api-client, api-types  workspace packages the site imports
 #   package.json, package-lock.json root manifest; installCommand installs here
+#   .npmrc                          npm's project config, read by that install
 #   packages/email-templates/package.json, mobile/package.json
 #                                   the other workspaces' manifests, resolved by
 #                                   the same install into the shared node_modules
+#   mobile/scripts/apply-patches.js, mobile/patches
+#                                   mobile's postinstall, which the same install
+#                                   runs: it patches packages in the shared root
+#                                   node_modules. A workspace that gains another
+#                                   install script adds the files it reads here
+#                                   (landing/e2e/vercel-ignore.spec.ts fails
+#                                   until it does).
 #   scripts/sync-addin.cjs, email-plugin-outlook
 #                                   prebuild copies the add-in into public/outlook
 #   docs/benchmarks/latest.json     read at build time by lib/benchmark.ts
 #   .gitignore                      Tailwind's class scan skips git-ignored files
 # Not here because the build never reads them: api/, ml/, extension*/,
 # packages/extension-core, packages/i18n-strings (landing/messages is generated
-# from it and committed), the mobile app's code, other docs, .github/.
+# from it and committed), the mobile app's code and its other scripts, other
+# docs, .github/.
 set -- \
   landing \
   packages/api-client \
   packages/api-types \
   package.json \
   package-lock.json \
+  .npmrc \
   packages/email-templates/package.json \
   mobile/package.json \
+  mobile/scripts/apply-patches.js \
+  mobile/patches \
   scripts/sync-addin.cjs \
   email-plugin-outlook \
   docs/benchmarks/latest.json \

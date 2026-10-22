@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test, expect } from "@playwright/test";
@@ -16,6 +16,8 @@ import { test, expect } from "@playwright/test";
  */
 
 const SCRIPT = join(__dirname, "..", "scripts", "vercel-ignore.sh");
+const VERCEL_JSON = join(__dirname, "..", "vercel.json");
+const REPO_ROOT = join(__dirname, "..", "..");
 
 // Set up in beforeAll, so listing the tests creates no temporary directory.
 let sandbox = "";
@@ -59,8 +61,12 @@ const REPO_FILES: Record<string, string> = {
   "packages/i18n-strings/src/en.json": "{}\n",
   "package.json": "{}\n",
   "package-lock.json": "{}\n",
+  ".npmrc": "legacy-peer-deps=true\n",
   "mobile/package.json": "{}\n",
   "mobile/app/index.tsx": "// app\n",
+  "mobile/patches/xcode+3.0.1.patch": "diff --git a/x b/x\n",
+  "mobile/scripts/apply-patches.js": "// postinstall\n",
+  "mobile/scripts/test-freemium.mjs": "// test\n",
   "scripts/sync-addin.cjs": "// sync\n",
   "scripts/build-i18n.py": "# i18n\n",
   "email-plugin-outlook/manifest.xml": "<OfficeApp/>\n",
@@ -85,7 +91,12 @@ const LANDING_INPUTS = [
   "packages/email-templates/package.json",
   "package.json",
   "package-lock.json",
+  ".npmrc",
   "mobile/package.json",
+  // mobile's postinstall, run by the same root install, patches packages in
+  // the shared node_modules the site is built from.
+  "mobile/patches/xcode+3.0.1.patch",
+  "mobile/scripts/apply-patches.js",
   "scripts/sync-addin.cjs",
   "email-plugin-outlook/manifest.xml",
   "docs/benchmarks/latest.json",
@@ -101,6 +112,7 @@ const NOT_LANDING_INPUTS = [
   "packages/i18n-strings/src/en.json",
   "packages/email-templates/src/index.ts",
   "mobile/app/index.tsx",
+  "mobile/scripts/test-freemium.mjs",
   "scripts/build-i18n.py",
   "docs/ROADMAP.md",
   "docs/benchmarks/2026-10-18.json",
@@ -324,5 +336,81 @@ test.describe("Vercel ignored build step (landing/scripts/vercel-ignore.sh)", ()
     const run = ignoreStep(plain, { VERCEL_ENV: "production", VERCEL_GIT_PREVIOUS_SHA: "" });
     expect(run.code, run.out).toBe(BUILD);
     expect(run.out).toContain("not inside a git checkout");
+  });
+});
+
+/** The paths the script compares, read from its `set -- \` list. */
+function scriptPaths(): string[] {
+  const block = readFileSync(SCRIPT, "utf-8").match(/^set -- \\\n((?: {2}\S+(?: \\)?\n)+)/m);
+  expect(block, "the `set --` path list in vercel-ignore.sh").not.toBeNull();
+  return (block?.[1] ?? "")
+    .split("\n")
+    .map((line) => line.replace(/\\$/, "").trim())
+    .filter(Boolean);
+}
+
+/**
+ * The lifecycle scripts a root `npm install` runs for the root package and its
+ * workspaces, and the files each one reads. Vercel's installCommand is that
+ * install, so those files are landing inputs too.
+ */
+const INSTALL_SCRIPTS: Record<string, string[]> = {
+  "mobile/package.json postinstall: node scripts/apply-patches.js": [
+    "mobile/scripts/apply-patches.js",
+    "mobile/patches",
+  ],
+};
+const INSTALL_LIFECYCLE = ["preinstall", "install", "postinstall", "preprepare", "prepare", "postprepare"];
+
+function workspaceManifests(): string[] {
+  const root = JSON.parse(readFileSync(join(REPO_ROOT, "package.json"), "utf-8")) as { workspaces?: string[] };
+  const dirs: string[] = [];
+  for (const entry of root.workspaces ?? []) {
+    if (entry.endsWith("/*")) {
+      const parent = entry.slice(0, -2);
+      for (const child of readdirSync(join(REPO_ROOT, parent))) dirs.push(`${parent}/${child}`);
+    } else {
+      expect(entry, "a workspace pattern this test can expand").not.toMatch(/[*?{[]/);
+      dirs.push(entry);
+    }
+  }
+  return ["package.json", ...dirs.map((dir) => `${dir}/package.json`)].filter((file) =>
+    existsSync(join(REPO_ROOT, file)),
+  );
+}
+
+test.describe("Vercel project config (landing/vercel.json)", () => {
+  test("runs the ignore script, deploys main only, and does not comment on pull requests", () => {
+    const config = JSON.parse(readFileSync(VERCEL_JSON, "utf-8"));
+    expect(config.ignoreCommand).toBe("sh scripts/vercel-ignore.sh");
+    // A deployment the ignore script cancels still uses one of Hobby's 100
+    // deployments a day, so other branches must not create one at all.
+    // `**`, not `*`: Vercel matches branch names with minimatch, where `*`
+    // stops at "/" and would leave fix/..., feat/... deploying. main matches
+    // both keys; Vercel deploys when any matching key is true.
+    expect(config.git?.deploymentEnabled).toEqual({ main: true, "**": false });
+    // Deprecated in favor of the dashboard toggle, still honored: no
+    // vercel[bot] comments on pull requests and commits.
+    expect(config.github?.silent).toBe(true);
+  });
+
+  test("every install script the root npm install runs has the files it reads in the script's path list", () => {
+    const found: string[] = [];
+    for (const manifest of workspaceManifests()) {
+      const scripts = (JSON.parse(readFileSync(join(REPO_ROOT, manifest), "utf-8")).scripts ?? {}) as Record<
+        string,
+        string
+      >;
+      for (const name of INSTALL_LIFECYCLE) {
+        if (scripts[name]) found.push(`${manifest} ${name}: ${scripts[name]}`);
+      }
+    }
+    // A new or changed install script: add the files it reads to the `set --`
+    // list in landing/scripts/vercel-ignore.sh, then list it here.
+    expect(found.sort()).toEqual(Object.keys(INSTALL_SCRIPTS).sort());
+    const listed = scriptPaths();
+    for (const reads of Object.values(INSTALL_SCRIPTS)) {
+      for (const path of reads) expect(listed, `vercel-ignore.sh compares ${path}`).toContain(path);
+    }
   });
 });
