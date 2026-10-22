@@ -322,6 +322,102 @@ async def test_a_reconciled_success_with_the_wrong_amount_is_refused_once_and_ne
     assert row["outcome"] == "amount_mismatch"
 
 
+def _underpaid_status(asked=None):
+    async def underpaid(*, provider_ref=None, merchant_payment_id=None):
+        if asked is not None:
+            asked.append(1)
+        return _status_event(EventKind.PAYMENT_SUCCEEDED, event_id="status-underpaid", amount=1,
+                             merchant=merchant_payment_id, ref=provider_ref)
+    return underpaid
+
+
+async def _assert_held_for_review(ctx, sub_id):
+    sub = await _sub(ctx, sub_id)
+    assert sub is not None and sub.status is S.PENDING
+    assert [p.status for p in await _payments(ctx, sub_id)] == [PaymentStatus.PENDING]
+    actions = await _audit_actions(ctx, sub_id)
+    assert "payment.amount_mismatch" in actions and "checkout.closed" not in actions
+
+
+@pytest.mark.asyncio
+async def test_an_underpaid_checkout_is_never_deleted_by_the_timeout(ctx, fake, clock):
+    """Money moved but not the right amount: the checkout and its payment row stay (pending, for a
+    person), however many passes run and however long past the timeout and the max wait."""
+    _, sub_id = await _checkout(ctx)
+    fake.fetch_status = _underpaid_status()
+    clock.advance(minutes=31)
+    for _ in range(3):
+        counts = await scheduler.run_once(ctx, clock.now)
+        assert counts["pending_timeouts"] == 0 and counts["reconciled"] == 0
+    await _assert_held_for_review(ctx, sub_id)
+    clock.now = (await _sub(ctx, sub_id)).created_at + scheduler.CHECKOUT_MAX_WAIT + timedelta(hours=1)
+    assert (await scheduler.run_once(ctx, clock.now))["pending_timeouts"] == 0
+    await _assert_held_for_review(ctx, sub_id)
+
+
+@pytest.mark.asyncio
+async def test_an_underpaid_checkout_stays_held_when_the_provider_later_goes_quiet(ctx, fake, clock):
+    """The mismatch is remembered (audit), not re-derived: a later 'no answer' / 'unknown' from the
+    provider does not turn the held checkout back into a deletable one."""
+    _, sub_id = await _checkout(ctx)
+    fake.fetch_status = _underpaid_status()
+    clock.advance(minutes=31)
+    assert await scheduler.run_reconciliation(ctx, clock.now) == 0
+
+    async def no_answer(**kwargs):
+        return None
+
+    async def unreachable(**kwargs):
+        raise ProviderUnavailable("timeout")
+
+    for answer in (no_answer, unreachable):
+        fake.fetch_status = answer
+        clock.advance(minutes=31)
+        assert await scheduler.run_pending_timeouts(ctx, clock.now) == 0
+    await _assert_held_for_review(ctx, sub_id)
+
+
+@pytest.mark.asyncio
+async def test_an_underpaid_checkout_from_a_webhook_is_held_too(ctx, fake, clock):
+    _, sub_id = await _checkout(ctx)
+    ref = (await _sub(ctx, sub_id)).provider_subscription_id
+    status, body = await _deliver(ctx, fake, fake.event_payload(ref, amount_kopecks=1, event_id="evt-underpaid"))
+    assert status == 200
+
+    async def no_answer(**kwargs):
+        return None
+
+    fake.fetch_status = no_answer
+    clock.advance(minutes=31)
+    assert await scheduler.run_pending_timeouts(ctx, clock.now) == 0
+    await _assert_held_for_review(ctx, sub_id)
+
+
+@pytest.mark.asyncio
+async def test_starting_over_does_not_close_an_underpaid_checkout(ctx, fake, clock):
+    """A new checkout normally closes the account's unconfirmed one; not one that took money."""
+    device, sub_id = await _checkout(ctx)
+    ref = (await _sub(ctx, sub_id)).provider_subscription_id
+    await _deliver(ctx, fake, fake.event_payload(ref, amount_kopecks=1, event_id="evt-underpaid"))
+    again = await checkout_service.start_checkout(ctx, device, plan_code="solo", provider_code="fake",
+                                                  msisdn=OTHER_NUMBER, consent_doc_version=CONSENT)
+    assert again["checkout_id"] != sub_id
+    await _assert_held_for_review(ctx, sub_id)
+
+
+@pytest.mark.asyncio
+async def test_an_underpaid_payment_is_flagged_for_review_after_a_day(ctx, fake, clock, caplog):
+    _, sub_id = await _checkout(ctx)
+    fake.fetch_status = _underpaid_status()
+    clock.advance(minutes=31)
+    assert await scheduler.run_reconciliation(ctx, clock.now) == 0
+    clock.advance(hours=24)
+    with caplog.at_level(logging.ERROR, logger="cleanway.billing.scheduler"):
+        assert await scheduler.run_reconciliation(ctx, clock.now) == 0
+    (alert,) = [r for r in caplog.records if r.getMessage() == "billing.payment.unresolved"]
+    assert alert.found == "needs_review" and alert.subscription == sub_id
+
+
 @pytest.mark.asyncio
 async def test_a_reconciled_renewal_failure_opens_grace(ctx, fake, clock):
     """A renewal whose call timed out and that the provider later reports as failed: grace, retries."""

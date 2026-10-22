@@ -216,6 +216,34 @@ async def check_burst_only(user: AuthUser) -> None:
 FAIL_OPEN_CATEGORIES: frozenset[str] = frozenset({"doh", "blocklist"})
 
 
+def ip_rate_key(ip: Optional[str]) -> str:
+    """The per-IP rate-limit bucket for an address.
+
+    IPv4 is the address itself. IPv6 is its /64: an ISP gives each
+    subscriber at least a /64 and devices rotate addresses inside it
+    (privacy extensions), so keying the full address let a client pick a
+    fresh limit on every request. An IPv4-mapped IPv6 address
+    (::ffff:198.51.100.7, what a dual-stack socket reports for an IPv4
+    peer) is the IPv4 client it wraps. Anything unparsable keeps its
+    trimmed, lower-cased spelling, so it can still be limited.
+    """
+    import ipaddress
+
+    raw = (ip or "").strip().lower().lstrip("[").rstrip("]")
+    if not raw:
+        return "unknown"
+    try:
+        addr = ipaddress.ip_address(raw)
+    except ValueError:
+        return raw
+    if isinstance(addr, ipaddress.IPv6Address):
+        if addr.ipv4_mapped is not None:
+            return str(addr.ipv4_mapped)
+        # Built from the integer so a zone id (fe80::1%eth0) is dropped too.
+        return str(ipaddress.IPv6Network((int(addr) >> 64 << 64, 64)))
+    return str(addr)
+
+
 async def check_ip_rate_limit(
     ip: str,
     category: str,
@@ -230,8 +258,8 @@ async def check_ip_rate_limit(
     Raises HTTPException(429) if limit exceeded.
     Fails open if Redis unreachable.
     """
-    # Normalize ip (IPv6 brackets, IPv4-mapped, empty strings)
-    safe_ip = (ip or "unknown").strip().lower().lstrip("[").rstrip("]")
+    # One bucket per client: IPv6 by /64, IPv4-mapped as IPv4 (ip_rate_key).
+    safe_ip = ip_rate_key(ip)
     return await _check_window_limit(
         f"rate:ip:{category}:{safe_ip}", category, limit, window_seconds,
         # Logs keep only the keyed hash: the privacy policy promises the raw
@@ -654,7 +682,7 @@ def doh_rate_check(request: Request) -> Optional[int]:
     from api.services import doh_metrics
     if benchmark_bypass(request):
         return None
-    retry = doh_metrics.limiter().check(_extract_client_ip(request))
+    retry = doh_metrics.limiter().check(ip_rate_key(_extract_client_ip(request)))
     if retry is not None:
         doh_metrics.METRICS.inc("rate_limited")
     return retry

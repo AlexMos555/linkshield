@@ -30,6 +30,7 @@ from api.services.rate_limiter import (
     _incr_with_ttl_on_first,
     benchmark_bypass,
     install_key,
+    ip_rate_key,
 )
 from api.services.scoring import calculate_confidence_pct, calculate_score, is_trusted_top_domain
 
@@ -219,7 +220,7 @@ async def _enforce_fresh_check_budget(request: Request) -> None:
         return
     settings = get_settings()
     ikey = install_key(request)
-    client_ip = _extract_client_ip(request)
+    client_ip = ip_rate_key(_extract_client_ip(request))
     if ikey:
         limits = (
             (f"public_rate:install:{ikey}", settings.public_fresh_checks_per_minute),

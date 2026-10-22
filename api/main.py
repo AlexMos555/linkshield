@@ -389,10 +389,10 @@ async def health_deep_check(request: Request):
     from fastapi.responses import JSONResponse
 
     from api.services import health_deep_guard
-    from api.services.rate_limiter import _extract_client_ip
+    from api.services.rate_limiter import _extract_client_ip, ip_rate_key
 
     status, body = await health_deep_guard.GUARD.serve(
-        _extract_client_ip(request), _probe_deep_health
+        ip_rate_key(_extract_client_ip(request)), _probe_deep_health
     )
     if status == 200:
         return body

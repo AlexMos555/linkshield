@@ -31,7 +31,7 @@ from typing import Dict, Optional, Tuple
 from api.billing.context import BillingContext
 from api.billing.models import FailureReason, Payment, PaymentStatus, Plan, Subscription, SubscriptionStatus
 from api.billing.providers.base import EventKind, ProviderError, ProviderUnavailable, event_from_bytes
-from api.billing.service.checkout import apply_provider_event, checkout_key, close_checkout
+from api.billing.service.checkout import apply_provider_event, checkout_key, close_checkout, held_for_review
 from api.billing.service.common import sub_state, sub_target, with_state
 from api.billing.service.effects import run_effects
 from api.billing.state_machine import (
@@ -64,7 +64,9 @@ async def run_pending_timeouts(ctx: BillingContext, now: Optional[datetime] = No
     Deleting a checkout cascades to its payment row, so the provider is asked
     first: a payment that went through while its webhook was lost is applied,
     not thrown away; a checkout whose status the provider cannot report right
-    now, or still reports as in progress, waits for a later pass.
+    now, or still reports as in progress, waits for a later pass. A checkout
+    paid with the wrong amount or currency is never deleted: it stays pending,
+    payment row and all, for a person (billing.payment.unresolved after a day).
     """
     now = now or ctx.now()
     cutoff = now - timedelta(minutes=ctx.settings.billing_pending_timeout_minutes)
@@ -76,13 +78,17 @@ async def run_pending_timeouts(ctx: BillingContext, now: Optional[datetime] = No
             payment = await tx.get_payment_by_idempotency_key(checkout_key(candidate.id))
         if payment is not None and payment.status is PaymentStatus.PENDING:
             found = await _reconcile_one(ctx, payment)
-            if found in (_SETTLED, _UNKNOWN):
+            if found in (_SETTLED, _UNKNOWN, _NEEDS_REVIEW):
                 continue
             if found == _IN_PROGRESS and now - candidate.created_at < CHECKOUT_MAX_WAIT:
                 continue
         async with ctx.store.transaction() as tx:
             sub = await tx.get_subscription(candidate.id, for_update=True)
             if sub is None or sub.status is not SubscriptionStatus.PENDING:
+                continue
+            # Re-checked under the lock: the mismatch may have come from a webhook, or from an
+            # earlier pass whose answer this pass's provider call no longer repeats.
+            if await held_for_review(tx, sub.id):
                 continue
             transition = apply(sub_state(sub), PendingTimeout(), now, ctx.policy())
             if transition.state.status is not None:
@@ -246,6 +252,8 @@ _SETTLED = "settled"          # the provider's answer was applied
 _IN_PROGRESS = "in_progress"  # the provider says the payment is still under way
 _PENDING = "pending"          # no final answer (or nothing to ask about, or the answer was not applied)
 _UNKNOWN = "unknown"          # the provider could not be asked right now
+_NEEDS_REVIEW = "needs_review"  # money moved, but not what our row expects: a person decides
+
 
 
 async def _reconcile_one(ctx: BillingContext, payment: Payment) -> str:
@@ -279,9 +287,12 @@ async def _reconcile_one(ctx: BillingContext, payment: Payment) -> str:
         event_id = await tx.insert_event(provider=event.provider, provider_event_id=f"reconcile:{event.provider_event_id}",
                                          signature_ok=True, payload_ciphertext=ctx.cipher.encrypt_bytes(b"reconciliation"))
         if event_id is None:
-            return _PENDING
+            # This answer was handled on an earlier pass and the payment is still pending.
+            return _NEEDS_REVIEW if await held_for_review(tx, sub.id) else _PENDING
         _, outcome = await apply_provider_event(ctx, tx, event, actor=_ACTOR)
         await tx.mark_event_processed(event_id, processed_at=ctx.now(), outcome=outcome)
+    if outcome == "amount_mismatch":
+        return _NEEDS_REVIEW
     return _SETTLED if outcome in ("applied", "deleted") else _PENDING
 
 

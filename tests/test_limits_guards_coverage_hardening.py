@@ -193,7 +193,7 @@ async def test_redis_error_mid_command_follows_the_same_policy(settings, monkeyp
 async def test_ipv6_spellings_of_one_address_share_a_bucket(settings, limiter_redis):
     for spelling in ("2001:DB8::1", "[2001:db8::1]", " 2001:db8::1 "):
         await rl.check_ip_rate_limit(spelling, "public_check", 3, 60)
-    assert limiter_redis._kv == {"rate:ip:public_check:2001:db8::1": 3}
+    assert limiter_redis._kv == {"rate:ip:public_check:2001:db8::/64": 3}
     with pytest.raises(HTTPException):
         await rl.check_ip_rate_limit("[2001:DB8::1]", "public_check", 3, 60)
 

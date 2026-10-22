@@ -1521,24 +1521,47 @@ async def restore_account(
     headers = {
         **supabase_keys.server_headers(settings),
         "Content-Type": "application/json",
-        "Prefer": "return=minimal",
+        "Prefer": "return=representation",
     }
+    # Only a deletion still inside the grace window is cleared (or none at
+    # all: restoring twice is fine), and the check is part of the UPDATE
+    # itself. The purge (api/services/account_purge.py) acts only on rows
+    # past the same cutoff, so once it has listed a user no restore can
+    # land for them, and a restore that lands first takes them off its list.
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=_DELETION_GRACE_DAYS)).isoformat()
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.patch(
                 f"{settings.supabase_url}/rest/v1/users",
-                params={"id": f"eq.{user.id}"},
+                params={
+                    "id": f"eq.{user.id}",
+                    "or": f'(deletion_requested_at.is.null,deletion_requested_at.gt."{cutoff}")',
+                    "select": "id",
+                },
                 json={"deletion_requested_at": None},
                 headers=headers,
             )
-        if resp.status_code not in (200, 204):
+        if resp.status_code != 200:
+            raise HTTPException(500, "Failed to restore account")
+        rows = resp.json()
+        if not isinstance(rows, list):
             raise HTTPException(500, "Failed to restore account")
     except HTTPException:
         raise
     except Exception as e:
         logger.error("account_restore_exception", extra={"user_id": user.id, "error": str(e)})
         raise HTTPException(500, "Failed to restore account")
+    if not rows:
+        # Past the window (the purge may already be running) or already purged.
+        logger.warning("account_restore_window_closed", extra={"user_id": user.id})
+        raise HTTPException(
+            status_code=410,
+            detail={
+                "error": "The 30-day restore window has ended; the account is being deleted.",
+                "code": "restore_window_closed",
+            },
+        )
 
     logger.info("account_deletion_cancelled", extra={"user_id": user.id})
 

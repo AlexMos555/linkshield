@@ -11,6 +11,9 @@ module on a cron (hourly is fine since grace is 30 days). Tested:
   - no candidates → no-op (idempotent)
   - upstream failure → no rows claimed deleted, error surfaced
   - misconfigured Supabase → no-op + warning
+  - a user who restores mid-purge is never purged: each candidate is
+    re-read right before anything irreversible, and only the rows the
+    conditional DELETE actually removed count as deleted
 """
 from __future__ import annotations
 
@@ -24,7 +27,11 @@ class _SupabaseStub:
     def __init__(self) -> None:
         self.list_response: List[Dict[str, Any]] = []
         self.list_status = 200
-        self.delete_status = 204
+        # Users whose deletion was cleared after the listing (restore).
+        self.restored: set = set()
+        self.recheck_status = 200
+        # DELETE users answers with the rows it removed (return=representation).
+        self.delete_status = 200
         # Supabase Auth admin API (DELETE /auth/v1/admin/users/{id}).
         self.auth_delete_status = 200
         # subscriptions rows by user_id — the purge cancels live Stripe
@@ -57,6 +64,9 @@ class _SupabaseStub:
             async def __aexit__(self, *_a):
                 return None
 
+            def _live(self):
+                return [r for r in stub.list_response if r["id"] not in stub.restored]
+
             async def get(self, url, params=None, headers=None, **_kw):
                 stub.requests.append(
                     {"method": "GET", "url": url, "params": dict(params or {})}
@@ -65,15 +75,23 @@ class _SupabaseStub:
                     uid = dict(params or {}).get("user_id", "eq.")[3:]
                     row = stub.subscription_rows.get(uid)
                     return _Resp(200, [row] if row else [])
+                uid = dict(params or {}).get("id", "")
+                if uid.startswith("eq."):
+                    rows = [r for r in self._live() if r["id"] == uid[3:]]
+                    return _Resp(stub.recheck_status, rows)
                 return _Resp(stub.list_status, stub.list_response)
 
             async def request(self, method, url, params=None, headers=None, **_kw):
                 stub.requests.append(
-                    {"method": method, "url": url, "params": dict(params or {})}
+                    {"method": method, "url": url, "params": dict(params or {}),
+                     "headers": dict(headers or {})}
                 )
                 if "/auth/v1/admin/users/" in url:
                     return _Resp(stub.auth_delete_status, {})
-                return _Resp(stub.delete_status)
+                if method == "DELETE" and url.endswith("/rest/v1/users"):
+                    wanted = dict(params or {}).get("id", "in.()")[4:-1].split(",")
+                    return _Resp(stub.delete_status, [r for r in self._live() if r["id"] in wanted])
+                return _Resp(204)
 
             async def post(self, url, json=None, headers=None, **_kw):
                 if "/rest/v1/audit_log" in url:
@@ -131,8 +149,8 @@ async def test_purges_expired_accounts(supabase_ok, supabase_stub):
 
     assert [kind(r) for r in supabase_stub.requests] == [
         "GET users",
-        "GET subscriptions", "PATCH audit_log", "DELETE auth:user-a",
-        "GET subscriptions", "PATCH audit_log", "DELETE auth:user-b",
+        "GET users", "GET subscriptions", "PATCH audit_log", "DELETE auth:user-a",
+        "GET users", "GET subscriptions", "PATCH audit_log", "DELETE auth:user-b",
         "DELETE users",
     ]
 
@@ -186,6 +204,9 @@ async def test_delete_filter_params_pin_grace_window(
     list_cutoff = next(
         r for r in supabase_stub.requests if r["method"] == "GET"
     )["params"]["deletion_requested_at"]
+    # The rows it removed come back, so only those are reported as purged.
+    assert delete_call["headers"]["Prefer"] == "return=representation"
+    assert delete_call["params"]["select"] == "id"
     assert raw == list_cutoff, (
         "DELETE cutoff drifted from GET cutoff — a misconfigured cron "
         "could now wipe users still inside their grace window."
@@ -448,3 +469,139 @@ async def test_purge_skips_user_when_stripe_cancel_fails(supabase_ok, supabase_s
         if r["method"] == "DELETE" and r["url"].endswith("/rest/v1/users")
     )
     assert users_delete["params"]["id"] == "in.(user-free)"
+
+
+# ─── Restored mid-purge ────────────────────────────────────────
+#
+# The listing and the final DELETE are seconds apart, and in between the
+# purge does things that cannot be undone (cancel Stripe, anonymise the
+# audit trail, delete the Supabase Auth identity). A user who restores in
+# that window must come out of it with their account intact.
+
+
+def _calls_for(stub, uid):
+    return [r for r in stub.requests if uid in r["url"] or uid in str(r["params"])]
+
+
+@pytest.mark.asyncio
+async def test_a_user_restored_after_the_listing_is_not_touched(supabase_ok, supabase_stub, fake_stripe):
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-gone"}, {"id": "user-back"}]
+    supabase_stub.subscription_rows["user-back"] = {
+        "user_id": "user-back", "tier": "personal", "status": "active",
+        "provider": "stripe", "provider_subscription_id": "sub_back",
+        "stripe_customer_id": "cus_back", "trial_used_at": None,
+    }
+    fake_stripe.add_subscription("sub_back", "cus_back", status="active")
+    supabase_stub.restored.add("user-back")
+
+    result = await purge_expired_accounts()
+
+    assert result == {"deleted": 1, "ids": ["user-gone"], "restored": ["user-back"]}
+    # Re-read only: no Stripe cancel, no audit anonymising, no auth delete.
+    assert [(r["method"], r["url"].rsplit("/", 1)[1], r["params"].get("id"))
+            for r in _calls_for(supabase_stub, "user-back")] == [("GET", "users", "eq.user-back")]
+    assert fake_stripe.cancel_calls == []
+    users_delete = next(r for r in supabase_stub.requests
+                        if r["method"] == "DELETE" and r["url"].endswith("/rest/v1/users"))
+    assert users_delete["params"]["id"] == "in.(user-gone)"
+    assert [row["target_id"] for row in supabase_stub.audit_posts] == ["user-gone"]
+
+
+@pytest.mark.asyncio
+async def test_everyone_restored_means_no_delete_at_all(supabase_ok, supabase_stub):
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-back"}]
+    supabase_stub.restored.add("user-back")
+
+    result = await purge_expired_accounts()
+
+    assert result == {"deleted": 0, "ids": [], "restored": ["user-back"]}
+    assert [r["method"] for r in supabase_stub.requests] == ["GET", "GET"]
+    assert supabase_stub.audit_posts == []
+
+
+@pytest.mark.asyncio
+async def test_a_failed_recheck_keeps_the_user_for_the_next_run(supabase_ok, supabase_stub):
+    """Can't confirm the deletion still stands → do nothing irreversible."""
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-x"}]
+    supabase_stub.recheck_status = 503
+
+    result = await purge_expired_accounts()
+
+    assert result == {"deleted": 0, "ids": [], "skipped": ["user-x"]}
+    assert [r["method"] for r in supabase_stub.requests] == ["GET", "GET"]
+
+
+@pytest.mark.asyncio
+async def test_the_recheck_is_pinned_to_the_same_cutoff(supabase_ok, supabase_stub):
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-c"}]
+    await purge_expired_accounts()
+
+    listing, recheck = [r for r in supabase_stub.requests if r["method"] == "GET" and r["url"].endswith("/users")]
+    assert recheck["params"]["id"] == "eq.user-c"
+    assert recheck["params"]["deletion_requested_at"] == listing["params"]["deletion_requested_at"]
+
+
+@pytest.mark.asyncio
+async def test_only_rows_the_delete_removed_count_as_purged(supabase_ok, supabase_stub, monkeypatch, caplog):
+    """A restore that lands after the re-read but before the DELETE: the
+    DELETE's own deletion_requested_at filter skips the row, and the purge
+    reports (and audits, and clears Redis for) only what was removed."""
+    import logging
+
+    import httpx as _httpx
+
+    from api.services import account_purge
+
+    supabase_stub.list_response = [{"id": "u1"}, {"id": "u2"}]
+    dropped: list = []
+
+    class _R:
+        async def delete(self, *keys):
+            dropped.extend(keys)
+            return len(keys)
+
+    async def _get_redis():
+        return _R()
+
+    monkeypatch.setattr("api.services.cache.get_redis", _get_redis)
+    client_cls = supabase_stub.build()
+    real_request = client_cls.request
+
+    async def request(self, method, url, params=None, headers=None, **kw):
+        if method == "DELETE" and url.endswith("/rest/v1/users"):
+            supabase_stub.restored.add("u2")
+        return await real_request(self, method, url, params=params, headers=headers, **kw)
+
+    client_cls.request = request
+    monkeypatch.setattr(_httpx, "AsyncClient", client_cls)
+
+    with caplog.at_level(logging.ERROR, logger="cleanway.account_purge"):
+        result = await account_purge.purge_expired_accounts()
+
+    assert result == {"deleted": 1, "ids": ["u1"], "restored": ["u2"]}
+    assert [row["target_id"] for row in supabase_stub.audit_posts] == ["u1"]
+    assert dropped and not any("u2" in k for k in dropped)
+    (alert,) = [r for r in caplog.records if r.getMessage() == "account_purge.restored_during_delete"]
+    assert alert.user_ids == ["u2"]
+
+
+@pytest.mark.asyncio
+async def test_a_delete_answer_without_rows_claims_nothing(supabase_ok, supabase_stub):
+    """A 2xx that doesn't list the removed rows can't prove anything was purged."""
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "u1"}]
+    supabase_stub.delete_status = 204
+
+    result = await purge_expired_accounts()
+
+    assert result["deleted"] == 0 and result["error"] == "delete_failed_204"
+    assert supabase_stub.audit_posts == []
