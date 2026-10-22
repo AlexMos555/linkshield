@@ -345,6 +345,25 @@ async def test_a_dry_run_is_shown_as_not_deleting(stub, fake_redis, monkeypatch)
 
 
 @pytest.mark.asyncio
+async def test_a_dry_run_success_does_not_count_once_switched_on(stub, fake_redis, monkeypatch):
+    await retention.run_retention("dry_run", now=NOW)
+    monkeypatch.setattr(retention, "_settings_mode", lambda: "on")
+    st = await retention.health_status(now=NOW_TS + 60)
+    assert (st["ok"], st["error"]) == (False, "no_recent_pass")
+    assert st["last_ok_mode"] == "dry_run"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("garbage", ["not json", "[1, 2]", '{"at": "yesterday"}'])
+async def test_garbage_in_redis_reads_as_no_pass(fake_redis, monkeypatch, garbage):
+    monkeypatch.setattr(retention, "_settings_mode", lambda: "on")
+    await fake_redis.set("retention:last_pass", garbage)
+    await fake_redis.set("retention:last_ok", garbage)
+    st = await retention.health_status()
+    assert (st["last_pass_at"], st["last_ok_at"], st["error"]) == (None, None, "no_recent_pass")
+
+
+@pytest.mark.asyncio
 async def test_off_says_so(fake_redis, monkeypatch):
     monkeypatch.setattr(retention, "_settings_mode", lambda: "off")
     st = await retention.health_status()

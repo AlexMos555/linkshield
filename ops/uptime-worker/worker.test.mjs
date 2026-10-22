@@ -5,7 +5,8 @@ import assert from "node:assert/strict";
 import { register } from "node:module";
 import { test } from "node:test";
 
-// The Workers runtime's built-in module, stubbed for Node.
+// The Workers runtime's built-in module, stubbed for Node; and worker.js read
+// as an ES module (no package.json says so, and Node 20 does not guess).
 register(
   "data:text/javascript," +
     encodeURIComponent(`
@@ -15,6 +16,12 @@ register(
             "export class EmailMessage { constructor(from, to, raw) { Object.assign(this, { from, to, raw }); } }") };
         }
         return next(specifier, context);
+      }
+      export async function load(url, context, next) {
+        if (url.endsWith("/ops/uptime-worker/worker.js")) {
+          return { ...(await next(url, { ...context, format: "module" })), format: "module", shortCircuit: true };
+        }
+        return next(url, context);
       }`),
 );
 const worker = (await import("./worker.js")).default;
