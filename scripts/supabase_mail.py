@@ -89,6 +89,11 @@ HARDENED_EXPECTED: dict[str, object] = {
     "rate_limit_verify": 10,
     "password_min_length": 12,
     "security_update_password_require_reauthentication": True,
+    # 2026-10-22: sign-in is by code, but GoTrue still accepts a password on
+    # /signup and through a recovery link, so a password set there must not be
+    # a leaked one and must mix cases and digits.
+    "password_hibp_enabled": True,
+    "password_required_characters": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ:0123456789",
 }
 
 # Supabase template types we ship. invite / reauthentication are never sent by
