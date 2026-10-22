@@ -275,6 +275,58 @@ async def test_purge_final_delete_timeout_claims_nothing_and_next_run_finishes(s
     assert [a["target_id"] for a in _hard_deleted_audits(sb)] == ["u-1"]
 
 
+@pytest.mark.asyncio
+async def test_purge_recheck_timeout_keeps_the_user_and_touches_nothing(sb, fake_redis):
+    from api.services.account_purge import purge_expired_accounts
+
+    _purge_candidates(sb, "u-1")
+    calls = {"n": 0}
+    real = sb._handle
+
+    def _second_users_get_times_out(method, url, params=None, json=None, headers=None):
+        if method == "GET" and url.endswith("/rest/v1/users"):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                sb.calls.append({"method": method, "url": url, "params": dict(params or {})})
+                raise httpx.ReadTimeout("slow")
+        return real(method, url, params, json, headers)
+
+    sb._handle = _second_users_get_times_out
+    assert await purge_expired_accounts() == {"deleted": 0, "ids": [], "skipped": ["u-1"]}
+    assert sb.writes() == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", [b"<html>gateway</html>", {"id": "u-1"}])
+async def test_purge_delete_answer_that_is_not_a_row_list_claims_nothing(sb, fake_redis, body):
+    from api.services.account_purge import purge_expired_accounts
+
+    _purge_candidates(sb, "u-1")
+    sb.on("DELETE", "/rest/v1/users", status=200, body=body)
+    result = await purge_expired_accounts()
+    assert result == {"deleted": 0, "error": "delete_failed_200", "candidates": ["u-1"]}
+    assert _hard_deleted_audits(sb) == []
+
+
+@pytest.mark.asyncio
+async def test_purge_where_every_row_was_restored_during_the_delete(sb, fake_redis):
+    from api.services.account_purge import purge_expired_accounts
+
+    _purge_candidates(sb, "u-1")
+    sb.on("DELETE", "/rest/v1/users", status=200, body=[])
+    assert await purge_expired_accounts() == {"deleted": 0, "ids": [], "restored": ["u-1"]}
+    assert _hard_deleted_audits(sb) == []
+
+
+@pytest.mark.asyncio
+async def test_purge_audit_anonymise_rejection_is_best_effort(sb, fake_redis):
+    from api.services.account_purge import purge_expired_accounts
+
+    _purge_candidates(sb, "u-1")
+    sb.on("PATCH", "/rest/v1/audit_log", status=500, body={"message": "boom"})
+    assert await purge_expired_accounts() == {"deleted": 1, "ids": ["u-1"]}
+
+
 @pytest.mark.parametrize("result, code", [({"deleted": 2, "ids": ["a", "b"]}, 0), ({"deleted": 0, "error": "x"}, 1)])
 def test_purge_cli_exit_code(monkeypatch, capsys, result, code):
     from api.services import account_purge
