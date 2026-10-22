@@ -25,12 +25,18 @@
  *     the scope GoTrue's default is global, and signing out on the phone
  *     signed the account out on the website, the extension and other phones;
  *   • a refresh token GoTrue refuses (400 refresh_token_not_found /
- *     invalid_grant, 401, 403) ends the session here, once and for all; it
- *     used to count only 401 as final, so a dead session was kept as
- *     "offline" forever (the email stayed in Settings, Family stuck on an
- *     error, a refresh on every foreground);
+ *     invalid_grant, 401, 403 session_expired) ends the session here, once
+ *     and for all; it used to count only 401 as final, so a dead session was
+ *     kept as "offline" forever (the email stayed in Settings, Family stuck
+ *     on an error, a refresh on every foreground);
  *   • no answer, a timeout, 429, 5xx or an unusable 200 keep the session
- *     for a retry (the same table as the extension: scripts/test-extension-auth.mjs).
+ *     for a retry (the same table as the extension: scripts/test-extension-auth.mjs);
+ *   • so does a 400 / 403 that GoTrue did not write — an HTML page or an
+ *     empty body with no error code in it: *.supabase.co sits behind
+ *     Cloudflare, whose block / challenge page reaches a phone on a VPN or
+ *     Tor exit with a bad name, and a proxy answers 400 with its own page.
+ *     Taking those as "refused" signed the person out for good on a network
+ *     where signing back in fails too.
  */
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
@@ -173,13 +179,31 @@ await check("device id is a v4 UUID the API's pattern accepts", () => {
 });
 
 console.log("refresh failures");
-for (const [status, expected] of [
-  [400, "signed_out"], [401, "signed_out"], [403, "signed_out"],
-  [0, "offline"], [404, "offline"], [408, "offline"], [429, "offline"],
-  [500, "offline"], [502, "offline"], [503, "offline"],
+// [HTTP status, AuthError code (services/auth.ts goTrue()), expected].
+// goTrue() names an error by the body's error_code, else its error, else the
+// bare HTTP status it carries, else "auth_error" (a body it could not read).
+for (const [status, code, expected] of [
+  [400, "refresh_token_not_found", "signed_out"],
+  [400, "refresh_token_already_used", "signed_out"],
+  [400, "invalid_grant", "signed_out"],
+  [403, "session_expired", "signed_out"],
+  [403, "session_not_found", "signed_out"],
+  [401, "auth_error", "signed_out"],
+  [401, undefined, "signed_out"],
+  // A 400 / 403 GoTrue did not write: an HTML page, an empty body, a JSON
+  // body with no error name in it.
+  [400, "auth_error", "offline"],
+  [403, "auth_error", "offline"],
+  [403, "403", "offline"],
+  [400, undefined, "offline"],
+  [403, "", "offline"],
+  [0, "network_error", "offline"], [0, "timeout", "offline"],
+  [404, "auth_error", "offline"], [408, "auth_error", "offline"],
+  [429, "over_request_rate_limit", "offline"],
+  [500, "unexpected_failure", "offline"], [502, "auth_error", "offline"], [503, "auth_error", "offline"],
 ]) {
-  await check(`refresh answered ${status} → ${expected}`, () => {
-    assert.equal(refreshFailure(status), expected);
+  await check(`refresh answered ${status} ${code === undefined ? "(no code)" : JSON.stringify(code)} → ${expected}`, () => {
+    assert.equal(refreshFailure(status, code), expected);
   });
 }
 
@@ -217,6 +241,7 @@ const signedIn = (expiresAt = NOW_S - 10) => ({
 });
 const json = (status, body) =>
   new Response(body === null ? null : JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+const html = (status, body) => new Response(body, { status, headers: { "Content-Type": "text/html; charset=UTF-8" } });
 
 /** A fresh copy of services/auth.ts (its module state included) talking to `answer`. */
 function authWith({ stored, answer }) {
@@ -312,6 +337,10 @@ for (const [name, answer] of [
   ["500", () => json(500, {})],
   ["503", () => json(503, {})],
   ["an unusable 200", () => json(200, { unexpected: true })],
+  ["Cloudflare's 403 block page", () => html(403, "<!DOCTYPE html><html><head><title>Attention Required! | Cloudflare</title></head><body>Sorry, you have been blocked</body></html>")],
+  ["a proxy's 400 page", () => html(400, "<html><body><h1>400 Bad Request</h1></body></html>")],
+  ["an empty 403", () => new Response(null, { status: 403 })],
+  ["a 403 JSON body with no GoTrue error in it", () => json(403, { message: "Forbidden" })],
 ]) {
   await check(`${name} → session kept, refresh tried again later`, async () => {
     const { auth, store, calls, events } = authWith({ stored: signedIn(), answer });

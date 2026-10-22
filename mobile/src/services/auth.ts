@@ -385,13 +385,14 @@ export async function signOut(): Promise<void> {
 
 /**
  * Internal refresh that keeps the failure kinds apart. A refresh token GoTrue
- * refuses (400 refresh_token_not_found / invalid_grant, 401, 403) means the
- * session is gone; a network failure (status 0, timeout, 429, 5xx) or an
- * unusable 200 means WE DON'T KNOW — the refresh token is untouched in
- * SecureStore and the next online attempt will likely succeed. Collapsing
- * both into null is what made the app tell an offline-but-signed-in user to go
- * type her password again; counting only 401 as final kept a dead session as
- * "offline" forever (utils/account-session.ts `refreshFailure`).
+ * refuses (400 refresh_token_not_found / invalid_grant, 403 session_expired,
+ * 401) means the session is gone; a network failure (status 0, timeout, 429,
+ * 5xx), a 400 / 403 page GoTrue did not write (Cloudflare's block page, a
+ * proxy's) or an unusable 200 means WE DON'T KNOW — the refresh token is
+ * untouched in SecureStore and the next online attempt will likely succeed.
+ * Collapsing both into null is what made the app tell an offline-but-signed-in
+ * user to go type her password again; counting only 401 as final kept a dead
+ * session as "offline" forever (utils/account-session.ts `refreshFailure`).
  */
 const _refresh = singleFlight(_refreshOnce);
 
@@ -406,7 +407,7 @@ async function _refreshOnce(): Promise<AuthSession | "offline" | null> {
     return (await persistSession(data, stored.email)) ?? "offline";
   } catch (err) {
     // Refresh tokens don't come back — a refused one is a real logout.
-    if (err instanceof AuthError && refreshFailure(err.status) === "signed_out") {
+    if (err instanceof AuthError && refreshFailure(err.status, err.code) === "signed_out") {
       await clearSession();
       return null;
     }

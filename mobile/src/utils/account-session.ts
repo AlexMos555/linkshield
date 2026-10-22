@@ -82,18 +82,38 @@ export function accountFailure(error: ApiFailureLike | null | undefined): Accoun
 }
 
 /**
- * What a failed refresh_token grant means (HTTP status; 0 = no answer):
+ * An error name GoTrue itself wrote (the body's error_code or error:
+ * refresh_token_not_found, session_expired, invalid_grant…). services/auth.ts
+ * goTrue() names an error it could not read "auth_error", and one whose body
+ * carries only a number by that number.
+ */
+function isGoTrueErrorCode(code: string | null | undefined): boolean {
+  return typeof code === "string" && code !== "auth_error" && /^[a-z][a-z0-9_]*$/.test(code);
+}
+
+/**
+ * What a failed refresh_token grant means (HTTP status, 0 = no answer, and
+ * the AuthError code goTrue() made of the body):
  *   signed_out — GoTrue refused the refresh token: 400 for a dead one
  *                (refresh_token_not_found, refresh_token_already_used,
- *                invalid_grant), 401, 403 (session_expired). It never comes
- *                back, so the session ends here;
+ *                invalid_grant), 403 (session_expired, session_not_found),
+ *                any 401. It never comes back, so the session ends here;
  *   offline    — no answer, a timeout, 429, 5xx, anything else: we don't
  *                know, so the session is kept and the refresh tried later.
+ *                That includes a 400 / 403 with no GoTrue error in the body
+ *                (an HTML page, an empty one): *.supabase.co sits behind
+ *                Cloudflare, whose block / challenge page reaches phones on
+ *                a VPN or Tor exit with a bad name, and a proxy can answer
+ *                400 itself. Signing out on those would be for good — signing
+ *                back in from that network fails too.
  * Only 401 used to count, so a dead session was kept as "offline" forever.
- * The extension draws the same line (scripts/test-extension-auth.mjs).
+ * The extension ends the session on any 4xx but 408 / 429
+ * (scripts/test-extension-auth.mjs); the phone is stricter about who answered.
  */
-export function refreshFailure(status: number): "signed_out" | "offline" {
-  return status === 400 || status === 401 || status === 403 ? "signed_out" : "offline";
+export function refreshFailure(status: number, code?: string | null): "signed_out" | "offline" {
+  if (status === 401) return "signed_out";
+  if ((status === 400 || status === 403) && isGoTrueErrorCode(code)) return "signed_out";
+  return "offline";
 }
 
 const KNOWN_PLANS = new Set(["free", "personal", "family", "business"]);
