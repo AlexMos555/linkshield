@@ -147,8 +147,8 @@ MIN_INTERVAL_S = {
 # never measured. The public check also takes the header the Android app
 # sends, X-Cleanway-Install: a random per-install UUID
 # (api/services/rate_limiter.install_key). Limits then apply per install —
-# 600 checks an hour, 5 fresh a minute — under a per-IP ceiling of 1,500
-# checks an hour and 60 fresh a minute (api/config.py).
+# 600 checks an hour, 5 fresh a minute — under per-IP ceilings of 15,000
+# checks an hour, 1,500 fresh an hour and 60 fresh a minute (api/config.py).
 #
 # Why this is legitimate for our own benchmark:
 #   * The id is unauthenticated and random by design; the server keeps only
@@ -176,7 +176,9 @@ MIN_INTERVAL_S = {
 INSTALL_HEADER = "X-Cleanway-Install"
 PARALLEL_INSTALLS = 4
 REQUESTS_PER_INSTALL = 50
-IP_HOURLY_CEILING = 1500   # api/config.py public_install_ip_ceiling_per_window
+# The tighter per-IP hourly ceiling for these (mostly fresh) checks:
+# api/config.py public_fresh_ip_ceiling_per_window.
+IP_HOURLY_CEILING = 1500
 IP_HOURLY_BUDGET = 1400    # what one run allows itself, under that ceiling
 _HOUR_S = 3600.0
 

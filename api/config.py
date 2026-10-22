@@ -192,8 +192,14 @@ class Settings(BaseSettings):
     # Cache hits and allowlisted names cost nearly nothing; what an install
     # can make the analyzer spend is still the 5 fresh analyses a minute.
     public_install_rate_limit_per_window: int = 600
-    public_install_ip_ceiling_per_window: int = 1500
+    # The per-IP ceiling on all those requests grew with the budget (25
+    # installs at their full budget, as 1500 was for 60): a few browsers
+    # scanning links behind a carrier's NAT must not 429 every phone there.
+    public_install_ip_ceiling_per_window: int = 15000
+    # Fresh analyses — the expensive part — have their own per-IP ceilings,
+    # a minute's and an hour's. Cache hits and allowlisted names never count.
     public_fresh_ip_ceiling_per_minute: int = 60
+    public_fresh_ip_ceiling_per_window: int = 1500
     # The install id is not authenticated, so one address that rotates random
     # ids reaches the ceilings above (1500 fresh analyses an hour instead of
     # 60). The ceilings are that address's bound; the paid sources a fresh

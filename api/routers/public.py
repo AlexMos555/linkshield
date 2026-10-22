@@ -74,6 +74,7 @@ _PARTIAL_CACHE_TTL_SECONDS = 60 * 60
 # catches a bug in that enforcement, so a request can never hang.
 _BACKSTOP_GRACE_SECONDS = 1.0
 _FRESH_WINDOW_SECONDS = 60
+_FRESH_HOUR_SECONDS = 60 * 60
 
 # Android 1.0.1 — on phones today — localizes a reason by its code and shows
 # the English `detail` for any code it does not know, and it knows none of the
@@ -213,31 +214,34 @@ async def public_check(domain: str, request: Request):
 
 
 async def _enforce_fresh_check_budget(request: Request) -> None:
-    """At most N fresh analyses a minute: per IP, or per install under a
-    per-IP ceiling. Cache hits, allowlisted and blocklisted domains never
-    get here. The benchmark bypass skips it, as the config promises."""
+    """At most N fresh analyses a minute: per IP, or per install under
+    per-IP ceilings (a minute's and an hour's). Cache hits, allowlisted and
+    blocklisted domains never get here. The benchmark bypass skips it, as
+    the config promises."""
     if benchmark_bypass(request):
         return
     settings = get_settings()
     ikey = install_key(request)
     client_ip = ip_rate_key(_extract_client_ip(request))
+    minute, hour = (_FRESH_WINDOW_SECONDS, "minute"), (_FRESH_HOUR_SECONDS, "hour")
     if ikey:
         limits = (
-            (f"public_rate:install:{ikey}", settings.public_fresh_checks_per_minute),
-            (f"public_rate:ip_ceiling:{client_ip}", settings.public_fresh_ip_ceiling_per_minute),
+            (f"public_rate:install:{ikey}", settings.public_fresh_checks_per_minute, minute),
+            (f"public_rate:ip_ceiling:{client_ip}", settings.public_fresh_ip_ceiling_per_minute, minute),
+            (f"public_rate:ip_ceiling_hour:{client_ip}", settings.public_fresh_ip_ceiling_per_window, hour),
         )
     else:
-        limits = ((f"public_rate:{client_ip}", settings.public_fresh_checks_per_minute),)
+        limits = ((f"public_rate:{client_ip}", settings.public_fresh_checks_per_minute, minute),)
     try:
         from api.services.cache import get_redis
         r = await get_redis()
-        for key, limit in limits:
-            if await _incr_with_ttl_on_first(r, key, _FRESH_WINDOW_SECONDS) > limit:
+        for key, limit, (window, unit) in limits:
+            if await _incr_with_ttl_on_first(r, key, window) > limit:
                 raise HTTPException(
                     429,
-                    f"Rate limit exceeded ({limit} fresh checks per minute). "
-                    "Please try again in a minute.",
-                    headers={"Retry-After": str(await _seconds_left(r, key))},
+                    f"Rate limit exceeded ({limit} fresh checks per {unit}). "
+                    f"Please try again in a {unit}.",
+                    headers={"Retry-After": str(await _seconds_left(r, key, window))},
                 )
     except HTTPException:
         raise
@@ -245,13 +249,13 @@ async def _enforce_fresh_check_budget(request: Request) -> None:
         pass  # Redis down — allow request
 
 
-async def _seconds_left(r, key: str) -> int:
+async def _seconds_left(r, key: str, window: int) -> int:
     """Seconds until a fresh-check window ends, for Retry-After."""
     try:
         ttl = int(await r.ttl(key))
     except Exception:
         ttl = -1
-    return ttl if 0 < ttl <= _FRESH_WINDOW_SECONDS else _FRESH_WINDOW_SECONDS
+    return ttl if 0 < ttl <= window else window
 
 
 async def _analyze_once(domain: str) -> DomainResult:
