@@ -3825,7 +3825,8 @@
       "delete_store_open": "Buka {{store}}",
       "delete_store_continue": "Tetap hapus",
       "restore_desc_appstore": "Berlangganan dengan Apple ID ini di ponsel atau akun lain? Pindahkan ke sini",
-      "cancel_note_appstore": "Langganan ini ditagih oleh Apple, jadi hanya Apple yang bisa membatalkannya: Pengaturan → nama Anda → Langganan → Cleanway. Menghapus akun Cleanway tidak membatalkannya."
+      "cancel_note_appstore": "Langganan ini ditagih oleh Apple, jadi hanya Apple yang bisa membatalkannya: Pengaturan → nama Anda → Langganan → Cleanway. Menghapus akun Cleanway tidak membatalkannya.",
+      "locked_dismiss": "Nanti saja"
     },
     "paywall": {
       "close": "Tutup",
@@ -3968,6 +3969,13 @@
         "error_add": "iPhone Anda tidak menyimpan pengaturan. Coba lagi; jika terus gagal, perbarui Cleanway.",
         "error_remove": "iPhone Anda tidak menghapus pengaturan. Anda bisa menghapusnya di Pengaturan → Umum → VPN & Manajemen Perangkat → DNS."
       }
+    },
+    "fallback": {
+      "not_found_title": "Cleanway tidak bisa membuka tautan ini",
+      "not_found_body": "Mungkin tautan ini untuk versi aplikasi yang lebih baru. Perbarui Cleanway, atau buka layar utama.",
+      "error_title": "Terjadi kesalahan",
+      "error_body": "Layar ini tidak bisa ditampilkan. Kembali ke layar utama dan coba lagi dari sana.",
+      "home": "Buka layar utama"
     }
   }
 }

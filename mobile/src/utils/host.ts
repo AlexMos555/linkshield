@@ -21,9 +21,12 @@ import { toASCII } from "punycode";
  *
  * Returns null when there is no plausible hostname, so callers can show their
  * "that doesn't look like a link" copy instead of shipping junk to the API.
+ * Anything that is not a string is no hostname either: a repeated deep-link
+ * param arrives as an array, and calling .trim() on it threw during render.
  */
-export function toCheckableHost(input: string): string | null {
-  let s = (input || "").trim();
+export function toCheckableHost(input: unknown): string | null {
+  if (typeof input !== "string") return null;
+  let s = input.trim();
   if (!s) return null;
 
   // Payload formats that are not links at all. A QR business card or wifi

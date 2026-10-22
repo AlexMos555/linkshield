@@ -3765,7 +3765,8 @@
       "delete_store_open": "Abrir {{store}}",
       "delete_store_continue": "Eliminar de todos modos",
       "restore_desc_appstore": "¿Te suscribiste con este Apple ID en otro teléfono o cuenta? Tráela aquí",
-      "cancel_note_appstore": "Apple cobra esta suscripción, así que solo Apple puede cancelarla: Ajustes → tu nombre → Suscripciones → Cleanway. Eliminar tu cuenta de Cleanway no la cancela."
+      "cancel_note_appstore": "Apple cobra esta suscripción, así que solo Apple puede cancelarla: Ajustes → tu nombre → Suscripciones → Cleanway. Eliminar tu cuenta de Cleanway no la cancela.",
+      "locked_dismiss": "Ahora no"
     },
     "paywall": {
       "close": "Cerrar",
@@ -3908,6 +3909,13 @@
         "error_add": "Tu iPhone no guardó el ajuste. Vuelve a intentarlo; si sigue fallando, actualiza Cleanway.",
         "error_remove": "Tu iPhone no eliminó el ajuste. Puedes eliminarlo en Ajustes → General → VPN y gestión de dispositivos → DNS."
       }
+    },
+    "fallback": {
+      "not_found_title": "Cleanway no puede abrir este enlace",
+      "not_found_body": "Puede que sea para una versión más reciente de la app. Actualiza Cleanway o ve a la pantalla de inicio.",
+      "error_title": "Algo salió mal",
+      "error_body": "No se pudo mostrar esta pantalla. Vuelve a la pantalla de inicio e inténtalo de nuevo desde allí.",
+      "home": "Ir a la pantalla de inicio"
     }
   }
 }

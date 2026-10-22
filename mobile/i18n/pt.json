@@ -1846,6 +1846,7 @@
   "mobile.account.delete_store_continue": "Excluir mesmo assim",
   "mobile.account.restore_desc_appstore": "Assinou com este Apple ID em outro telefone ou conta? Traga para cá",
   "mobile.account.cancel_note_appstore": "Quem cobra esta assinatura é a Apple, então só a Apple pode cancelá-la: Ajustes → seu nome → Assinaturas → Cleanway. Excluir sua conta Cleanway não a cancela.",
+  "mobile.account.locked_dismiss": "Agora não",
   "mobile.paywall.close": "Fechar",
   "mobile.paywall.title": "Verifique sem limites",
   "mobile.paywall.lead": "As verificações detalhadas gratuitas de hoje acabaram. Os sites da nossa lista de golpes continuam bloqueados, com ou sem assinatura.",
@@ -1979,5 +1980,10 @@
   "mobile.ios.dns.step_done": "Feito",
   "mobile.ios.dns.error_status": "Não foi possível ler os ajustes de DNS do seu iPhone. Feche e tente de novo.",
   "mobile.ios.dns.error_add": "Seu iPhone não salvou o ajuste. Tente de novo; se continuar falhando, atualize o Cleanway.",
-  "mobile.ios.dns.error_remove": "Seu iPhone não removeu o ajuste. Você pode removê-lo em Ajustes → Geral → VPN e Gerenciamento de Dispositivos → DNS."
+  "mobile.ios.dns.error_remove": "Seu iPhone não removeu o ajuste. Você pode removê-lo em Ajustes → Geral → VPN e Gerenciamento de Dispositivos → DNS.",
+  "mobile.fallback.not_found_title": "O Cleanway não consegue abrir este link",
+  "mobile.fallback.not_found_body": "Talvez ele seja para uma versão mais recente do app. Atualize o Cleanway ou vá para a tela inicial.",
+  "mobile.fallback.error_title": "Algo deu errado",
+  "mobile.fallback.error_body": "Não foi possível mostrar esta tela. Volte para a tela inicial e tente de novo a partir dela.",
+  "mobile.fallback.home": "Ir para a tela inicial"
 }

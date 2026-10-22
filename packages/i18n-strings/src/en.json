@@ -3767,7 +3767,8 @@
       "delete_store_open": "Open {{store}}",
       "delete_store_continue": "Delete anyway",
       "restore_desc_appstore": "Subscribed with this Apple ID on another phone or account? Bring it here",
-      "cancel_note_appstore": "Apple bills this subscription, so only Apple can cancel it: Settings → your name → Subscriptions → Cleanway. Deleting your Cleanway account does not cancel it."
+      "cancel_note_appstore": "Apple bills this subscription, so only Apple can cancel it: Settings → your name → Subscriptions → Cleanway. Deleting your Cleanway account does not cancel it.",
+      "locked_dismiss": "Not now"
     },
     "paywall": {
       "close": "Close",
@@ -3910,6 +3911,13 @@
         "error_add": "Your iPhone didn't save the setting. Try again; if it keeps failing, update Cleanway.",
         "error_remove": "Your iPhone didn't remove the setting. You can remove it in Settings → General → VPN & Device Management → DNS."
       }
+    },
+    "fallback": {
+      "not_found_title": "Cleanway can't open this link",
+      "not_found_body": "It may be meant for a newer version of the app. Update Cleanway, or go to the home screen.",
+      "error_title": "Something went wrong",
+      "error_body": "This screen couldn't be shown. Go back to the home screen and try again from there.",
+      "home": "Go to the home screen"
     }
   }
 }

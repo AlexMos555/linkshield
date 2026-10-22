@@ -1846,6 +1846,7 @@
   "mobile.account.delete_store_continue": "फिर भी हटाएँ",
   "mobile.account.restore_desc_appstore": "इसी Apple ID से किसी दूसरे फ़ोन या खाते पर सदस्यता ली थी? उसे यहाँ लाएँ",
   "mobile.account.cancel_note_appstore": "इस सदस्यता का बिल Apple बनाता है, इसलिए इसे सिर्फ़ Apple में रद्द किया जा सकता है: सेटिंग्स → आपका नाम → सदस्यताएँ → Cleanway। Cleanway खाता हटाने से यह रद्द नहीं होती।",
+  "mobile.account.locked_dismiss": "अभी नहीं",
   "mobile.paywall.close": "बंद करें",
   "mobile.paywall.title": "बिना सीमा के जाँचें",
   "mobile.paywall.lead": "आज की मुफ़्त विस्तृत जाँचें खत्म हो गईं। हमारी धोखाधड़ी सूची की साइटें फिर भी ब्लॉक रहती हैं — सदस्यता हो या न हो।",
@@ -1979,5 +1980,10 @@
   "mobile.ios.dns.step_done": "हो गया",
   "mobile.ios.dns.error_status": "आपके iPhone की DNS सेटिंग्स पढ़ी नहीं जा सकीं। इसे बंद करके फिर से कोशिश करें।",
   "mobile.ios.dns.error_add": "आपके iPhone ने सेटिंग नहीं सहेजी। फिर से कोशिश करें; अगर बार-बार विफल हो, तो Cleanway अपडेट करें।",
-  "mobile.ios.dns.error_remove": "आपके iPhone ने सेटिंग नहीं हटाई। आप इसे सेटिंग्स → सामान्य → VPN और डिवाइस प्रबंधन → DNS में हटा सकते हैं।"
+  "mobile.ios.dns.error_remove": "आपके iPhone ने सेटिंग नहीं हटाई। आप इसे सेटिंग्स → सामान्य → VPN और डिवाइस प्रबंधन → DNS में हटा सकते हैं।",
+  "mobile.fallback.not_found_title": "Cleanway यह लिंक नहीं खोल सकता",
+  "mobile.fallback.not_found_body": "हो सकता है यह ऐप के नए संस्करण के लिए हो। Cleanway अपडेट करें या होम स्क्रीन पर जाएँ।",
+  "mobile.fallback.error_title": "कुछ गड़बड़ हो गई",
+  "mobile.fallback.error_body": "यह स्क्रीन नहीं दिखाई जा सकी। होम स्क्रीन पर लौटें और वहाँ से फिर कोशिश करें।",
+  "mobile.fallback.home": "होम स्क्रीन पर जाएँ"
 }

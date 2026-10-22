@@ -3825,7 +3825,8 @@
       "delete_store_open": "فتح {{store}}",
       "delete_store_continue": "الحذف على أي حال",
       "restore_desc_appstore": "اشتركت بـ Apple ID هذا على هاتف أو حساب آخر؟ انقله إلى هنا",
-      "cancel_note_appstore": "تُحصِّل Apple رسوم هذا الاشتراك، لذا لا يمكن إلغاؤه إلا لدى Apple: الإعدادات ← اسمك ← الاشتراكات ← Cleanway. حذف حساب Cleanway لا يلغيه."
+      "cancel_note_appstore": "تُحصِّل Apple رسوم هذا الاشتراك، لذا لا يمكن إلغاؤه إلا لدى Apple: الإعدادات ← اسمك ← الاشتراكات ← Cleanway. حذف حساب Cleanway لا يلغيه.",
+      "locked_dismiss": "ليس الآن"
     },
     "paywall": {
       "close": "إغلاق",
@@ -3968,6 +3969,13 @@
         "error_add": "لم يحفظ iPhone الإعداد. حاول مجددًا؛ وإذا استمر الفشل، فحدّث Cleanway.",
         "error_remove": "لم يُزِل iPhone الإعداد. يمكنك إزالته من الإعدادات ← عام ← VPN وإدارة الجهاز ← DNS."
       }
+    },
+    "fallback": {
+      "not_found_title": "لا يستطيع Cleanway فتح هذا الرابط",
+      "not_found_body": "ربما هو مخصص لإصدار أحدث من التطبيق. حدّث Cleanway أو انتقل إلى الشاشة الرئيسية.",
+      "error_title": "حدث خطأ ما",
+      "error_body": "تعذّر عرض هذه الشاشة. ارجع إلى الشاشة الرئيسية وحاول مرة أخرى من هناك.",
+      "home": "الانتقال إلى الشاشة الرئيسية"
     }
   }
 }

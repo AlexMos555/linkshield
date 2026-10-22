@@ -37,14 +37,16 @@ const UNSAFE = /[\s\u0000-\u001f\u007f-\u009f\\]/;
 const KEEP = /[A-Za-z0-9\-._~!$&'()*+,;=:@/?]/;
 
 export function browserUrlFor(
-  raw: string | null | undefined,
-  checkedHost: string | null | undefined,
+  raw: unknown,
+  checkedHost: unknown,
 ): string | null {
-  const host = (checkedHost ?? "").trim().toLowerCase();
+  // Route params are not always strings (a repeated one is an array): a
+  // non-string host is no host, a non-string link is no link to rebuild.
+  const host = typeof checkedHost === "string" ? checkedHost.trim().toLowerCase() : "";
   if (!HOSTNAME.test(host)) return null;
   const fallback = `https://${host}/`;
 
-  const s = (raw ?? "").trim();
+  const s = typeof raw === "string" ? raw.trim() : "";
   if (!s || UNSAFE.test(s)) return fallback;
 
   // Only an explicit http(s) scheme. Authority ends at the first / ? #.

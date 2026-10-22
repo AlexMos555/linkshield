@@ -1846,6 +1846,7 @@
   "mobile.account.delete_store_continue": "Tetap hapus",
   "mobile.account.restore_desc_appstore": "Berlangganan dengan Apple ID ini di ponsel atau akun lain? Pindahkan ke sini",
   "mobile.account.cancel_note_appstore": "Langganan ini ditagih oleh Apple, jadi hanya Apple yang bisa membatalkannya: Pengaturan → nama Anda → Langganan → Cleanway. Menghapus akun Cleanway tidak membatalkannya.",
+  "mobile.account.locked_dismiss": "Nanti saja",
   "mobile.paywall.close": "Tutup",
   "mobile.paywall.title": "Periksa tanpa batas",
   "mobile.paywall.lead": "Pemeriksaan rinci gratis hari ini sudah habis. Situs di daftar penipuan kami tetap diblokir, berlangganan atau tidak.",
@@ -1979,5 +1980,10 @@
   "mobile.ios.dns.step_done": "Selesai",
   "mobile.ios.dns.error_status": "Tidak bisa membaca pengaturan DNS iPhone Anda. Tutup ini dan coba lagi.",
   "mobile.ios.dns.error_add": "iPhone Anda tidak menyimpan pengaturan. Coba lagi; jika terus gagal, perbarui Cleanway.",
-  "mobile.ios.dns.error_remove": "iPhone Anda tidak menghapus pengaturan. Anda bisa menghapusnya di Pengaturan → Umum → VPN & Manajemen Perangkat → DNS."
+  "mobile.ios.dns.error_remove": "iPhone Anda tidak menghapus pengaturan. Anda bisa menghapusnya di Pengaturan → Umum → VPN & Manajemen Perangkat → DNS.",
+  "mobile.fallback.not_found_title": "Cleanway tidak bisa membuka tautan ini",
+  "mobile.fallback.not_found_body": "Mungkin tautan ini untuk versi aplikasi yang lebih baru. Perbarui Cleanway, atau buka layar utama.",
+  "mobile.fallback.error_title": "Terjadi kesalahan",
+  "mobile.fallback.error_body": "Layar ini tidak bisa ditampilkan. Kembali ke layar utama dan coba lagi dari sana.",
+  "mobile.fallback.home": "Buka layar utama"
 }

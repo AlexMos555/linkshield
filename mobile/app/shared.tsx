@@ -29,6 +29,7 @@ import { reasonLabel } from "../src/utils/reason-label";
 import { openInBrowser } from "../modules/cleanway-vpn";
 import { toCheckableHost } from "../src/utils/host";
 import { browserUrlFor } from "../src/utils/open-url";
+import { firstValue } from "../src/utils/route-params";
 import { useDomainCheck } from "../src/hooks/useDomainCheck";
 import {
   isNotFound, reasonsToShow, serverLevel, showScore, shownLevel, type ServerAnswer,
@@ -70,7 +71,12 @@ export default function SharedScreen() {
     else router.replace("/(tabs)");
   }, [router]);
   const { t } = useTranslation();
-  const { url, via } = useLocalSearchParams<{ url: string; via?: string }>();
+  // First value of each: a repeated param (cleanway:///shared?url=a&url=b,
+  // which any app or web page can open) arrives as an array, and parsing it
+  // threw during render (src/utils/route-params.ts).
+  const params = useLocalSearchParams<{ url?: string | string[]; via?: string | string[] }>();
+  const url = firstValue(params.url);
+  const via = firstValue(params.via);
   // "Open anyway" on a stopped site during or right after a phone call is
   // the scam's last step: the stop screen comes first (CallGuardProvider).
   const callGuard = useCallGuard();
@@ -82,7 +88,7 @@ export default function SharedScreen() {
   // version leaked query strings and never punycoded IDN hosts. It returns
   // null for junk, which is what finally makes the "No link found" screen
   // below reachable.
-  const domain = toCheckableHost(url || "");
+  const domain = toCheckableHost(url);
   // What "Open in browser" may open: the checked host, rebuilt — never the
   // raw string, which any app can put in this deep link (src/utils/open-url.ts).
   const openTarget = browserUrlFor(url, domain);

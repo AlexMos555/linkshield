@@ -4,7 +4,8 @@
  * Listens on accountLockedEvents (api.ts) — fires the moment any API
  * call returns 410 Gone. When that happens we mount a modal that
  * lets the user one-tap restore their account before the 30-day
- * window expires. On success the flag clears and the modal dismisses.
+ * window expires. On success the modal closes at once (api.ts emits
+ * "restored").
  *
  * If the user dismisses the modal explicitly we don't show it again
  * for the rest of the app session — re-firing on every subsequent
@@ -20,7 +21,7 @@ import { useTranslation } from "react-i18next";
 
 import { accountLockedEvents, restoreAccount } from "../services/api";
 
-type RestoreState = "idle" | "restoring" | "restored" | "error";
+type RestoreState = "idle" | "restoring" | "error";
 
 export function AccountLockedModal(): JSX.Element | null {
   const { t } = useTranslation();
@@ -49,11 +50,9 @@ export function AccountLockedModal(): JSX.Element | null {
   async function handleRestore() {
     setState("restoring");
     const ok = await restoreAccount();
-    setState(ok ? "restored" : "error");
-    if (ok) {
-      // Brief success flash, then close.
-      setTimeout(() => setVisible(false), 1200);
-    }
+    // No success frame to show: on success restoreAccount emits "restored"
+    // before it returns, and handleRestored has already closed the modal.
+    if (!ok) setState("error");
   }
 
   function handleDismiss() {
@@ -75,11 +74,7 @@ export function AccountLockedModal(): JSX.Element | null {
           <Text style={styles.icon} accessibilityElementsHidden importantForAccessibility="no">
             ⏳
           </Text>
-          <Text style={styles.title}>
-            {state === "restored"
-              ? t("extension.popup.locked_restoring")
-              : t("extension.popup.locked_title")}
-          </Text>
+          <Text style={styles.title}>{t("extension.popup.locked_title")}</Text>
           <Text style={styles.body}>{t("extension.popup.locked_body")}</Text>
 
           {state === "error" && (
@@ -94,7 +89,7 @@ export function AccountLockedModal(): JSX.Element | null {
               state === "restoring" && styles.primaryBtnDisabled,
             ]}
             onPress={handleRestore}
-            disabled={state === "restoring" || state === "restored"}
+            disabled={state === "restoring"}
             accessibilityRole="button"
             accessibilityLabel={t("extension.popup.locked_restore_cta")}
           >
@@ -110,12 +105,9 @@ export function AccountLockedModal(): JSX.Element | null {
             onPress={handleDismiss}
             accessibilityRole="button"
           >
-            <Text style={styles.secondaryBtnText}>
-              {/* Dismiss is a session-only opt-out — no localized key
-                  needed (intentionally low-friction; the modal will
-                  return on next cold boot if still locked). */}
-              Dismiss
-            </Text>
+            {/* A session-only opt-out: the modal returns on the next cold
+                boot if the account is still on hold. */}
+            <Text style={styles.secondaryBtnText}>{t("mobile.account.locked_dismiss")}</Text>
           </Pressable>
         </View>
       </View>
