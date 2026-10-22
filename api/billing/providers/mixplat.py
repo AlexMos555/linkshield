@@ -61,6 +61,8 @@ from api.billing.providers.base import (
 API_VERSION = 3
 PAYMENT_METHOD_MOBILE = "mobile"
 DEFAULT_TIMEOUT_SECONDS = 10.0
+# 4xx statuses that mean "not now" rather than "no": retried / reconciled like a 5xx.
+_TRANSIENT_4XX = frozenset({408, 429})
 
 # status_extended → our reason. Undocumented operator codes fall to OTHER.
 _FAILURE_MAP: Mapping[str, FailureReason] = {
@@ -310,5 +312,9 @@ class MixplatProvider:
 
         async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT_SECONDS) as client:
             response = await client.post(url, json=dict(body))
+            # A 4xx is MIXPLAT rejecting the request itself (signature, project, body): nothing
+            # was started, so it is a refusal. 5xx, 408 and 429 stay ambiguous (_call → unknown).
+            if 400 <= response.status_code < 500 and response.status_code not in _TRANSIENT_4XX:
+                raise ProviderError(f"MIXPLAT HTTP {response.status_code}")
             response.raise_for_status()
             return response.json()

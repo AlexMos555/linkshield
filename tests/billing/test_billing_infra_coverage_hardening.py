@@ -350,6 +350,48 @@ async def test_mixplat_transport_failures_are_unknown_outcomes_not_refusals(mixp
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 405, 409, 422])
+async def test_mixplat_4xx_is_a_definite_refusal(mixplat_http, status):
+    """A 4xx is MIXPLAT saying no to this request (bad signature, unknown project, malformed
+    body): nothing was started, so the attempt fails now instead of waiting on a reconciler."""
+    state, mp = mixplat_http
+    state["handler"] = lambda request: httpx.Response(status, json={"result": "error"})
+    with pytest.raises(ProviderError, match=f"HTTP {status}") as err:
+        await mp.charge_renewal(provider_subscription_id="R1", amount_kopecks=9900, idempotency_key="k1")
+    assert not isinstance(err.value, ProviderUnavailable)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [408, 429, 500, 502, 503, 504])
+async def test_mixplat_timeouts_throttling_and_5xx_stay_unknown(mixplat_http, status):
+    """408 / 429 are 'not now', and a 5xx may have happened after the charge: retry or reconcile."""
+    state, mp = mixplat_http
+    state["handler"] = lambda request: httpx.Response(status, text="busy")
+    with pytest.raises(ProviderUnavailable):
+        await mp.charge_renewal(provider_subscription_id="R1", amount_kopecks=9900, idempotency_key="k1")
+
+
+@pytest.mark.asyncio
+async def test_a_mixplat_4xx_on_checkout_closes_the_intent_at_once(mixplat_http, ctx):
+    """End to end through the service: a refused checkout is closed, not kept for reconciliation."""
+    from api.billing.service import checkout as checkout_service
+    from api.billing.service.errors import NotConfigured
+    from tests.billing.conftest import SUCCESS_NUMBER
+    from tests.billing.test_flows import CONSENT, _device
+
+    state, mp = mixplat_http
+    state["handler"] = lambda request: httpx.Response(403, json={"result": "error"})
+    ctx.providers["mixplat"] = mp
+    device, _ = await _device(ctx)
+    with pytest.raises(NotConfigured):
+        await checkout_service.start_checkout(ctx, device, plan_code="solo", provider_code="mixplat",
+                                              msisdn=SUCCESS_NUMBER, consent_doc_version=CONSENT)
+    assert ctx.store.tables.subscriptions == {}
+    actions = [a.action for a in ctx.store.tables.audit]
+    assert "checkout.provider_refused" in actions and "checkout.provider_unreachable" not in actions
+
+
+@pytest.mark.asyncio
 async def test_mixplat_ok_reply_without_a_payment_id_is_a_refusal():
     async def no_id(url, body):
         return {"result": "ok"}
