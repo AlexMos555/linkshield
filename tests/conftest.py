@@ -13,6 +13,10 @@ os.environ.setdefault(
     "SUPABASE_JWT_SECRET", "test-secret-for-development-only-not-for-production-use"
 )
 
+# Per-module coverage floors for security/money-critical code, enforced on
+# any run with --cov-fail-under (i.e. CI). See scripts/check_critical_coverage.py.
+from tests.critical_coverage_plugin import pytest_runtestloop  # noqa: E402,F401
+
 
 # ─── Shared FakeRedis ──────────────────────────────────────────────
 #
