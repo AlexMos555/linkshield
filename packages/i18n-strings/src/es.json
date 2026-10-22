@@ -2172,7 +2172,8 @@
     },
     "meta": {
       "title": "Cleanway — protección contra sitios fraudulentos",
-      "description": "Cleanway para Android bloquea sitios fraudulentos y de phishing conocidos en todas las aplicaciones del teléfono. Gratis y sin cuenta."
+      "description": "Cleanway para Android bloquea sitios fraudulentos y de phishing conocidos en todas las aplicaciones del teléfono. Gratis y sin cuenta.",
+      "home_title": "Cleanway — Protección contra fraudes que respeta tu privacidad"
     },
     "check": {
       "index_title": "¿Es seguro este sitio?",
@@ -2211,7 +2212,9 @@
       "share_title": "¿Es seguro {domain}?",
       "invalid_input": "Eso no parece el nombre de un sitio. Escribe algo como example.com.",
       "share_grade_text": "{domain}: nota de privacidad de Cleanway — {grade}",
-      "share_grade_title": "{domain}: nota de privacidad"
+      "share_grade_title": "{domain}: nota de privacidad",
+      "index_meta_title": "¿Es seguro este sitio? — Cleanway",
+      "index_meta_description": "Escribe el nombre de un sitio o un enlace para ver si parece una estafa."
     },
     "not_found": {
       "title": "Página no encontrada",

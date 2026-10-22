@@ -688,11 +688,10 @@ console.log("SEO metadata strings + indexable /check sites");
   // (each page's generateMetadata). A missing key renders the key name itself
   // as the title — in search results, in that language, for every page.
   const META_KEYS = {
-    Meta: ["title", "description"],
-    Hero: ["title_part1", "title_part2"],
+    Meta: ["title", "description", "home_title"],
     Android: ["og_title", "og_description"],
     Support: ["title", "subtitle"],
-    Check: ["index_title", "index_subtitle", "meta_title", "meta_description", "heading", "og_description"],
+    Check: ["index_meta_title", "index_meta_description", "meta_title", "meta_description", "heading", "og_description"],
     Pricing: ["page_title", "hero_subtitle", "free_title", "free_subtitle"],
     Billing: ["meta_title", "meta_description"],
     Transparency: ["page_title", "page_description"],
@@ -730,10 +729,10 @@ console.log("SEO metadata strings + indexable /check sites");
       const m = served(locale);
       const titles = [
         m.Meta.title,
-        `Cleanway — ${m.Hero.title_part1} ${m.Hero.title_part2}`,
+        m.Meta.home_title,
         m.Android.og_title,
         `${m.Support.title} — Cleanway`,
-        `${m.Check.index_title} — Cleanway`,
+        m.Check.index_meta_title,
         `${m.Transparency.page_title} — Cleanway`,
         `${m.Methodology.page_title} — Cleanway`,
         `${m.Dns.page_title} — Cleanway`,

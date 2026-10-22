@@ -621,7 +621,8 @@
   },
   "Meta": {
     "title": "Cleanway — حماية من مواقع الاحتيال",
-    "description": "يحظر Cleanway لأندرويد مواقع الاحتيال والتصيد المعروفة في كل تطبيقات هاتفك. مجانًا ودون حساب."
+    "description": "يحظر Cleanway لأندرويد مواقع الاحتيال والتصيد المعروفة في كل تطبيقات هاتفك. مجانًا ودون حساب.",
+    "home_title": "Cleanway — حماية من الاحتيال تحترم خصوصيتك"
   },
   "Check": {
     "index_title": "هل هذا الموقع آمن؟",
@@ -660,7 +661,9 @@
     "share_title": "هل {domain} آمن؟",
     "invalid_input": "لا يبدو هذا اسم موقع. اكتب مثلًا example.com.",
     "share_grade_text": "{domain}: درجة الخصوصية لدى Cleanway — {grade}",
-    "share_grade_title": "{domain}: درجة الخصوصية"
+    "share_grade_title": "{domain}: درجة الخصوصية",
+    "index_meta_title": "هل هذا الموقع آمن؟ — Cleanway",
+    "index_meta_description": "أدخل اسم موقع أو رابطًا لترى إن كان يبدو احتياليًا."
   },
   "NotFound": {
     "title": "الصفحة غير موجودة",

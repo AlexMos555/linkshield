@@ -2172,7 +2172,8 @@
     },
     "meta": {
       "title": "Cleanway — proteção contra sites de golpe",
-      "description": "O Cleanway para Android bloqueia sites de golpe e de phishing conhecidos em todos os aplicativos do celular. Grátis, sem precisar de conta."
+      "description": "O Cleanway para Android bloqueia sites de golpe e de phishing conhecidos em todos os aplicativos do celular. Grátis, sem precisar de conta.",
+      "home_title": "Cleanway — Proteção contra fraudes que respeita sua privacidade"
     },
     "check": {
       "index_title": "Este site é seguro?",
@@ -2211,7 +2212,9 @@
       "share_title": "{domain} é seguro?",
       "invalid_input": "Isso não parece o nome de um site. Digite algo como example.com.",
       "share_grade_text": "{domain}: nota de privacidade do Cleanway — {grade}",
-      "share_grade_title": "{domain}: nota de privacidade"
+      "share_grade_title": "{domain}: nota de privacidade",
+      "index_meta_title": "Este site é seguro? — Cleanway",
+      "index_meta_description": "Digite o nome de um site ou um link para ver se ele parece golpe."
     },
     "not_found": {
       "title": "Página não encontrada",

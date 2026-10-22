@@ -22,7 +22,6 @@ export async function generateMetadata({ params }: HomeProps): Promise<Metadata>
   const safeLocale: Locale = isLocaleKnown ? (locale as Locale) : routing.defaultLocale;
   setRequestLocale(safeLocale);
   const meta = await getTranslations({ locale: safeLocale, namespace: "Meta" });
-  const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
   // Self canonical + every locale + x-default, no trailing slash: /ru/ is a
   // redirect to /ru, and a canonical must name the page itself.
   const alternates = localeAlternates(safeLocale, "/");
@@ -30,7 +29,9 @@ export async function generateMetadata({ params }: HomeProps): Promise<Metadata>
 
   // This is also the Telegram / WhatsApp link preview, so it has to be in the
   // page's language and say only what the product does today.
-  const title = `Cleanway — ${hero("title_part1")} ${hero("title_part2")}`.trim();
+  // Its own string (Meta.home_title), so a locale can name what people search
+  // for without changing the hero heading.
+  const title = meta("home_title");
   const description = meta("description");
 
   return {
