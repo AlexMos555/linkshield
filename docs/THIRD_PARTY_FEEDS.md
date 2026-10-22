@@ -150,31 +150,60 @@ the free mirrors. Do not re-weight the scorer blind.
 
 | Source | Terms | Use |
 |---|---|---|
-| PhishDestroy DestroyList (DNS-verified) | CC0 1.0 dataset, named fit for commercial products and ML training; repo MIT (read 2026-10-21) | Phishing corpus, at most 3,500 hosts |
-| CERT Polska Lista Ostrzeżeń | API spec §1: processing without restriction (read 2026-09-21) | Phishing corpus, at most 3,500 hosts |
-| TweetFeed `year.csv` | CC0 1.0 (README; the abuse.ch `external` block is never read) | Phishing corpus, at most 3,500 hosts |
+| PhishDestroy DestroyList (DNS-verified) | CC0 1.0 dataset, named fit for commercial products and ML training; repo MIT (read 2026-10-21) | Phishing corpus, at most 6,000 hosts (3,500 until 2026-10-22) |
+| CERT Polska Lista Ostrzeżeń | API spec §1: processing without restriction (read 2026-09-21) | Phishing corpus, at most 6,000 hosts |
+| TweetFeed `year.csv` | CC0 1.0 (README; the abuse.ch `external` block is never read) | Phishing corpus, at most 6,000 hosts |
 | Phishunt `feed.txt` | CC0 1.0 (terms §7) | Phishing corpus (~1,400 hosts, all it carries) |
-| Tranco top-1M | Free research list | Benign corpus |
+| Tranco top-1M, and with subdomains | No licence stated for the list itself (tranco-list.eu, read 2026-10-22); its default list averages five providers: Cisco Umbrella ("free of charge"), Majestic (CC BY 3.0), CrUX (CC BY-SA 4.0), Farsight (none stated) and **Cloudflare Radar (CC BY-NC 4.0)** — see *Open — the benign list* below | Benign corpus: famous / long tail / host shapes / tenants, and since 2026-10-22 the Russian, IDN, brand-named and lure-word strata (`ml/train_model.load_benign_domains`) |
+| `data/typosquat_targets_ru.json` — the `official` and `unrelated` domains | Our own hand verification (name servers, Wikidata P856, whois; 2026-09-27) — first-party data | Benign corpus since 2026-10-22: ~340 real sites that carry a brand's name (gosuslugi29.ru, sberbank1.ru, sberbank.cz), three times each; the ones in the held-out sets are left out |
+| Synthetic tenants | Built from the Tranco names above (a ranked site's label under a curated hosting platform) | Benign corpus since 2026-10-22, ~2,000: what a real site's name looks like on pages.dev |
 
 Since 2026-10-21. Before: the URLhaus full dump (abuse.ch ToU 2025-11-04:
 non-commercial, no derivative works — a trained model is a derivative; the
 anonymous download answers 410 Gone since that day) and the OpenPhish public
 feed (terms: no "product development", "detection" or "customer
-protection"). **Not used for training**: Phishing.Database (MIT on the
+protection"). **Removed from training**: URLhaus and OpenPhish (both
+2026-10-21). **Not used for training**: Phishing.Database (MIT on the
 compilation, sources unnamed — waits on the provenance e-mail in §1),
-phishing.army (CC BY-NC), PhishTank (needs a key).
+phishing.army (CC BY-NC), PhishTank (needs a key; the weekly benchmark's
+held-out PhishTank sample is evaluation only, never a training row).
 
-**Open — the served model**: `data/phishing_model.onnx` (2026-10-21, AUC
-0.9703) was still trained on URLhaus + OpenPhish. A model trained on the
-clean corpus above is all domain names (URLhaus was ~80% bare IPs) and on
-2026-10-21 it failed the retrain gates — it scored
-official-shop.myshopify.com 0.59 and flagged 6 held-out Russian sites (limit
-3) — and put 69 of 539 held-out real sites above 0.6, where the served model
-puts none. `ml/train_model.py` therefore keeps the served model unless a
-candidate is no worse on those sites (replacement guard), so the weekly job
-stays green and commits nothing until the clean corpus produces a model that
-is. Keeping the old model, switching the model off, or shipping the clean
-one anyway (`--replace-anyway`) is a founder decision.
+**The served model**: `data/phishing_model.onnx` (2026-10-21, AUC 0.9703)
+was still trained on URLhaus + OpenPhish. A model trained on the clean
+corpus above failed the retrain gates on 2026-10-21 (official-shop.myshopify.com
+0.59, 6 held-out Russian sites flagged, 69 of 539 held-out real sites over
+0.6 where the served model puts none), so the replacement guard kept the
+served one. The cause was the benign class, not the feeds; since 2026-10-22
+`ml/train_model.py` draws it differently (see `N_BENIGN` there: Russian and
+IDN names, brand-named and generic-lure-word real sites, the hand-verified
+brand file, synthetic tenants, 48,000 samples weighted 3:1, the mean of three
+models). Measured offline on the 2026-10-21 feeds, five seeds of the whole
+pipeline (refresh → train → every gate in `retrain-ml.yml` → full test
+suite) all pass and all replace the served model; held-out numbers, served →
+clean (range over the five seeds):
+
+| Held-out set | Served (URLhaus + OpenPhish) | Clean, 2026-10-22 |
+|---|---|---|
+| Fresh phishing (PhishTank, 30 days, not in any training feed), model > 0.6 | 30.1% | 42.7-44.0% |
+| — at the served model's false-positive rate | 30.7% | 39.6-41.3% |
+| — ROC AUC against real long-tail + Russian sites | 0.861 | 0.892-0.896 |
+| Real Russian sites (539), model > 0.6 | 0 | 0-1 (beeline-online.info) |
+| Tranco rank > 10k, a bucket never trained on, model > 0.6 | 0.47% | 0.73-0.83% |
+| Name-only verdict not "safe": fresh phishing / Tranco > 100k / Russian sites | 52.4% / 3.60% / 0.19% | 51.2-52.1% / 3.60-3.74% / 0.19-0.37% |
+| Russian look-alikes (186) caught by the verdict | 93.6% | 93.0% |
+
+So the first weekly retrain after the change ships a model with no
+non-commercial training data. Until then the served file is the old one.
+
+**Open — the benign list**: Tranco states no licence for its lists, and its
+default list averages Cloudflare Radar, which is CC BY-NC 4.0 (alongside
+Umbrella, Majestic CC BY 3.0, CrUX CC BY-SA 4.0, Farsight). Every benign
+sample above, and `in_top_domains`, come from it. A Tranco list configured
+without Cloudflare Radar (tranco-list.eu "Configure", which needs an
+account — a founder step), or Majestic Million alone, would remove the
+question; switching `TRANCO` / `TRANCO_SUBDOMAINS` in
+`scripts/refresh_training_feeds.py` to that list's permanent ID is the code
+change, and the same five-seed check decides it.
 
 ## 4. Considered and not used
 

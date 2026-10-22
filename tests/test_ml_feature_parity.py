@@ -300,7 +300,7 @@ def data_dir(tmp_path, train_model, monkeypatch):
         "url",
         "http://94.183.174.80:4000/i",
         "http://110.36.2.23/bin.sh",
-        "https://paypal.account-verify.tk/login",
+        "https://paypal.account-check.tk/login",
         "https://94.183.174.80/other",
         "https://evil.gov.spb.ru/x",
         "https://sberbamk.ru/",
@@ -309,7 +309,7 @@ def data_dir(tmp_path, train_model, monkeypatch):
     _write(tmp_path / "top-1m.csv", "\n".join(
         [f"{i},famous{i}.com" for i in range(1, 41)]
         + [f"{10000 + i},tail{i}.org" for i in range(1, 121)]
-        + ["20001,gov.spb.ru", "20002,paypal.account-verify.tk"]
+        + ["20001,gov.spb.ru", "20002,paypal.account-check.tk"]
     ) + "\n")
     _write(tmp_path / "top-1m-subdomains.csv", "\n".join(
         [f"{i},www.site{i}.com" for i in range(1, 61)]
@@ -336,9 +336,9 @@ TENANT_FIXTURES = {"someone.github.io", "malsup.github.io", "www.foo.github.io",
 
 def test_phishing_names_come_before_ip_literals(train_model, data_dir):
     hosts = train_model.load_phishing_domains(10)
-    assert hosts == ["paypal.account-verify.tk", "evil.gov.spb.ru", "sberbamk.ru",
+    assert hosts == ["paypal.account-check.tk", "evil.gov.spb.ru", "sberbamk.ru",
                      "94.183.174.80", "110.36.2.23", "2001:db8::1"]
-    assert train_model.load_phishing_domains(2) == ["paypal.account-verify.tk", "evil.gov.spb.ru"]
+    assert train_model.load_phishing_domains(2) == ["paypal.account-check.tk", "evil.gov.spb.ru"]
 
 
 def test_held_out_hosts_never_reach_either_class(train_model, data_dir):
@@ -347,7 +347,7 @@ def test_held_out_hosts_never_reach_either_class(train_model, data_dir):
     assert "evil.gov.spb.ru" not in phishing
     benign = train_model.load_benign_domains(40, exclude=phishing, held_out=held_out)
     assert not [d for d in benign if registrable_domain(d) == "gov.spb.ru"]
-    assert "paypal.account-verify.tk" not in benign
+    assert "paypal.account-check.tk" not in benign
 
 
 def test_the_benign_class_has_host_shapes(train_model, data_dir):

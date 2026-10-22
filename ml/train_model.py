@@ -12,8 +12,17 @@ Data sources (refreshed by scripts/refresh_training_feeds.py, weekly in
                          Russian zones, subdomains of registered sites and
                          tenants of the curated hosting platforms (see
                          load_benign_domains)
+                         data/typosquat_targets_ru.json — the hand-verified
+                         brand-owned and look-alike-but-unrelated real sites
+                         (load_verified_brand_sites)
+                         Since 2026-10-22 2.4 times the phishing class, with
+                         Russian, IDN, brand-named, lure-word and tenant
+                         strata (clean-corpus fix, see N_BENIGN)
   - Held out: every host in HELD_OUT_FILES, by registrable domain, is kept
-    out of BOTH classes, so those sets stay an honest evaluation.
+    out of BOTH classes, so those sets stay an honest evaluation; so is
+    every host the workflow's gates name (GATE_HOSTS), exactly.
+  - Model: the mean of ENSEMBLE_MEMBERS CatBoost models (one file), split
+    by registrable domain for the test AUC (split_group).
   - Replacement guard: the committed model is overwritten only when the
     candidate flags no more held-out real sites than it does (see
     REPLACE_TOLERANCE); otherwise train() prints a ::warning:: and leaves
@@ -28,17 +37,22 @@ build_feature_matrix() are importable without them, which is how the test
 suite checks that training and serving build the same vector.
 """
 
+import collections
 import csv
 import ipaddress
 import json
 import os
 import random
+import re
 import sys
 import time
-from typing import Iterable, Optional
+from typing import TYPE_CHECKING, Iterable, Optional
 from urllib.parse import urlparse
 
 import numpy as np
+
+if TYPE_CHECKING:  # catboost is imported inside train() at run time
+    from catboost import CatBoostClassifier
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -48,6 +62,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from api.services.hosting_platforms import TENANT_SUFFIXES, is_user_content_host  # noqa: E402
 from api.services.ml_features import (  # noqa: E402
     extract_ml_features,
+    has_suspicious_keyword,
+    host_shape,
     shared_tenant,
     FEATURE_NAMES,
 )
@@ -80,8 +96,11 @@ HELD_OUT_FILES = (
 
 # Share of the benign class drawn from Tranco's subdomain list (see
 # load_benign_domains), and of that stratum at most this much from names
-# under Russian public suffixes.
-SHAPE_SHARE = 0.25
+# under Russian public suffixes. 2026-10-22: 0.25 → 0.15 of a 48,000
+# larger class (7,200 shapes, was 3,000): at 0.25 a weighted benign class
+# made "has a subdomain" a benign trait and track.safeinflow.com ranked
+# under its own apex (tests/test_ml_scorer.py).
+SHAPE_SHARE = 0.15
 RU_ZONE_SHARE_OF_SHAPES = 0.25
 # Share of the benign class that is tenants of the curated hosting
 # platforms — on top of the shape stratum, out of the registrable-domain
@@ -104,12 +123,98 @@ TENANTS_PER_PLATFORM = 20
 # scored official-shop.myshopify.com 0.59 and myshop.tw1.ru 0.66. Capped
 # near the benign share, the tenant's own label decides — which is what the
 # tenant guard in retrain-ml.yml checks.
-PHISH_TENANT_SHARE = 0.08
-PHISH_TENANTS_PER_PLATFORM = 60
+# 2026-10-22: 0.08 / 60 → 0.20 / 200. With the synthetic tenants
+# (SYNTHETIC_TENANT_SHARE of the 48,000-sample benign class) the benign
+# class holds more tenants than the phishing one, so the cap no longer has
+# to hide phishing tenants to keep "is a tenant" neutral — and 27% of the
+# fresh PhishTank sample is tenants.
+PHISH_TENANT_SHARE = 0.20
+PHISH_TENANTS_PER_PLATFORM = 200
 # Subdomain levels (left of the registrable domain, or of the shared suffix
 # for a tenant) a host-shape sample may have: www.example.com,
 # kvs.gov.spb.ru and foo.github.io are 1, zenit.kfis.gov.spb.ru 2.
 MAX_SHAPE_DEPTH = 2
+
+# ── The commercially clean corpus (2026-10-22) ──
+#
+# The four CC0 / unrestricted feeds (refresh_training_feeds.PHISHING_SOURCES)
+# are all domain names, where URLhaus was 80% bare IPs. On 2026-10-21 a model
+# trained on them with the benign class above (12,000 Tranco samples, 6%
+# Russian, 12 IDN names, Balanced weights) scored 69 of the 539 held-out real
+# Russian sites and 15% of random long-tail Tranco sites above 0.6; the
+# served model (URLhaus + OpenPhish) 0 and 0.5%. What was wrong was the
+# benign class, not the feeds:
+#   * Russian sites were 6% of it and IDN (.рф) names 0.1%, so every
+#     xn--…xn--p1ai host was out of distribution — and its 'xn--' counted as
+#     hyphens, a phishing trait (8 of the top 10 flagged were .рф);
+#   * 12,000 benign names against 10,500 phishing names, weighted 1:1, put the
+#     0.6 bar inside the long tail: at 0.6 the model was a coin toss there;
+#   * real tenants on most platforms are a handful in Tranco (7 myshopify.com
+#     shops) against hundreds in the feeds, so "is a tenant" stayed phishing;
+#   * no real site that carries a brand's name (gosuslugi29.ru, sberbank1.ru,
+#     vkgosuslugi.ru) was ever a negative, so brand-plus-anything was phishing.
+# Each stratum below answers one of these; the class weight moves the bar
+# back to where the served model has it (docs/THIRD_PARTY_FEEDS.md §3 has the
+# before/after numbers).
+# scripts/refresh_training_feeds.py writes this many (DEFAULT_CAP per feed).
+N_PHISHING = 20000
+N_BENIGN = 48000
+# Benign rows count this much in the loss (CatBoost class_weights [w, 1]):
+# with ~18,000 phishing names against 48,000, phishing is ~1/9 of the
+# weighted data. It sets where the scorer's fixed 0.6 / 0.85 bars fall:
+# 1:1 put 15% of the long tail over 0.6, 2.0 put 1.3%, 3.0 puts 0.8% (the
+# served URLhaus model 0.5%) while every gate keeps its margin.
+BENIGN_CLASS_WEIGHT = 3.0
+# Registrable domains under .ru / .su / .рф from the ranked list — on top of
+# the Russian-zone host shapes (regional zones such as spb.ru) — and every
+# IDN name in it (about 1,400; .рф alone ~500).
+RU_TLDS = (".ru", ".su", ".xn--p1ai")
+RU_PLD_SHARE = 0.10
+# Synthetic tenants: real long-tail names (the label of a ranked registrable
+# domain) under the curated platforms, in the mix of platforms the phishing
+# class has tenants on. A real site's name on pages.dev is what a real
+# tenant looks like; what the model must learn is the tenant's own label.
+SYNTHETIC_TENANT_SHARE = 0.042
+# Of those, this share spread evenly over the site platforms
+# (_site_platform_suffixes), the rest in the phishing class's platform mix.
+SYNTHETIC_UNIFORM_SHARE = 0.5
+# Ranked registrable domains whose name contains a brand the brand features
+# know (TYPOSQUAT_TARGETS, 4+ letters): vkgosuslugi.ru, sberbank-ast.ru,
+# 9to5google.com — real sites that look like a brand to the model.
+BRAND_NAME_SHARE = 0.031
+BRAND_MIN_LEN = 4
+# Ranked registrable domains whose name has a GENERIC lure word part and no
+# classic one (_has_generic_lure_word: sncf-connect.com, home-connect.com,
+# aami-rewards.com.au) — ~300 in the 1M list, all of them. A random 48,000
+# of the list held ~15, while the phishing class has hundreds: "connect" or
+# "rewards" in a name had become proof, and the model scored
+# shopify-connect.com 0.97 (tests/test_scoring.py's brand partner names).
+# Real names with classic words (login.gov, secure-booker.com) are left to
+# the random strata: with them in, the obvious lures' median fell under 0.8
+# (tests/test_ml_scorer.py) and secure-login.<platform> under 0.6. Names
+# that carry a brand too are left out entirely (noise).
+LURE_WORD_SHARE = 0.01
+LURE_WORD_REPEAT = 2
+# The hand-verified real sites in data/typosquat_targets_ru.json, each
+# repeated this many times (they are ~380 rows in 48,000).
+VERIFIED_REPEAT = 3
+# The hosts the heredoc gates of .github/workflows/retrain-ml.yml judge,
+# exact names: a gate must measure what the model learned, not recall a
+# training row. (The 2026-10-04 note on facebook.github.io: whether that
+# day's Tranco list carried the host decided the gate.)
+GATE_HOSTS = frozenset({
+    "klar.mx", "konfio.mx", "gob.mx", "mercadolibre.com.mx", "leadgid.com", "banorte.com", "google.com",
+    "wikipedia.org", "www.example.com", "docs.google.com", "mail.yandex.ru", "online.sberbank.ru",
+    "malsup.github.io", "blog.wordpress.com", "official-shop.myshopify.com", "myshop.tw1.ru",
+    "facebook.github.io", "metamask.github.io", "paypal.account-verify.tk", "apple-id-locked-verify.xyz",
+    "gosuslugi-vhod.netlify.app", "secure-login.wasmer.app", "sberbank-online.pages.dev",
+})
+# The served model is the mean of this many CatBoost models, each on its own
+# draw of the benign strata (catboost.sum_models: one .cbm / .onnx). One
+# model's score on a single gate host swung 0.32-0.93 with the seed; the
+# mean of three is the model, not the draw.
+ENSEMBLE_MEMBERS = 3
+SEED = 42
 
 
 def _is_ip_literal(host: str) -> bool:
@@ -242,7 +347,7 @@ def load_phishing_domains(max_n: int = 12000, held_out: frozenset[str] = frozens
             if not host:
                 continue
             host = host.lower()
-            if host in seen or registrable_domain(host) in held_out:
+            if host in seen or host in GATE_HOSTS or registrable_domain(host) in held_out:
                 continue
             seen.add(host)
             platform = shared_tenant(host)[0]
@@ -303,9 +408,15 @@ def _cap_per_platform(tenants: list[str], rng: random.Random) -> list[str]:
     return pool
 
 
-def load_benign_domains(max_n: int = 12000, exclude: Iterable[str] = (),
-                        held_out: frozenset[str] = frozenset()) -> list[str]:
-    """Benign negatives from Tranco: famous, long tail, and host shapes.
+def load_benign_domains(max_n: int = N_BENIGN, exclude: Iterable[str] = (),
+                        held_out: frozenset[str] = frozenset(), seed: int = SEED) -> list[str]:
+    """Benign negatives from Tranco: famous, long tail, and host shapes,
+    plus the clean-corpus strata (2026-10-22, see N_BENIGN): every IDN
+    name, RU_PLD_SHARE Russian registrable domains, synthetic tenants,
+    brand-named and generic-lure-word real sites and the hand-verified
+    brand file. `exclude` is
+    the phishing class (its tenants set the synthetic tenants' platform
+    mix); GATE_HOSTS are always left out.
 
     CRITICAL (2026-07-06 fix): the previous version sampled benign ONLY from
     top_10k.json. Training benign purely on famous domains taught the model
@@ -343,14 +454,22 @@ def load_benign_domains(max_n: int = 12000, exclude: Iterable[str] = (),
     and tailwindcss.netlify.app 1.00. Popular tenants are real sites with
     the names real people give them (malsup.github.io, canoninc-my.sharepoint.com).
     """
-    rng = random.Random(42)
+    rng = random.Random(seed)
     exclude = set(exclude)
+    phishing_tenants = sorted(h for h in exclude if shared_tenant(h)[0])
+    exclude |= GATE_HOSTS
 
     head: list[str] = []  # rank <= 10k (famous)
     tail: list[str] = []  # rank 10k-1M (long tail)
+    ru_pld: list[str] = []  # under .ru / .su / .рф (any rank)
+    idn: list[str] = []  # any IDN name
     for rank, domain in _read_tranco(os.path.join(DATA_DIR, "top-1m.csv")):
         if domain in exclude or registrable_domain(domain) in held_out:
             continue
+        if "xn--" in domain:
+            idn.append(domain)
+        elif domain.endswith(RU_TLDS):
+            ru_pld.append(domain)
         (head if rank <= 10000 else tail).append(domain)
 
     subdomain_path = os.path.join(DATA_DIR, "top-1m-subdomains.csv")
@@ -368,28 +487,169 @@ def load_benign_domains(max_n: int = 12000, exclude: Iterable[str] = (),
     tenant_pool = _cap_per_platform(tenants, rng)
     shapes += rng.sample(tenant_pool, min(len(tenant_pool), int(max_n * TENANT_SHARE)))
     taken = set(shapes)
+
+    # The clean-corpus strata (see N_BENIGN): Russian and IDN names, real
+    # names as tenants, brand-named real sites, the hand-verified ones.
+    extra = [d for d in idn if d not in taken]
+    pool = [d for d in ru_pld if d not in taken]
+    extra += rng.sample(pool, min(len(pool), int(max_n * RU_PLD_SHARE)))
+    extra += synthetic_tenants(tail, phishing_tenants, int(max_n * SYNTHETIC_TENANT_SHARE), rng,
+                               exclude, held_out)
+    taken |= set(extra)
+    pool = brand_named_sites(d for d in tail + head if d not in taken)
+    # A brand AND a lure word in a ranked list is paypal-login.us or
+    # account-paypal.info: label noise, never a negative.
+    noise = {d for d in pool if _has_lure_word(d)}
+    pool = [d for d in pool if d not in noise]
+    head = [d for d in head if d not in noise]
+    tail = [d for d in tail if d not in noise]
+    extra += rng.sample(pool, min(len(pool), int(max_n * BRAND_NAME_SHARE)))
+    taken |= set(extra)
+    brand_pool = set(pool)
+    lure = sorted({d for d in tail + head if d not in taken and d not in brand_pool and _has_generic_lure_word(d)})
+    extra += rng.sample(lure, min(len(lure), int(max_n * LURE_WORD_SHARE))) * LURE_WORD_REPEAT
+    taken |= set(extra)
+    verified = [h for h in load_verified_brand_sites()
+                if h not in exclude and h not in taken and registrable_domain(h) not in held_out]
+    # At most 5% of the class, so a small run (the tests' 40) stays mostly Tranco.
+    verified = rng.sample(verified, min(len(verified), int(max_n * 0.05) // VERIFIED_REPEAT))
+    extra += verified * VERIFIED_REPEAT
+    taken |= set(extra)
     head = [d for d in head if d not in taken]
     tail = [d for d in tail if d not in taken]
 
-    n_pld = max_n - len(shapes)
+    n_pld = max_n - len(shapes) - len(extra)
     n_head = min(len(head), n_pld // 4)  # ~25% famous
     n_tail = min(len(tail), n_pld - n_head)  # ~75% long tail
-    benign = rng.sample(head, n_head) + rng.sample(tail, n_tail) + shapes
+    benign = rng.sample(head, n_head) + rng.sample(tail, n_tail) + shapes + extra
     rng.shuffle(benign)
     return benign
 
 
-def build_feature_matrix(domains: Iterable[str]) -> tuple[list[str], list[list[float]]]:
+def synthetic_tenants(tail: list[str], phishing_tenants: Iterable[str], n: int, rng: random.Random,
+                      exclude: Iterable[str] = (), held_out: frozenset[str] = frozenset()) -> list[str]:
+    """`n` real long-tail names grafted onto hosting platforms:
+    <label of a ranked .com/.net/... site>.<platform>. Half in the mix of
+    platforms the phishing class has tenants on (domain_length counts the
+    suffix), half spread evenly over the site platforms
+    (SYNTHETIC_UNIFORM_SHARE, _site_platform_suffixes).
+
+    Tranco carries a handful of real tenants per platform (7 myshopify.com
+    shops in the 2026-10-21 list) where the feeds carry hundreds, so with
+    real tenants alone "is a tenant on pages.dev" stayed a phishing trait
+    and official-shop.myshopify.com scored 0.51-0.59. No phishing tenants
+    (a test, an empty feed) means no synthetic ones."""
+    plat = collections.Counter(shared_tenant(h)[0] for h in phishing_tenants)
+    plat.pop(None, None)
+    if not plat or n <= 0:
+        return []
+    # SYNTHETIC_UNIFORM_SHARE of them spread evenly over the site platforms:
+    # the feeds report no myshopify.com tenant at all, so by their mix alone
+    # a shop there was a platform the benign class had never seen.
+    total = sum(plat.values())
+    sites = _site_platform_suffixes()
+    share = SYNTHETIC_UNIFORM_SHARE if sites else 0.0
+    prob = {s: (1 - share) * c / total for s, c in plat.items()}
+    for s in sites:
+        prob[s] = prob.get(s, 0.0) + share / len(sites)
+    suffixes = sorted(prob)
+    weights = [prob[s] for s in suffixes]
+    labels = sorted({d.split(".")[0] for d in tail if d.count(".") == 1 and 3 <= len(d.split(".")[0]) <= 30})
+    if not labels:
+        return []
+    exclude = set(exclude)
+    out: set[str] = set()
+    for _ in range(n * 20):  # bounded: a tiny label pool cannot loop forever
+        if len(out) >= n:
+            break
+        host = f"{rng.choice(labels)}.{rng.choices(suffixes, weights)[0]}"
+        if host not in exclude and not is_user_content_host(host) and registrable_domain(host) not in held_out:
+            out.add(host)
+    return sorted(out)
+
+
+def _site_platform_suffixes() -> list[str]:
+    """Platforms people build sites and shops on: the scorer's hand list
+    (scoring.HOSTING_PLATFORMS, without the Google user-content hosts) and
+    the curated hosting / site-builder groups of data/hosting_platforms.json
+    (not dynamic DNS, not the blogspot ccTLD mirrors). Sorted."""
+    from api.services.scoring import GOOGLE_ABUSED_SUBDOMAINS, HOSTING_PLATFORMS
+
+    try:
+        with open(os.path.join(ROOT, "data", "hosting_platforms.json"), encoding="utf-8") as f:
+            groups = json.load(f).get("tenant_suffixes", {})
+    except (OSError, ValueError):
+        groups = {}
+    curated = {s for g in ("ru_hosting", "ru_site_builders", "site_builders") for s in groups.get(g, [])}
+    return sorted(s for s in (set(HOSTING_PLATFORMS) | curated) - GOOGLE_ABUSED_SUBDOMAINS
+                  if not is_user_content_host("x." + s))
+
+
+def _has_lure_word(domain: str) -> bool:
+    """The model's has_suspicious_keyword, on the registered name."""
+    return has_suspicious_keyword(host_shape(domain)[1])
+
+
+def _has_generic_lure_word(domain: str) -> bool:
+    """A lure word that is one of the generic / crypto ones (connect, sync,
+    rewards, mint, claim …) and no classic phishing action word
+    (scoring._COMBOSQUAT_KEYWORDS: login, verify, account, secure …) — the
+    split the scorer itself makes for combosquats."""
+    from api.services.scoring import _COMBOSQUAT_KEYWORDS
+
+    name = host_shape(domain)[1]
+    return has_suspicious_keyword(name) and not (
+        set(name.lower().replace("_", "-").split("-")) & _COMBOSQUAT_KEYWORDS)
+
+
+def brand_named_sites(domains: Iterable[str]) -> list[str]:
+    """Ranked registrable domains whose name contains a brand the brand
+    features compare against (TYPOSQUAT_TARGETS minus the not-yet-trained
+    names, BRAND_MIN_LEN letters or more) without being the brand itself:
+    vkgosuslugi.ru, sberbank-ast.ru, 9to5google.com. Sorted, unique."""
+    from api.services.scoring import _NOT_IN_MODEL, TYPOSQUAT_TARGETS, _decode_idn
+
+    brands = [b for b in TYPOSQUAT_TARGETS if b not in _NOT_IN_MODEL and len(b) >= BRAND_MIN_LEN]
+    pattern = re.compile("|".join(sorted(map(re.escape, brands), key=len, reverse=True)))
+    out = set()
+    for d in domains:
+        name = d.split(".")[0]
+        if name.startswith("xn--"):
+            name = _decode_idn(name).lower()
+        if name not in TYPOSQUAT_TARGETS and pattern.search(name):
+            out.add(d)
+    return sorted(out)
+
+
+def load_verified_brand_sites(path: str = os.path.join(DATA_DIR, "typosquat_targets_ru.json")) -> list[str]:
+    """Every 'official' (the brand's own: sberbank1.ru, gosuslugi29.ru) and
+    'unrelated' (a look-alike name that is someone else's real site:
+    sberbank.cz) domain in the hand-verified Russian brand file — the
+    hardest true negatives there are. Sorted, unique, lowercase."""
+    with open(path, encoding="utf-8") as f:
+        brands = json.load(f)["brands"]
+    return sorted({h.lower() for b in brands.values() for k in ("official", "unrelated") for h in b.get(k, {})})
+
+
+def build_feature_matrix(domains: Iterable[str],
+                         cache: Optional[dict[str, list[float]]] = None) -> tuple[list[str], list[list[float]]]:
     """Rows in FEATURE_NAMES order — the vector ml_scorer.ml_predict() feeds
-    the served model for the same domain (tests/test_ml_feature_parity.py)."""
+    the served model for the same domain (tests/test_ml_feature_parity.py).
+    `cache` (host → row) spares the ensemble members re-extracting the hosts
+    their benign samples share."""
     kept, rows = [], []
     for domain in domains:
-        try:
-            features = extract_ml_features(domain)
-        except Exception:
-            continue
+        row = cache.get(domain) if cache is not None else None
+        if row is None:
+            try:
+                features = extract_ml_features(domain)
+            except Exception:
+                continue
+            row = [features[k] for k in FEATURE_NAMES]
+            if cache is not None:
+                cache[domain] = row
         kept.append(domain)
-        rows.append([features[k] for k in FEATURE_NAMES])
+        rows.append(row)
     return kept, rows
 
 
@@ -413,10 +673,60 @@ def _names_only_metrics(hosts: list[str], y_true: np.ndarray, y_proba: np.ndarra
     }
 
 
-def train(replace_anyway: bool = False):
+def phishing_source_mix(hosts: Iterable[str]) -> dict[str, int]:
+    """Hosts per feed ('source' column of data/phishtank.csv)."""
+    wanted = set(hosts)
+    mix: dict[str, int] = {}
+    with open(os.path.join(DATA_DIR, "phishtank.csv"), encoding="utf-8", errors="ignore") as f:
+        for row in csv.DictReader(f):
+            try:
+                host = (urlparse(row.get("url", "")).hostname or "").lower()
+            except ValueError:
+                continue
+            if host in wanted:
+                wanted.discard(host)
+                source = row.get("source") or "?"
+                mix[source] = mix.get(source, 0) + 1
+    return dict(sorted(mix.items()))
+
+
+def average_members(members: list) -> "CatBoostClassifier":
+    """One CatBoostClassifier whose raw score is the mean of the members'
+    (catboost.sum_models with equal weights) — a single .cbm / .onnx, the
+    same 27-feature contract, so serving does not change."""
+    import tempfile
+
+    from catboost import CatBoostClassifier, sum_models
+
+    if len(members) == 1:
+        return members[0]
+    summed = sum_models(members, weights=[1.0 / len(members)] * len(members))
+    # sum_models keeps each member's metadata only under "model<i>:"; without
+    # a top-level loss the ONNX export is a regressor (one raw 'predictions'
+    # output) and ml_scorer cannot read it. The members share these.
+    meta = summed.get_metadata()
+    first = members[0].get_metadata()
+    for key in ("params", "class_params", "output_options"):
+        if key in first and key not in meta:
+            meta[key] = first[key]
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "ensemble.cbm")
+        summed.save_model(path)
+        model = CatBoostClassifier()
+        model.load_model(path)
+    return model
+
+
+def split_group(host: str) -> str:
+    """The train/test split's group: a tenant's own host, else its
+    registrable domain."""
+    return host if shared_tenant(host)[0] else registrable_domain(host)
+
+
+def train(replace_anyway: bool = False, seed: int = SEED):
     from catboost import CatBoostClassifier
     from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
-    from sklearn.model_selection import train_test_split
+    from sklearn.model_selection import GroupShuffleSplit
 
     print("=" * 60)
     print("Cleanway ML Model Training — CatBoost")
@@ -425,10 +735,10 @@ def train(replace_anyway: bool = False):
     # ── Load data ──
     print("\nLoading data...")
     held_out = load_held_out()
-    phishing = load_phishing_domains(12000, held_out)
+    phishing = load_phishing_domains(N_PHISHING, held_out)
     # Exclude any benign that also appears in the phishing feed (compromised-legit
     # domains show up in both) so labels stay clean.
-    benign = load_benign_domains(12000, exclude=phishing, held_out=held_out)
+    benign = load_benign_domains(N_BENIGN, exclude=phishing, held_out=held_out, seed=seed)
     n_ips = sum(_is_ip_literal(d) for d in phishing)
     n_shapes = sum(bool(_subdomain_labels(d)) or bool(_ru_registrable_domain(d)) for d in benign)
     n_tenants = sum(shared_tenant(d)[0] is not None for d in benign)
@@ -439,8 +749,9 @@ def train(replace_anyway: bool = False):
     # ── Extract features ──
     print("\nExtracting features...")
     start = time.time()
-    phishing, X_phish = build_feature_matrix(phishing)
-    benign, X_benign = build_feature_matrix(benign)
+    feature_cache: dict[str, list[float]] = {}
+    phishing, X_phish = build_feature_matrix(phishing, feature_cache)
+    benign, X_benign = build_feature_matrix(benign, feature_cache)
     hosts = phishing + benign
     X = np.array(X_phish + X_benign)
     y = np.array([1] * len(phishing) + [0] * len(benign))
@@ -449,26 +760,45 @@ def train(replace_anyway: bool = False):
     print(f"  Class balance: {sum(y)} phishing / {len(y) - sum(y)} benign")
 
     # ── Split ──
-    idx_train, idx_test = train_test_split(
-        np.arange(len(y)), test_size=0.2, random_state=42, stratify=y
-    )
+    # By registrable domain (a tenant by its own host): the subdomains of one
+    # phishing domain, and the repeated verified rows, land on one side, so
+    # the test AUC is not a lookup of a sibling seen in training.
+    groups = [split_group(h) for h in hosts]
+    idx_train, idx_test = next(GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=seed)
+                               .split(X, y, groups))
     X_train, X_test, y_train, y_test = X[idx_train], X[idx_test], y[idx_train], y[idx_test]
     print(f"\n  Train: {len(X_train)}, Test: {len(X_test)}")
 
     # ── Train CatBoost ──
-    print("\nTraining CatBoost model...")
+    print(f"\nTraining CatBoost model ({ENSEMBLE_MEMBERS} members)...")
     start = time.time()
 
-    model = CatBoostClassifier(
-        iterations=500,
-        depth=6,
-        learning_rate=0.1,
-        l2_leaf_reg=3,
-        auto_class_weights="Balanced",
-        random_seed=42,
-        verbose=100,
-    )
-    model.fit(X_train, y_train, eval_set=(X_test, y_test), early_stopping_rounds=50)
+    def fit(X_fit: np.ndarray, y_fit: np.ndarray, member_seed: int) -> "CatBoostClassifier":
+        member = CatBoostClassifier(
+            iterations=500,
+            depth=6,
+            learning_rate=0.1,
+            l2_leaf_reg=3,
+            class_weights=[BENIGN_CLASS_WEIGHT, 1.0],
+            random_seed=member_seed,
+            verbose=100,
+        )
+        member.fit(X_fit, y_fit, eval_set=(X_test, y_test), early_stopping_rounds=50)
+        return member
+
+    members = [fit(X_train, y_train, seed)]
+    # Every further member: the same phishing training rows, its own benign
+    # sample (another draw of every stratum), never a host of the test split.
+    test_groups = {groups[i] for i in idx_test}
+    phish_train = [i for i in idx_train if y[i] == 1]
+    for k in range(1, ENSEMBLE_MEMBERS):
+        more = [h for h in load_benign_domains(N_BENIGN, exclude=phishing, held_out=held_out, seed=seed + k)
+                if split_group(h) not in test_groups]
+        _, X_more = build_feature_matrix(more, feature_cache)
+        X_k = np.vstack([X[phish_train], np.array(X_more)])
+        y_k = np.array([1] * len(phish_train) + [0] * len(X_more))
+        members.append(fit(X_k, y_k, seed + k))
+    model = average_members(members)
 
     train_time = time.time() - start
     print(f"  Training time: {train_time:.1f}s")
@@ -496,7 +826,7 @@ def train(replace_anyway: bool = False):
 
     # ── Feature importance ──
     print("\nTop 15 Feature Importances:")
-    importances = model.feature_importances_
+    importances = np.mean([m.feature_importances_ for m in members], axis=0)  # the sum has none
     sorted_idx = np.argsort(importances)[::-1]
     for i in range(min(15, len(FEATURE_NAMES))):
         idx = sorted_idx[i]
@@ -553,6 +883,12 @@ def train(replace_anyway: bool = False):
             "benign_host_shapes": n_shapes,
             "benign_tenants": n_tenants,
             "held_out_registrable_domains": len(held_out),
+            # Provenance: which feeds the phishing class came from (the CC0 /
+            # unrestricted ones only since 2026-10-21) and how it was drawn.
+            "phishing_sources": phishing_source_mix(phishing),
+            "benign_class_weight": BENIGN_CLASS_WEIGHT,
+            "ensemble_members": ENSEMBLE_MEMBERS,
+            "seed": seed,
             # The suffixes the tenant feature knows (ml_features.shared_tenant).
             "shared_suffixes": len(_SCORER_SHARED_SUFFIXES | TENANT_SUFFIXES),
         }, f, indent=2)
@@ -563,4 +899,11 @@ def train(replace_anyway: bool = False):
 
 
 if __name__ == "__main__":
-    train(replace_anyway="--replace-anyway" in sys.argv[1:])
+    import argparse
+
+    p = argparse.ArgumentParser()
+    p.add_argument("--replace-anyway", action="store_true")
+    p.add_argument("--seed", type=int, default=SEED,
+                   help="benign sampling, split and CatBoost seed (offline seed sweeps)")
+    args = p.parse_args()
+    train(replace_anyway=args.replace_anyway, seed=args.seed)
