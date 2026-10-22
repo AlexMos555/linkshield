@@ -16,7 +16,7 @@
  * listener after it, including the link check, would never register.
  */
 
-import "./browser-compat.js"; // must stay first: aliases chrome → browser in Firefox
+import "../utils/browser-alias.js"; // must stay first: aliases chrome → browser in Firefox
 import "../utils/link-target.js"; // sets self.cleanwayLinkTarget (classic UMD file)
 import "../utils/api-base.js"; // sets self.cleanwayApiBase (classic UMD file): the API server allowlist
 import "../utils/token-store.js"; // sets self.cleanwayTokens (classic UMD file): where the access token lives
@@ -38,8 +38,12 @@ import { pruneOldChecks } from "../utils/storage.js";
 import { handleAuthAlarm, handleAuthMessage } from "./auth.js"; // sign-in: the cleanway.ai → extension handoff + refresh
 import { createBlockRedirect } from "./block-redirect.js"; // dangerous page → the tab goes to blocked.html
 import { blockedPageHost, claimFirstBlockToday } from "./page-blocks.js";
+import { createPageLookups } from "./page-lookups.js"; // the password-leak and brand-host lookups content scripts ask for
+import { createInstallId, createPublicCheck, LOOKUP_CONCURRENCY, mapLimit } from "./public-check.js"; // the site check: install number, 429 pause
 import { createSafariSeen, isWebPageSender } from "./safari-native.js"; // Safari: tells the Cleanway app the extension works
+import { createToolbarBadge } from "./toolbar-badge.js"; // the per-tab count on the toolbar icon
 import { isKnownSafeHost, isUserContentHost } from "./trusted-hosts.js";
+import { createVerdictCache, sessionArea, VERDICT_TTL_MS } from "./verdict-cache.js";
 import { handleWebmailAnalyze, installWebmailScanner } from "./webmail-scanner.js"; // opt-in only: injects content/webmail.js while Settings has it on
 
 const HISTORY_PRUNE_ALARM = "cleanway_history_prune";
@@ -116,59 +120,24 @@ try {
   });
 } catch (e) { /* ignore */ }
 
-// ── Cache (bounded LRU) ──
-// MV3 service workers can stay alive for hours during active browsing.
-// A plain Map grows unbounded — every distinct domain the user sees adds
-// an entry that's never evicted unless re-queried (the TTL check in
-// getCached returns null but doesn't delete). On a heavy day of news +
-// social scrolling that's easily 10k+ entries, hundreds of KB resident.
-//
-// JavaScript's Map preserves insertion order, so we can implement LRU
-// cheaply: on hit, re-insert to bump to the tail; on size cap, evict
-// the head (oldest). 1000 entries cover any realistic browsing session.
-const _CACHE_TTL_MS = 3600000;       // 1 hour
-const _CACHE_MAX_ENTRIES = 1000;
-const _cache = new Map();
-
-function getCached(d) {
-  const e = _cache.get(d);
-  if (!e) return null;
-  if (Date.now() - e.ts > _CACHE_TTL_MS) {
-    _cache.delete(d);  // actively reap stale entry
-    return null;
-  }
-  // LRU touch: move to tail by re-inserting
-  _cache.delete(d);
-  _cache.set(d, e);
-  return e.r;
-}
-
-function setCached(d, r) {
-  // Evict oldest if at cap. Map.keys() iterates in insertion order, so
-  // .next().value is the oldest entry (least recently inserted/touched).
-  if (_cache.size >= _CACHE_MAX_ENTRIES) {
-    const oldest = _cache.keys().next().value;
-    if (oldest !== undefined) _cache.delete(oldest);
-  }
-  _cache.set(d, { r, ts: Date.now() });
-}
-
-// ── Fetch with timeout ──
-// The previous version raced fetch() against a setTimeout-reject, which
-// rejects the OUTER promise on timeout but leaves the underlying fetch
-// running until the network stack finishes. Under a fetch-storm (e.g. a
-// SPA generating links faster than the API responds) that piles up
-// abandoned requests holding sockets, descriptors and listeners — slow
-// memory bloat in the service worker.
-//
-// AbortController fixes it: signal goes into fetch(), and on timeout
-// we call abort() which actively cancels the request. Resources reclaim
-// immediately.
-function fetchWithTimeout(url, ms) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), ms);
-  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
-}
+// ── Verdicts, the site check, the toolbar badge ──
+// Cache: bounded LRU in memory, API verdicts mirrored to storage.session
+// (verdict-cache.js). The check: an install number, a 429 pauses link
+// lookups, never the page check (public-check.js). The badge: per tab,
+// cleared on navigation (toolbar-badge.js). Fetch and the clock are looked
+// up at call time.
+const session = sessionArea(chrome);
+const verdicts = createVerdictCache({ session });
+const getCached = (d) => verdicts.get(d);
+const publicCheck = createPublicCheck({
+  fetchImpl: (url, init) => fetch(url, init),
+  apiBase: () => API_BASE,
+  installId: createInstallId(chrome.storage.local),
+  pauseStore: session,
+});
+const badge = createToolbarBadge(chrome, { session });
+const handlePageLookup = createPageLookups({ fetchImpl: (url, init) => fetch(url, init), apiBase: () => API_BASE });
+verdicts.prune().catch(() => {});
 
 // ── Local scoring (instant, no network) ──
 // The content script's scorer (utils/local-scorer.js), not a copy: this used
@@ -213,71 +182,52 @@ function apiReasons(data) {
 
 // ── Main handler ──
 // `page` is true for the check of the page the user is on (content/index.js),
-// false for links on it, the popup and the context menu.
-async function handleCheck(domains, { page = false } = {}) {
-  _log("Checking", domains.length, "domains");
-  const results = [];
+// false for links on it, the popup and the context menu. `tabId`: the tab
+// whose content script asked, for its toolbar badge (none for the popup).
+// Results come back in the order asked.
+async function handleCheck(domains, { page = false, tabId = null } = {}) {
+  const list = (Array.isArray(domains) ? domains : []).filter((d) => typeof d === "string" && d);
+  _log("Checking", list.length, "domains");
+  const gen = tabId === null ? 0 : badge.generation(tabId);
+  await verdicts.hydrate(list);
+  const results = new Array(list.length);
   const toCheck = [];
 
-  for (const domain of domains) {
-    const cached = getCached(domain);
-    if (cached) { results.push(cached); continue; }
+  list.forEach((domain, i) => {
+    // The page check never settles for a fallback: it asks the API again.
+    const cached = verdicts.get(domain, { apiOnly: page });
+    if (cached) { results[i] = cached; return; }
     const shortcut = localVerdict(domain);
     if (shortcut) {
-      setCached(domain, shortcut);
-      results.push(shortcut);
-      continue;
+      verdicts.setLocal(domain, shortcut, VERDICT_TTL_MS);
+      results[i] = shortcut;
+      return;
     }
-    toCheck.push(domain);
-  }
+    toCheck.push(i);
+  });
 
-  // Score ALL unknown domains locally FIRST (instant)
-  const localResults = {};
-  for (const d of toCheck) {
-    localResults[d] = scoreLocally(d);
-    _log("Local:", d, "score=" + localResults[d].score, localResults[d].level);
-  }
-
-  // Try API for each domain (with 3s timeout), improve local result if API responds
-  for (const d of toCheck) {
-    try {
-      const resp = await fetchWithTimeout(`${API_BASE}/api/v1/public/check/${encodeURIComponent(d)}`, 3000);
-      if (resp.ok) {
-        const data = await resp.json();
-        const r = {
-          domain: data.domain || d,
-          score: data.score,
-          level: data.level,
-          reasons: apiReasons(data),
-          source: "api",
-        };
-        _log("API:", d, "score=" + r.score, r.level);
-        setCached(d, r);
-        results.push(r);
-        continue;
-      }
-    } catch (e) {
-      _log("API timeout/error for", d, "- using local score");
+  // The API for the rest, a few at a time. Without an answer (paused after
+  // a 429, timed out, offline) the offline verdict stands in, kept only
+  // until the API can be asked again.
+  await mapLimit(toCheck, LOOKUP_CONCURRENCY, async (i) => {
+    const d = list[i];
+    const answer = await publicCheck.lookup(d, { page });
+    if (answer.data) {
+      const data = answer.data;
+      const r = { domain: data.domain || d, score: data.score, level: data.level, reasons: apiReasons(data), source: "api" };
+      _log("API:", d, "score=" + r.score, r.level);
+      verdicts.setVerdict(d, r);
+      results[i] = r;
+      return;
     }
-
-    // Use local result
-    const lr = localResults[d];
-    setCached(d, lr);
-    results.push(lr);
-  }
+    const lr = scoreLocally(d);
+    _log("Local:", d, "score=" + lr.score, lr.level, "kept", answer.ttlMs, "ms");
+    verdicts.setLocal(d, lr, answer.ttlMs);
+    results[i] = lr;
+  });
 
   await recordCheckStats(results, page);
-
-  // Badge — `action` in MV3, `browserAction` in Firefox MV2; absent on
-  // mobile browsers with no toolbar.
-  try {
-    const toolbar = chrome.action || chrome.browserAction;
-    const threats = results.filter(r => r.level === "dangerous" || r.level === "caution").length;
-    if (toolbar && threats > 0) {
-      toolbar.setBadgeText({ text: String(threats) });
-      toolbar.setBadgeBackgroundColor({ color: results.some(r => r.level === "dangerous") ? "#ef4444" : "#f59e0b" });
-    }
-  } catch (e) {}
+  if (tabId !== null) await badge.record(tabId, gen, results).catch(() => {});
 
   _log("Returning", results.length, "results");
   return { results };
@@ -412,6 +362,10 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
   // content scripts can no longer read (webmail-scanner.js checks the sender).
   const mailReply = handleWebmailAnalyze(msg, sender, respond, chrome, () => API_BASE);
   if (mailReply !== undefined) return mailReply;
+  // BREACH_PREFIX / VERIFIED_HOSTS: lookups a content script cannot make
+  // itself (CORS, and the page's origin would go along) — page-lookups.js.
+  const lookupReply = handlePageLookup(msg, sender, respond);
+  if (lookupReply !== undefined) return lookupReply;
   if (msg.type === "CHECK_DOMAINS") {
     // .catch() prevents an uncaught promise rejection from silently
     // closing the message channel — the content script then waits the
@@ -422,7 +376,10 @@ chrome.runtime.onMessage.addListener((msg, sender, respond) => {
     // Credential-guard strict mode is NOT decided here: this message also
     // carries every link on the page, and a page must not turn strict just
     // for linking to a scam. It follows the page's own block (PAGE_BLOCKED).
-    handleCheck(msg.domains, { page: msg.page === true })
+    // The toolbar badge counts for the tab whose page asked (top frame only).
+    const tabId = isWebPageSender(sender) && (sender.frameId === undefined || sender.frameId === 0)
+      ? sender.tab.id : null;
+    handleCheck(msg.domains, { page: msg.page === true, tabId: Number.isInteger(tabId) ? tabId : null })
       .then(respond)
       .catch((err) => {
         try { respond({ error: "background_failure", message: String(err && err.message ? err.message : err) }); }
