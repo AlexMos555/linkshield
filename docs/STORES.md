@@ -11,7 +11,7 @@ image and form answer for Google Play, Chrome, Edge, Firefox and Opera, in
 console order. The Android app's **Google Play** evidence (Data safety, VPN and
 foreground-service declarations, account-deletion URL, console checklist) is §6
 below; the targetSdk-36 build comes from the Expo SDK 54 upgrade (§6.A),
-submission still waits for the founder TODOs in §6.0. §7 is the 0.2.1
+submission still waits for the founder TODOs in §6.0. §7 is the 0.2.2
 checklist for the browser stores. The RuStore listing is in
 `docs/RUSTORE_SUBMISSION.md` §7.
 
@@ -194,7 +194,7 @@ App Store notes for the extension:
   test host, never a real brand's look-alike.
 - **Version**: the extension's `CFBundleShortVersionString` follows the app
   (`app.json` `version`); the manifest keeps its own extension version
-  (0.2.1) — Safari shows the app's.
+  (0.2.2) — Safari shows the app's.
 
 ### 5.2 Mac: a separate macOS app
 
@@ -470,11 +470,11 @@ permission in `app.json` (`blockedPermissions`) before uploading.
 
 ---
 
-## 7. Browser stores — console checklist for 0.2.1
+## 7. Browser stores — console checklist for 0.2.2
 
 All four uploads come from `bash scripts/build-extensions.sh && bash
-scripts/build-store-artifacts.sh` (`dist/store-artifacts/cleanway-0.2.1-*.zip`,
-checksums in `cleanway-0.2.1-sha256.txt`). Verify before uploading:
+scripts/build-store-artifacts.sh` (`dist/store-artifacts/cleanway-0.2.2-*.zip`,
+checksums in `cleanway-0.2.2-sha256.txt`). Verify before uploading:
 
 ```bash
 node scripts/test-extension-core.mjs && node scripts/test-extension-auth.mjs \
@@ -482,13 +482,27 @@ node scripts/test-extension-core.mjs && node scripts/test-extension-auth.mjs \
 npx -y web-ext@8 lint --source-dir extension-firefox   # 0 errors expected
 ```
 
+What 0.2.2 adds over the never-submitted 0.2.1 (CHANGELOG `[Extension 0.2.2]`):
+Firefox's popup, Settings and block page load the `chrome → browser` alias
+first (Firefox MV2's `chrome.*` on extension pages returns no Promises); the
+password-leak check and the brand's verified sign-in hosts are fetched by the
+background (from content scripts, CORS discarded the answers in Chromium);
+public checks carry a random install number (`X-Cleanway-Install`, replaced
+every 24 h), a 429 pauses link lookups for its `Retry-After` but never the page
+check, and an offline fallback is kept minutes instead of an hour; the toolbar
+count is per tab and clears on navigation; "Report wrong result" sends the
+right direction; the BitB scan no longer reads every div's text. Permissions
+are unchanged. Firefox: load `extension-firefox/` via about:debugging and open
+the popup, Settings and a block page before uploading — Chromium cannot run
+the MV2 build.
+
 What 0.2.1 adds over the never-submitted 0.2.0 (CHANGELOG `[Extension 0.2.1]`):
 the block page is the extension's own `src/blocked/blocked.html` (PR #207, the
 tab is taken there instead of an overlay inside the scam page), the access
 token lives in `chrome.storage.session` (#207), the API address is allowlisted
 (#196), hosting-tenant and dynamic-DNS name rules (#224), the official unminified
 `qrcode.js` of qrcode-generator 1.4.4 instead of jsDelivr's minified build (#189),
-the popup over the block page says "scam" instead of "safe" (this release).
+the popup over the block page says "scam" instead of "safe" (#248).
 Permissions are unchanged.
 
 What 0.2.0 already had: the opt-in webmail scanner (PR #117 — off by default, mail
@@ -497,11 +511,11 @@ sites are optional permissions, Firefox's data-collection consent on Firefox
 
 | Store | Founder action |
 |---|---|
-| Chrome Web Store | Upload `cleanway-0.2.1-chrome.zip`; everything else: `docs/STORE_SUBMISSION_KIT.md` §3 (evidence: `docs/CWS_SUBMISSION.md` §3–5). |
-| Edge Add-ons | Upload `cleanway-0.2.1-edge.zip`; `docs/STORE_SUBMISSION_KIT.md` §4. |
-| Opera add-ons | Upload `cleanway-0.2.1-opera.zip`; same listing. |
-| Firefox AMO | Upload `cleanway-0.2.1-firefox.zip`. The manifest declares Firefox's `data_collection_permissions` (required: browsing activity, authentication information; optional: personal communications, website content — the webmail switch asks for these). Source code: our JS is unminified, but a vendored third-party library (tweetnacl) is minified and `scorer-data.js` is generated — upload `cleanway-0.2.1-firefox-source.zip` and paste the reviewer notes (`docs/STORE_SUBMISSION_KIT.md` §5). Privacy policy URL. Notes for the reviewer: "Webmail scanning is off by default and asks for the mail sites and Firefox's data consent when switched on in Settings." |
-| Safari (Mac) | `xcrun safari-web-extension-converter dist/store-artifacts/cleanway-0.2.1-safari/` (§5.2 above). |
+| Chrome Web Store | Upload `cleanway-0.2.2-chrome.zip`; everything else: `docs/STORE_SUBMISSION_KIT.md` §3 (evidence: `docs/CWS_SUBMISSION.md` §3–5). |
+| Edge Add-ons | Upload `cleanway-0.2.2-edge.zip`; `docs/STORE_SUBMISSION_KIT.md` §4. |
+| Opera add-ons | Upload `cleanway-0.2.2-opera.zip`; same listing. |
+| Firefox AMO | Upload `cleanway-0.2.2-firefox.zip`. The manifest declares Firefox's `data_collection_permissions` (required: browsing activity, authentication information; optional: personal communications, website content — the webmail switch asks for these). Source code: our JS is unminified, but a vendored third-party library (tweetnacl) is minified and `scorer-data.js` is generated — upload `cleanway-0.2.2-firefox-source.zip` and paste the reviewer notes (`docs/STORE_SUBMISSION_KIT.md` §5). Privacy policy URL. Notes for the reviewer: "Webmail scanning is off by default and asks for the mail sites and Firefox's data consent when switched on in Settings." |
+| Safari (Mac) | `xcrun safari-web-extension-converter dist/store-artifacts/cleanway-0.2.2-safari/` (§5.2 above). |
 | Safari (iPhone) | Nothing separate: ships inside the iOS app (§5.1, docs/IOS.md §2.5). |
 
 ---

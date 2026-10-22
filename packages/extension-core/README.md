@@ -22,7 +22,11 @@ src/
 │   ├── auth.js            (sign-in: AUTH_* messages, the refresh alarm — wires utils/auth-session.js)
 │   ├── block-redirect.js  (dangerous page → the tab goes to blocked/blocked.html; "open anyway" per tab)
 │   ├── page-blocks.js     (what counts as a blocked scam: a block page shown, once per site per day)
+│   ├── page-lookups.js    (BREACH_PREFIX / VERIFIED_HOSTS: the leak and brand-host lookups content scripts ask for)
+│   ├── public-check.js    (the site check: install number, a 429 pauses link lookups, never the page check)
 │   ├── trusted-hosts.js   (exact official hosts answered "safe", and user-content hosts answered "can't be checked")
+│   ├── toolbar-badge.js   (the count on the toolbar icon: per tab, cleared on navigation)
+│   ├── verdict-cache.js   (bounded LRU; API verdicts mirrored to storage.session, fallbacks kept minutes)
 │   └── webmail-scanner.js (opt-in: registers content/webmail.js only while Settings has it on)
 ├── content/            ← Content scripts injected into every page
 │   ├── index.js           (main orchestrator)

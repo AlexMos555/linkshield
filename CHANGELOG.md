@@ -60,6 +60,30 @@ files, one per store ([docs/RUSTORE_SUBMISSION.md](docs/RUSTORE_SUBMISSION.md) �
 
 Enablement order for the server-side switches: [docs/MOBILE_AUTH.md](docs/MOBILE_AUTH.md).
 
+## [Extension 0.2.2] - 2026-10-22
+
+Browser extension for Chrome, Edge, Opera, Firefox and Safari. 0.2.1 never reached the stores; 0.2.2 replaces it in the submission. Permissions are the same as in 0.2.1.
+
+**Что нового**
+- **Firefox: окно Cleanway, настройки и страница предупреждения работают.** В Firefox окно по значку застревало на «Проверяю страницу…», а настройки не загружались.
+- **Проверка пароля на утечки заработала** в Chrome, Edge и Opera (и, вероятно, в Safari). Браузер отбрасывал ответ сервера, и предупреждение «этот пароль есть в утечках» не появлялось. Теперь запрос отправляет само расширение, без адреса сайта, на котором вы находитесь. Как и раньше, уходят только первые 5 символов хеша пароля.
+- **Меньше ложных предупреждений на настоящих страницах входа.** Расширение снова узнаёт настоящие сайты входа банков и сервисов: список с сервера до него не доходил.
+- **Проверка ссылок больше не останавливается.** Раньше после нескольких страниц со ссылками сервер переставал отвечать, и на час оставалась только встроенная защита. Теперь расширение отправляет с проверками случайный номер установки (новый каждые 24 часа), и сервер считает лимит для вашего браузера, а не для всех с вашим IP-адресом. Если лимит всё же исчерпан, расширение ждёт столько, сколько просит сервер, и всё равно проверяет страницу, которую вы открыли. Проверки идут по несколько сразу, а ответы не теряются, когда браузер перезапускает расширение.
+- **Число на значке — для текущей вкладки** и сбрасывается при переходе на другую страницу. Раньше красная цифра с одной страницы оставалась на всех вкладках.
+- **«Сообщить об ошибке» передаёт, в чём ошибка.** Если мы назвали сайт опасным, а вы считаете его безопасным, так и уходит; раньше любое сообщение считалось «пропущенным мошенническим сайтом». На странице предупреждения сообщение относится к заблокированному сайту.
+- **Быстрее на больших страницах.** Защита от поддельных окон входа («браузер в браузере») больше не перечитывает весь текст страницы при каждом изменении; на длинных лентах это было заметно.
+
+**What's new**
+- **Firefox: the popup, Settings and the warning page work.** In Firefox the popup was stuck on "Checking this page…" and Settings did not load.
+- **The password-leak check works** in Chrome, Edge and Opera (and likely Safari). The browser threw away the server's answer, so "this password is in known leaks" never appeared. The extension itself now makes the request, without the address of the site you are on. As before, only the first 5 characters of the password's hash are sent.
+- **Fewer false warnings on real sign-in pages.** The extension again learns banks' and services' real sign-in sites: the server's list never reached it.
+- **Link checks no longer stop.** After a few link-heavy pages the server used to refuse checks, and for an hour only the built-in protection was left. Now the extension sends a random install number with its checks (a new one every 24 hours), and the server counts the limit for your browser, not for everyone on your IP address. If the limit is reached anyway, the extension waits as long as the server asks and still checks the page you open. Checks run a few at a time, and answers survive the browser restarting the extension.
+- **The number on the toolbar icon is for the current tab** and clears when you go to another page. A red number from one page used to stay on every tab.
+- **"Report wrong result" says which way we were wrong.** If we called a site dangerous and you think it is safe, that is what is sent; before, every report counted as "a scam you missed". On the warning page the report is about the blocked site.
+- **Faster on big pages.** The fake sign-in window ("browser in the browser") protection no longer rereads all the page's text on every change, which showed on long feeds.
+
+Server side, same release: the API counts 600 public checks an hour per install number (it was 60; still 60 an hour per IP address without one, and still 5 fresh analyses a minute) and answers a 429 with `Retry-After`.
+
 ## [Extension 0.2.1] - 2026-10-21
 
 Browser extension for Chrome, Edge, Opera, Firefox and Safari. The first version for the stores: 0.2.0 was built but never submitted. Permissions are the same as in 0.2.0.

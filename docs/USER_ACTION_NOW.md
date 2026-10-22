@@ -83,7 +83,7 @@
 **Где:** chrome.google.com/webstore/devconsole
 **Шаги:**
 1. Купить dev-аккаунт ($5 однократно).
-2. Upload `dist/store-artifacts/cleanway-0.2.1-chrome.zip` (⚠️ имя такое, не `cleanway-extension.zip`).
+2. Upload `dist/store-artifacts/cleanway-0.2.2-chrome.zip` (⚠️ имя такое, не `cleanway-extension.zip`).
 3. Листинг: copy-paste из `docs/marketing/chrome-web-store-listing.md` (текст честный, готов).
 4. Загрузить 5 скриншотов из шага 2.
 5. Submit → статус «In review».
@@ -110,8 +110,15 @@ Weekly-бенчмарк рассчитан укладываться в лими�
 **Время:** 15 мин.
 
 ### 9. Firefox AMO + Edge listings (те же zip, бесплатно)
-**Что:** `dist/store-artifacts/cleanway-0.2.1-firefox.zip` → addons.mozilla.org,
-`cleanway-0.2.1-edge.zip` → Edge dev console.
+**Что:** `dist/store-artifacts/cleanway-0.2.2-firefox.zip` → addons.mozilla.org,
+`cleanway-0.2.2-edge.zip` → Edge dev console.
+**Сначала (5 минут, только Firefox):** `about:debugging` → «Этот Firefox» → «Загрузить
+временное дополнение» → `extension-firefox/manifest.json`. Открыть окно по значку
+(должен появиться вердикт, а не вечное «Проверяю страницу…»), Настройки (уровень
+и статистика загрузились) и образец страницы предупреждения: в about:debugging у
+Cleanway указан «URL манифеста» (`moz-extension://…/manifest.json`) — открыть его,
+заменив `manifest.json` на `src/popup/block-preview.html`. Автотесты Firefox-сборку
+не запускают: Chromium не умеет MV2.
 **Зачем:** покрывает ещё ~30% браузерного рынка теми же артефактами. Дев-аккаунты бесплатные.
 **Время:** 30 мин каждый.
 

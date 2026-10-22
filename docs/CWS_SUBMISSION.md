@@ -1,4 +1,4 @@
-# Chrome Web Store — Submission Pack (Cleanway 0.2.1)
+# Chrome Web Store — Submission Pack (Cleanway 0.2.2)
 
 Code-grounded, copy-paste-ready answers for the CWS submission form. Everything
 here was derived from the **actual extension source** (`packages/extension-core/src/`)
@@ -21,9 +21,9 @@ survives review. A declaration that doesn't match the code gets the extension
 
 | Item | Value |
 |---|---|
-| Artifact | `dist/store-artifacts/cleanway-0.2.1-chrome.zip` (also valid for Edge/Opera/Brave/Vivaldi) |
-| Version | 0.2.1 (from `extension/manifest.json`; same in the Firefox and Safari manifests) |
-| SHA-256 | see `dist/store-artifacts/cleanway-0.2.1-sha256.txt` |
+| Artifact | `dist/store-artifacts/cleanway-0.2.2-chrome.zip` (also valid for Edge/Opera/Brave/Vivaldi) |
+| Version | 0.2.2 (from `extension/manifest.json`; same in the Firefox and Safari manifests) |
+| SHA-256 | see `dist/store-artifacts/cleanway-0.2.2-sha256.txt` |
 | Manifest | MV3, no remote code, no `eval`/obfuscation |
 | Icons | 16/32/48/128 present in `extension/public/icons/` |
 | Privacy policy URL | https://cleanway.ai/privacy-policy |
@@ -64,7 +64,7 @@ the user switches the webmail scanner on in Settings.
 | Permission | Justification |
 |---|---|
 | `activeTab` | Reads the active tab's URL only when the user runs the "Check page" command or a context-menu action, to score that page. |
-| `storage` | Stores user settings, local protection statistics, the opt-in webmail switch, the refresh token (if the user signs in), the random install ID and Family Hub key material in `chrome.storage.local`; the short-lived access token in `chrome.storage.session`, limited to the extension's own pages and background (`utils/token-store.js`), and the per-tab "open anyway" allowances of the block page (`background/block-redirect.js`). |
+| `storage` | Stores user settings, local protection statistics, the opt-in webmail switch, the refresh token (if the user signs in), the random install ID, the random rate-limit number sent with site checks (`background/public-check.js`, replaced every 24 h) and Family Hub key material in `chrome.storage.local`; the short-lived access token in `chrome.storage.session`, limited to the extension's own pages and background (`utils/token-store.js`), the per-tab "open anyway" allowances of the block page (`background/block-redirect.js`), site verdicts from the API for an hour (`background/verdict-cache.js`) and the per-tab toolbar count (`background/toolbar-badge.js`). |
 | `alarms` | Runs periodic background jobs that must survive MV3 service-worker suspension: local history pruning (30 days), refreshing the sign-in before it expires, and the Family Hub notification poll. |
 | `contextMenus` | Adds right-click items "Check with Cleanway" (links) and "Privacy Audit" (pages) so users can trigger a check on demand. |
 | `notifications` | Shows OS notifications for Family Hub alerts (a family member's device blocked a dangerous site), with a click handler that opens the relevant page (`utils/family-notifier.js`). |
@@ -107,9 +107,9 @@ egress paths. **Bold = you must tick "collected" and disclose.**
 
 | CWS data type | Collected? | What / why (grounded in code) |
 |---|---|---|
-| **Web history** | **YES** | Domain (hostname only, no full URL/path/query) of unknown links/pages is sent to `api.cleanway.ai/api/v1/public/check` to score safety. Known-safe + cached domains are never sent. `feedback/report` sends a domain when the user reports a wrong verdict. |
+| **Web history** | **YES** | Domain (hostname only, no full URL/path/query) of unknown links/pages is sent to `api.cleanway.ai/api/v1/public/check` to score safety, with a random rate-limit number (`X-Cleanway-Install`, replaced every 24 h, not tied to the user or the device). Known-safe + cached domains are never sent. `feedback/report` sends a domain when the user reports a wrong verdict. |
 | **Personal communications** | **YES** | Webmail scan (opt-in, off by default, Gmail/Outlook/Yahoo) sends **each message the user opens** — subject, sender name and address, Reply-To, body text, and the address and text of each link (not the HTML) — to `api/v1/email/analyze` for phishing analysis. Processed in memory, not stored. No other messages, recipients, thread IDs, or attachments. |
-| **Authentication info** | **YES** | Breach check sends only the **first 5 hex chars of the SHA-1** of a typed password (k-anonymity) to `api/v1/breach/check` — never the password or full hash. Signed-in users send the access token on account calls; the refresh token goes only to our Supabase project. The refresh token is stored in `chrome.storage.local`, the access token in `chrome.storage.session` (not readable by content scripts); "Sign out" deletes both. |
+| **Authentication info** | **YES** | Breach check sends only the **first 5 hex chars of the SHA-1** of a typed password (k-anonymity) to `api/v1/breach/check`, from the background (no page origin) — never the password or full hash. On a look-alike sign-in page, only the brand name (e.g. `paypal`) goes to `api/v1/credentials/verified`. Signed-in users send the access token on account calls; the refresh token goes only to our Supabase project. The refresh token is stored in `chrome.storage.local`, the access token in `chrome.storage.session` (not readable by content scripts); "Sign out" deletes both. |
 | **Personally identifiable info** | **YES (signed-in users)** | Sign-in happens on cleanway.ai; the extension stores the email address and account ID locally. Device registration (`POST /api/v1/me/devices`) sends the random install ID, the browser's name and the extension version. Family Hub (optional) sends a display name and invite; alert contents are **end-to-end encrypted**. |
 | **User activity** | **YES** | Aggregate: dangerous-block counts (integer only, signed-in users), device display settings, and the site name the user reports with "Wrong result?". |
 | Location | No | — |
@@ -167,7 +167,7 @@ real mailbox) and the Privacy Audit panel.
 ## 8. Upload checklist
 
 1. [ ] Create/sign in to the CWS developer account ($5 one-time).
-2. [ ] Upload `cleanway-0.2.1-chrome.zip`.
+2. [ ] Upload `cleanway-0.2.2-chrome.zip`.
 3. [ ] Paste listing name / summary / description from `extension/STORE_LISTING.md` (§1).
 4. [ ] Paste single-purpose (§2) + permission justifications (§3).
 5. [ ] Fill Privacy practices (§4): tick every category marked YES, add the

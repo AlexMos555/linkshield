@@ -28,7 +28,7 @@
 
 | Что | Состояние |
 |---|---|
-| Расширение 0.2.1 (Chrome, Edge, Opera, Firefox) | архивы в `dist/store-artifacts/`, тексты и анкеты в `docs/CWS_SUBMISSION.md`, `docs/STORES.md` §7 |
+| Расширение 0.2.2 (Chrome, Edge, Opera, Firefox) | архивы в `dist/store-artifacts/`, тексты и анкеты в `docs/CWS_SUBMISSION.md`, `docs/STORES.md` §7 |
 | Android 1.0.4 | Expo 54, targetSdk 36, 16 КБ страницы (#120); проверено на Samsung Galaxy A16 и эмуляторе Android 16 |
 | Покупка в Google Play | RevenueCat в приложении (#121) и на сервере (#118, миграция 024 применена) |
 | Аккаунты и устройства | #108, миграции 019–024 применены на тестовой и боевой базе |
