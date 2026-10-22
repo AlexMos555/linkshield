@@ -8,6 +8,9 @@ Outputs:
   extension-firefox/_locales/{locale}/messages.json
   extension-safari/_locales/{locale}/messages.json
   landing/messages/{locale}.json                    (next-intl format)
+  mobile/i18n/{locale}.json                         (react-i18next, flat)
+  mobile/modules/cleanway-vpn/android/src/main/res/values*/strings.xml
+  mobile/i18n/ios/{locale}.json                     (Expo `locales`: iOS Info.plist strings)
 
 Run: python3 scripts/build-i18n.py
 """
@@ -39,6 +42,11 @@ ANDROID_RES_DIR = ROOT / "mobile" / "modules" / "cleanway-vpn" / "android" / "sr
 ANDROID_NATIVE_NAMESPACE = ("mobile", "android_native")
 # Android resource qualifiers; Indonesian is the legacy "in" on Android.
 ANDROID_LOCALE_DIR = {"en": "values", "id": "values-in"}
+# iOS Info.plist strings (the camera prompt) per language: app.json `locales`
+# points at these, and expo prebuild writes <lang>.lproj/InfoPlist.strings.
+IOS_LOCALES_DIR = ROOT / "mobile" / "i18n" / "ios"
+IOS_INFO_PLIST_NAMESPACE = ("mobile", "ios_info_plist")
+IOS_INFO_PLIST_KEYS = {"camera_usage": "NSCameraUsageDescription"}
 
 
 # Extension namespaces that get flattened back to chrome.i18n format.
@@ -234,6 +242,35 @@ def android_strings_xml(source: dict[str, Any]) -> str | None:
     return "\n".join(lines) + "\n"
 
 
+def ios_info_plist_locale(source: dict[str, Any], locale: str) -> dict[str, Any] | None:
+    """Render mobile.ios_info_plist.* as an Expo `locales` file: {"ios": {NSKey: text}}.
+
+    Nested under "ios" so Expo's Android locale plugin gets nothing. Expo
+    writes `KEY = "value";` into InfoPlist.strings without escaping, so a
+    quote, a backslash, a newline or a {{placeholder}} is refused here.
+    Returns None when the namespace is absent.
+    """
+    node: Any = source
+    for key in IOS_INFO_PLIST_NAMESPACE:
+        node = node.get(key) if isinstance(node, dict) else None
+        if node is None:
+            return None
+    unknown = sorted(set(node) - set(IOS_INFO_PLIST_KEYS))
+    if unknown:
+        sys.exit(f"ERROR: ios_info_plist has keys with no Info.plist name: {unknown} (IOS_INFO_PLIST_KEYS)")
+    out: dict[str, str] = {}
+    for name, plist_key in IOS_INFO_PLIST_KEYS.items():
+        value = node.get(name)
+        if isinstance(value, dict):
+            value = value.get("text")
+        if not isinstance(value, str) or not value.strip():
+            sys.exit(f"ERROR: [{locale}] ios_info_plist.{name} is missing")
+        if re.search(r'["\\\n]', value) or PLACEHOLDER_RE.search(value):
+            sys.exit(f"ERROR: [{locale}] ios_info_plist.{name}: no quote, backslash, newline or placeholder")
+        out[plist_key] = value
+    return {"ios": out}
+
+
 def write_text_atomic(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
@@ -319,11 +356,21 @@ def main() -> int:
         android_written += 1
     total_written += android_written
 
+    ios_written = 0
+    for loc in SUPPORTED_LOCALES:
+        plist = ios_info_plist_locale(sources[loc], loc)
+        if plist is None:
+            continue
+        write_atomic(IOS_LOCALES_DIR / f"{loc}.json", plist)
+        ios_written += 1
+    total_written += ios_written
+
     print(f"\n✓ Wrote {total_written} locale files")
     print(f"  {len(EXTENSION_DIRS) * len(SUPPORTED_LOCALES)} extension _locales/")
     print(f"  {len(SUPPORTED_LOCALES)} landing/messages/")
     print(f"  {len(SUPPORTED_LOCALES)} mobile/i18n/")
     print(f"  {android_written} android res/values*/strings.xml")
+    print(f"  {ios_written} mobile/i18n/ios/ (InfoPlist.strings via app.json locales)")
 
     return 0
 

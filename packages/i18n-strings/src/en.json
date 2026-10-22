@@ -3823,7 +3823,6 @@
       "benefit_unlimited": "Unlimited detailed checks of links and messages",
       "benefit_sms": "Automatic SMS check",
       "benefit_text_model": "Scam text recognition: why it is a scam and what to do",
-      "benefit_calls": "Protection during phone calls",
       "benefit_devices": "Up to {{n}} devices in one account",
       "cta_sign_in": "Sign in to subscribe",
       "cta_web": "Subscribe on cleanway.ai",
@@ -3957,6 +3956,9 @@
       "error_title": "Something went wrong",
       "error_body": "This screen couldn't be shown. Go back to the home screen and try again from there.",
       "home": "Go to the home screen"
+    },
+    "ios_info_plist": {
+      "camera_usage": "Cleanway uses the camera to scan QR codes and check if the link inside is safe."
     }
   }
 }

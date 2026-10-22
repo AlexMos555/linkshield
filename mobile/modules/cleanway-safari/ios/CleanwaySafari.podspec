@@ -2,7 +2,7 @@ Pod::Spec.new do |s|
   s.name           = 'CleanwaySafari'
   s.version        = '1.0.0'
   s.summary        = 'Cleanway: the Safari extension status for the iPhone app'
-  s.description    = 'Reads whether the Cleanway Safari Web Extension is switched on (iOS 26.2+) and when it last ran on a web page (app group), and opens its page in Settings. docs/IOS.md.'
+  s.description    = 'Reads whether the Cleanway Safari Web Extension is switched on (iOS 26.2+) and when it last ran on a web page (app group), and opens its page in Settings. docs/IOS.md. Also the in-app web sheet (ASWebAuthenticationSession) for the sign-in captcha, docs/MOBILE_AUTH.md.'
   s.author         = 'Cleanway'
   s.homepage       = 'https://cleanway.ai'
   # Not above the app's deployment target (Expo SDK 54: iOS 15.1), or Expo's

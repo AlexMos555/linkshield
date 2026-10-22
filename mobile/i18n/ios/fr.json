@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "Cleanway utilise l'appareil photo pour lire les codes QR et vérifier si le lien qu'ils contiennent est sûr."
+  }
+}

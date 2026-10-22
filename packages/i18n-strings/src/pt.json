@@ -3881,7 +3881,6 @@
       "benefit_unlimited": "Verificações detalhadas de links e mensagens sem limite",
       "benefit_sms": "Verificação automática de SMS",
       "benefit_text_model": "Análise do texto: por que é golpe e o que fazer",
-      "benefit_calls": "Proteção durante ligações",
       "benefit_devices": "Até {{n}} dispositivos em uma conta",
       "cta_sign_in": "Entre para assinar",
       "cta_web": "Assinar em cleanway.ai",
@@ -4015,6 +4014,9 @@
       "error_title": "Algo deu errado",
       "error_body": "Não foi possível mostrar esta tela. Volte para a tela inicial e tente de novo a partir dela.",
       "home": "Ir para a tela inicial"
+    },
+    "ios_info_plist": {
+      "camera_usage": "O Cleanway usa a câmera para ler códigos QR e verificar se o link que eles contêm é seguro."
     }
   }
 }

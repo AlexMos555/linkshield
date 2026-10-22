@@ -151,6 +151,132 @@ console.log("withSeedGuard:");
   });
 }
 
+console.log("withDistributionGuard:");
+{
+  // Which store a release is for decides the paywall (web checkout or not),
+  // the self-update banner and whether Play Billing is linked. Unset means
+  // the site APK, so a forgotten export turned the Play AAB and the RuStore
+  // APK into the site build with a green BUILD SUCCESSFUL (backlog rank 2).
+  const { releaseCheck, distributionOf } = require("../distribution.js");
+  const { _patch: patchDist } = require("../withDistributionGuard.js");
+
+  // Values the app (freemium.ts distributionFor) and autolinking
+  // (store-billing-linking.js) read as the site build, though they look like
+  // play: the guard must refuse them, not tidy them into "play".
+  const LOOKALIKES = ["play;", "'play'", "pl.ay", "p lay", "pl'ay${x}"];
+  check("reads the store the same way the app does (trimmed, lower-case, nothing else)", () => {
+    assert.strictEqual(distributionOf({ EXPO_PUBLIC_DISTRIBUTION: " PLAY " }), "play");
+    assert.strictEqual(distributionOf({ EXPO_PUBLIC_DISTRIBUTION: "rustore" }), "rustore");
+    assert.strictEqual(distributionOf({}), "");
+    for (const v of LOOKALIKES) assert.notStrictEqual(distributionOf({ EXPO_PUBLIC_DISTRIBUTION: v }), "play", v);
+  });
+  check("a value the app reads as the site build fails, even when it looks like play", () => {
+    for (const v of LOOKALIKES) {
+      const r = releaseCheck({ distribution: distributionOf({ EXPO_PUBLIC_DISTRIBUTION: v }), prebuild: "play", artifact: "aab" });
+      assert.strictEqual(r.ok, false, v);
+      assert.ok(!r.message.includes("Google Play build"), r.message);
+    }
+  });
+  check("the CLI gradle runs refuses them too (exit 1), and passes play (exit 0)", () => {
+    const { spawnSync } = require("node:child_process");
+    const fs = require("node:fs");
+    const os = require("node:os");
+    const path = require("node:path");
+    // An empty cwd: no project .env file can change the answer.
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "cleanway-dist-"));
+    const cli = (value) =>
+      spawnSync(process.execPath, [path.join(__dirname, "..", "distribution.js"), "check", "--prebuild=play", "--artifact=aab"], {
+        cwd, encoding: "utf8", env: { PATH: process.env.PATH, EXPO_PUBLIC_DISTRIBUTION: value },
+      });
+    try {
+      for (const v of LOOKALIKES) {
+        const r = cli(v);
+        assert.strictEqual(r.status, 1, `${v}: ${r.stdout}${r.stderr}`);
+        assert.ok(!r.stdout.includes("Google Play build"), r.stdout);
+        assert.ok(r.stderr.includes("EXPO_PUBLIC_DISTRIBUTION"), r.stderr);
+      }
+      const ok = cli("play");
+      assert.strictEqual(ok.status, 0, ok.stderr);
+      assert.ok(ok.stdout.includes("Google Play build"), ok.stdout);
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+  check("a release build must name its store — unset or unknown fails", () => {
+    for (const distribution of ["", "googleplay", "appstore"]) {
+      for (const artifact of ["apk", "aab"]) {
+        const r = releaseCheck({ distribution, prebuild: distribution, artifact });
+        assert.strictEqual(r.ok, false, `${distribution || "unset"} ${artifact}`);
+        assert.ok(r.message.includes("EXPO_PUBLIC_DISTRIBUTION"), r.message);
+        assert.ok(/site.*rustore.*play/s.test(r.message), "names the three stores");
+      }
+    }
+  });
+  check("an App Bundle is never the site build", () => {
+    const r = releaseCheck({ distribution: "site", prebuild: "site", artifact: "aab" });
+    assert.strictEqual(r.ok, false);
+    assert.ok(r.message.includes("EXPO_PUBLIC_DISTRIBUTION=play"), r.message);
+  });
+  check("site APK, RuStore APK/AAB and Play AAB/APK pass", () => {
+    for (const [distribution, artifact] of [
+      ["site", "apk"], ["rustore", "apk"], ["rustore", "aab"], ["play", "aab"], ["play", "apk"],
+    ]) {
+      const r = releaseCheck({ distribution, prebuild: distribution, artifact, revenueCatKey: true });
+      assert.strictEqual(r.ok, true, `${distribution} ${artifact}: ${r.message}`);
+      assert.ok(r.message.includes(distribution), r.message);
+    }
+  });
+  check("android/ generated for another store fails (stale autolinking)", () => {
+    const r = releaseCheck({ distribution: "play", prebuild: "site", artifact: "aab", revenueCatKey: true });
+    assert.strictEqual(r.ok, false);
+    assert.ok(r.message.includes("expo prebuild -p android --clean"), r.message);
+  });
+  check("a Play build without the RevenueCat key passes with a warning", () => {
+    const r = releaseCheck({ distribution: "play", prebuild: "play", artifact: "aab", revenueCatKey: false });
+    assert.strictEqual(r.ok, true);
+    assert.ok(r.message.includes("EXPO_PUBLIC_REVENUECAT_ANDROID_KEY"), r.message);
+  });
+
+  const out = patchDist(TEMPLATE, "play");
+  check("bakes the prebuild's store into the gradle file", () => {
+    assert.ok(out.includes("def cleanwayPrebuildDistribution = 'play'"));
+    assert.ok(patchDist(TEMPLATE, " Play ").includes("def cleanwayPrebuildDistribution = 'play'"));
+    assert.ok(patchDist(TEMPLATE, "").includes("def cleanwayPrebuildDistribution = ''"));
+  });
+  check("a prebuild for an unknown value bakes a marker no build matches, never the text", () => {
+    for (const v of [...LOOKALIKES, "googleplay"]) {
+      const baked = /def cleanwayPrebuildDistribution = '([^']*)'/.exec(patchDist(TEMPLATE, v));
+      assert.ok(baked, v);
+      assert.strictEqual(baked[1], "invalid", v);
+      // Built afterwards with a correct EXPO_PUBLIC_DISTRIBUTION: still refused.
+      const r = releaseCheck({ distribution: "play", prebuild: distributionOf({ EXPO_PUBLIC_DISTRIBUTION: baked[1] }), artifact: "aab", revenueCatKey: true });
+      assert.strictEqual(r.ok, false, v);
+      assert.ok(r.message.includes("expo prebuild -p android --clean"), r.message);
+    }
+    assert.ok(!patchDist(TEMPLATE, "pl'ay${x}").includes("${x}"));
+    assert.strictEqual(patchDist(patchDist(TEMPLATE, "play"), "p lay"), patchDist(TEMPLATE, "invalid"));
+  });
+  check("checks APK and AAB release packaging, before any task runs", () => {
+    assert.ok(out.includes("gradle.taskGraph.whenReady"));
+    assert.ok(out.includes("it.name ==~ /bundle\\w*Release/"));
+    assert.ok(out.includes("it.name ==~ /package\\w*Release/"));
+  });
+  check("asks plugins/distribution.js and fails the build on a refusal", () => {
+    assert.ok(out.includes('"plugins/distribution.js", "check"'));
+    assert.ok(out.includes("throw new GradleException("));
+  });
+  check("leaves the android block untouched (appended after it)", () => {
+    assert.ok(out.startsWith(TEMPLATE.trimEnd()));
+  });
+  check("re-prebuilding for another store re-bakes the value, once", () => {
+    const again = patchDist(out, "rustore");
+    assert.ok(again.includes("def cleanwayPrebuildDistribution = 'rustore'"));
+    assert.ok(!again.includes("'play'"));
+    assert.strictEqual(again.split("cleanway-distribution-guard:").length, 2);
+    assert.strictEqual(patchDist(again, "rustore"), again);
+  });
+}
+
 console.log("withDarkSystemBars:");
 {
   // The Expo SDK 54 prebuild MainActivity.kt onCreate, verbatim.
@@ -217,10 +343,48 @@ class MainActivity : ReactActivity() {
   check("app.json registers the dark-system-bars plugin", () => {
     assert.ok((appJson.plugins || []).includes("./plugins/withDarkSystemBars"));
   });
+  check("app.json registers the distribution guard", () => {
+    assert.ok((appJson.plugins || []).includes("./plugins/withDistributionGuard"));
+  });
+  // EAS release profiles carry their store in eas.json, so an EAS Android
+  // build passes the guard by itself: production is the Play AAB.
+  check("eas.json: every release profile names its store, production is Google Play", () => {
+    const eas = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "eas.json"), "utf8")).build;
+    assert.strictEqual(eas.production.env.EXPO_PUBLIC_DISTRIBUTION, "play");
+    assert.strictEqual(eas.production.android.buildType, "app-bundle");
+    for (const [name, profile] of Object.entries(eas)) {
+      if (name.startsWith("//") || profile.developmentClient) continue;
+      assert.ok(["site", "rustore", "play"].includes(profile.env && profile.env.EXPO_PUBLIC_DISTRIBUTION), name);
+    }
+  });
   check("expo-camera plugin disables Android audio recording", () => {
     const cam = (appJson.plugins || []).find((p) => Array.isArray(p) && p[0] === "expo-camera");
     assert.ok(cam, "expo-camera plugin entry present");
     assert.strictEqual(cam[1].recordAudioAndroid, false);
+  });
+  // iOS shows NSCameraUsageDescription in the camera prompt, in the phone's
+  // language only if the app ships <lang>.lproj/InfoPlist.strings — Expo
+  // writes those from `locales` (generated by scripts/build-i18n.py from
+  // packages/i18n-strings, mobile.ios_info_plist.*).
+  check("app.json localises the iOS camera prompt in every app language", () => {
+    const cam = (appJson.plugins || []).find((p) => Array.isArray(p) && p[0] === "expo-camera");
+    const locales = appJson.locales || {};
+    const APP_LANGS = ["en", "ru", "es", "pt", "fr", "de", "it", "id", "hi", "ar"];
+    assert.deepStrictEqual(Object.keys(locales).sort(), [...APP_LANGS].sort());
+    for (const lang of APP_LANGS) {
+      assert.strictEqual(locales[lang], `./i18n/ios/${lang}.json`, lang);
+      const file = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", locales[lang]), "utf8"));
+      assert.deepStrictEqual(Object.keys(file), ["ios"], `${lang}: iOS-only keys (Android gets nothing)`);
+      const text = file.ios.NSCameraUsageDescription;
+      assert.ok(typeof text === "string" && text.trim().length > 20, lang);
+      // Expo writes `KEY = "value";` without escaping.
+      assert.ok(!/["\\\n]/.test(text), `${lang}: no quote, backslash or newline`);
+    }
+    // The base Info.plist (expo-camera) and en.lproj say the same thing.
+    assert.strictEqual(
+      JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "i18n", "ios", "en.json"), "utf8")).ios.NSCameraUsageDescription,
+      cam[1].cameraPermission,
+    );
   });
 
   // --- Android backup rules (withBackupRules) ------------------------------

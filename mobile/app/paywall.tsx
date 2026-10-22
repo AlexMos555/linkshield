@@ -62,11 +62,11 @@ const BENEFITS: Record<PaywallBenefit, { icon: IconName; key: string }> = {
   unlimited: { icon: "infinite-outline", key: "mobile.paywall.benefit_unlimited" },
   sms: { icon: "chatbox-ellipses-outline", key: "mobile.paywall.benefit_sms" },
   text_model: { icon: "document-text-outline", key: "mobile.paywall.benefit_text_model" },
-  calls: { icon: "call-outline", key: "mobile.paywall.benefit_calls" },
   devices: { icon: "phone-portrait-outline", key: "mobile.paywall.benefit_devices" },
 };
-// Only what this build can do: the site and Play APKs cannot read SMS, and
-// the iPhone app has no message analyzer or call guard (paywallBenefits).
+// Only what this build can do and paying adds: no build reads SMS by itself
+// yet, the call guard is free for everyone, and the iPhone app has no
+// message analyzer (paywallBenefits).
 const SHOWN_BENEFITS = paywallBenefits(FREEMIUM.distribution).map((b) => BENEFITS[b]);
 
 const ANDROID_PACKAGE = Constants.expoConfig?.android?.package ?? "ai.cleanway.app";

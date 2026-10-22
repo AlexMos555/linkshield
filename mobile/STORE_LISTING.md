@@ -87,3 +87,15 @@ From the v1.0.0 copy that was here until 2026-10-08:
 - ⚠️ Not in the copy on purpose: **automatic** checking of incoming SMS. It
   exists only on `feat/sms-auto-rustore`, which is not merged into `main`; the
   main build has no SMS permission (`mobile/scripts/check-android-permissions.mjs:36`).
+
+From the Play and RuStore copy, removed 2026-10-22 (before either was submitted):
+- ❌ "…и поможет одним нажатием позвонить близкому" / "…and lets you call a
+  loved one with one tap" — the button appears only when a close contact's
+  number is saved, and no screen saves one yet: `setCloseContactPhone`
+  (`mobile/modules/cleanway-vpn/index.ts`) has no caller, `CloseContact.kt`
+  says so itself, and the call-guard screenshot has no such button. Put it back
+  only with the UI that saves the number.
+- ❌ Paywall benefits "Автоматическая проверка SMS" (RuStore build) and
+  "Protection during phone calls" (every Android build) — no build reads SMS by
+  itself, and the call guard warns every phone, paid or not
+  (`paywallBenefits()` in `mobile/src/utils/freemium.ts`).

@@ -19,29 +19,38 @@
  * opens only when GoTrue answers `captcha_failed` (src/utils/otp-request.ts),
  * so until Supabase captcha protection is switched on nobody sees it.
  *
- * WHY A BROWSER ROUND-TRIP AND NOT AN INLINE WIDGET
+ * WHY A HOSTED PAGE AND NOT AN INLINE WIDGET
  * A captcha is HTML+JS; rendering it in-app needs a webview. `react-native-webview`
- * is not a dependency of this app (nor is `expo-web-browser`), and both are
- * NATIVE modules — adding one means a prebuild, a new signed APK and a store
+ * is not a dependency of this app (nor is `expo-web-browser`), and adding a
+ * native dependency means a prebuild, a new signed APK and a store
  * resubmission, on a workspace where the root hoists a different react-native
  * than the app pins (see docs/RUSTORE_SUBMISSION.md). So the challenge is
- * hosted on the web (landing/app/auth/captcha), opened with `Linking.openURL`
- * from react-native core, and the token comes back through the app's already
- * registered `cleanway://` scheme. Zero new dependencies.
+ * hosted on the web (landing/app/auth/captcha) and the token comes back to
+ * the app's already registered `cleanway://` scheme. No new dependencies.
+ *
+ * HOW IT OPENS
+ *   • iPhone: in an in-app sheet — ASWebAuthenticationSession, our own few
+ *     lines in modules/cleanway-safari, handed in by the sign-in screen as an
+ *     AuthSheet. App Review 4.0 rejects a sign-in that leaves the app for
+ *     Safari, and from the day Supabase captcha is on every iPhone sign-in
+ *     (the reviewer's included) goes through this page. The sheet catches the
+ *     page's redirect to cleanway://captcha-return itself and hands the URL
+ *     back here — no deep link, no AppState guessing.
+ *   • Android, and an iPhone binary without the sheet: `Linking.openURL` to
+ *     the browser; the redirect comes back as a deep link to
+ *     mobile/app/captcha-return.tsx.
  *
  * A side benefit: the PROVIDER and SITEKEY live only on the web page, so
  * switching hCaptcha <-> Turnstile or rotating a sitekey never needs a rebuild.
  * The app only ever learns "here is a URL that yields a token".
  *
- * Upgrade path when a native dep is acceptable: `expo-web-browser`'s
- * `openAuthSessionAsync` gives the same flow without the deep-link hop.
- *
  * FLOW
  *   requestCaptchaToken()
- *     -> opens CAPTCHA_URL?nonce=<random>
+ *     -> opens CAPTCHA_URL?nonce=<random> (sheet or browser, above)
  *     -> web page solves the challenge
  *     -> page redirects to cleanway://captcha-return?nonce=<same>&token=<token>
- *     -> mobile/app/captcha-return.tsx calls deliverCaptchaToken()
+ *     -> the sheet returns that URL (iPhone), or captcha-return.tsx calls
+ *        deliverCaptchaToken() (browser) — the nonce must match either way
  *     -> the promise resolves with the token
  *   Anything else (user backs out, timeout, no browser) resolves `null`, and
  *   the caller shows a plain "try again" — it never hangs and never throws.
@@ -76,7 +85,8 @@ function cleanValue(v: string | undefined | null): string {
 }
 
 /**
- * Only an https:// URL may ever reach `Linking.openURL`. A misconfigured value
+ * Only an https:// URL may ever reach `Linking.openURL` or the in-app sheet
+ * (whose native half refuses anything else too). A misconfigured value
  * (`intent://`, `javascript:`, a bare host) must disable the feature rather
  * than hand an arbitrary scheme to the OS. Same guard shape as
  * `isSafeDownloadUrl` in src/lib/update-check.ts.
@@ -98,6 +108,24 @@ if (__DEV__ && CONFIGURED_URL && !CAPTCHA_URL) {
   console.warn(
     "[captcha] EXPO_PUBLIC_CAPTCHA_URL is set but is not an https:// URL — captcha disabled.",
   );
+}
+
+/** Where the challenge page sends the token (landing/lib/turnstile.ts RETURN_TARGETS). */
+const RETURN_SCHEME = "cleanway";
+const RETURN_URL = `${RETURN_SCHEME}://captcha-return`;
+
+/**
+ * The iPhone's in-app web sheet (modules/cleanway-safari). Passed in rather
+ * than imported, so this file keeps importing only packages and
+ * mobile/scripts/test-captcha-service.mjs can stand in for it.
+ */
+export interface AuthSheet {
+  /** False on Android and in a binary without the native half. */
+  available(): boolean;
+  /** Resolves the `<callbackScheme>://…` URL the page navigated to, or null (closed, failed). Never rejects. */
+  open(url: string, callbackScheme: string): Promise<string | null>;
+  /** Dismisses the sheet if it is still up. */
+  cancel(): void;
 }
 
 /** True only when a challenge URL is configured. False today, by design. */
@@ -128,6 +156,8 @@ interface Pending {
   appState: NativeEventSubscription | null;
   /** Set once the app has actually gone to the browser. */
   backgrounded: boolean;
+  /** The in-app sheet while it is up: settling for any other reason dismisses it. */
+  sheet: AuthSheet | null;
 }
 
 let pending: Pending | null = null;
@@ -140,6 +170,7 @@ function settle(token: string | null): void {
   if (entry.timeout) clearTimeout(entry.timeout);
   if (entry.grace) clearTimeout(entry.grace);
   entry.appState?.remove();
+  entry.sheet?.cancel();
   entry.resolve(token);
 }
 
@@ -168,9 +199,10 @@ function onAppStateChange(state: string): void {
 /**
  * Run the challenge and resolve with a token, or `null` when it did not
  * complete for ANY reason (not configured, no browser, cancelled, timed out).
- * Never rejects — the caller has one branch to write.
+ * Never rejects — the caller has one branch to write. With an available
+ * [sheet] (iPhone) the page opens in it; otherwise in the browser.
  */
-export function requestCaptchaToken(): Promise<string | null> {
+export function requestCaptchaToken(sheet?: AuthSheet): Promise<string | null> {
   if (!isCaptchaRequired()) return Promise.resolve(null);
 
   // Never leave two challenges outstanding: a second tap supersedes the first.
@@ -185,15 +217,56 @@ export function requestCaptchaToken(): Promise<string | null> {
       grace: null,
       appState: null,
       backgrounded: false,
+      sheet: null,
     };
     pending = entry;
     entry.timeout = setTimeout(() => settle(null), SOLVE_TIMEOUT_MS);
-    entry.appState = AppState.addEventListener("change", onAppStateChange);
 
     const separator = CAPTCHA_URL.includes("?") ? "&" : "?";
     const url = `${CAPTCHA_URL}${separator}nonce=${encodeURIComponent(nonce)}`;
+
+    if (sheet?.available()) {
+      entry.sheet = sheet;
+      sheet.open(url, RETURN_SCHEME).then(
+        (returned) => {
+          if (pending !== entry) return; // cancelled, timed out or superseded meanwhile
+          entry.sheet = null; // it has closed itself
+          const back = parseCaptchaReturn(returned);
+          if (!back || !deliverCaptchaToken(back.nonce, back.token)) settle(null);
+        },
+        () => {
+          if (pending === entry) settle(null);
+        },
+      );
+      return;
+    }
+
+    entry.appState = AppState.addEventListener("change", onAppStateChange);
     Linking.openURL(url).catch(() => settle(null));
   });
+}
+
+/**
+ * The nonce and token from `cleanway://captcha-return?nonce=…&token=…` (the
+ * page builds it with encodeURIComponent), or null for any other URL or a
+ * malformed escape. A repeated parameter keeps its first value, as
+ * captcha-return.tsx does.
+ */
+export function parseCaptchaReturn(url: string | null): { nonce: string; token: string } | null {
+  if (!url || !url.startsWith(`${RETURN_URL}?`)) return null;
+  const query = url.slice(RETURN_URL.length + 1).split("#")[0];
+  const found: { nonce?: string; token?: string } = {};
+  for (const part of query.split("&")) {
+    const eq = part.indexOf("=");
+    const key = eq < 0 ? part : part.slice(0, eq);
+    if ((key !== "nonce" && key !== "token") || found[key] !== undefined) continue;
+    try {
+      found[key] = decodeURIComponent(eq < 0 ? "" : part.slice(eq + 1));
+    } catch {
+      return null;
+    }
+  }
+  return { nonce: found.nonce ?? "", token: found.token ?? "" };
 }
 
 /**

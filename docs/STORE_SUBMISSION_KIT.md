@@ -18,7 +18,7 @@
 |---|---|---|
 | Аккаунт разработчика Google Play **организации**: $25, номер D-U-N-S компании, подтверждение телефона, почты и сайта `cleanway.ai` (через Search Console) | play.google.com/console/signup | Аккаунт организации не попадает под правило «12 тестировщиков 14 дней» для личных аккаунтов |
 | ✅ Ящик `support@cleanway.ai` принимает письма — сделано: Cloudflare Email Routing пересылает `support@`, `hello@`, `security@`, `conduct@` основателю; сайт показывает адрес | Cloudflare → Email Routing | Play требует рабочий контактный email. Перед отправкой — тестовое письмо на `support@` |
-| Собрать AAB для Play с `EXPO_PUBLIC_DISTRIBUTION=play` и `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=goog_…` | `docs/STORES.md` §6.0 | Без этого в сборке нет Google Play Billing, и Play её отклонит |
+| Собрать AAB для Play с `EXPO_PUBLIC_DISTRIBUTION=play` и `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=goog_…` — сборка C в `docs/RUSTORE_SUBMISSION.md` §2 (`cleanway-<версия>-<код>-play.aab`) | `docs/STORES.md` §6.0 | Без этого в сборке нет Google Play Billing, а экран оплаты ведёт на оплату на сайте — Play её отклонит. Без переменной gradle теперь сам останавливает сборку |
 | Записать видео для деклараций VPN и foreground service (§1.6) и выложить на YouTube «доступ по ссылке» | телефон + YouTube | Play требует ссылку на видео |
 | Аккаунт Chrome Web Store: $5, двухэтапная проверка Google, подтвердить почту; статус «trader» (продавец) для ЕС — указать адрес, телефон и email компании | chrome.google.com/webstore/devconsole | Без оплаты и 2SV загрузка недоступна |
 | Аккаунт Microsoft Partner Center (бесплатно, тип — компания) | partner.microsoft.com/dashboard/microsoftedge | — |
@@ -60,7 +60,7 @@ WHAT IT PROTECTS YOU FROM
 • Scam websites. Cleanway blocks known scam and phishing sites in every app and browser. The page simply won't open, and Cleanway lets you know with a notification.
 • Suspicious texts. Got a message about a "parcel", a "blocked card" or a "prize"? Share it to Cleanway or paste the text. The app tells you whether it looks like a scam and explains why, in plain words.
 • Dangerous links and QR codes. Paste a link or point the camera at a QR code, and Cleanway checks the site before you open it.
-• Phone scams. If you try to switch protection off or open a blocked site during a call or right after it, Cleanway shows a warning: this is what scammers ask for. The "I'm being called" button explains what to do when "the bank" or "the police" calls, and lets you call a loved one with one tap. Cleanway does not listen to calls, see phone numbers or block calls.
+• Phone scams. If you try to switch protection off or open a blocked site during a call or right after it, Cleanway shows a warning: this is what scammers ask for. The "I'm being called" button explains what to do when "the bank" or "the police" calls. Cleanway does not listen to calls, see phone numbers or block calls.
 
 SIMPLE FOR EVERYONE
 • Clear warnings without technical words.
@@ -127,7 +127,7 @@ Cleanway — защита от мошенников в телефоне. Не д
 • Сайты мошенников. Cleanway блокирует известные мошеннические и фишинговые сайты во всех приложениях и браузерах. Такая страница просто не откроется, а Cleanway сообщит об этом уведомлением.
 • Подозрительные СМС. Пришло сообщение про «посылку», «блокировку карты» или «выигрыш»? Перешлите его в Cleanway кнопкой «Поделиться» или вставьте текст. Приложение скажет, похоже ли это на мошенников, и объяснит почему — простыми словами.
 • Опасные ссылки и QR-коды. Вставьте ссылку или наведите камеру на QR-код — Cleanway проверит сайт, прежде чем вы его откроете.
-• Обман по телефону. Если во время звонка или сразу после него вы пытаетесь отключить защиту или открыть заблокированный сайт, Cleanway покажет предупреждение: так действуют мошенники. Кнопка «Мне звонят» подскажет, что делать, если звонят «из банка» или «из полиции», и поможет одним нажатием позвонить близкому. Cleanway не слушает разговоры, не видит номера и не блокирует звонки.
+• Обман по телефону. Если во время звонка или сразу после него вы пытаетесь отключить защиту или открыть заблокированный сайт, Cleanway покажет предупреждение: так действуют мошенники. Кнопка «Мне звонят» подскажет, что делать, если звонят «из банка» или «из полиции». Cleanway не слушает разговоры, не видит номера и не блокирует звонки.
 
 ПРОСТО ДЛЯ ВСЕХ
 • Понятные предупреждения на русском, без технических слов.

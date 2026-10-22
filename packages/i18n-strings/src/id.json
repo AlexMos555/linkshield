@@ -3881,7 +3881,6 @@
       "benefit_unlimited": "Pemeriksaan rinci tautan dan pesan tanpa batas",
       "benefit_sms": "Pemeriksaan SMS otomatis",
       "benefit_text_model": "Analisis teks: mengapa itu penipuan dan apa yang harus dilakukan",
-      "benefit_calls": "Perlindungan saat panggilan telepon",
       "benefit_devices": "Hingga {{n}} perangkat dalam satu akun",
       "cta_sign_in": "Masuk untuk berlangganan",
       "cta_web": "Berlangganan di cleanway.ai",
@@ -4015,6 +4014,9 @@
       "error_title": "Terjadi kesalahan",
       "error_body": "Layar ini tidak bisa ditampilkan. Kembali ke layar utama dan coba lagi dari sana.",
       "home": "Buka layar utama"
+    },
+    "ios_info_plist": {
+      "camera_usage": "Cleanway memakai kamera untuk membaca kode QR dan memeriksa apakah tautan di dalamnya aman."
     }
   }
 }

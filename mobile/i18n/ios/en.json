@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "Cleanway uses the camera to scan QR codes and check if the link inside is safe."
+  }
+}

@@ -1874,7 +1874,6 @@
   "mobile.paywall.benefit_unlimited": "लिंक और संदेशों की असीमित विस्तृत जाँच",
   "mobile.paywall.benefit_sms": "SMS की अपने-आप जाँच",
   "mobile.paywall.benefit_text_model": "टेक्स्ट का विश्लेषण: यह धोखा क्यों है और क्या करें",
-  "mobile.paywall.benefit_calls": "फ़ोन कॉल के दौरान सुरक्षा",
   "mobile.paywall.benefit_devices": "एक खाते में {{n}} डिवाइस तक",
   "mobile.paywall.cta_sign_in": "सदस्यता के लिए साइन इन करें",
   "mobile.paywall.cta_web": "cleanway.ai पर सदस्यता लें",
@@ -1999,5 +1998,6 @@
   "mobile.fallback.not_found_body": "हो सकता है यह ऐप के नए संस्करण के लिए हो। Cleanway अपडेट करें या होम स्क्रीन पर जाएँ।",
   "mobile.fallback.error_title": "कुछ गड़बड़ हो गई",
   "mobile.fallback.error_body": "यह स्क्रीन नहीं दिखाई जा सकी। होम स्क्रीन पर लौटें और वहाँ से फिर कोशिश करें।",
-  "mobile.fallback.home": "होम स्क्रीन पर जाएँ"
+  "mobile.fallback.home": "होम स्क्रीन पर जाएँ",
+  "mobile.ios_info_plist.camera_usage": "Cleanway QR कोड पढ़ने और उनमें मौजूद लिंक सुरक्षित है या नहीं, यह जाँचने के लिए कैमरे का इस्तेमाल करता है।"
 }

@@ -3881,7 +3881,6 @@
       "benefit_unlimited": "Vérifications détaillées des liens et messages sans limite",
       "benefit_sms": "Vérification automatique des SMS",
       "benefit_text_model": "Analyse du texte : pourquoi c'est une arnaque et que faire",
-      "benefit_calls": "Protection pendant les appels",
       "benefit_devices": "Jusqu'à {{n}} appareils sur un seul compte",
       "cta_sign_in": "Se connecter pour s'abonner",
       "cta_web": "S'abonner sur cleanway.ai",
@@ -4015,6 +4014,9 @@
       "error_title": "Un problème est survenu",
       "error_body": "Impossible d'afficher cet écran. Revenez à l'écran d'accueil et réessayez depuis celui-ci.",
       "home": "Aller à l'écran d'accueil"
+    },
+    "ios_info_plist": {
+      "camera_usage": "Cleanway utilise l'appareil photo pour lire les codes QR et vérifier si le lien qu'ils contiennent est sûr."
     }
   }
 }

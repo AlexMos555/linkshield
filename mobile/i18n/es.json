@@ -1874,7 +1874,6 @@
   "mobile.paywall.benefit_unlimited": "Comprobaciones detalladas de enlaces y mensajes sin límite",
   "mobile.paywall.benefit_sms": "Comprobación automática de SMS",
   "mobile.paywall.benefit_text_model": "Análisis del texto: por qué es una estafa y qué hacer",
-  "mobile.paywall.benefit_calls": "Protección durante las llamadas",
   "mobile.paywall.benefit_devices": "Hasta {{n}} dispositivos en una cuenta",
   "mobile.paywall.cta_sign_in": "Inicia sesión para suscribirte",
   "mobile.paywall.cta_web": "Suscribirse en cleanway.ai",
@@ -1999,5 +1998,6 @@
   "mobile.fallback.not_found_body": "Puede que sea para una versión más reciente de la app. Actualiza Cleanway o ve a la pantalla de inicio.",
   "mobile.fallback.error_title": "Algo salió mal",
   "mobile.fallback.error_body": "No se pudo mostrar esta pantalla. Vuelve a la pantalla de inicio e inténtalo de nuevo desde allí.",
-  "mobile.fallback.home": "Ir a la pantalla de inicio"
+  "mobile.fallback.home": "Ir a la pantalla de inicio",
+  "mobile.ios_info_plist.camera_usage": "Cleanway usa la cámara para leer códigos QR y comprobar si el enlace que contienen es seguro."
 }

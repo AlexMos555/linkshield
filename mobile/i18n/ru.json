@@ -1874,7 +1874,6 @@
   "mobile.paywall.benefit_unlimited": "Подробные проверки ссылок и сообщений без ограничений",
   "mobile.paywall.benefit_sms": "Автоматическая проверка SMS",
   "mobile.paywall.benefit_text_model": "Разбор текста: почему это мошенничество и что делать",
-  "mobile.paywall.benefit_calls": "Защита во время телефонного звонка",
   "mobile.paywall.benefit_devices": "До {{n}} устройств в одном аккаунте",
   "mobile.paywall.cta_sign_in": "Войти и оформить",
   "mobile.paywall.cta_web": "Оформить на сайте cleanway.ai",
@@ -1999,5 +1998,6 @@
   "mobile.fallback.not_found_body": "Возможно, она для более новой версии приложения. Обновите Cleanway или перейдите на главный экран.",
   "mobile.fallback.error_title": "Что-то пошло не так",
   "mobile.fallback.error_body": "Не удалось показать этот экран. Вернитесь на главный экран и попробуйте снова.",
-  "mobile.fallback.home": "На главный экран"
+  "mobile.fallback.home": "На главный экран",
+  "mobile.ios_info_plist.camera_usage": "Cleanway использует камеру, чтобы читать QR-коды и проверять, безопасна ли ссылка в них."
 }

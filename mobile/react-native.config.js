@@ -9,7 +9,9 @@
  *
  * Gradle caches the autolinking result (android/build/generated/autolinking/)
  * keyed on package.json / the lock / this file — NOT on the environment. After
- * changing EXPO_PUBLIC_DISTRIBUTION, regenerate android/ (`expo prebuild --clean`).
+ * changing EXPO_PUBLIC_DISTRIBUTION, regenerate android/ (`expo prebuild --clean`);
+ * a release build whose android/ was generated for another value stops at
+ * the start of gradle (plugins/withDistributionGuard.js).
  */
 const { storeBillingLinked, buildEnv } = require("./plugins/store-billing-linking");
 
