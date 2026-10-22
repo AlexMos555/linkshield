@@ -253,7 +253,8 @@ def test_the_files_train_model_reads_are_the_ones_written():
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
     from ml import train_model
 
-    assert (train_model.BENIGN_DOMAINS_CSV, train_model.BENIGN_HOSTS_CSV) == (rtf.BENIGN_DOMAINS, rtf.BENIGN_HOSTS)
+    assert (train_model.BENIGN_DOMAINS_CSV, train_model.BENIGN_HOSTS_CSV, train_model.BENIGN_SOURCES_JSON) == (
+        rtf.BENIGN_DOMAINS, rtf.BENIGN_HOSTS, rtf.BENIGN_SOURCES)
 
 
 @pytest.mark.parametrize("broken", ["majestic", "russia", "short"])
@@ -274,3 +275,34 @@ def test_a_missing_benign_list_keeps_both_previous_files(small_lists, monkeypatc
     assert rtf.refresh_benign() == 2
     for name in (rtf.BENIGN_DOMAINS, rtf.BENIGN_HOSTS):
         assert (small_lists / name).read_text() == "1,previous.example\n"
+
+
+def test_a_failed_write_keeps_both_previous_files(small_lists, monkeypatch):
+    """Both files or neither holds for the write too: every new file is
+    written in full before any previous one is replaced, so a disk error on
+    the second leaves last week's pair, not a new domain list with old hosts."""
+    for name in (rtf.BENIGN_DOMAINS, rtf.BENIGN_HOSTS):
+        (small_lists / name).write_text("1,previous.example\n")
+    (small_lists / (rtf.BENIGN_HOSTS + ".tmp")).mkdir()   # opening it for writing fails
+    monkeypatch.setattr(rtf, "_get", _benign_fetch(_benign_responses()))
+    assert rtf.refresh_benign() == 2
+    for name in (rtf.BENIGN_DOMAINS, rtf.BENIGN_HOSTS):
+        assert (small_lists / name).read_text() == "1,previous.example\n"
+    assert not (small_lists / (rtf.BENIGN_DOMAINS + ".tmp")).exists()
+    assert not (small_lists / rtf.BENIGN_SOURCES).exists()
+
+
+def test_refresh_benign_records_where_the_lists_came_from(small_lists, monkeypatch):
+    """ml/train_model copies this into data/model_meta.json: which CrUX month
+    and how many rows of each list a served model learned from, under which
+    licence."""
+    monkeypatch.setattr(rtf, "_get", _benign_fetch(_benign_responses(month="202608")))
+    monkeypatch.setattr(rtf, "_today", lambda: datetime.date(2026, 10, 23))
+    assert rtf.refresh_benign() == 0
+    record = json.loads((small_lists / rtf.BENIGN_SOURCES).read_text())
+    assert record["fetched"] == "2026-10-23"
+    assert record["majestic_million"] == {"url": rtf.MAJESTIC, "licence": "CC BY 3.0", "rows": 3}
+    assert record["crux"]["licence"] == "CC BY 4.0"
+    assert record["crux"]["months"] == {"global": "202608", "country/ru": "202608"}
+    assert record["crux"]["origins"] == {"global": 4, "country/ru": 3}
+    assert record["files"] == {rtf.BENIGN_DOMAINS: 5, rtf.BENIGN_HOSTS: 6}

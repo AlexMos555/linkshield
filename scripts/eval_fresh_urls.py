@@ -381,14 +381,19 @@ async def fetch_phishtank_recent(limit: int) -> list[str]:
 
 
 def fetch_tranco_legit(limit: int) -> list[str]:
-    """Random sample from local Tranco top-1M CSV.
+    """Random sample of the Tranco top-100k: the allowlist the server
+    answers without analysis (data/top_100k.json), or a Tranco top-1M CSV
+    placed at data/top-1m.csv by hand. Nothing writes that file since
+    2026-10-22 (scripts/refresh_training_feeds.py stopped downloading
+    Tranco; ML training reads data/benign-domains.csv), so the JSON is the
+    usual source. Evaluation only — this sample is never a training row.
 
     Skips the top-100 (too easily 'safe' by reputation; we want
     moderately-popular but not famous sites in the control group).
     """
     src = DATA / "top-1m.csv"
     if not src.exists():
-        log.warning("data/top-1m.csv missing — using top_100k.json fallback")
+        log.info("no data/top-1m.csv — sampling the allowlist, data/top_100k.json")
         with open(DATA / "top_100k.json", "r") as f:
             raw = json.load(f)
         # top_100k.json schema has drifted historically — accept both shapes:

@@ -229,3 +229,18 @@ def test_the_averaged_ensemble_exports_a_classifier_onnx(tmp_path):
     assert abs(out[1][0][1] - model.predict_proba(X[:1])[0, 1]) < 1e-4
     mean = np.mean([m.predict_proba(X[:5])[:, 1] for m in members], axis=0)
     assert np.allclose(model.predict_proba(X[:5])[:, 1], mean, atol=0.02)   # the members' mean
+
+
+def test_model_meta_names_the_benign_lists_it_learned_from(tmp_path, monkeypatch):
+    """The provenance record scripts/refresh_training_feeds.py writes beside
+    the benign lists goes into model_meta.json as it is; without one (a run
+    on hand-placed lists) the field says so instead of guessing."""
+    import json
+
+    monkeypatch.setattr(tm, "DATA_DIR", str(tmp_path))
+    assert tm.benign_provenance() is None
+    record = {"fetched": "2026-10-23", "crux": {"months": {"global": "202609"}}}
+    (tmp_path / tm.BENIGN_SOURCES_JSON).write_text(json.dumps(record))
+    assert tm.benign_provenance() == record
+    (tmp_path / tm.BENIGN_SOURCES_JSON).write_text("<html>not json</html>")
+    assert tm.benign_provenance() is None

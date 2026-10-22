@@ -58,6 +58,9 @@ Writes (all gitignored — regenerated each run):
                         buckets: 1000, 5000, 10000 …): the benign host shapes
                         (www.example.com, kvs.gov.spb.ru-style names) and
                         hosting tenants. See ml/train_model.load_benign_domains.
+  data/benign-sources.json — where those two came from: the CrUX month of
+                        each scope, rows per list, licences, the fetch date.
+                        ml/train_model copies it into data/model_meta.json.
 
 Refusal (exit 2, previous files untouched): fewer than MIN_SOURCES feeds
 readable, or fewer than MIN_HOSTS hosts in all; for the benign lists, any
@@ -108,6 +111,9 @@ MIN_BENIGN_DOMAINS = 500_000
 CRUX_MONTHS_BACK = 4
 BENIGN_DOMAINS = "benign-domains.csv"
 BENIGN_HOSTS = "benign-hosts.csv"
+# Provenance of the two lists (CrUX month, rows, licences), written with
+# them; ml/train_model copies it into data/model_meta.json.
+BENIGN_SOURCES = "benign-sources.json"
 
 # ml/train_model.train() reads this many phishing hosts (names first, then
 # IP literals, in file order).
@@ -340,7 +346,7 @@ def crux_months(today: datetime.date, back: int = CRUX_MONTHS_BACK) -> list[str]
 def fetch_crux(scope: str, today: Optional[datetime.date] = None) -> tuple[str, list[tuple[int, str]]]:
     """(month, rows) of the newest published month of one CrUX scope. A
     missing month (404) tries the one before; anything else raises."""
-    for month in crux_months(today or datetime.date.today()):
+    for month in crux_months(today or _today()):
         url = CRUX.format(scope=scope, month=month)
         try:
             body = _get(url)
@@ -375,13 +381,34 @@ def merge_ranked(*lists: Iterable[tuple[int, str]]) -> list[tuple[int, str]]:
     return sorted(((rank, host) for host, rank in best.items()))
 
 
-def _write_ranked(rows: list[tuple[int, str]], filename: str) -> None:
-    out = os.path.join(_DATA, filename)
-    tmp = out + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        f.writelines(f"{rank},{host}\n" for rank, host in rows)
-    os.replace(tmp, out)
-    logger.info("Wrote %s (%d rows)", out, len(rows))
+def _today() -> datetime.date:
+    return datetime.date.today()
+
+
+def _ranked_text(rows: list[tuple[int, str]]) -> str:
+    return "".join(f"{rank},{host}\n" for rank, host in rows)
+
+
+def _write_all(files: dict[str, str]) -> bool:
+    """Every file written in full to a .tmp first, then each moved over the
+    previous one: a write that fails (disk full, permissions) leaves every
+    previous file as it was and no .tmp behind."""
+    pending = [(os.path.join(_DATA, name) + ".tmp", os.path.join(_DATA, name), text)
+               for name, text in files.items()]
+    try:
+        for tmp, _, text in pending:
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(text)
+    except OSError as e:
+        logger.error("Benign list write failed, keeping the previous files: %s", e)
+        for tmp, _, _ in pending:
+            if os.path.isfile(tmp):
+                os.remove(tmp)
+        return False
+    for tmp, out, _ in pending:
+        os.replace(tmp, out)
+        logger.info("Wrote %s", out)
+    return True
 
 
 def refresh_benign() -> int:
@@ -389,23 +416,37 @@ def refresh_benign() -> int:
     # go back to flagging every host that has a subdomain, and one without
     # the Russian list to flagging names under regional zones.
     try:
-        domains = parse_majestic(_get(MAJESTIC, timeout=300.0).decode("utf-8", "ignore"))
-        if len(domains) < MIN_BENIGN_DOMAINS:
-            raise ValueError(f"Majestic Million: {len(domains)} rows, need {MIN_BENIGN_DOMAINS}")
+        majestic = parse_majestic(_get(MAJESTIC, timeout=300.0).decode("utf-8", "ignore"))
+        if len(majestic) < MIN_BENIGN_DOMAINS:
+            raise ValueError(f"Majestic Million: {len(majestic)} rows, need {MIN_BENIGN_DOMAINS}")
         crux: dict[str, list[tuple[int, str]]] = {}
+        months: dict[str, str] = {}
         for scope, minimum in CRUX_SCOPES.items():
             month, rows = fetch_crux(scope)
             if len(rows) < minimum:
                 raise ValueError(f"CrUX {scope} {month}: {len(rows)} origins, need {minimum}")
             logger.info("CrUX %s %s: %d origins", scope, month, len(rows))
-            crux[scope] = rows
-        domains = merge_ranked(domains, *(registrable_rows(crux[s]) for s in CRUX_DOMAIN_SCOPES))
+            crux[scope], months[scope] = rows, month
+        domains = merge_ranked(majestic, *(registrable_rows(crux[s]) for s in CRUX_DOMAIN_SCOPES))
+        hosts = merge_ranked(*crux.values())
     except Exception as e:  # noqa: BLE001 — any failure keeps the previous files
         logger.error("Benign list refresh failed, keeping the previous files: %s", e)
         return 2
-    _write_ranked(domains, BENIGN_DOMAINS)
-    _write_ranked(merge_ranked(*crux.values()), BENIGN_HOSTS)
-    return 0
+    provenance = {
+        "fetched": _today().isoformat(),
+        "majestic_million": {"url": MAJESTIC, "licence": "CC BY 3.0", "rows": len(majestic)},
+        "crux": {
+            "url": CRUX, "licence": "CC BY 4.0", "via": "github.com/zakird/crux-top-lists",
+            "months": months, "origins": {scope: len(rows) for scope, rows in crux.items()},
+        },
+        "files": {BENIGN_DOMAINS: len(domains), BENIGN_HOSTS: len(hosts)},
+    }
+    ok = _write_all({
+        BENIGN_DOMAINS: _ranked_text(domains),
+        BENIGN_HOSTS: _ranked_text(hosts),
+        BENIGN_SOURCES: json.dumps(provenance, indent=2) + "\n",
+    })
+    return 0 if ok else 2
 
 
 def main() -> int:

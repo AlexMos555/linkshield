@@ -89,6 +89,9 @@ MODEL_DIR = os.path.join(ROOT, "data")
 # global) and hosts with subdomains (CrUX top origins, global + Russia).
 BENIGN_DOMAINS_CSV = "benign-domains.csv"
 BENIGN_HOSTS_CSV = "benign-hosts.csv"
+# Written with them: the CrUX month, rows per list, licences (provenance for
+# model_meta.json).
+BENIGN_SOURCES_JSON = "benign-sources.json"
 
 # Evaluation sets that must never be trained on: the Russian false-positive
 # and look-alike sets (scripts/eval_ru_heuristics.py) and the weekly
@@ -749,6 +752,18 @@ def phishing_source_mix(hosts: Iterable[str]) -> dict[str, int]:
     return dict(sorted(mix.items()))
 
 
+def benign_provenance() -> Optional[dict]:
+    """The record refresh_training_feeds wrote beside the benign lists, or
+    None when there is none to read (lists placed by hand, an unreadable
+    file) — model_meta.json then says null rather than guess a month."""
+    try:
+        with open(os.path.join(DATA_DIR, BENIGN_SOURCES_JSON), encoding="utf-8") as f:
+            record = json.load(f)
+    except (OSError, ValueError):
+        return None
+    return record if isinstance(record, dict) else None
+
+
 def average_members(members: list) -> "CatBoostClassifier":
     """One CatBoostClassifier whose raw score is the mean of the members'
     (catboost.sum_models with equal weights) — a single .cbm / .onnx, the
@@ -945,6 +960,9 @@ def train(replace_anyway: bool = False, seed: int = SEED):
             # Provenance: which feeds the phishing class came from (the CC0 /
             # unrestricted ones only since 2026-10-21) and how it was drawn.
             "phishing_sources": phishing_source_mix(phishing),
+            # …and which benign lists (Majestic Million, CrUX month, licences)
+            # since 2026-10-22; plus data/typosquat_targets_ru.json, first-party.
+            "benign_sources": benign_provenance(),
             "benign_class_weight": BENIGN_CLASS_WEIGHT,
             "ensemble_members": ENSEMBLE_MEMBERS,
             "seed": seed,
