@@ -573,7 +573,7 @@ def _site_platform_suffixes() -> list[str]:
     (scoring.HOSTING_PLATFORMS, without the Google user-content hosts) and
     the curated hosting / site-builder groups of data/hosting_platforms.json
     (not dynamic DNS, not the blogspot ccTLD mirrors). Sorted."""
-    from api.services.scoring import HOSTING_PLATFORMS
+    from api.services.scoring import GOOGLE_ABUSED_SUBDOMAINS, HOSTING_PLATFORMS
 
     try:
         with open(os.path.join(ROOT, "data", "hosting_platforms.json"), encoding="utf-8") as f:
@@ -581,8 +581,8 @@ def _site_platform_suffixes() -> list[str]:
     except (OSError, ValueError):
         groups = {}
     curated = {s for g in ("ru_hosting", "ru_site_builders", "site_builders") for s in groups.get(g, [])}
-    return sorted(s for s in set(HOSTING_PLATFORMS) | curated if not is_user_content_host("x." + s)
-                  and not s.endswith("google.com"))
+    return sorted(s for s in (set(HOSTING_PLATFORMS) | curated) - GOOGLE_ABUSED_SUBDOMAINS
+                  if not is_user_content_host("x." + s))
 
 
 def _has_lure_word(domain: str) -> bool:

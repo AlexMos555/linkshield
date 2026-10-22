@@ -119,7 +119,7 @@ def test_synthetic_tenants_follow_the_phishing_platform_mix():
     # the rest spread over the site platforms, which the feeds may not report at all
     assert {shared_tenant(h)[0] for h in out} - {"pages.dev", "vercel.app"} <= set(tm._site_platform_suffixes())
     assert len({shared_tenant(h)[0] for h in out}) > 20
-    assert "myshopify.com" in tm._site_platform_suffixes() and "tw1.ru" in tm._site_platform_suffixes()
+    assert {"myshopify.com", "tw1.ru"} <= set(tm._site_platform_suffixes())
     assert out == tm.synthetic_tenants(tail, phishing, 150, random.Random(0))   # reproducible
 
 
