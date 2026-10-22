@@ -222,10 +222,34 @@ function blockedPageUrl(tab) {
   return "";
 }
 
+// ─── "Report wrong result" ────────────────────────────────────
+// The verdict this popup showed, {domain, level}: the report says the
+// opposite of it. It used to read last_verdict_<domain>, which nothing ever
+// wrote, so every report was "a scam you missed" — over a red verdict and
+// over the block page too (whose tab URL is the extension's own page).
+var _shownVerdict = null;
+
+/** A red or amber verdict reported as wrong is a false positive; anything else, a miss. */
+function reportTypeFor(level) {
+  return level === "dangerous" || level === "caution" || level === "suspicious" || level === "phishing"
+    ? "false_positive" : "false_negative";
+}
+
+/** What to report: the site the popup showed, else the tab's own http(s) host (as a miss). */
+function reportTarget(shown, tabUrl) {
+  if (shown && typeof shown.domain === "string" && shown.domain) {
+    return { domain: shown.domain, report_type: reportTypeFor(shown.level) };
+  }
+  var url;
+  try { url = new URL(tabUrl); } catch (e) { return null; }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  return { domain: url.hostname.toLowerCase(), report_type: "false_negative" };
+}
+
 async function loadPageStatus() {
   var tabs = [];
   try { tabs = await chrome.tabs.query({ active: true, currentWindow: true }); } catch (e) {}
-  var tab = tabs[0];
+  var tab = tabs && tabs[0];
 
   // The tab is on our block page: the site behind it is a scam. Without
   // this the extension page fell into "not a web page" below and the popup
@@ -233,6 +257,7 @@ async function loadPageStatus() {
   var blockedHref = blockedPageUrl(tab);
   if (blockedHref) {
     var shown = self.cleanwayBlockedUrl.parse(blockedHref);
+    if (shown.domain) _shownVerdict = { domain: shown.domain, level: "dangerous" };
     setStatus("danger", t("status_danger_title"),
       shown.domain ? t("status_danger_subtitle", [shown.domain]) : "");
     if (typeof shown.confidence_pct === "number") {
@@ -270,9 +295,11 @@ async function loadPageStatus() {
     var resp = await chrome.runtime.sendMessage({ type: "CHECK_DOMAINS", domains: [domain], page: true });
     var r = resp && resp.results && resp.results[0];
     if (!r) {
+      _shownVerdict = { domain: domain, level: "unknown" };
       setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
       return;
     }
+    _shownVerdict = { domain: domain, level: r.level };
     var state = levelToState(r.level);
     var title, subtitle;
     if (state === "safe") {
@@ -307,6 +334,7 @@ async function loadPageStatus() {
       }
     }
   } catch (e) {
+    _shownVerdict = { domain: domain, level: "unknown" };
     setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
     $("offline-banner").hidden = false;
   }
@@ -501,27 +529,22 @@ function wireButtons() {
     // `SHOW_REPORT_DIALOG` message had no handler anywhere — the
     // button was dead UI. (Audit extension-mv3 HIGH dead-button.)
     try {
+      // The verdict this popup showed decides which way it was wrong: a red
+      // or amber one reported is a false positive, anything else a miss.
+      // Over the block page that is the blocked site (?d=), not the tab's
+      // extension-page address.
       var tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tabs[0] || !tabs[0].url) {
+      var tab = tabs && tabs[0];
+      if (!_shownVerdict && (!tab || !tab.url)) {
         _flashButton(report, t("action_report_no_tab"));
         return;
       }
-      var url = new URL(tabs[0].url);
-      if (url.protocol !== "http:" && url.protocol !== "https:") {
+      var target = reportTarget(_shownVerdict, tab && tab.url);
+      if (!target) {
         _flashButton(report, t("action_report_invalid"));
         return;
       }
-      var domain = url.hostname;
 
-      // Determine report_type from the current tab's last verdict.
-      // If the tab is currently flagged dangerous, the user is saying
-      // "you got this wrong, it's actually safe" (false_positive).
-      // Otherwise they're flagging missed phishing (false_negative).
-      var verdictData = await chrome.storage.local.get(["last_verdict_" + domain]);
-      var lastVerdict = verdictData["last_verdict_" + domain];
-      var reportType = lastVerdict === "dangerous" ? "false_positive" : "false_negative";
-
-      var apiModule = await import(chrome.runtime.getURL("src/utils/api.js"));
       var apiBase = (typeof window !== "undefined" && window.CLEANWAY_API_BASE)
         ? window.CLEANWAY_API_BASE
         : "https://api.cleanway.ai";
@@ -529,14 +552,11 @@ function wireButtons() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          domain: domain,
-          report_type: reportType,
+          domain: target.domain,
+          report_type: target.report_type,
           comment: "[extension-popup] reported via 'wrong result' button",
         }),
       });
-      // Silence the unused-import lint — apiModule is reserved for a
-      // future revision where auth+ip-throttle move into utils/api.js.
-      void apiModule;
       if (resp.ok) {
         _flashButton(report, t("action_report_done"));
       } else if (resp.status === 429) {

@@ -5,6 +5,7 @@
  * move focus away (blur) we:
  *   1. SHA-1 the password locally
  *   2. Send only the first 5 hex chars of the hash to Cleanway
+ *      (the background makes the request: BREACH_PREFIX)
  *   3. Get back the suffix list (k-anonymity)
  *   4. Match the user's actual suffix locally
  *   5. If found → inline "this password appeared in N data breaches"
@@ -33,7 +34,6 @@
 
   var MIN_LENGTH = 4;
   var STORAGE_KEY = "pwned_password_seen_count";
-  var API_PATH = "/api/v1/breach/check/";
 
   var _seenInputs = new WeakSet();
   var _lastValueByInput = new WeakMap();
@@ -45,12 +45,6 @@
     } catch (_e) {
       return key;
     }
-  }
-
-  function _apiBase() {
-    return (typeof window !== "undefined" && window.CLEANWAY_API_BASE)
-      ? window.CLEANWAY_API_BASE
-      : "https://api.cleanway.ai";
   }
 
   // ── SHA-1 via Web Crypto. SubtleCrypto requires secure context.
@@ -70,25 +64,32 @@
     return out.toUpperCase();
   }
 
-  // ── Lookup. Returns breach count (>0) or 0.
-  async function _checkPrefix(prefix, fullHash) {
-    // referrerPolicy='no-referrer' is essential: by default the
-    // page's hostname leaks to Cleanway in the Referer header.
-    // That defeats the privacy story of k-anonymity ("server
-    // never sees what you typed") because it tells us
-    // "user-on-bank.com queried prefix X" — combined with rate-
-    // limit per-IP buckets this is a real fingerprint. The
-    // server NEVER needs the page origin for this call.
-    var resp = await fetch(_apiBase() + API_PATH + prefix, {
-      method: "GET",
-      credentials: "omit",
-      mode: "cors",
-      referrerPolicy: "no-referrer",
+  // ── Lookup, through the background (BREACH_PREFIX,
+  //    background/page-lookups.js). Only the 5-character prefix goes; the
+  //    suffix list comes back and the match is made here.
+  //    The request used to be fetched from this content script. In Chromium
+  //    that is the PAGE's request: it carried the visited site's origin
+  //    ("someone on bank.example asked for prefix X"), and the API answers
+  //    page origins without CORS headers, so the browser discarded the
+  //    answer and the warning never showed. From the background it carries
+  //    neither the page's origin nor a referrer.
+  function _lookupPrefix(prefix) {
+    return new Promise(function (resolve) {
+      try {
+        chrome.runtime.sendMessage({ type: "BREACH_PREFIX", prefix: prefix }, function (reply) {
+          void chrome.runtime.lastError; // no background: nothing to match
+          resolve(reply && reply.ok && Array.isArray(reply.suffixes) ? reply.suffixes : []);
+        });
+      } catch (_e) {
+        resolve([]);
+      }
     });
-    if (!resp.ok) return 0;
-    var data = await resp.json();
+  }
+
+  // ── Returns breach count (>0) or 0.
+  async function _checkPrefix(prefix, fullHash) {
+    var suffixes = await _lookupPrefix(prefix);
     var ourSuffix = fullHash.slice(5);
-    var suffixes = (data && data.suffixes) || [];
     for (var i = 0; i < suffixes.length; i++) {
       var row = suffixes[i];
       if (row && row.suffix === ourSuffix && row.count > 0) {
