@@ -44,10 +44,12 @@ EXECUTE на каждую функцию — включая SECURITY DEFINER `re
    ```
 3. **Посмотреть:** `pg_restore --list db.dump | head` и сравнить версию схемы
    Auth в дампе и в новом проекте — данные `auth` ложатся только в такую же
-   схему:
+   схему. Первая команда печатает самую новую миграцию Auth в дампе, вторая —
+   в новом проекте (обе — 14 цифр, дата и время):
    ```bash
-   pg_restore --data-only --schema=auth --table=schema_migrations -f - db.dump | tail -3
-   psql "$NEW_DB_URL" -c "select max(version) from auth.schema_migrations;"
+   pg_restore --data-only --schema=auth --table=schema_migrations -f - db.dump \
+     | grep -E '^[0-9]{14}' | sort | tail -1
+   psql "$NEW_DB_URL" -Atc "select max(version) from auth.schema_migrations;"
    ```
    Если в новом проекте версия новее — обычно это только добавленные колонки,
    восстановление пройдёт; если загрузка на шаге 4 падает на колонке — нужен
@@ -58,15 +60,25 @@ EXECUTE на каждую функцию — включая SECURITY DEFINER `re
    ```bash
    pg_restore --list db.dump | grep -E ' (TABLE DATA|SEQUENCE SET) auth ' \
      | grep -v ' schema_migrations ' > auth.list
-   pg_restore --data-only --no-owner --no-privileges -L auth.list -d "$NEW_DB_URL" db.dump
+   pg_restore --data-only --no-owner --no-privileges -L auth.list -f - db.dump \
+     | psql "$NEW_DB_URL" --single-transaction -v ON_ERROR_STOP=1 \
+         -c 'SET session_replication_role = replica' -f -
    ```
-   Ошибка порядка внешних ключей внутри `auth` — повторить в пустом проекте с
-   `PGOPTIONS='-c session_replication_role=replica'` перед командой.
+   `session_replication_role = replica` выключает триггеры, а с ними проверки
+   внешних ключей, — так грузит данные и руководство Supabase по
+   восстановлению. Без этого загрузка ломается **всегда**: дамп снят со схемой,
+   а в таком дампе `pg_dump` ставит данные таблиц по алфавиту, не по внешним
+   ключам — `identities`, `sessions`, `refresh_tokens` идут раньше `users`, их
+   COPY падает, и они остаются пустыми (проверено на postgres:17 2026-10-22).
+   Строки из дампа сами по себе согласованы, поэтому выключить проверку на
+   время загрузки безопасно. Всё идёт одной транзакцией: при любой ошибке не
+   загрузится ничего, и шаг можно повторить. Ошибка на колонке — см. шаг 3
+   (схема Auth другой версии).
 5. **Потом `public`** — схема и данные:
    ```bash
    pg_restore --no-owner --schema=public -d "$NEW_DB_URL" db.dump
    ```
-   Ожидаемая и безвредная ошибка одна: `schema "public" already exists`.
+   Допустима только одна, безвредная ошибка: `schema "public" already exists`.
    Любая другая — остановиться и разобраться.
 6. **Обязательно: заново наложить запрет и триггер** (все шесть миграций
    идемпотентны — повторный запуск безопасен; 025 — последней):
@@ -109,11 +121,15 @@ EXECUTE на каждую функцию — включая SECURITY DEFINER `re
    select conrelid::regclass, conname from pg_constraint
    where contype = 'f' and confrelid = 'auth.users'::regclass;
 
-   -- д) числа похожи на боевые
+   -- д) числа похожи на боевые; identities и sessions — не 0 (0 — значит,
+   --    шаг 4 их не загрузил: без identities вход по почте ломается)
    select (select count(*) from auth.users) as auth_users,
+          (select count(*) from auth.identities) as identities,
+          (select count(*) from auth.sessions) as sessions,
           (select count(*) from public.users) as users,
           (select count(*) from public.entitlements) as entitlements;
    ```
+   После проверки удалить расшифрованную копию: `rm -P db.dump auth.list`.
 8. **Переключить сервисы** на новый проект: в Railway (`web`) —
    `SUPABASE_URL`, `SUPABASE_SECRET_KEY` / `SUPABASE_PUBLISHABLE_KEY` (у нового
    проекта свои ключи), задеплоить; обновить env мобильного приложения и

@@ -10,9 +10,15 @@ REVOKEs of 017 and 022-025. Pinned here:
   * every migration that changes privileges or puts a trigger on `auth.*`
     is re-applied by the runbook's loop, in order, with the lock-down (025)
     last — a new migration of that kind fails this file until it is added;
-  * auth data is restored before `public`;
-  * the verification queries check table grants, the closed functions and
-    the trigger.
+  * auth data is restored before `public`, with triggers (and so foreign
+    keys) off and in one transaction: the nightly dump is schema + data, and
+    pg_dump orders TABLE DATA by foreign key only in a data-only dump, so
+    auth.identities, sessions and refresh_tokens come before auth.users.
+    Replayed as is, their COPY fails, pg_restore carries on, and they stay
+    empty (reproduced with postgres:17 on 2026-10-22);
+  * step 3 shows the dump's newest Auth migration, not the script's footer;
+  * the verification queries check table grants, the closed functions, the
+    trigger, and the auth rows sign-in needs (users, identities, sessions).
 """
 from __future__ import annotations
 
@@ -85,3 +91,31 @@ def test_the_checks_cover_grants_functions_and_the_trigger():
         assert f"'{fn}'" in text, fn
     assert "on_auth_user_created" in text
     assert "confrelid = 'auth.users'::regclass" in text
+
+
+def _step(n: int) -> str:
+    text = _runbook()
+    start = text.index(f"\n{n}. **")
+    end = text.index(f"\n{n + 1}. **", start)
+    return text[start:end]
+
+
+def test_auth_data_loads_with_triggers_off_in_one_transaction():
+    step = _step(4)
+    assert "pg_restore --data-only --no-owner --no-privileges -L auth.list -f - db.dump" in step
+    assert "SET session_replication_role = replica" in step
+    assert "--single-transaction" in step
+    assert "ON_ERROR_STOP=1" in step
+
+
+def test_the_version_check_prints_the_newest_auth_migration():
+    step = _step(3)
+    assert "grep -E '^[0-9]{14}' | sort | tail -1" in step
+    assert "| tail -3" not in step
+    assert "select max(version) from auth.schema_migrations" in step
+
+
+def test_the_counts_include_the_auth_rows_sign_in_needs():
+    step = _step(7)
+    for table in ("auth.users", "auth.identities", "auth.sessions", "public.users", "public.entitlements"):
+        assert f"from {table})" in step, table
