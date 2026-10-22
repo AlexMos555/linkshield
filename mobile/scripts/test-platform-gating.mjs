@@ -497,7 +497,32 @@ check("the Safari status module's pod is not above the app's iOS deployment targ
   assert.match(swift, guarded(String.raw`SFSafariExtensionManager\.getStateOfExtension`));
   assert.match(swift, guarded(String.raw`SFSafariSettings\.openExtensionsSettings`));
   // Both answer once, with a timeout: a call iOS never completes must not leave the card waiting.
-  assert.equal((swift.match(/ResolveOnce\(promise\)/g) || []).length, 2);
+  // (The captcha sheet answers once too: its completion vs a sheet that never started.)
+  const fnBody = (name) => {
+    const start = swift.indexOf(`AsyncFunction("${name}")`);
+    assert.ok(start >= 0, name);
+    const next = swift.indexOf("AsyncFunction(", start + 1);
+    return swift.slice(start, next < 0 ? undefined : next);
+  };
+  for (const name of ["getStatus", "openSettings", "openAuthSession"]) {
+    assert.match(fnBody(name), /ResolveOnce\(promise\)/, name);
+  }
+});
+
+check("the sign-in captcha's in-app sheet: https only, no Safari cookies or alert, held while open, optional in JS", () => {
+  const swift = read("modules/cleanway-safari/ios/CleanwaySafariModule.swift");
+  assert.match(swift, /import AuthenticationServices/);
+  assert.match(swift, /start\.scheme\?\.lowercased\(\) == "https"/);
+  assert.match(swift, /prefersEphemeralWebBrowserSession = true/);
+  assert.match(swift, /self\.authSession = session/);
+  assert.match(swift, /AsyncFunction\("cancelAuthSession"\)/);
+  // An iPhone binary built before the sheet existed has no such function:
+  // the JS checks for it and falls back to the browser.
+  const index = read("modules/cleanway-safari/index.ts");
+  assert.match(index, /openAuthSession\?\(url: string, callbackScheme: string\)/);
+  assert.match(index, /typeof native\?\.openAuthSession === 'function'/);
+  const auth = read("app/auth.tsx");
+  assert.match(auth, /getCaptchaToken: \(\) => requestCaptchaToken\(CAPTCHA_SHEET\)/);
 });
 if (failures > 0) {
   console.log(`\n${failures} failing`);
