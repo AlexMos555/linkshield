@@ -81,6 +81,21 @@ export function accountFailure(error: ApiFailureLike | null | undefined): Accoun
   return "retry";
 }
 
+/**
+ * What a failed refresh_token grant means (HTTP status; 0 = no answer):
+ *   signed_out — GoTrue refused the refresh token: 400 for a dead one
+ *                (refresh_token_not_found, refresh_token_already_used,
+ *                invalid_grant), 401, 403 (session_expired). It never comes
+ *                back, so the session ends here;
+ *   offline    — no answer, a timeout, 429, 5xx, anything else: we don't
+ *                know, so the session is kept and the refresh tried later.
+ * Only 401 used to count, so a dead session was kept as "offline" forever.
+ * The extension draws the same line (scripts/test-extension-auth.mjs).
+ */
+export function refreshFailure(status: number): "signed_out" | "offline" {
+  return status === 400 || status === 401 || status === 403 ? "signed_out" : "offline";
+}
+
 const KNOWN_PLANS = new Set(["free", "personal", "family", "business"]);
 const KNOWN_SOURCES = new Set([
   "stripe", "google_play", "app_store", "rustore", "operator_ru", "promo", "partner",
