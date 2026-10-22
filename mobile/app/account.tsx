@@ -4,6 +4,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import Constants from "expo-constants";
+import * as Localization from "expo-localization";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
@@ -16,7 +17,7 @@ import { BILLING_STORE, restoreStorePurchases, storeBillingOn } from "../src/ser
 import { manageSubscriptionUrl, storeCopyKeys, storeErrorNoteKey } from "../src/utils/store-billing";
 import { confirmDeleteAccount, signOutEverywhereLocal } from "../src/services/account-actions";
 import { accountFailure, planKey, platformKey, sourceKey, statusKey } from "../src/utils/account-session";
-import { paidPlansVisible } from "../src/config/market";
+import { paidPlansVisible } from "../src/utils/freemium";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -183,8 +184,9 @@ export default function AccountScreen() {
   const paid = ent.plan !== "free";
   const source = sourceKey(ent.source);
   const status = statusKey(ent.status, Boolean(ent.period_end));
-  // Neither "Upgrade" nor "Add a device" in an iPhone build without App Store billing.
-  const showUpgrade = PAID_PLANS_OFFERED && paidPlansVisible(i18n.language);
+  // Neither "Upgrade" nor "Add a device" in an iPhone build without App Store
+  // billing, nor where the paywall can only say "coming soon" (by region, as its prices).
+  const showUpgrade = PAID_PLANS_OFFERED && paidPlansVisible(i18n.language, Localization.getLocales()[0]?.regionCode);
   // A store build opens only the store's own page (manageUrlFor).
   const manageUrl = manageSubscriptionUrl(ent, FREEMIUM.distribution, ANDROID_PACKAGE);
   const canRestore = storeBillingOn();

@@ -5,6 +5,7 @@ import {
 import Constants from "expo-constants";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+import * as Localization from "expo-localization";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { SUPPORTED_LOCALES, LOCALE_NAMES, changeLocale, localeChangeNeedsReload, type SupportedLocale } from "../../src/i18n";
@@ -18,7 +19,7 @@ import { confirmDeleteAccount } from "../../src/services/account-actions";
 import {
   isDefaultLinkHandler, requestLinkHandler, notificationsEnabled, turnOnBlockNotifications, linkListAvailable,
 } from "../../modules/cleanway-vpn";
-import { paidPlansVisible } from "../../src/config/market";
+import { paidPlansVisible } from "../../src/utils/freemium";
 import { PAID_PLANS_OFFERED } from "../../src/services/freemium";
 import { linkGuardSettingShown } from "../../src/utils/platform-features";
 
@@ -337,8 +338,9 @@ export default function SettingsScreen() {
           <Row first label={t("mobile.settings.sign_in")} desc={t("mobile.settings.sign_in_desc")}
                right={chevron} onPress={() => router.push("/auth")} />
         )}
-        {/* No Plan row in an iPhone build without App Store billing (PAID_PLANS_OFFERED). */}
-        {PAID_PLANS_OFFERED && paidPlansVisible(i18n.language) && (
+        {/* No Plan row in an iPhone build without App Store billing (PAID_PLANS_OFFERED),
+            nor where the paywall can only say "coming soon" (paidPlansVisible: by region, as its prices). */}
+        {PAID_PLANS_OFFERED && paidPlansVisible(i18n.language, Localization.getLocales()[0]?.regionCode) && (
           <Row label={t("mobile.settings.plan")} desc={t("mobile.settings.plan_desc")}
                right={<Text style={s.pill}>{t("mobile.settings.upgrade")}</Text>}
                onPress={() => router.push({ pathname: "/paywall", params: { from: "upgrade" } })} />

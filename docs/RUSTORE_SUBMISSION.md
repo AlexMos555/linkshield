@@ -546,8 +546,9 @@ the code on 2026-10-08 (`main` @ `9aff8ee`); the evidence is listed in §7.7.
       you decide to ship it in the RuStore build, the copy, §3 and §4 must all
       change (new permission, new data row) — ask for a rewrite, do not edit one
       line.
-- [ ] **Pricing line.** The Russian build hides paid plans
-      (`mobile/src/config/market.ts`: `PAID_PLANS_HIDDEN_LANGUAGES = {"ru"}`), the
+- [ ] **Pricing line.** Phones in Russia see no paid plans
+      (`mobile/src/utils/freemium.ts` `paidPlansVisible`: region RU, or Russian
+      with no region — where the paywall can only say "coming soon"), the
       daily free-check limit and the 7-day trial are not in the app, and RuStore
       in-app payments are not wired. So the copy says only "Основная защита —
       бесплатно." When paid is live in the build, replace the "СКОЛЬКО СТОИТ"
@@ -563,7 +564,7 @@ the code on 2026-10-08 (`main` @ `9aff8ee`); the evidence is listed in §7.7.
       "Автоматическая проверка SMS" (RuStore only), and the APK has no Google Play
       Billing library and no `com.android.vending.BILLING` permission. Still
       decide whether a RuStore user with a non-Russian phone should see the
-      "$0.99" paywall at all (`mobile/src/config/market.ts`).
+      "$0.99" paywall at all (`paidPlansVisible` in `mobile/src/utils/freemium.ts`).
 - [ ] **Screenshots** are from v1.0.0. The home screen in 1.0.4 has the "Мне
       звонят" button and the "Чтобы защита не выключалась" card. Recapture
       `01`–`04` on the signed 1.0.4 APK and add the three new frames in §7.6.
@@ -704,4 +705,4 @@ What each claim rests on:
 | Call warning + after-call reminder | `mobile/src/utils/call-guard.ts:1-20`; `CallGuard.kt` (`noteEvent` from `CleanwayVpnService.kt:737`, `MessageCheck.kt:49`, `LinkCheckService.kt:132`) |
 | Battery checklist | `mobile/src/components/shield/KeepAliveCard.tsx`; module manifest line 31 |
 | Account: devices, unlink, delete | `mobile/app/account.tsx`; `mobile/app/(tabs)/settings.tsx:321-332` |
-| Paid plans hidden in Russian | `mobile/src/config/market.ts:10` |
+| Paid plans hidden in Russia | `mobile/src/utils/freemium.ts` (`paidPlansVisible`) |
