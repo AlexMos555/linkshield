@@ -164,7 +164,10 @@ export default async function Home({ params }: HomeProps) {
       {/* Hero — also serves as the skip-link target / main landmark anchor. */}
       <main id="main">
       <section className="pt-24 pb-16 px-6 text-center">
-        <div className="max-w-3xl mx-auto animate-in">
+        {/* No entrance animation here: the hero is the first screen, and an
+            element that starts at opacity 0 is not painted — the heading and
+            CTA only counted as "loaded" (LCP) once the fade finished. */}
+        <div className="max-w-3xl mx-auto">
           {liveRecall && (
             <a
               href={href("/transparency/methodology")}

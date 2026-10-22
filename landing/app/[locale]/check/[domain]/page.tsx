@@ -71,6 +71,18 @@ function resolveLocale(locale: string): Locale {
   return (routing.locales as readonly string[]).includes(locale) ? (locale as Locale) : routing.defaultLocale;
 }
 
+/**
+ * Rendered on first request, then served from the CDN for an hour (the same
+ * hour the API verdict is cached for in fetchScan). It used to render on every
+ * request — `private, no-store`, a cold serverless start on the first visit
+ * — for a page whose content changes at most hourly. No site is prebuilt.
+ */
+export const revalidate = 3600;
+
+export function generateStaticParams(): Array<{ domain: string }> {
+  return [];
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { domain, locale } = await params;
   // Not a site name: the page redirects or 404s; keep it out of the index.

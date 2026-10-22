@@ -10,14 +10,14 @@
  *
  * Wired here at the App Router root so every locale and route uses it.
  * Sentry is auto-instrumented by @sentry/nextjs's withSentryConfig
- * wrapper in next.config.ts; the captureException call below adds a
- * scoped breadcrumb so the operator can correlate to the user's URL.
+ * wrapper in next.config.ts (the SDK itself loads lazily, lib/sentry-lazy.ts);
+ * the report below adds the digest so the operator can correlate it.
  *
  * Audit finding landing-ts MEDIUM "No error.tsx or global-error.tsx
  * anywhere in the App Router".
  */
 import { useEffect } from "react";
-import * as Sentry from "@sentry/nextjs";
+import { reportError } from "@/lib/sentry-lazy";
 
 export default function GlobalRouteError({
   error,
@@ -30,9 +30,8 @@ export default function GlobalRouteError({
     // Sentry's auto-instrumentation already captures unhandled errors,
     // but explicitly reporting here lets us attach the digest (Next's
     // server-rendered error id) for cross-correlation with server logs.
-    Sentry.captureException(error, {
-      tags: { digest: error.digest ?? "unknown" },
-    });
+    // The SDK loads lazily (lib/sentry-lazy.ts); this waits for it.
+    reportError(error, { digest: error.digest ?? "unknown" });
   }, [error]);
 
   return (
