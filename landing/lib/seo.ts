@@ -14,10 +14,12 @@ export const SITE_URL = "https://cleanway.ai";
 /**
  * The wordless brand card (app/[locale]/opengraph-image.tsx). It is the same
  * picture in every language on purpose — the localized title and description
- * carry the words — so every locale can point at the one route.
+ * carry the words — so every locale can point at the one route. Served at
+ * /og.png (app/og.png/route.ts): /opengraph-image went through the locale
+ * middleware and answered 307 to a bot sending a non-English Accept-Language.
  */
 export const DEFAULT_OG_IMAGE = {
-  url: "/opengraph-image",
+  url: "/og.png",
   width: 1200,
   height: 630,
   alt: "Cleanway",
