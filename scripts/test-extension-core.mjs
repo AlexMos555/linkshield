@@ -372,23 +372,64 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
   });
 }
 
-// browser-compat.js has no import/export, so Node would load it as CommonJS
-// and cache it by filename; a fresh vm context per case is the honest model.
-function runCompat(tree, globals) {
-  const src = readFileSync(join(ROOT, tree, "src/background/browser-compat.js"), "utf8");
+// The Firefox alias (src/utils/browser-alias.js). Firefox MV2 hands extension
+// pages AND the background a callback-only `chrome`: a Promise-style call
+// returns undefined. The popup read tabs[0] of undefined and threw, Settings
+// read data.skill_level of undefined, GET_STATS answered nothing. Every page
+// and the background load the alias before anything else.
+// It has no import/export, so Node would load it as CommonJS and cache it by
+// filename; a fresh vm context per case is the honest model.
+const ALIAS = "src/utils/browser-alias.js";
+
+function runAlias(tree, globals) {
+  const src = readFileSync(join(ROOT, tree, ALIAS), "utf8");
   const ctx = vm.createContext({ ...globals });
   vm.runInContext(src, ctx);
   return ctx;
 }
 
 for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
-  await check(`[${tree}] browser-compat aliases chrome to browser only in Firefox`, () => {
+  await check(`[${tree}] the browser alias points chrome at browser only in Firefox`, () => {
     const chromeLike = { runtime: {} };
     // Chrome 148+ and Safari expose `browser` too, without getBrowserInfo().
-    assert.equal(runCompat(tree, { chrome: chromeLike, browser: { runtime: {} } }).chrome, chromeLike);
-    assert.equal(runCompat(tree, { chrome: chromeLike }).chrome, chromeLike);
+    assert.equal(runAlias(tree, { chrome: chromeLike, browser: { runtime: {} } }).chrome, chromeLike);
+    assert.equal(runAlias(tree, { chrome: chromeLike }).chrome, chromeLike);
     const firefox = { runtime: { getBrowserInfo: async () => ({ name: "Firefox" }) } };
-    assert.equal(runCompat(tree, { chrome: chromeLike, browser: firefox }).chrome, firefox);
+    assert.equal(runAlias(tree, { chrome: chromeLike, browser: firefox }).chrome, firefox);
+    // Firefox defines `chrome` on a page as a lazy getter with a setter.
+    let lazy = chromeLike;
+    const ctx = vm.createContext({ browser: firefox });
+    Object.defineProperty(ctx, "chrome", { configurable: true, get: () => lazy, set: (v) => { lazy = v; } });
+    vm.runInContext(readFileSync(join(ROOT, tree, ALIAS), "utf8"), ctx);
+    assert.equal(lazy, firefox, "a setter-backed chrome is replaced too");
+  });
+
+  await check(`[${tree}] every extension page loads the browser alias before any other script`, () => {
+    const pages = listHtml(join(tree, "src"));
+    assert.ok(pages.length >= 5, `expected the extension's pages, found ${pages.join(", ")}`);
+    for (const page of pages) {
+      const html = readFileSync(join(ROOT, page), "utf8");
+      // Our own markup, read and not sanitized: only what is outside <!-- … -->
+      // counts (a comment there mentions "<script src>").
+      const outside = html.split("<!--").map((part, i) => {
+        if (i === 0) return part;
+        const end = part.indexOf("-->");
+        return end < 0 ? "" : part.slice(end + 3);
+      }).join(" ");
+      const first = /<script\b[^>]*>/i.exec(outside);
+      assert.ok(first, `${page} loads no script`);
+      const src = /\ssrc="([^"]+)"/.exec(first[0]);
+      assert.ok(src, `${page}: the first <script> is inline, not the alias`);
+      const resolved = relative(join(ROOT, tree), resolve(dirname(join(ROOT, page)), src[1]));
+      assert.equal(resolved, ALIAS, `${page}: the first script is ${src[1]}, not the browser alias`);
+    }
+  });
+
+  await check(`[${tree}] the background imports the browser alias first`, () => {
+    const src = readFileSync(join(ROOT, tree, "src/background/index.js"), "utf8");
+    const [first] = [...src.matchAll(STATIC_IMPORT_RE)];
+    assert.equal(relative(join(ROOT, tree), resolve(join(ROOT, tree, "src/background"), first[1])), ALIAS);
+    assert.ok(!existsSync(join(ROOT, tree, "src/background/browser-compat.js")), "two alias files to keep in step");
   });
 }
 
@@ -481,7 +522,8 @@ function memoryStorage(initial = {}) {
   const data = { ...initial };
   return {
     data,
-    get: async (keys) => Object.fromEntries((Array.isArray(keys) ? keys : [keys]).filter((k) => k in data).map((k) => [k, data[k]])),
+    get: async (keys) => keys == null ? { ...data }
+      : Object.fromEntries((Array.isArray(keys) ? keys : [keys]).filter((k) => k in data).map((k) => [k, data[k]])),
     set: async (obj) => { Object.assign(data, obj); },
     remove: async (keys) => { for (const k of [].concat(keys)) delete data[k]; },
   };
@@ -1549,8 +1591,9 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
       assert.ok(!/api_url\.startsWith\(|\.api_url\s*\|\||newValue\.replace\(/.test(src),
         `${file} still trusts any stored api_url`);
     }
-    // content/webmail.js no longer reads it: the background sends the scan.
-    assert.ok(seen >= 5, `expected the five api_url readers, saw ${seen}`);
+    // content/webmail.js and content/credential-guardian.js no longer read
+    // it: the background makes their calls.
+    assert.ok(seen >= 4, `expected the four api_url readers, saw ${seen}`);
   });
 
   await check(`[${tree}] the settings page loads the allowlist before options.js`, () => {
@@ -2025,6 +2068,382 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     const blockedAt = status.indexOf("blockedPageUrl(tab)");
     const nonWebAt = status.indexOf("^https?:$");
     assert.ok(blockedAt > 0 && blockedAt < nonWebAt, "the block page is recognised before the non-web 'safe' branch");
+  });
+}
+
+// ── Group 11: the background's API lookups (0.2.2) ──
+// - The link scan sends one public check per link host. With no install
+//   header every check shared the IP's 60 an hour; a 429 or a timeout was
+//   cached as the offline verdict for an hour, in memory a worker restart
+//   wipes, and nothing said protection had degraded. Now: an install number,
+//   a 429 pauses link lookups (never the page check) for its Retry-After, a
+//   fallback is kept only until the API can be asked again, API verdicts
+//   survive a restart in storage.session, and lookups run a few at a time.
+// - The toolbar badge was global and never cleared: it is per tab now, and
+//   a new document starts it from zero (a same-document navigation does not).
+// - The password-leak check and the brand's verified hosts were fetched from
+//   content scripts, where CORS blocks them in Chromium (and the visited
+//   site's origin went along). The background makes both calls now.
+
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const RED = "#ef4444";
+
+// A fetch double for the background: answers by host, records what was sent.
+function fakeApi(answer) {
+  const seen = [];
+  const fetchImpl = async (url, init = {}) => {
+    const m = /\/api\/v1\/public\/check\/([^?]+)$/.exec(url);
+    const host = m ? decodeURIComponent(m[1]) : null;
+    seen.push({ url, host, headers: { ...(init.headers || {}) }, init });
+    const a = answer(host, url);
+    if (a instanceof Error) throw a;
+    return new Response(JSON.stringify(a.body), { status: a.status || 200, headers: a.headers || {} });
+  };
+  return { seen, fetchImpl };
+}
+
+function verdictFor(host) {
+  const level = host.startsWith("scam-") ? "dangerous" : host.startsWith("warn-") ? "caution" : "safe";
+  return { body: { domain: host, score: level === "safe" ? 2 : 80, level, signals: [], reason_codes: [] } };
+}
+
+// The background with a fake clock, a fake fetch and storage.session.
+async function lookupBackground(tree, { answer, session = memoryStorage(), local = {}, clock }) {
+  const { api } = fakeChrome({ optional: true, stored: local });
+  api.storage.session = session;
+  const badge = [];
+  api.action = {
+    setBadgeText: async (o) => { badge.push({ ...o, kind: "text" }); },
+    setBadgeBackgroundColor: async (o) => { badge.push({ ...o, kind: "color" }); },
+  };
+  api.tabs.onUpdated = fakeEvent();
+  api.tabs.onRemoved = fakeEvent();
+  const { seen, fetchImpl } = fakeApi(answer);
+  globalThis.fetch = fetchImpl;
+  Date.now = () => clock.t;
+  await loadBackground(tree, api);
+  const send = (msg, sender = {}) => new Promise((resolve) => api.runtime.onMessage.listeners[0](msg, sender, resolve));
+  return { api, seen, badge, send };
+}
+
+const tabSender = (id, url = "https://reader.example/page") => ({ tab: { id }, frameId: 0, url });
+const lastBadge = (badge, tabId, kind = "text") => {
+  const mine = badge.filter((b) => b.tabId === tabId && b.kind === kind);
+  return mine.length ? mine[mine.length - 1][kind === "text" ? "text" : "color"] : undefined;
+};
+
+// Lets work the background does after replying (the toolbar badge) finish.
+const settle = () => new Promise((r) => setTimeout(r, 20));
+function within(ms, promise) {
+  return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error(`no reply in ${ms} ms`)), ms))]);
+}
+
+async function withRealClockAndFetch(fn) {
+  const realNow = Date.now;
+  const realFetch = globalThis.fetch;
+  try {
+    return await fn();
+  } finally {
+    Date.now = realNow;
+    globalThis.fetch = realFetch;
+  }
+}
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] public checks carry an install number; a 429 pauses link lookups, never the page check`, () => withRealClockAndFetch(async () => {
+    const clock = { t: Date.UTC(2026, 9, 22, 12) };
+    let busy = true;
+    const bg = await lookupBackground(tree, {
+      clock,
+      answer: (host) => {
+        if (host === "busy.example" && busy) {
+          busy = false;
+          return { status: 429, headers: { "Retry-After": "30" }, body: { detail: { retry_after_seconds: 30 } } };
+        }
+        return verdictFor(host);
+      },
+    });
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["busy.example"] });
+    const paused = await bg.send({ type: "CHECK_DOMAINS", domains: ["later-link.example"] });
+    assert.equal(paused.results[0].source, "local", "a link lookup during the pause is the offline verdict");
+    const page = await bg.send({ type: "CHECK_DOMAINS", domains: ["the-page.example"], page: true });
+    assert.equal(page.results[0].source, "api", "the page check is sent during the pause");
+    assert.deepEqual(bg.seen.map((s) => s.host), ["busy.example", "the-page.example"], "a link was asked during the pause");
+
+    // Retry-After is over: the 429's fallback and the paused one are not
+    // kept for an hour — both hosts are asked again.
+    clock.t += 31_000;
+    const again = await bg.send({ type: "CHECK_DOMAINS", domains: ["busy.example", "later-link.example"] });
+    assert.deepEqual(again.results.map((r) => [r.domain, r.source]), [["busy.example", "api"], ["later-link.example", "api"]]);
+    assert.deepEqual(bg.seen.slice(2).map((s) => s.host).sort(), ["busy.example", "later-link.example"]);
+
+    const ids = new Set(bg.seen.map((s) => s.headers["X-Cleanway-Install"]));
+    assert.equal(ids.size, 1, "one install number for every check");
+    const [id] = ids;
+    assert.match(id, UUID_V4, "the server accepts only a canonical UUID");
+    assert.equal((await bg.api.storage.local.get("cleanway_install")).cleanway_install.id, id, "kept in storage.local");
+    for (const s of bg.seen) {
+      assert.equal(s.init.credentials, "omit");
+      assert.ok(!("Authorization" in s.headers), "a public check never carries the account token");
+    }
+
+    // A new number a day later.
+    clock.t += 24 * 3600_000;
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["next-day.example"] });
+    const next = bg.seen[bg.seen.length - 1].headers["X-Cleanway-Install"];
+    assert.match(next, UUID_V4);
+    assert.notEqual(next, id, "the install number is replaced every 24 hours");
+  }));
+
+  await check(`[${tree}] a timeout's fallback is kept minutes, not an hour; lookups run a few at a time, in order`, () => withRealClockAndFetch(async () => {
+    const clock = { t: Date.UTC(2026, 9, 22, 12) };
+    let down = true;
+    let inFlight = 0;
+    let most = 0;
+    const bg = await lookupBackground(tree, {
+      clock,
+      answer: (host) => (down && host === "flaky.example" ? new TypeError("Failed to fetch") : verdictFor(host)),
+    });
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async (url, init) => {
+      inFlight++;
+      most = Math.max(most, inFlight);
+      await new Promise((r) => setTimeout(r, 5));
+      try { return await realFetch(url, init); } finally { inFlight--; }
+    };
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["flaky.example"] });
+    down = false;
+    clock.t += 60_000;
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["flaky.example"] });
+    assert.equal(bg.seen.filter((s) => s.host === "flaky.example").length, 1, "a fallback minutes old was asked again");
+    clock.t += 5 * 60_000;
+    const later = await bg.send({ type: "CHECK_DOMAINS", domains: ["flaky.example"] });
+    assert.equal(later.results[0].source, "api", "the fallback was kept too long");
+
+    const hosts = Array.from({ length: 12 }, (_, i) => `many-${i}.example`);
+    const many = await bg.send({ type: "CHECK_DOMAINS", domains: hosts });
+    assert.deepEqual(many.results.map((r) => r.domain), hosts, "results in the order asked");
+    assert.ok(most > 1 && most <= 4, `lookups in flight at once: ${most}`);
+  }));
+
+  await check(`[${tree}] API verdicts outlive a worker restart; offline guesses do not`, () => withRealClockAndFetch(async () => {
+    const clock = { t: Date.UTC(2026, 9, 22, 12) };
+    const session = memoryStorage();
+    const answer = (host) => (host === "guess.example" ? new TypeError("offline") : verdictFor(host));
+    const first = await lookupBackground(tree, { clock, session, answer });
+    await first.send({ type: "CHECK_DOMAINS", domains: ["kept.example", "guess.example"] });
+    const restarted = await lookupBackground(tree, { clock, session, answer });
+    const r = await restarted.send({ type: "CHECK_DOMAINS", domains: ["kept.example", "guess.example"] });
+    assert.deepEqual(restarted.seen.map((s) => s.host), ["guess.example"], "the kept verdict was asked again");
+    assert.equal(r.results[0].source, "api");
+    clock.t += 3600_000 + 1000;
+    const stale = await lookupBackground(tree, { clock, session, answer });
+    await stale.send({ type: "CHECK_DOMAINS", domains: ["kept.example"] });
+    assert.deepEqual(stale.seen.map((s) => s.host), ["kept.example"], "an hour-old verdict was served");
+  }));
+
+  await check(`[${tree}] the toolbar badge counts per tab and per document; a same-document navigation keeps it`, () => withRealClockAndFetch(async () => {
+    const clock = { t: Date.UTC(2026, 9, 22, 12) };
+    const session = memoryStorage();
+    const bg = await lookupBackground(tree, { clock, session, answer: verdictFor });
+    const A = "doc-a";
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["scam-a.example", "warn-b.example", "ok.example"], doc: A }, tabSender(5));
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["scam-c.example", "scam-a.example"], doc: A }, tabSender(5));
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["ok2.example"], doc: "doc-n" }, tabSender(6, "https://news.example/"));
+    await settle();
+    assert.ok(bg.badge.length > 0, "no badge was drawn");
+    assert.ok(bg.badge.every((b) => Number.isInteger(b.tabId)), "a badge call without a tab paints every tab");
+    assert.equal(lastBadge(bg.badge, 5), "3", "three risky hosts on tab 5, one of them twice");
+    assert.equal(lastBadge(bg.badge, 5, "color"), RED);
+    assert.equal(lastBadge(bg.badge, 6), "", "a clean tab shows no count");
+
+    const before = bg.badge.length;
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["scam-z.example"], page: true }); // the popup: no tab
+    await settle();
+    assert.equal(bg.badge.length, before, "the popup's check painted a badge");
+
+    // Chromium fires "loading" for history.pushState and a #fragment link
+    // too: the same document, the same links, already scanned.
+    for (const l of bg.api.tabs.onUpdated.listeners) l(5, { status: "loading" }, { id: 5 });
+    await settle();
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["ok3.example"], doc: A }, tabSender(5, "https://reader.example/page#below"));
+    await settle();
+    assert.equal(lastBadge(bg.badge, 5), "3", "a same-document navigation dropped the count");
+
+    // A new document in the tab starts from zero.
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["warn-d.example"], doc: "doc-b" }, tabSender(5, "https://reader.example/next"));
+    await settle();
+    assert.equal(lastBadge(bg.badge, 5), "1", "the new page starts from zero");
+    assert.equal(lastBadge(bg.badge, 5, "color"), "#f59e0b");
+
+    // Back to the first page from the back/forward cache: the same document,
+    // whose links are not scanned again — only its page check is sent.
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["reader.example"], page: true, doc: A }, tabSender(5));
+    await settle();
+    assert.equal(lastBadge(bg.badge, 5), "3", "the restored page lost its count");
+
+    // A closed tab is forgotten.
+    const pages = async () => Object.keys((await session.get(["toolbar_badge_tabs"])).toolbar_badge_tabs || {});
+    assert.ok((await pages()).includes("5:doc-a"), `counts kept per tab and document: ${await pages()}`);
+    for (const l of bg.api.tabs.onRemoved.listeners) l(5, {});
+    await settle();
+    assert.ok(!(await pages()).some((k) => k.startsWith("5:")), `a closed tab's counts were kept: ${await pages()}`);
+  }));
+
+  await check(`[${tree}] a late answer for the page a tab left is not painted on the next one`, () => withRealClockAndFetch(async () => {
+    const clock = { t: Date.UTC(2026, 9, 22, 12) };
+    const bg = await lookupBackground(tree, { clock, answer: verdictFor });
+    let release;
+    const gate = new Promise((r) => { release = r; });
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async (url, init) => {
+      if (url.includes("scam-slow.example")) await gate;
+      return realFetch(url, init);
+    };
+    const slow = bg.send({ type: "CHECK_DOMAINS", domains: ["scam-slow.example"], doc: "doc-old" }, tabSender(7));
+    await bg.send({ type: "CHECK_DOMAINS", domains: ["warn-new.example"], doc: "doc-new" }, tabSender(7, "https://reader.example/other"));
+    release();
+    await slow;
+    await settle();
+    assert.equal(lastBadge(bg.badge, 7), "1", "the old page's late answer was counted on the new one");
+  }));
+
+  await check(`[${tree}] a check's reply does not wait for the toolbar`, () => withRealClockAndFetch(async () => {
+    const clock = { t: Date.UTC(2026, 9, 22, 12) };
+    const bg = await lookupBackground(tree, { clock, answer: verdictFor });
+    const painted = [];
+    // A toolbar call that never settles (no test drives Safari's).
+    bg.api.action.setBadgeText = (o) => { painted.push(o.tabId); return new Promise(() => {}); };
+    bg.api.action.setBadgeBackgroundColor = () => new Promise(() => {});
+    for (const id of [1, 2, 3]) {
+      const reply = await within(1000, bg.send({ type: "CHECK_DOMAINS", domains: [`scam-${id}.example`], doc: `doc-${id}` }, tabSender(id)));
+      assert.equal(reply.results[0].level, "dangerous");
+    }
+    await settle();
+    assert.deepEqual(painted, [1, 2, 3], "a stuck toolbar call held up every count after it");
+  }));
+}
+
+const pageLookupsModule = (tree) => import(pathToFileURL(join(ROOT, tree, "src/background/page-lookups.js")).href);
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] the password-leak lookup goes through the background: page senders, a 5-hex prefix, no page origin`, async () => {
+    const { createPageLookups } = await pageLookupsModule(tree);
+    const calls = [];
+    const suffix = "1E4C9B93F3F0682250B6CF8331B7EE68FD8";
+    const handle = createPageLookups({
+      apiBase: () => "https://api.cleanway.ai",
+      fetchImpl: async (url, init) => {
+        calls.push({ url, init });
+        return new Response(JSON.stringify({ prefix: "5BAA6", suffixes: [
+          { suffix, count: 3 }, { suffix: "<img src=x>", count: 1 }, { suffix: "A".repeat(35), count: "9" }, null,
+        ] }), { status: 200 });
+      },
+    });
+    const ask = (msg, sender) => new Promise((resolve) => {
+      if (handle(msg, sender, resolve) === undefined) resolve("not mine");
+    });
+    const page = tabSender(1, "https://shop.example/login");
+    assert.equal(await ask({ type: "CHECK_DOMAINS" }, page), "not mine");
+    for (const sender of [{}, { tab: { id: 1 }, url: "chrome-extension://abc/src/popup/popup.html" }]) {
+      assert.deepEqual(await ask({ type: "BREACH_PREFIX", prefix: "5BAA6" }, sender), { ok: false, error: "bad_sender" });
+    }
+    for (const prefix of ["5BAA", "5BAA61", "ZZZZZ", 12345, "5BA/6", null]) {
+      assert.deepEqual(await ask({ type: "BREACH_PREFIX", prefix }, page), { ok: false, error: "bad_prefix" }, String(prefix));
+    }
+    assert.equal(calls.length, 0, "a refused lookup reached the network");
+    const reply = await ask({ type: "BREACH_PREFIX", prefix: "5baa6" }, page);
+    assert.deepEqual(reply, { ok: true, suffixes: [{ suffix, count: 3 }] }, "only well-formed rows come back");
+    assert.equal(calls[0].url, "https://api.cleanway.ai/api/v1/breach/check/5BAA6");
+    assert.equal(calls[0].init.credentials, "omit");
+    assert.equal(calls[0].init.referrerPolicy, "no-referrer");
+  });
+
+  await check(`[${tree}] the brand's verified hosts come through the background, cached per brand`, async () => {
+    const { createPageLookups } = await pageLookupsModule(tree);
+    const calls = [];
+    let status = 503;
+    const handle = createPageLookups({
+      apiBase: () => "https://api.cleanway.ai",
+      fetchImpl: async (url) => {
+        calls.push(url);
+        return new Response(JSON.stringify({ brand: "chase", hosts: ["Secure01a.Chase.com", 7, "chase.com"], is_known: true }), { status });
+      },
+    });
+    const ask = (msg) => new Promise((resolve) => handle(msg, tabSender(2, "https://chase-0nline.example/"), resolve));
+    assert.deepEqual(await ask({ type: "VERIFIED_HOSTS", brand: "Chase" }), { ok: false, error: "unavailable" });
+    status = 200;
+    assert.deepEqual(await ask({ type: "VERIFIED_HOSTS", brand: "Chase" }), { ok: true, hosts: ["secure01a.chase.com", "chase.com"] });
+    assert.deepEqual(await ask({ type: "VERIFIED_HOSTS", brand: "chase" }), { ok: true, hosts: ["secure01a.chase.com", "chase.com"] });
+    assert.deepEqual(calls, [
+      "https://api.cleanway.ai/api/v1/credentials/verified?brand=chase",
+      "https://api.cleanway.ai/api/v1/credentials/verified?brand=chase",
+    ], "an error was cached, or the answer was not");
+    for (const brand of ["c", "../x", "a b", "x".repeat(65), null]) {
+      assert.deepEqual(await ask({ type: "VERIFIED_HOSTS", brand }), { ok: false, error: "bad_brand" }, String(brand));
+    }
+  });
+
+  await check(`[${tree}] no content script calls the API itself (CORS, and the page's origin would go along)`, () => {
+    const readers = listJs(join(tree, "src/content")).filter((f) => !/block-page\.js$/.test(f));
+    for (const file of readers) {
+      const src = stripComments(readFileSync(join(ROOT, file), "utf8"));
+      assert.ok(!/\bfetch\s*\(/.test(src), `${file} calls fetch()`);
+      assert.ok(!src.includes("api_url"), `${file} reads api_url`);
+    }
+    const pwned = stripComments(readFileSync(join(ROOT, tree, "src/content/password-pwned.js"), "utf8"));
+    assert.match(pwned, /type: "BREACH_PREFIX"/);
+    const guard = stripComments(readFileSync(join(ROOT, tree, "src/content/credential-guardian.js"), "utf8"));
+    assert.match(guard, /type: "VERIFIED_HOSTS"/);
+  });
+
+  await check(`[${tree}] modern-phish guard: no full-page text scan, rescans only for new inputs, when idle`, () => {
+    const src = stripComments(readFileSync(join(ROOT, tree, "src/content/modern-phish-guard.js"), "utf8"));
+    assert.ok(!/querySelectorAll\(\s*['"]div, header, nav['"]/.test(src), "BitB still reads every div, header and nav");
+    assert.match(src, /input\[type="password"\]/);
+    assert.match(src, /requestIdleCallback/, "rescans are not scheduled for idle time");
+    const observer = src.slice(src.indexOf("new MutationObserver"));
+    assert.match(observer, /addedNodes/, "the observer does not look at what was added");
+    assert.match(observer, /_addsInput\(/, "every mutation still triggers a rescan");
+  });
+}
+
+// ── Group 12: "Report wrong result" says which way the verdict was wrong ──
+// It read last_verdict_<domain>, which nothing writes, so every report was
+// "a scam you missed" — even over a red verdict or the block page.
+function loadPopup(tree) {
+  const noop = () => {};
+  const ctx = vm.createContext({
+    self: {},
+    document: { addEventListener: noop, querySelectorAll: () => [], getElementById: () => null, documentElement: { style: {} } },
+    URL,
+    URLSearchParams,
+  });
+  vm.runInContext(readFileSync(join(ROOT, tree, "src/popup/popup.js"), "utf8"), ctx);
+  return ctx;
+}
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] the popup reports a red or amber verdict as a false positive, anything else as a miss`, () => {
+    const popup = loadPopup(tree);
+    for (const level of ["dangerous", "caution", "suspicious", "phishing"]) {
+      assert.equal(popup.reportTypeFor(level), "false_positive", level);
+    }
+    for (const level of ["safe", "unknown", "user_content", undefined, null, "weird"]) {
+      assert.equal(popup.reportTypeFor(level), "false_negative", String(level));
+    }
+    // What the popup showed decides it — the block page's site, not the extension page.
+    assert.deepEqual(JSON.parse(JSON.stringify(popup.reportTarget({ domain: "scam.example", level: "dangerous" }, "chrome-extension://x/src/blocked/blocked.html?d=scam.example"))),
+      { domain: "scam.example", report_type: "false_positive" });
+    assert.deepEqual(JSON.parse(JSON.stringify(popup.reportTarget({ domain: "shop.example", level: "safe" }, "https://shop.example/a"))),
+      { domain: "shop.example", report_type: "false_negative" });
+    // Nothing shown yet: the tab's own http(s) host, as a miss; else nothing.
+    assert.deepEqual(JSON.parse(JSON.stringify(popup.reportTarget(null, "https://Shop.Example/a?b=1"))),
+      { domain: "shop.example", report_type: "false_negative" });
+    assert.equal(popup.reportTarget(null, "chrome://extensions"), null);
+    assert.equal(popup.reportTarget(null, ""), null);
+    const js = stripComments(readFileSync(join(ROOT, tree, "src/popup/popup.js"), "utf8"));
+    assert.ok(!/last_verdict_/.test(js), "the popup still reads a verdict key nothing writes");
   });
 }
 

@@ -66,6 +66,7 @@ def limits(monkeypatch):
     monkeypatch.setattr(s, "public_install_ip_ceiling_per_window", 8, raising=False)
     monkeypatch.setattr(s, "public_fresh_checks_per_minute", 100, raising=False)
     monkeypatch.setattr(s, "public_fresh_ip_ceiling_per_minute", 100, raising=False)
+    monkeypatch.setattr(s, "public_fresh_ip_ceiling_per_window", 100, raising=False)
     return s
 
 
@@ -202,3 +203,117 @@ def test_benchmark_bypass_also_skips_the_fresh_cap(counting_redis, limits, quick
     headers = {**CGNAT_IP, "X-Cleanway-Benchmark": "bench-token-for-tests"}
     codes = [client.get(f"/api/v1/public/check/fresh-c{i}-cwtest.ru", headers=headers).status_code for i in range(3)]
     assert codes == [200, 200, 200]
+
+
+# ── The browser extension's link scan ──
+#
+# The extension checks the page AND every link host on it through this
+# endpoint, one request per host it has no answer for. At 60 an hour per
+# install a news page or two spent the budget, and server-side protection
+# quietly stopped for the rest of the hour. The hourly budget per install is
+# sized for that scan; the fresh-analysis cap (5 a minute) still bounds what
+# one install can make the analyzer spend, and the per-IP ceilings still
+# bound an address that rotates ids.
+
+def _default(name):
+    from api.config import Settings
+
+    return Settings.model_fields[name].default
+
+
+def test_install_budget_is_sized_for_a_link_scan():
+    assert _default("public_install_rate_limit_per_window") >= 600
+    # The per-IP ceiling grew with it: as many installs at their full budget
+    # fit under it as when it was 1500 for 60 an hour (25).
+    assert _default("public_install_ip_ceiling_per_window") >= 25 * _default("public_install_rate_limit_per_window")
+    # Nothing loosens for a client without the header, or for fresh analyses:
+    # one address still gets at most 1500 of them an hour (paid_budget.py).
+    assert _default("public_rate_limit_per_window") == 60
+    assert _default("public_fresh_checks_per_minute") == 5
+    assert _default("public_fresh_ip_ceiling_per_minute") == 60
+    assert _default("public_fresh_ip_ceiling_per_window") == 1500
+
+
+def _ceiling_ratio():
+    return _default("public_install_ip_ceiling_per_window") // _default("public_install_rate_limit_per_window")
+
+
+def test_heavy_extension_installs_leave_room_for_phones(counting_redis, limits, quick_analysis):
+    """CGNAT: phones and browsers share one IPv4. A few installs that spend
+    their whole hourly budget (a link scan on every page) must not use up
+    the address's ceiling for everyone else. Scaled down, at the default
+    ratio of ceiling to budget."""
+    limits.public_install_rate_limit_per_window = 4
+    limits.public_install_ip_ceiling_per_window = 4 * _ceiling_ratio()
+    client = TestClient(app)
+    heavy = [str(uuid.uuid4()) for _ in range(3)]
+    spent = [_get(client, h, f"link{i}-cwtest.ru").status_code for h in heavy for i in range(6)]
+    assert spent == ([200] * 4 + [429] * 2) * 3
+    phones = [_get(client, str(uuid.uuid4()), f"phone{i}-cwtest.ru").status_code for i in range(40)]
+    assert phones == [200] * 40
+
+
+def test_fresh_hourly_ceiling_bounds_one_address(counting_redis, limits, quick_analysis):
+    """Random ids cannot buy unlimited fresh analyses an hour from one IP."""
+    limits.public_install_rate_limit_per_window = 1000
+    limits.public_install_ip_ceiling_per_window = 1000
+    limits.public_fresh_ip_ceiling_per_window = 3
+    client = TestClient(app)
+    answers = [_get(client, str(uuid.uuid4()), f"fresh-h{i}-cwtest.ru") for i in range(4)]
+    assert [r.status_code for r in answers] == [200, 200, 200, 429]
+    assert "per hour" in answers[3].json()["detail"]
+    assert 0 < int(answers[3].headers["retry-after"]) <= 3600
+
+
+def test_answers_without_an_analysis_do_not_spend_the_fresh_ceiling(counting_redis, limits, quick_analysis, monkeypatch):
+    """Allowlisted names (and cache hits) cost a set lookup or a Redis GET:
+    they count against the hourly request budgets, not the fresh one."""
+    from api.services import competitor_verdicts
+
+    async def _no_competitors(*a, **k):
+        return []
+
+    monkeypatch.setattr(competitor_verdicts, "gather_competitor_verdicts", _no_competitors)
+    limits.public_install_rate_limit_per_window = 1000
+    limits.public_install_ip_ceiling_per_window = 1000
+    limits.public_fresh_ip_ceiling_per_window = 2
+    client = TestClient(app)
+    fresh = [_get(client, str(uuid.uuid4()), f"fresh-k{i}-cwtest.ru").status_code for i in range(2)]
+    known = [_get(client, str(uuid.uuid4()), "google.com").status_code for _ in range(5)]
+    assert fresh + known == [200] * 7
+    assert _get(client, str(uuid.uuid4()), "fresh-k9-cwtest.ru").status_code == 429
+
+
+def test_one_install_gets_more_than_sixty_checks_an_hour(counting_redis, limits, quick_analysis):
+    limits.public_install_rate_limit_per_window = _default("public_install_rate_limit_per_window")
+    limits.public_install_ip_ceiling_per_window = _default("public_install_ip_ceiling_per_window")
+    # Every request here is a cache miss: lift the per-minute fresh cap so
+    # only the hourly budget is measured.
+    limits.public_fresh_checks_per_minute = 1000
+    limits.public_fresh_ip_ceiling_per_minute = 1000
+    client = TestClient(app)
+    one = str(uuid.uuid4())
+    codes = [_get(client, one, f"link{i}-cwtest.ru").status_code for i in range(61)]
+    assert codes == [200] * 61
+
+
+def test_hourly_429_says_when_to_retry(counting_redis, limits, quick_analysis):
+    """The extension pauses its link lookups until then (Retry-After)."""
+    client = TestClient(app)
+    one = str(uuid.uuid4())
+    resp = [_get(client, one) for _ in range(4)][-1]
+    assert resp.status_code == 429
+    assert int(resp.headers["retry-after"]) > 0
+    assert resp.json()["detail"]["retry_after_seconds"] == int(resp.headers["retry-after"])
+
+
+def test_fresh_cap_429_says_when_to_retry(counting_redis, limits, quick_analysis):
+    limits.public_rate_limit_per_window = 1000
+    limits.public_install_rate_limit_per_window = 1000
+    limits.public_install_ip_ceiling_per_window = 1000
+    limits.public_fresh_checks_per_minute = 1
+    client = TestClient(app)
+    one = str(uuid.uuid4())
+    answers = [_get(client, one, f"fresh-r{i}-cwtest.ru") for i in range(2)]
+    assert [r.status_code for r in answers] == [200, 429]
+    assert 0 < int(answers[1].headers["retry-after"]) <= 60

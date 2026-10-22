@@ -489,8 +489,11 @@ def test_the_run_is_bounded_below_the_servers_per_ip_ceilings():
 
     eval_module = _load_eval_module()
     s = get_settings()
-    assert eval_module.IP_HOURLY_CEILING == s.public_install_ip_ceiling_per_window
-    assert eval_module.IP_HOURLY_BUDGET < s.public_install_ip_ceiling_per_window
+    # The run's checks are nearly all fresh analyses: the tighter of the two
+    # hourly per-IP ceilings (every check, fresh ones) is the one it meets.
+    tighter = min(s.public_install_ip_ceiling_per_window, s.public_fresh_ip_ceiling_per_window)
+    assert eval_module.IP_HOURLY_CEILING == tighter
+    assert eval_module.IP_HOURLY_BUDGET < tighter
     assert eval_module.REQUESTS_PER_INSTALL < s.public_install_rate_limit_per_window
     fresh_per_minute = eval_module.PARALLEL_INSTALLS * 60 / eval_module.MIN_INTERVAL_S["cleanway"]
     assert fresh_per_minute < s.public_fresh_ip_ceiling_per_minute

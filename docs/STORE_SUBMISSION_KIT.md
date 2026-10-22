@@ -8,7 +8,7 @@
 - длины, полнота полей, совпадение русского описания с RuStore, обоснования для каждого разрешения из манифеста и размеры картинок проверяет `python3 scripts/check_store_submission_kit.py` (тест — `tests/test_store_submission_kit.py`);
 - почему ответы именно такие (код, файлы) — `docs/STORES.md` §6.3–6.9 (Android), `docs/CWS_SUBMISSION.md` §3–5 и `extension/STORE_LISTING.md` (расширение), `docs/PRIVACY.md`.
 
-Проверено 2026-10-13: `https://cleanway.ai/privacy-policy`, `/delete-account`, `/account`, `/support`, `/terms` и `/ru/…` отвечают 200; `aapt2 dump permissions` сборки 1.0.4 (104) — без SMS, журнала звонков и `AD_ID`; манифесты `dist/store-artifacts/cleanway-0.2.1-{chrome,edge,firefox}.zip` (Edge = Chrome; проверено 2026-10-21: разрешения, хосты, CSP и content scripts те же, что в 0.2.0).
+Проверено 2026-10-13: `https://cleanway.ai/privacy-policy`, `/delete-account`, `/account`, `/support`, `/terms` и `/ru/…` отвечают 200; `aapt2 dump permissions` сборки 1.0.4 (104) — без SMS, журнала звонков и `AD_ID`; манифесты `dist/store-artifacts/cleanway-0.2.2-{chrome,edge,firefox}.zip` (Edge = Chrome; проверено 2026-10-22: разрешения, хосты, CSP и content scripts те же, что в 0.2.1 и 0.2.0).
 
 ---
 
@@ -442,7 +442,7 @@ Cleanway предупреждает о мошеннических и фишин�
 
 ---
 
-## 3. Chrome Web Store — `dist/store-artifacts/cleanway-0.2.1-chrome.zip`
+## 3. Chrome Web Store — `dist/store-artifacts/cleanway-0.2.2-chrome.zip`
 
 Консоль: chrome.google.com/webstore/devconsole → Items → **New item** → загрузить ZIP.
 
@@ -479,7 +479,7 @@ Reads the active tab's URL only when the user runs the "Check page" command or a
 
 <!-- field: cws.perm.storage max=1000 -->
 ```text
-Stores user settings, local protection statistics, the opt-in webmail switch, the refresh token (if the user signs in), the random install ID and Family Hub key material in chrome.storage.local. The short-lived access token and the block page's per-tab "open anyway" allowances are kept in chrome.storage.session, which content scripts cannot read.
+Stores user settings, local protection statistics, the opt-in webmail switch, the refresh token (if the user signs in), the random install ID, the random rate-limit number sent with site checks (replaced every 24 hours) and Family Hub key material in chrome.storage.local. The short-lived access token, the block page's per-tab "open anyway" allowances, site verdicts from our server (kept an hour) and the per-tab toolbar count are kept in chrome.storage.session, which content scripts cannot read.
 ```
 
 <!-- field: cws.perm.alarms max=1000 -->
@@ -550,7 +550,7 @@ No account is needed: every protection feature works signed out. After install, 
 
 ---
 
-## 4. Microsoft Edge Add-ons — `dist/store-artifacts/cleanway-0.2.1-edge.zip`
+## 4. Microsoft Edge Add-ons — `dist/store-artifacts/cleanway-0.2.2-edge.zip`
 
 Консоль: partner.microsoft.com/dashboard/microsoftedge → **Create new extension** → загрузить ZIP.
 
@@ -593,12 +593,12 @@ Same build and same permission justifications as our Chrome Web Store item. No a
 
 ---
 
-## 5. Firefox Add-ons (AMO) — `dist/store-artifacts/cleanway-0.2.1-firefox.zip`
+## 5. Firefox Add-ons (AMO) — `dist/store-artifacts/cleanway-0.2.2-firefox.zip`
 
 Консоль: addons.mozilla.org/developers → **Submit a New Add-on** → «On this site».
 
 1. Загрузить ZIP. Платформы: **Firefox** — да, **Firefox for Android** — снять галочку (в манифесте нет `gecko_android`, на Android не проверено).
-2. «Do you need to submit source code?» → **Yes** и загрузить `dist/store-artifacts/cleanway-0.2.1-firefox-source.zip`. Наш код не минифицирован, но в пакете одна минифицированная сторонняя библиотека (tweetnacl) и один сгенерированный файл данных — проверяющие просят исходники в таких случаях.
+2. «Do you need to submit source code?» → **Yes** и загрузить `dist/store-artifacts/cleanway-0.2.2-firefox-source.zip`. Наш код не минифицирован, но в пакете одна минифицированная сторонняя библиотека (tweetnacl) и один сгенерированный файл данных — проверяющие просят исходники в таких случаях.
 3. Описание дополнения:
 
 | Поле | Значение |
@@ -623,7 +623,7 @@ Warns you about scam and phishing sites before you type a password or card numbe
 ```text
 Cleanway's full privacy policy: https://cleanway.ai/privacy-policy
 
-In short: to check a site, the add-on sends only its host name (for example, example.com) to api.cleanway.ai — never the full address, the page content or your history. When you leave a password field, it sends the first 5 characters of the password's SHA-1 hash for a leak check; the match is made in the browser. Only if you switch on the webmail scan in Settings (off by default), it sends the subject, sender, reply-to, text and links of each email you open in Gmail, Outlook or Yahoo Mail for a phishing check; emails are not stored. Signing in is optional. No ads, no analytics, and we don't sell data.
+In short: to check a site, the add-on sends only its host name (for example, example.com) to api.cleanway.ai — never the full address, the page content or your history — with a random install number, replaced every 24 hours, so the server can rate-limit this browser. When you leave a password field, it sends the first 5 characters of the password's SHA-1 hash for a leak check; the match is made in the browser. Only if you switch on the webmail scan in Settings (off by default), it sends the subject, sender, reply-to, text and links of each email you open in Gmail, Outlook or Yahoo Mail for a phishing check; emails are not stored. Signing in is optional. No ads, no analytics, and we don't sell data.
 ```
 
 4. Русская страница: Edit Product Page → сменить язык на «Русский» → Summary и Description:
@@ -654,7 +654,7 @@ Third-party libraries, unmodified:
 Архив исходников пересобирается одной командой (после изменения расширения и `build-store-artifacts.sh`):
 
 ```bash
-git archive --format=zip -o dist/store-artifacts/cleanway-0.2.1-firefox-source.zip HEAD \
+git archive --format=zip -o dist/store-artifacts/cleanway-0.2.2-firefox-source.zip HEAD \
   extension-firefox packages/extension-core scripts/build-extensions.sh \
   scripts/build-store-artifacts.sh scripts/build_extension_scorer_data.py LICENSE
 ```
@@ -663,7 +663,7 @@ git archive --format=zip -o dist/store-artifacts/cleanway-0.2.1-firefox-source.z
 
 ## 6. Opera add-ons (по желанию)
 
-addons.opera.com/developer → Add → `dist/store-artifacts/cleanway-0.2.1-opera.zip`; Category: Productivity; описание §2.1/§2.2; скриншоты §2.3; Privacy policy URL — как выше. Отдельной анкеты нет.
+addons.opera.com/developer → Add → `dist/store-artifacts/cleanway-0.2.2-opera.zip`; Category: Productivity; описание §2.1/§2.2; скриншоты §2.3; Privacy policy URL — как выше. Отдельной анкеты нет.
 
 ---
 

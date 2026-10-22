@@ -39,8 +39,9 @@
  * mode) get the full warning.
  *
  * Privacy: the script reads the DOM. The only network call is the
- * brand-name lookup below (the brand, e.g. "paypal" — never the URL or
- * anything typed into the form). Without it the warning still fires.
+ * brand-name lookup below, made by the background (the brand, e.g.
+ * "paypal" — never the URL, the page's origin or anything typed into the
+ * form). Without it the warning still fires.
  */
 (function () {
   "use strict";
@@ -183,51 +184,27 @@
   // The local LEGIT_AUTH_HOSTS covers federated SSO providers but
   // can't know every brand's own login hosts (paypal uses paypal.com,
   // chase uses secure01a.chase.com, etc.). The backend
-  // /api/v1/credentials/verified endpoint returns that list per
-  // brand. We cache results in chrome.storage.session for the
-  // current session — same brand checked twice doesn't hit the
-  // network twice.
+  // /api/v1/credentials/verified endpoint returns that list per brand.
+  // The background asks it (VERIFIED_HOSTS, background/page-lookups.js):
+  // fetched from here, the request carried this page's origin and CORS
+  // threw the answer away, so the list was always empty. Kept per page
+  // load; the background keeps it per brand.
   var _brandHostCache = Object.create(null);
 
-  // The rule of utils/api-base.js (a classic content script cannot import
-  // it): production, or loopback in an unpacked dev install.
-  function allowedApiBase(value) {
-    if (typeof value !== "string") return null;
-    var v = value.trim().replace(/\/+$/, "");
-    if (v === "https://api.cleanway.ai") return v;
-    var dev = false;
-    try {
-      var m = chrome.runtime.getManifest();
-      dev = !!m && !("update_url" in m);
-    } catch (e) { /* no runtime: not a dev install */ }
-    return dev && /^http:\/\/(localhost|127\.0\.0\.1)(:[0-9]{1,5})?$/.test(v) ? v : null;
-  }
-
-  async function _fetchVerifiedHosts(brand) {
-    if (_brandHostCache[brand]) return _brandHostCache[brand];
-    try {
-      var apiBase = "https://api.cleanway.ai";
+  function _fetchVerifiedHosts(brand) {
+    if (_brandHostCache[brand]) return Promise.resolve(_brandHostCache[brand]);
+    return new Promise(function (resolve) {
       try {
-        var stored = await chrome.storage.local.get("api_url");
-        var allowed = allowedApiBase(stored && stored.api_url);
-        if (allowed) apiBase = allowed;
-      } catch (e) { /* storage unavailable */ }
-      var resp = await fetch(
-        apiBase + "/api/v1/credentials/verified?brand=" + encodeURIComponent(brand),
-        { method: "GET" },
-      );
-      if (!resp.ok) {
-        _brandHostCache[brand] = [];
-        return [];
+        chrome.runtime.sendMessage({ type: "VERIFIED_HOSTS", brand: brand }, function (reply) {
+          void chrome.runtime.lastError; // no background: no list, the warning stands
+          var hosts = reply && reply.ok && Array.isArray(reply.hosts) ? reply.hosts : [];
+          if (reply && reply.ok) _brandHostCache[brand] = hosts;
+          resolve(hosts);
+        });
+      } catch (e) {
+        resolve([]);
       }
-      var data = await resp.json();
-      var hosts = Array.isArray(data && data.hosts) ? data.hosts.map(function (h) { return String(h).toLowerCase(); }) : [];
-      _brandHostCache[brand] = hosts;
-      return hosts;
-    } catch (e) {
-      _brandHostCache[brand] = [];
-      return [];
-    }
+    });
   }
 
   // ── Signal A: form action host vs visible host ──

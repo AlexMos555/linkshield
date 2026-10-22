@@ -15,6 +15,9 @@
        remove the warning. Not a web_accessible_resource: no web page can
        open or frame it. What was blocked comes in the query string
        (utils/blocked-url.js) and is shown with textContent only. -->
+  <!-- First, before any other script: in Firefox (MV2) chrome.* on extension
+       pages returns no Promises; utils/browser-alias.js points it at browser.*. -->
+  <script src="../utils/browser-alias.js"></script>
   <script src="../utils/blocked-url.js"></script>
   <script src="../content/reason-labels.js"></script>
   <script src="../content/block-page.js"></script>

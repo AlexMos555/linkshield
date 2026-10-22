@@ -38,6 +38,9 @@
     <p>Click "Show block page" to render the Cleanway warning over this page.</p>
   </div>
 
+  <!-- First, before any other script: in Firefox (MV2) chrome.* on extension
+       pages returns no Promises; utils/browser-alias.js points it at browser.*. -->
+  <script src="../utils/browser-alias.js"></script>
   <!-- block-page.js is a CLASSIC (non-module) script: it wraps itself in
        an IIFE and publishes window.__cleanwayShowBlockPage. Load it exactly
        the way the extension does (a plain <script src>, not an ESM import),

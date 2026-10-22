@@ -546,6 +546,9 @@
 
   <div class="saved" id="saved-msg" role="status" data-i18n="options_settings_saved">Settings saved</div>
 
+  <!-- First, before any other script: in Firefox (MV2) chrome.* on extension
+       pages returns no Promises; utils/browser-alias.js points it at browser.*. -->
+  <script src="../utils/browser-alias.js"></script>
   <!-- No TweetNaCl tags here: family-crypto.js imports the vendored
        tweetnacl.min.js itself, so it works the same in this page and in
        the module service worker. -->

