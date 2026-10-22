@@ -121,7 +121,10 @@ later failure can never roll back the record of money that moved.
    must equal our payment row's `amount_kopecks` (the plan version's price) and
    the currency, when given, must be roubles (`RUB`/`RUR`/`643`); a missing amount
    or a missing payment row is a mismatch too. A mismatch is not applied
-   (`amount_mismatch` / `not_confirmed`, audit row, error-level log). When the
+   (`amount_mismatch` / `not_confirmed`, audit row, error-level log). Money did
+   move, so the checkout is then **never timed out**: it and its payment row stay
+   `pending` for a person (`billing.payment.unresolved`, `found=needs_review`,
+   after a day — refund or settle by hand). When the
    status call fails the webhook is answered 503 and nothing is stored, so the
    redelivery is processed in full (and the reconciler asks on its own anyway).
    To confirm with the MIXPLAT manager: that `amount` (not `amount_merchant`)

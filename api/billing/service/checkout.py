@@ -204,6 +204,8 @@ async def _close_restarted_checkouts(ctx: BillingContext, tx, device: Device, no
     for old in await tx.list_subscriptions_for_account(device.account_id):
         if old.status is not SubscriptionStatus.PENDING:
             continue
+        if await held_for_review(tx, old.id):
+            continue   # money moved on it: kept for a person, never closed as declined
         transition = apply(sub_state(old), CancelRequested(CancelChannel.APP), now, ctx.policy())
         await run_effects(ctx, tx, old, transition.effects, actor=device_actor(device))
         await close_checkout(tx, old, transition.effects, actor=device_actor(device))
@@ -257,6 +259,13 @@ async def close_checkout(tx, sub: Subscription, effects, *, actor: str) -> None:
     await tx.add_audit(actor=actor, action="checkout.closed", target=sub_target(sub.id),
                        meta={"account": sub.payer_account_id, "reason": reason, "plan": sub.plan_code.value})
     await tx.delete_subscription(sub.id)
+
+
+async def held_for_review(tx, sub_id: str) -> bool:
+    """A success for this checkout was refused for its amount or currency (the audit row
+    apply_provider_event writes). Money did move, so it is never closed or timed out:
+    it stays pending, payment row and all, until a person refunds or settles it."""
+    return any(a.action == "payment.amount_mismatch" for a in await tx.list_audit(sub_target(sub_id)))
 
 
 def _is_uuid(value: str) -> bool:
