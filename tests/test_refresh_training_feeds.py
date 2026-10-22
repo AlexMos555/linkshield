@@ -10,10 +10,13 @@ each capped so no single feed decides what "phishing" looks like to the model.
 from __future__ import annotations
 
 import csv
+import datetime
+import gzip
 import json
 import os
 import sys
 
+import httpx
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
@@ -148,3 +151,126 @@ def test_too_few_hosts_refuses(tmp_path, monkeypatch):
     monkeypatch.setattr(rtf, "_get", _fake_fetch(_healthy_responses(n=50)))
     assert rtf.refresh_phishing() == 2
     assert not (tmp_path / "phishtank.csv").exists()
+
+
+# ── The benign lists (2026-10-22) ──
+#
+# Until then both came from Tranco, whose default list averages Cloudflare
+# Radar (CC BY-NC 4.0) and which states no licence of its own. Now the
+# Majestic Million (CC BY 3.0) and the Chrome UX Report top origins (CC BY
+# 4.0), global and Russia.
+
+def test_no_unlicensed_benign_source_is_read():
+    urls = " ".join([rtf.MAJESTIC, rtf.CRUX]).lower()
+    for banned in ("tranco", "cloudflare", "radar", "umbrella", "alexa"):
+        assert banned not in urls, f"{banned}: no licence a paid product can train under"
+    assert "country/ru" in rtf.CRUX_SCOPES   # the regional zones live in Russia's list
+
+
+MAJESTIC_CSV = (
+    "GlobalRank,TldRank,Domain,TLD,RefSubNets,RefIPs,IDN_Domain,IDN_TLD,"
+    "PrevGlobalRank,PrevTldRank,PrevRefSubNets,PrevRefIPs\n"
+    "1,1,google.com,com,478136,2049353,google.com,com,1,1,507044,2211598\n"
+    "2,1,XN--80ASWG.XN--P1AI,xn--p1ai,10,10,сайт.рф,рф,2,1,10,10\n"
+    "3,2,play.google.com,com,9,9,play.google.com,com,3,2,9,9\n"
+    "x,3,broken.com,com,1,1,broken.com,com,0,0,0,0\n"
+)
+
+
+def test_parse_majestic_reads_rank_and_the_ascii_domain():
+    assert rtf.parse_majestic(MAJESTIC_CSV) == [
+        (1, "google.com"), (2, "xn--80aswg.xn--p1ai"), (3, "play.google.com")]
+    with pytest.raises(ValueError):
+        rtf.parse_majestic("<html>503</html>")
+
+
+def test_parse_crux_reads_the_origin_host():
+    text = ("origin,rank\nhttps://www.Example.com,1000\nhttp://www.example.com,5000\n"
+            "https://gorzdrav.spb.ru:8443,10000\nhttps://localhost,1000\n")
+    assert rtf.parse_crux(text) == [(1000, "www.example.com"), (5000, "www.example.com"),
+                                    (10000, "gorzdrav.spb.ru")]
+    with pytest.raises(ValueError):
+        rtf.parse_crux("rank,domain\n1,google.com\n")
+
+
+def test_crux_months_go_back_across_the_new_year():
+    assert rtf.crux_months(datetime.date(2026, 10, 22)) == ["202609", "202608", "202607", "202606"]
+    assert rtf.crux_months(datetime.date(2026, 1, 5), back=2) == ["202512", "202511"]
+
+
+def _crux_gz(rows) -> bytes:
+    return gzip.compress(("origin,rank\n" + "".join(f"https://{h},{r}\n" for r, h in rows)).encode())
+
+
+def _benign_fetch(responses):
+    """Like _fake_fetch, but an unknown URL is a 404 — what GitHub answers
+    for a CrUX month not published yet."""
+    def fetch(url, timeout=180.0):
+        if url not in responses:
+            raise httpx.HTTPStatusError("404", request=httpx.Request("GET", url), response=httpx.Response(404))
+        value = responses[url]
+        if isinstance(value, Exception):
+            raise value
+        return value if isinstance(value, bytes) else value.encode()
+    return fetch
+
+
+def _benign_responses(month="202609"):
+    return {
+        rtf.MAJESTIC: MAJESTIC_CSV,
+        rtf.CRUX.format(scope="global", month=month): _crux_gz(
+            [(1000, "www.example.com"), (1000, "www.google.com"), (10000, "a.b.com"), (10000, "someone.github.io")]),
+        rtf.CRUX.format(scope="country/ru", month=month): _crux_gz(
+            [(1000, "a.b.com"), (5000, "gorzdrav.spb.ru"), (5000, "lk.dnevnik.ru")]),
+    }
+
+
+@pytest.fixture
+def small_lists(monkeypatch, tmp_path):
+    monkeypatch.setattr(rtf, "_DATA", str(tmp_path))
+    monkeypatch.setattr(rtf, "MIN_BENIGN_DOMAINS", 3)
+    monkeypatch.setattr(rtf, "CRUX_SCOPES", {"global": 2, "country/ru": 2})
+    monkeypatch.setattr(rtf, "crux_months", lambda today, back=4: ["202609", "202608"])
+    return tmp_path
+
+
+def test_refresh_benign_writes_both_ranked_lists(small_lists, monkeypatch):
+    # The newest month is not published yet: the month before is read.
+    monkeypatch.setattr(rtf, "_get", _benign_fetch(_benign_responses(month="202608")))
+    assert rtf.refresh_benign() == 0
+    # Majestic plus the global CrUX list's registrable domains, one row each
+    # at its best rank; no tenant (someone.github.io is not github.io), and
+    # nothing from Russia's list (dnevnik.ru, spb.ru).
+    assert (small_lists / rtf.BENIGN_DOMAINS).read_text().splitlines() == [
+        "1,google.com", "2,xn--80aswg.xn--p1ai", "3,play.google.com", "1000,example.com", "10000,b.com"]
+    # One row per host at its best rank, global and Russia merged.
+    assert (small_lists / rtf.BENIGN_HOSTS).read_text().splitlines() == [
+        "1000,a.b.com", "1000,www.example.com", "1000,www.google.com", "5000,gorzdrav.spb.ru",
+        "5000,lk.dnevnik.ru", "10000,someone.github.io"]
+
+
+def test_the_files_train_model_reads_are_the_ones_written():
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+    from ml import train_model
+
+    assert (train_model.BENIGN_DOMAINS_CSV, train_model.BENIGN_HOSTS_CSV) == (rtf.BENIGN_DOMAINS, rtf.BENIGN_HOSTS)
+
+
+@pytest.mark.parametrize("broken", ["majestic", "russia", "short"])
+def test_a_missing_benign_list_keeps_both_previous_files(small_lists, monkeypatch, broken):
+    """Both lists or neither: a new domain list with last week's hosts, or
+    CrUX's global list without Russia's regional zones, is a corpus no run
+    was measured on."""
+    for name in (rtf.BENIGN_DOMAINS, rtf.BENIGN_HOSTS):
+        (small_lists / name).write_text("1,previous.example\n")
+    responses = _benign_responses()
+    if broken == "majestic":
+        responses[rtf.MAJESTIC] = RuntimeError("connection reset")
+    elif broken == "russia":
+        del responses[rtf.CRUX.format(scope="country/ru", month="202609")]
+    else:
+        monkeypatch.setattr(rtf, "MIN_BENIGN_DOMAINS", 10)
+    monkeypatch.setattr(rtf, "_get", _benign_fetch(responses))
+    assert rtf.refresh_benign() == 2
+    for name in (rtf.BENIGN_DOMAINS, rtf.BENIGN_HOSTS):
+        assert (small_lists / name).read_text() == "1,previous.example\n"

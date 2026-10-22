@@ -96,7 +96,7 @@ def test_no_comparison_possible_means_replace():
 # names, weighted 1:1) gave a model that scored 69 of the 539 held-out real
 # Russian sites above 0.6. These strata are what fixed it.
 
-def _write_tranco(path, head, tail=()):
+def _write_ranked(path, head, tail=()):
     """`head` ranked 1.., `tail` from 10,001 (the long tail)."""
     rows = [f"{i},{d}" for i, d in enumerate(head, start=1)]
     rows += [f"{i},{d}" for i, d in enumerate(tail, start=10001)]
@@ -146,6 +146,15 @@ def test_only_generic_lure_words_make_the_lure_word_stratum():
     assert not tm._has_generic_lure_word("example.org")
 
 
+def test_lure_word_names_come_from_the_host_list_too():
+    """The Majestic Million has 110 generic lure-word names where Tranco had
+    ~300; with them alone the model scored shopify-connect.com 0.87. The
+    registrable domains of the CrUX hosts fill the pool back."""
+    got = tm.lure_word_domains(["www.sncf-connect.com", "app.home-connect.com", "secure-login.example.com",
+                                "my-connect.github.io", "www.example.com", "login.gov"])
+    assert got == {"sncf-connect.com", "home-connect.com"}
+
+
 def test_the_verified_brand_file_feeds_the_benign_class_minus_the_held_out_sites():
     verified = tm.load_verified_brand_sites()
     assert {"gosuslugi29.ru", "sberbank1.ru"} <= set(verified)
@@ -156,13 +165,14 @@ def test_the_verified_brand_file_feeds_the_benign_class_minus_the_held_out_sites
 
 def test_the_new_strata_reach_the_benign_class(tmp_path, monkeypatch):
     monkeypatch.setattr(tm, "DATA_DIR", str(tmp_path))
-    _write_tranco(tmp_path / "top-1m.csv",
+    _write_ranked(tmp_path / "benign-domains.csv",
                   [f"famous{i}.com" for i in range(100)],
                   [f"tail{i}.org" for i in range(300)]
                   + [f"russkiy{i}.ru" for i in range(100)]
                   + ["xn--80aswg.xn--p1ai", "xn--e1afmkfd.xn--p1ai", "vkgosuslugi.ru", "gosuslugi92.ru",
                      "leadgid.com", "klar.mx"])
-    _write_tranco(tmp_path / "top-1m-subdomains.csv", [f"www.site{i}.com" for i in range(60)])
+    _write_ranked(tmp_path / "benign-hosts.csv", [f"www.site{i}.com" for i in range(60)]
+                  + ["www.sncf-connect.com", "www.shopify-connect.com"])
     held_out = frozenset({"gosuslugi92.ru"})
     phishing = ["login-1.pages.dev", "login-2.pages.dev", "evil.example"]
     benign = tm.load_benign_domains(400, exclude=phishing, held_out=held_out)
@@ -174,7 +184,11 @@ def test_the_new_strata_reach_the_benign_class(tmp_path, monkeypatch):
     assert any(d.endswith(".pages.dev") for d in benign)
     verified = [d for d in set(benign) if d in set(tm.load_verified_brand_sites())]
     assert verified and all(benign.count(d) == tm.VERIFIED_REPEAT for d in verified)
-    assert "gosuslugi92.ru" not in benign   # held out: in Tranco and in the verified file
+    assert "gosuslugi92.ru" not in benign   # held out: in the ranked list and in the verified file
+    # A generic lure word from the host list's registrable domains, twice;
+    # a brand with it is noise, never a negative.
+    assert benign.count("sncf-connect.com") == tm.LURE_WORD_REPEAT
+    assert "shopify-connect.com" not in benign
     assert not set(benign) & tm.GATE_HOSTS
     assert not set(benign) & set(phishing)
 

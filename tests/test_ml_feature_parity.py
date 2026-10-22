@@ -306,12 +306,12 @@ def data_dir(tmp_path, train_model, monkeypatch):
         "https://sberbamk.ru/",
         "http://[2001:db8::1]/i",
     ]) + "\n")
-    _write(tmp_path / "top-1m.csv", "\n".join(
+    _write(tmp_path / "benign-domains.csv", "\n".join(
         [f"{i},famous{i}.com" for i in range(1, 41)]
         + [f"{10000 + i},tail{i}.org" for i in range(1, 121)]
         + ["20001,gov.spb.ru", "20002,paypal.account-check.tk"]
     ) + "\n")
-    _write(tmp_path / "top-1m-subdomains.csv", "\n".join(
+    _write(tmp_path / "benign-hosts.csv", "\n".join(
         [f"{i},www.site{i}.com" for i in range(1, 61)]
         + [f"{100 + i},x{i}.spb.ru" for i in range(1, 11)]
         + [
@@ -368,7 +368,7 @@ def test_the_tenant_pool_is_capped_per_platform(train_model, data_dir):
     import random
 
     _, _, tenants = train_model._shape_pool(
-        train_model._read_tranco(str(data_dir / "top-1m-subdomains.csv")), set(), frozenset())
+        train_model._read_ranked(str(data_dir / "benign-hosts.csv")), set(), frozenset())
     assert set(tenants) == TENANT_FIXTURES
     pool = train_model._cap_per_platform(tenants, random.Random(0))
     assert sorted(pool) == sorted(tenants)   # under the cap, every tenant is in the pool
@@ -381,8 +381,21 @@ def test_the_tenant_pool_is_capped_per_platform(train_model, data_dir):
     assert len(pool) == 2 and "blog.wordpress.com" in pool and sum(h.endswith(".github.io") for h in pool) == 1
 
 
+def test_subdomain_shapes_come_from_the_most_visited_hosts_only(train_model):
+    """CrUX ranks origins to 1M; most subdomain hosts down there sit under
+    unknown names, and taught that a subdomain of an unknown name is as
+    ordinary as the name. Zone names and tenants are their own names and
+    keep every rank."""
+    cut = train_model.SHAPE_MAX_RANK
+    ru_zone, subdomains, tenants = train_model._shape_pool(
+        [(cut, "www.popular.com"), (cut * 5, "portal.obscure.com"),
+         (cut * 5, "gorzdrav.spb.ru"), (cut * 5, "someone.github.io")], set(), frozenset())
+    assert subdomains == ["www.popular.com"]
+    assert ru_zone == ["gorzdrav.spb.ru"] and tenants == ["someone.github.io"]
+
+
 def test_a_retrain_without_the_subdomain_list_stops(train_model, data_dir):
-    (data_dir / "top-1m-subdomains.csv").unlink()
+    (data_dir / "benign-hosts.csv").unlink()
     with pytest.raises(FileNotFoundError, match="refresh_training_feeds"):
         train_model.load_benign_domains(40)
 

@@ -30,6 +30,9 @@ coverage.xml
 # Data (large files)
 data/top-1m.csv
 data/top-1m-subdomains.csv
+# ML benign lists (scripts/refresh_training_feeds.py): Majestic Million, CrUX top origins
+data/benign-domains.csv
+data/benign-hosts.csv
 data/phishtank.csv
 data/feature_log.jsonl
 data/bloom_top100k.json
