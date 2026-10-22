@@ -92,3 +92,37 @@ def test_security_headers_on_post_routes(client):
     assert resp.headers.get("X-Content-Type-Options") == "nosniff"
     assert resp.headers.get("X-Frame-Options") == "DENY"
     assert "Strict-Transport-Security" in resp.headers
+
+
+def _directives(csp: str) -> dict[str, str]:
+    return {d.split()[0]: d.strip() for d in csp.split(";") if d.strip()}
+
+
+@pytest.mark.parametrize("valid", [True, False])
+def test_csp_lets_the_unsubscribe_page_submit_its_form(client, valid):
+    """The link in every email's footer opens a <form method=POST> styled by
+    an inline <style>. Under the API CSP (form-action 'none') browsers refused
+    to submit it, so a reader who clicked "Unsubscribe" in the email body could
+    not opt out — only the mail client's one-click POST worked."""
+    from api.routers.email_unsubscribe import mint_token
+
+    token = mint_token("user-1", "welcome") if valid else "not.a-token"
+    resp = client.get(f"/api/v1/email/unsubscribe/{token}")
+    assert resp.status_code == (200 if valid else 400)
+    if valid:
+        # The form posts back to its own origin, which 'self' allows.
+        assert '<form method="POST" action="/api/v1/email/unsubscribe/' in resp.text
+    csp = _directives(resp.headers["Content-Security-Policy"])
+    assert csp["form-action"] == "form-action 'self'"
+    assert csp["style-src"] == "style-src 'unsafe-inline'"
+    assert csp["default-src"] == "default-src 'none'"  # still no scripts, images, frames
+    assert csp["frame-ancestors"] == "frame-ancestors 'none'"
+    assert csp["base-uri"] == "base-uri 'none'"
+    assert "script-src" not in csp
+
+
+def test_csp_keeps_forms_off_everywhere_else(client):
+    for path in ("/health", "/api/v1/email/unsubscribe", "/api/v1/email/unsubscribe-x/abc"):
+        csp = _directives(client.get(path).headers["Content-Security-Policy"])
+        assert csp["form-action"] == "form-action 'none'", path
+        assert "style-src" not in csp, path
