@@ -160,12 +160,47 @@ console.log("withDistributionGuard:");
   const { releaseCheck, distributionOf } = require("../distribution.js");
   const { _patch: patchDist } = require("../withDistributionGuard.js");
 
-  check("reads the store the same way the app does (trimmed, lower-case)", () => {
+  // Values the app (freemium.ts distributionFor) and autolinking
+  // (store-billing-linking.js) read as the site build, though they look like
+  // play: the guard must refuse them, not tidy them into "play".
+  const LOOKALIKES = ["play;", "'play'", "pl.ay", "p lay", "pl'ay${x}"];
+  check("reads the store the same way the app does (trimmed, lower-case, nothing else)", () => {
     assert.strictEqual(distributionOf({ EXPO_PUBLIC_DISTRIBUTION: " PLAY " }), "play");
     assert.strictEqual(distributionOf({ EXPO_PUBLIC_DISTRIBUTION: "rustore" }), "rustore");
     assert.strictEqual(distributionOf({}), "");
-    // Nothing but [a-z0-9_-] survives, so the value can be baked into gradle.
-    assert.strictEqual(distributionOf({ EXPO_PUBLIC_DISTRIBUTION: "pl'ay${x}" }), "playx");
+    for (const v of LOOKALIKES) assert.notStrictEqual(distributionOf({ EXPO_PUBLIC_DISTRIBUTION: v }), "play", v);
+  });
+  check("a value the app reads as the site build fails, even when it looks like play", () => {
+    for (const v of LOOKALIKES) {
+      const r = releaseCheck({ distribution: distributionOf({ EXPO_PUBLIC_DISTRIBUTION: v }), prebuild: "play", artifact: "aab" });
+      assert.strictEqual(r.ok, false, v);
+      assert.ok(!r.message.includes("Google Play build"), r.message);
+    }
+  });
+  check("the CLI gradle runs refuses them too (exit 1), and passes play (exit 0)", () => {
+    const { spawnSync } = require("node:child_process");
+    const fs = require("node:fs");
+    const os = require("node:os");
+    const path = require("node:path");
+    // An empty cwd: no project .env file can change the answer.
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "cleanway-dist-"));
+    const cli = (value) =>
+      spawnSync(process.execPath, [path.join(__dirname, "..", "distribution.js"), "check", "--prebuild=play", "--artifact=aab"], {
+        cwd, encoding: "utf8", env: { PATH: process.env.PATH, EXPO_PUBLIC_DISTRIBUTION: value },
+      });
+    try {
+      for (const v of LOOKALIKES) {
+        const r = cli(v);
+        assert.strictEqual(r.status, 1, `${v}: ${r.stdout}${r.stderr}`);
+        assert.ok(!r.stdout.includes("Google Play build"), r.stdout);
+        assert.ok(r.stderr.includes("EXPO_PUBLIC_DISTRIBUTION"), r.stderr);
+      }
+      const ok = cli("play");
+      assert.strictEqual(ok.status, 0, ok.stderr);
+      assert.ok(ok.stdout.includes("Google Play build"), ok.stdout);
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
   });
   check("a release build must name its store — unset or unknown fails", () => {
     for (const distribution of ["", "googleplay", "appstore"]) {
@@ -205,7 +240,21 @@ console.log("withDistributionGuard:");
   const out = patchDist(TEMPLATE, "play");
   check("bakes the prebuild's store into the gradle file", () => {
     assert.ok(out.includes("def cleanwayPrebuildDistribution = 'play'"));
+    assert.ok(patchDist(TEMPLATE, " Play ").includes("def cleanwayPrebuildDistribution = 'play'"));
     assert.ok(patchDist(TEMPLATE, "").includes("def cleanwayPrebuildDistribution = ''"));
+  });
+  check("a prebuild for an unknown value bakes a marker no build matches, never the text", () => {
+    for (const v of [...LOOKALIKES, "googleplay"]) {
+      const baked = /def cleanwayPrebuildDistribution = '([^']*)'/.exec(patchDist(TEMPLATE, v));
+      assert.ok(baked, v);
+      assert.strictEqual(baked[1], "invalid", v);
+      // Built afterwards with a correct EXPO_PUBLIC_DISTRIBUTION: still refused.
+      const r = releaseCheck({ distribution: "play", prebuild: distributionOf({ EXPO_PUBLIC_DISTRIBUTION: baked[1] }), artifact: "aab", revenueCatKey: true });
+      assert.strictEqual(r.ok, false, v);
+      assert.ok(r.message.includes("expo prebuild -p android --clean"), r.message);
+    }
+    assert.ok(!patchDist(TEMPLATE, "pl'ay${x}").includes("${x}"));
+    assert.strictEqual(patchDist(patchDist(TEMPLATE, "play"), "p lay"), patchDist(TEMPLATE, "invalid"));
   });
   check("checks APK and AAB release packaging, before any task runs", () => {
     assert.ok(out.includes("gradle.taskGraph.whenReady"));

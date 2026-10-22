@@ -30,6 +30,7 @@
  *     Russian, and in Ukraine it can pay).
  */
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 
 import {
   DEFAULT_DAILY_LIMIT,
@@ -119,6 +120,22 @@ for (const [value, dist] of [["play", "play"], ["rustore", "rustore"], ["site", 
     assert.equal(readFreemiumConfig({ EXPO_PUBLIC_DISTRIBUTION: value }, "android").distribution, dist);
   });
 }
+check("the Android release guard accepts a store exactly when the app and autolinking read that store", () => {
+  // plugins/distribution.js stops a release whose EXPO_PUBLIC_DISTRIBUTION the
+  // app would read as the site build; it must never let one through as play.
+  const require = createRequire(import.meta.url);
+  const { STORES, distributionOf, releaseCheck } = require("../plugins/distribution.js");
+  const { storeBillingLinked } = require("../plugins/store-billing-linking.js");
+  for (const value of ["play", " PLAY ", "rustore", "site", "", "appstore", "play;", "'play'", "pl.ay", "p lay", "pl'ay${x}"]) {
+    const env = { EXPO_PUBLIC_DISTRIBUTION: value };
+    const store = distributionOf(env);
+    const accepted = releaseCheck({ distribution: store, prebuild: store, artifact: "apk", revenueCatKey: true }).ok;
+    const app = readFreemiumConfig(env, "android").distribution;
+    assert.equal(accepted, STORES.includes(store), JSON.stringify(value));
+    assert.equal(accepted, app === store, JSON.stringify(value));
+    assert.equal(storeBillingLinked(env), accepted && store === "play", JSON.stringify(value));
+  }
+});
 check("iOS: always the App Store build, whatever EXPO_PUBLIC_DISTRIBUTION says", () => {
   for (const value of ["play", "site", "rustore", "appstore", "", undefined]) {
     assert.equal(readFreemiumConfig({ EXPO_PUBLIC_DISTRIBUTION: value }, "ios").distribution, "appstore", String(value));

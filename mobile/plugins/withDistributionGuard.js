@@ -21,7 +21,7 @@
  * files only; re-running prebuild without --clean re-bakes the value.
  */
 const { withAppBuildGradle } = require("@expo/config-plugins");
-const { distributionOf } = require("./distribution");
+const { STORES, distributionOf } = require("./distribution");
 const { buildEnv } = require("./store-billing-linking");
 
 const SENTINEL = "cleanway-distribution-guard";
@@ -50,9 +50,20 @@ gradle.taskGraph.whenReady { graph ->
 `;
 }
 
-/** [prebuild] is distributionOf()'s output: [a-z0-9_-]* only, safe inside the quotes. */
-function patch(contents, prebuild) {
+/**
+ * Bakes the prebuild's store: one of STORES, "" when unset, or "invalid" for
+ * anything else — so the env's own text never lands in build.gradle, and a
+ * release from that android/ fails the "generated for another store" check
+ * whatever it is built with.
+ */
+function bakedValue(prebuild) {
   const value = distributionOf({ EXPO_PUBLIC_DISTRIBUTION: prebuild });
+  if (value === "" || STORES.includes(value)) return value;
+  return "invalid";
+}
+
+function patch(contents, prebuild) {
+  const value = bakedValue(prebuild);
   if (contents.includes(SENTINEL)) {
     return contents.replace(BAKED_RE, `def cleanwayPrebuildDistribution = '${value}'`);
   }

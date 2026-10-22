@@ -35,12 +35,14 @@ const WHAT = {
 };
 
 /**
- * The store named by the env, trimmed and lower-cased like the app does
- * (freemium.ts distributionFor). Only [a-z0-9_-] is kept, so the value can be
- * baked into build.gradle as is; "" when unset.
+ * The store named by the env, read exactly like the app (freemium.ts
+ * distributionFor) and autolinking (store-billing-linking.js) read it:
+ * trimmed and lower-cased, nothing else; "" when unset. Not cleaned up: the
+ * app reads "play;" or "pl.ay" as the site build, so releaseCheck must see
+ * it as it is and refuse it, never tidy it into "play".
  */
 function distributionOf(env) {
-  return String(env.EXPO_PUBLIC_DISTRIBUTION ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  return String(env.EXPO_PUBLIC_DISTRIBUTION ?? "").trim().toLowerCase();
 }
 
 const HOW =
@@ -58,7 +60,7 @@ const HOW =
  */
 function releaseCheck({ distribution, prebuild, artifact, revenueCatKey = false }) {
   if (!STORES.includes(distribution)) {
-    const seen = distribution ? `is "${distribution}"` : "is not set";
+    const seen = distribution ? `is ${JSON.stringify(distribution)}` : "is not set";
     return {
       ok: false,
       message:
@@ -71,7 +73,7 @@ function releaseCheck({ distribution, prebuild, artifact, revenueCatKey = false 
     return {
       ok: false,
       message:
-        `Cleanway: android/ was generated for "${prebuild || "unset"}" but this build runs with ` +
+        `Cleanway: android/ was generated for ${prebuild ? JSON.stringify(prebuild) : "unset"} but this build runs with ` +
         `EXPO_PUBLIC_DISTRIBUTION=${distribution}. Gradle's autolinking (Play Billing or not) follows ` +
         `the prebuild, so the two halves would disagree. Regenerate with the same value:\n` +
         `  CI=1 npx expo prebuild -p android --clean`,
