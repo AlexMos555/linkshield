@@ -134,6 +134,9 @@ load test hits the per-IP budget.
 
 ### Capacity estimate
 
+> Superseded by measured numbers for the whole API (DoH + /check + Redis + cost):
+> `docs/runbooks/capacity.md` (2026-10-22).
+
 A phone sends roughly 1–3k DNS queries a day (≈0.02–0.04 q/s, ×3 at peak).
 At ~900 req/s — half a worker's saturation point with this mix — one worker
 serves on the order of **10k phones at peak**. Latency stays low while a
