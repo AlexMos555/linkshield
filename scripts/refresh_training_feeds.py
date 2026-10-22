@@ -71,11 +71,13 @@ TRANCO_SUBDOMAINS = "https://tranco-list.eu/top-1m-incl-subdomains.csv.zip"
 
 # ml/train_model.train() reads this many phishing hosts (names first, then
 # IP literals, in file order).
-TRAINING_PHISHING_HOSTS = 12_000
-# Per feed. Four feeds: three at 3,500 plus Phishunt's ~1,400 (all it carries
-# at a time) fill ~11,900 hosts, every feed 12-30%. ml/train_model then caps
-# hosting tenants (PHISH_TENANT_SHARE), which takes ~1,500 out.
-DEFAULT_CAP = 3_500
+TRAINING_PHISHING_HOSTS = 20_000
+# Per feed. Four feeds: three at 6,000 plus Phishunt's ~1,400 (all it carries
+# at a time) fill ~19,400 hosts, every feed 7-31%. ml/train_model then caps
+# hosting tenants (PHISH_TENANT_SHARE), which takes ~1,200 out. (3,500 each
+# until 2026-10-22: ~200 names with a lure word in the whole class was too
+# few to learn secure-login.<platform> from.)
+DEFAULT_CAP = 6_000
 MIN_SOURCES = 3
 MIN_HOSTS = 5_000
 SEED = 42

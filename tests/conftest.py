@@ -318,9 +318,13 @@ def offline_analyzer(monkeypatch):
     import asyncio
     import socket
 
-    from api.services import analyzer, site_probes
+    from api.services import analyzer, ml_scorer, site_probes
 
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    # The app loads the model at startup (api.main._warm_ml_model), so no
+    # request pays for it; the budget tests time the sources, not a cold
+    # ONNX load (0.4-1.3 s depending on the model and the machine).
+    ml_scorer.ml_predict("example.com")
 
     def _fake(value, delay):
         async def _check(domain):
