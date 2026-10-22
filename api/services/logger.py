@@ -66,6 +66,9 @@ ALLOWED_EXTRAS = frozenset({
     "amount_refunded_cents", "currency", "reason", "product_id",
     "new_product_id", "store", "external_id", "existing_source",
     "new_source", "rows", "applied", "ended",
+    # Stripe event order (subscription_event_stale) and checkout_not_configured:
+    # a Stripe status, an event epoch, the names of the unset settings
+    "stripe_status", "event_created", "missing",
     # operator billing (api/billing)
     "subscription", "payment", "event", "found", "age_hours", "outcomes",
     "trial_days", "grace_days", "lapse_policy", "fake_provider", "mixplat",
