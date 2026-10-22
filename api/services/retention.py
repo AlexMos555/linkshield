@@ -32,11 +32,18 @@ is not "off", api.main's lifespan starts ``retention_loop``: first pass
 FIRST_RUN_DELAY_S after boot, then every INTERVAL_S; a Redis lock keeps two
 replicas from running the same tick. Manual run:
 ``python -m api.services.retention [--dry-run]``.
+
+Visible from outside: every pass leaves its time, mode and failures in Redis,
+and /health/deep's `retention` component (``health_status``) shows the
+configured mode and when a pass last succeeded — informational, never in
+`warnings`.
 """
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Literal, Optional
@@ -58,6 +65,14 @@ INTERVAL_S: float = 6 * 3600
 _LOCK_KEY = "retention:lock"
 _LOCK_TTL_S = 30 * 60
 _TIMEOUT_S = 30.0
+
+_LAST_PASS_KEY = "retention:last_pass"
+_LAST_OK_KEY = "retention:last_ok"
+_STATUS_TTL_S = 30 * 86400
+_REDIS_TIMEOUT_S = 1.0
+# A pass that succeeded longer ago than this means the loop stopped: two
+# missed intervals, plus the boot delay and a lock another replica held.
+STALE_AFTER_S: float = FIRST_RUN_DELAY_S + 2 * INTERVAL_S + _LOCK_TTL_S
 
 
 @dataclass(frozen=True)
@@ -206,6 +221,8 @@ async def run_retention(mode: Any, now: Optional[datetime] = None) -> dict:
             summary["tables"][rule.name] = await _apply_rule(client, base, rule, m, now)
 
     failed = [name for name, r in summary["tables"].items() if "error" in r]
+    accounts_failed = "error" in (summary.get("accounts") or {})
+    await _remember_pass(m, now, failed + (["accounts"] if accounts_failed else []))
     log = logger.error if failed else logger.info
     log(
         "retention.pass_complete",
@@ -218,6 +235,72 @@ async def run_retention(mode: Any, now: Optional[datetime] = None) -> dict:
         },
     )
     return summary
+
+
+# ── what /health/deep shows ───────────────────────────────────────────
+
+
+async def _redis():
+    from api.services.cache import get_redis
+
+    return await get_redis()
+
+
+async def _remember_pass(mode: Mode, now: datetime, failed: list[str]) -> None:
+    """Store this pass for health_status (every replica reads the same keys).
+    Never raises: Redis down must not fail a retention pass."""
+    entry = json.dumps({"at": int(now.timestamp()), "mode": mode, "failed": failed})
+    try:
+        r = await _redis()
+        await asyncio.wait_for(r.set(_LAST_PASS_KEY, entry, ex=_STATUS_TTL_S), _REDIS_TIMEOUT_S)
+        if not failed:
+            await asyncio.wait_for(r.set(_LAST_OK_KEY, entry, ex=_STATUS_TTL_S), _REDIS_TIMEOUT_S)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("retention.status_not_recorded", extra={"error": type(e).__name__})
+
+
+def _settings_mode() -> Mode:
+    return parse_mode(getattr(get_settings(), "retention_purge", "off"))
+
+
+def _load(raw: Any) -> Optional[dict]:
+    try:
+        value = json.loads(raw) if raw else None
+    except (TypeError, ValueError):
+        return None
+    return value if isinstance(value, dict) and isinstance(value.get("at"), int) else None
+
+
+def _iso_at(entry: Optional[dict]) -> Optional[str]:
+    return datetime.fromtimestamp(entry["at"], tz=timezone.utc).isoformat() if entry else None
+
+
+async def health_status(now: Optional[float] = None) -> dict:
+    """The configured mode and the last passes. `ok` means "deleting on
+    schedule": false while off (the published periods are not enforced), in
+    dry_run (nothing is deleted), or when no pass succeeded within
+    STALE_AFTER_S. No counts — /health/deep is public."""
+    mode = _settings_mode()
+    out: dict = {"mode": mode, "last_ok_at": None, "last_ok_mode": None,
+                 "last_pass_at": None, "last_pass_failed": None}
+    try:
+        r = await _redis()
+        last_pass = _load(await asyncio.wait_for(r.get(_LAST_PASS_KEY), _REDIS_TIMEOUT_S))
+        last_ok = _load(await asyncio.wait_for(r.get(_LAST_OK_KEY), _REDIS_TIMEOUT_S))
+    except Exception:  # noqa: BLE001 — reported, never raised
+        return {**out, "ok": False, "error": "redis_unavailable"}
+    out.update(
+        last_ok_at=_iso_at(last_ok),
+        last_ok_mode=last_ok["mode"] if last_ok else None,
+        last_pass_at=_iso_at(last_pass),
+        last_pass_failed=last_pass.get("failed") if last_pass else None,
+    )
+    if mode != "on":
+        return {**out, "ok": False, "error": mode}
+    current = time.time() if now is None else now
+    if last_ok and last_ok.get("mode") == "on" and current - last_ok["at"] <= STALE_AFTER_S:
+        return {**out, "ok": True}
+    return {**out, "ok": False, "error": "no_recent_pass"}
 
 
 # ── background loop (started from api.main lifespan) ──────────────────
@@ -254,7 +337,7 @@ async def retention_loop(mode: Mode) -> None:
 def start_background() -> Optional[asyncio.Task]:
     """Start the loop if RETENTION_PURGE is dry_run / on. Returns the task."""
     global _task
-    mode = parse_mode(getattr(get_settings(), "retention_purge", "off"))
+    mode = _settings_mode()
     if mode == "off":
         return None
     if _task is None or _task.done():

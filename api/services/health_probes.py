@@ -113,3 +113,10 @@ async def _doh() -> dict:
 
 async def doh_component() -> dict:
     return await _bounded(_doh)
+
+
+async def retention_component() -> dict:
+    """RETENTION_PURGE and the last pass (api/services/retention.py).
+    Informational: never pages, never in `warnings`."""
+    from api.services.retention import health_status
+    return await _bounded(health_status)

@@ -26,6 +26,10 @@ def configured_settings(monkeypatch):
     s = config.get_settings()
     monkeypatch.setattr(s, "supabase_url", "https://fake.supabase.co", raising=False)
     monkeypatch.setattr(s, "supabase_anon_key", "fake_anon_key", raising=False)
+    # The server key is probed too (a warning when it stops acting as
+    # service_role); the httpx stubs below answer it like any other GET.
+    monkeypatch.setattr(s, "supabase_secret_key", "sb_secret_fake_server_key_value", raising=False)
+    monkeypatch.setattr(s, "supabase_service_key", "", raising=False)
     return s
 
 
@@ -383,6 +387,63 @@ def test_no_published_blocklist_is_reported(client, configured_settings, monkeyp
     body = resp.json()
     assert body["components"]["blocklist"]["ok"] is False
     assert set(body["warnings"]) == {"blocklist", "doh"}
+
+
+def _patch_httpx_by_path(monkeypatch, statuses: dict[str, int]):
+    """Like _patch_httpx, but the status depends on the URL path."""
+    import httpx as _httpx
+
+    class _Resp:
+        def __init__(self, code: int):
+            self.status_code = code
+
+    class _Client:
+        def __init__(self, *_a, **_k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_a):
+            return None
+
+        async def get(self, url: str, **_kw):
+            return _Resp(next(code for path, code in statuses.items() if path in url))
+
+    monkeypatch.setattr(_httpx, "AsyncClient", _Client)
+
+
+def test_a_rejected_server_key_is_a_warning_not_a_page(client, configured_settings, monkeypatch):
+    """Legacy keys are due to be switched off (docs/runbooks/supabase-jwt-
+    signing-keys.md). If the server key stops acting as service_role, account
+    deletion and every server write fail — while Supabase itself answers. It
+    used to show only as an informational component nobody alerted on."""
+    _serve(monkeypatch, _ProtectionRedis(age_s=3600))
+    _patch_httpx_by_path(monkeypatch, {"/auth/v1/admin/users": 401, "/rest/v1/": 200})
+    resp = client.get("/health/deep")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert body["warnings"] == ["supabase_server_key"]
+    assert body["components"]["supabase_server_key"]["ok"] is False
+
+
+def test_deep_shows_the_retention_mode_without_warning(client, configured_settings, monkeypatch):
+    """Founder console: is RETENTION_PURGE set in production, and did a pass
+    succeed? Visible here, never paging and never in `warnings`."""
+    from api.services import retention
+
+    _serve(monkeypatch, _ProtectionRedis(age_s=3600))
+    _patch_httpx(monkeypatch, status_code=200)
+    monkeypatch.setattr(retention, "_settings_mode", lambda: "dry_run")
+    resp = client.get("/health/deep")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["warnings"] == []
+    ret = body["components"]["retention"]
+    assert ret["mode"] == "dry_run"
+    assert (ret["ok"], ret["error"]) == (False, "dry_run")
+    assert set(ret) >= {"last_ok_at", "last_pass_at", "last_pass_failed"}
 
 
 def test_redis_down_pages_and_still_names_the_protection_checks(client, configured_settings, monkeypatch):

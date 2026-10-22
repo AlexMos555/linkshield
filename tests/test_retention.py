@@ -269,3 +269,107 @@ async def test_loop_skips_a_tick_another_replica_holds(monkeypatch):
     await asyncio.sleep(0.05)
     await retention.stop_background()
     assert runs == []
+
+
+# ── What /health/deep shows (founder console, 2026-10-22) ──
+#
+# The production value of RETENTION_PURGE was unknowable from outside: the
+# JSON log dropped the pass counts and /health/deep said nothing. Every pass
+# now leaves its time in Redis (shared by the replicas), and the component
+# reports the mode and the last pass that succeeded.
+
+NOW_TS = int(NOW.timestamp())
+
+
+async def _purge_ok():
+    return {"deleted": 0}
+
+
+@pytest.mark.asyncio
+async def test_a_clean_pass_is_remembered(stub, fake_redis, monkeypatch):
+    monkeypatch.setattr("api.services.account_purge.purge_expired_accounts", _purge_ok)
+    monkeypatch.setattr(retention, "_settings_mode", lambda: "on")
+    await retention.run_retention("on", now=NOW)
+
+    st = await retention.health_status(now=NOW_TS + 60)
+    assert st["mode"] == "on"
+    assert st["last_ok_at"] == NOW.isoformat()
+    assert st["last_pass_at"] == NOW.isoformat()
+    assert st["last_pass_failed"] == []
+    assert st["ok"] is True
+
+
+@pytest.mark.asyncio
+async def test_a_failed_pass_is_shown_but_is_not_a_success(stub, fake_redis, monkeypatch):
+    monkeypatch.setattr("api.services.account_purge.purge_expired_accounts", _purge_ok)
+    monkeypatch.setattr(retention, "_settings_mode", lambda: "on")
+    stub.fail_tables = {"audit_log"}
+    await retention.run_retention("on", now=NOW)
+
+    st = await retention.health_status(now=NOW_TS + 60)
+    assert st["last_pass_failed"] == ["audit_log_2y"]
+    assert st["last_ok_at"] is None
+    assert (st["ok"], st["error"]) == (False, "no_recent_pass")
+
+
+@pytest.mark.asyncio
+async def test_a_failed_account_purge_counts_as_a_failed_pass(stub, fake_redis, monkeypatch):
+    async def _boom():
+        raise RuntimeError("purge down")
+
+    monkeypatch.setattr("api.services.account_purge.purge_expired_accounts", _boom)
+    await retention.run_retention("on", now=NOW)
+    st = await retention.health_status(now=NOW_TS + 60)
+    assert st["last_pass_failed"] == ["accounts"]
+    assert st["last_ok_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_an_old_success_is_stale(stub, fake_redis, monkeypatch):
+    monkeypatch.setattr("api.services.account_purge.purge_expired_accounts", _purge_ok)
+    monkeypatch.setattr(retention, "_settings_mode", lambda: "on")
+    await retention.run_retention("on", now=NOW)
+    st = await retention.health_status(now=NOW_TS + retention.STALE_AFTER_S + 1)
+    assert (st["ok"], st["error"]) == (False, "no_recent_pass")
+    assert st["last_ok_at"] == NOW.isoformat()
+
+
+@pytest.mark.asyncio
+async def test_a_dry_run_is_shown_as_not_deleting(stub, fake_redis, monkeypatch):
+    monkeypatch.setattr(retention, "_settings_mode", lambda: "dry_run")
+    await retention.run_retention("dry_run", now=NOW)
+    st = await retention.health_status(now=NOW_TS + 60)
+    assert st["mode"] == "dry_run"
+    assert st["last_ok_mode"] == "dry_run"
+    assert (st["ok"], st["error"]) == (False, "dry_run")
+
+
+@pytest.mark.asyncio
+async def test_off_says_so(fake_redis, monkeypatch):
+    monkeypatch.setattr(retention, "_settings_mode", lambda: "off")
+    st = await retention.health_status()
+    assert st == {"mode": "off", "last_ok_at": None, "last_ok_mode": None, "last_pass_at": None,
+                  "last_pass_failed": None, "ok": False, "error": "off"}
+
+
+@pytest.mark.asyncio
+async def test_the_mode_comes_from_the_setting(fake_redis, monkeypatch):
+    from api import config
+
+    monkeypatch.setattr(config.get_settings(), "retention_purge", "dry-run", raising=False)
+    assert (await retention.health_status())["mode"] == "dry_run"
+
+
+@pytest.mark.asyncio
+async def test_redis_down_still_reports_the_mode(redis_down, monkeypatch):
+    monkeypatch.setattr(retention, "_settings_mode", lambda: "on")
+    st = await retention.health_status()
+    assert st["mode"] == "on"
+    assert (st["ok"], st["error"]) == (False, "redis_unavailable")
+
+
+@pytest.mark.asyncio
+async def test_redis_down_never_breaks_a_pass(stub, redis_down, monkeypatch):
+    monkeypatch.setattr("api.services.account_purge.purge_expired_accounts", _purge_ok)
+    out = await retention.run_retention("on", now=NOW)
+    assert out["tables"]["audit_log_2y"] == {"deleted": 3}
