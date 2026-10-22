@@ -5,8 +5,9 @@
  * via `scripts/build-i18n.py` into mobile/i18n/{locale}.json.
  *
  * Runtime:
- *   1. expo-localization detects device language
- *   2. Falls back to English if user's language not in SUPPORTED_LOCALES
+ *   1. expo-localization lists the device's preferred languages; the first
+ *      one in SUPPORTED_LOCALES wins (src/utils/device-locale.ts)
+ *   2. Falls back to English if none of them is
  *   3. RTL (Arabic) forces I18nManager.forceRTL + app reload
  *      (an in-app language override is NOT built yet — changeLocale exists
  *      for it, but no screen calls it; the device locale decides)
@@ -17,6 +18,7 @@ import * as Localization from "expo-localization";
 import * as SecureStore from "expo-secure-store";
 import { setNotificationLocale } from "../../modules/cleanway-vpn";
 import { I18nManager } from "react-native";
+import { firstSupportedLocale } from "../utils/device-locale";
 
 import en from "../../i18n/en.json";
 import ru from "../../i18n/ru.json";
@@ -62,12 +64,9 @@ const RESOURCES = {
   ar: { translation: ar },
 };
 
+/** The first of the phone's preferred languages the app has, else English. */
 function detectInitialLocale(): SupportedLocale {
-  const deviceLang = Localization.getLocales()[0]?.languageCode;
-  if (deviceLang && (SUPPORTED_LOCALES as readonly string[]).includes(deviceLang)) {
-    return deviceLang as SupportedLocale;
-  }
-  return "en";
+  return firstSupportedLocale(Localization.getLocales(), SUPPORTED_LOCALES) ?? "en";
 }
 
 export function applyRTL(locale: SupportedLocale): void {
