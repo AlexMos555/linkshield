@@ -216,7 +216,9 @@ def test_cli_exit_code_reports_failures(monkeypatch, capsys, argv, result, code,
 
 
 def _purge_candidates(sb: FakeSupabase, *ids: str) -> None:
+    # The listing and each per-user re-read; the DELETE returns the rows it removed.
     sb.on("GET", "/rest/v1/users", body=[{"id": i} for i in ids])
+    sb.on("DELETE", "/rest/v1/users", status=200, body=[{"id": i} for i in ids])
 
 
 def _hard_deleted_audits(sb: FakeSupabase) -> list[dict]:
@@ -267,7 +269,7 @@ async def test_purge_final_delete_timeout_claims_nothing_and_next_run_finishes(s
 
     # Next run: the public row is still a candidate; its auth identity is
     # already gone (404 counts as done) and the purge completes.
-    sb.on("DELETE", "/rest/v1/users", status=204)
+    sb.on("DELETE", "/rest/v1/users", status=200, body=[{"id": "u-1"}])
     sb.on("DELETE", "/auth/v1/admin/users/u-1", status=404, body={"msg": "User not found"})
     assert await purge_expired_accounts() == {"deleted": 1, "ids": ["u-1"]}
     assert [a["target_id"] for a in _hard_deleted_audits(sb)] == ["u-1"]

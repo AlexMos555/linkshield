@@ -59,6 +59,9 @@ class _SupabaseRecorder:
                 recorder.patches.append(
                     {"url": url, "body": json or {}, "params": dict(params or {})}
                 )
+                # Like PostgREST: `return=representation` answers 200 + the updated rows.
+                if "representation" in (headers or {}).get("Prefer", ""):
+                    return _Resp(200)
                 return _Resp(204)
 
             async def get(self, url, headers=None, params=None):

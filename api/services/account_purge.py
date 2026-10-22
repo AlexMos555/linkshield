@@ -22,6 +22,12 @@ deleted, any still-live Stripe subscription is cancelled; a user whose
 billing can't be stopped, or whose auth record can't be deleted, is
 skipped and retried on the next run.
 
+A user who restores while a run is under way is never purged. Restore
+(POST /user/account/restore) only clears a deletion that is still inside
+the grace window, so it can never succeed for a row this run listed; and
+the purge itself re-reads each candidate right before the irreversible
+steps and counts as deleted only the rows its conditional DELETE returns.
+
 Run by the retention job (api/services/retention.py — every 6 hours inside
 the API process when RETENTION_PURGE=on), or by hand:
 `python -m api.services.account_purge`. Grace is 30 DAYS, so the exact
@@ -92,7 +98,21 @@ async def purge_expired_accounts() -> dict:
         candidate_ids = deleted_ids
         deleted_ids = []
         skipped_ids: list[str] = []
+        restored_ids: list[str] = []
         for uid in candidate_ids:
+            # Step 1.3: re-read the row, pinned to the same cutoff, right
+            # before anything that can't be undone. A user who restored
+            # after the listing (deletion_requested_at cleared) is left
+            # alone; one we can't re-read is kept for the next run.
+            scheduled = await _still_scheduled(client, settings.supabase_url, headers, uid, cutoff)
+            if scheduled is None:
+                skipped_ids.append(uid)
+                continue
+            if not scheduled:
+                logger.info("account_purge.restored_mid_purge", extra={"user_id": uid})
+                restored_ids.append(uid)
+                continue
+
             # Step 1.4: stop Stripe billing. The subscriptions row (with
             # the Stripe customer id) is wiped by the cascade below; after
             # that nothing links the user to a still-live subscription and
@@ -170,13 +190,17 @@ async def purge_expired_accounts() -> dict:
             deleted_ids.append(uid)
 
         if not deleted_ids:
-            return {"deleted": 0, "ids": [], "skipped": skipped_ids}
+            return _summary([], skipped_ids, restored_ids)
 
         # Step 2: hard-delete. We rely on the cascading foreign keys
         # established in migration 001 — a single DELETE on users.id
         # wipes every dependent row across 8+ tables. Restricted to the
         # users that cleared every step above, AND still to the grace
         # cutoff so a bad id list can never reach a user inside grace.
+        # The filter is evaluated on the row itself, atomically, so a row
+        # whose deletion was cleared meanwhile is not deleted; the rows
+        # that were come back (return=representation), and only those
+        # count as purged.
         try:
             del_resp = await client.request(
                 "DELETE",
@@ -184,10 +208,12 @@ async def purge_expired_accounts() -> dict:
                 params={
                     "id": f"in.({','.join(deleted_ids)})",
                     "deletion_requested_at": f"lte.{cutoff}",
+                    "select": "id",
                 },
-                headers=headers,
+                headers={**headers, "Prefer": "return=representation"},
             )
-            if del_resp.status_code not in (200, 204):
+            removed = _returned_ids(del_resp) if del_resp.status_code == 200 else None
+            if removed is None:
                 logger.error(
                     "account_purge.delete_failed",
                     extra={
@@ -204,12 +230,23 @@ async def purge_expired_accounts() -> dict:
             logger.error("account_purge.delete_exception", extra={"error": str(e)})
             return {"deleted": 0, "error": "delete_exception"}
 
+        kept = [uid for uid in deleted_ids if uid not in removed]
+        if kept:
+            # Restored between the re-read and the DELETE, by a path that
+            # doesn't honour the grace window. The account row survives,
+            # but Stripe was cancelled and the auth identity deleted: a
+            # person must look.
+            logger.error("account_purge.restored_during_delete", extra={"user_ids": kept})
+            restored_ids.extend(kept)
+        deleted_ids = [uid for uid in deleted_ids if uid in removed]
+
     logger.info(
         "account_purge.complete",
         extra={
             "deleted": len(deleted_ids),
             "ids": deleted_ids,
             "skipped": skipped_ids,
+            "restored": restored_ids,
             "cutoff": cutoff,
         },
     )
@@ -232,10 +269,46 @@ async def purge_expired_accounts() -> dict:
             meta={"grace_days": GRACE_DAYS, "cutoff": cutoff},
         )
 
+    return _summary(deleted_ids, skipped_ids, restored_ids)
+
+
+def _summary(deleted_ids: list[str], skipped_ids: list[str], restored_ids: list[str]) -> dict:
     result: dict = {"deleted": len(deleted_ids), "ids": deleted_ids}
     if skipped_ids:
         result["skipped"] = skipped_ids
+    if restored_ids:
+        result["restored"] = restored_ids
     return result
+
+
+async def _still_scheduled(client, supabase_url: str, headers: dict, uid: str, cutoff: str):
+    """True while the user's deletion still stands past `cutoff`, False once
+    it was cleared (restored) or the row is gone, None when we can't tell."""
+    try:
+        resp = await client.get(
+            f"{supabase_url}/rest/v1/users",
+            params={"id": f"eq.{uid}", "deletion_requested_at": f"lte.{cutoff}", "select": "id"},
+            headers=headers,
+        )
+    except Exception as e:
+        logger.error("account_purge.recheck_exception", extra={"user_id": uid, "error": str(e)})
+        return None
+    ids = _returned_ids(resp) if resp.status_code == 200 else None
+    if ids is None:
+        logger.error("account_purge.recheck_failed", extra={"user_id": uid, "status": resp.status_code})
+        return None
+    return uid in ids
+
+
+def _returned_ids(resp) -> "set[str] | None":
+    """The `id`s of a PostgREST row list, or None when the body isn't one."""
+    try:
+        rows = resp.json()
+    except Exception:  # noqa: BLE001 — a non-JSON answer proves nothing
+        return None
+    if not isinstance(rows, list):
+        return None
+    return {str(r["id"]) for r in rows if isinstance(r, dict) and "id" in r}
 
 
 # Redis keys holding a purged user's data. The whitelist (a list of sites

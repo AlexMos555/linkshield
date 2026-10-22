@@ -80,6 +80,9 @@ class _SupabaseStub:
                 stub.patches.append(
                     {"url": url, "params": dict(params or {}), "body": json or {}}
                 )
+                # Like PostgREST: `return=representation` answers 200 + the updated rows.
+                if "representation" in (headers or {}).get("Prefer", "") and stub.patch_status in (200, 204):
+                    return _Resp(200, [{"id": dict(params or {}).get("id", "eq.")[3:]}])
                 return _Resp(stub.patch_status)
 
         return _Client
@@ -362,7 +365,9 @@ def test_restore_account_clears_timestamp(client, supabase_ok, supabase_stub):
     assert len(supabase_stub.patches) == 1
     patch = supabase_stub.patches[0]
     assert patch["body"]["deletion_requested_at"] is None
-    assert patch["params"] == {"id": "eq.user-77"}
+    assert patch["params"]["id"] == "eq.user-77"
+    # Only while the deletion is still inside the 30-day window.
+    assert patch["params"]["or"].startswith("(deletion_requested_at.is.null,deletion_requested_at.gt.")
 
 
 def test_restore_account_503_when_redis_unreachable(

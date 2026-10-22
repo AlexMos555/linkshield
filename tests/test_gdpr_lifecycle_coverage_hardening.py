@@ -13,7 +13,10 @@ Invariants:
     do not happen;
   - every export query is scoped to the token's subject, whatever the
     request says;
-  - a Redis outage never undoes a deletion and never fakes a restore.
+  - a Redis outage never undoes a deletion and never fakes a restore;
+  - a restore only clears a deletion still inside the 30-day window, in
+    the same UPDATE, so it can never race the purge of a row the purge
+    has already listed.
 """
 from __future__ import annotations
 
@@ -274,6 +277,52 @@ def test_delete_without_a_bearer_token_skips_the_global_sign_out(client, sb, fro
 # ─── POST /account/restore ───────────────────────────────────────
 
 
+def _restore_lands(sb: FakeSupabase) -> None:
+    """PostgREST's answer to the conditional PATCH: the row it updated."""
+    sb.on("PATCH", "/rest/v1/users", status=200, body=[{"id": ACCOUNT}])
+
+
+def test_restore_only_clears_a_deletion_still_inside_the_window(client, sb, fake_redis):
+    from datetime import datetime, timezone
+
+    asyncio.run(fake_redis.setex(f"deleted:{ACCOUNT}", 60, "1"))
+    _restore_lands(sb)
+    assert client.post("/api/v1/user/account/restore", headers=_auth()).status_code == 200
+    (patch,) = sb.to("PATCH", "/rest/v1/users")
+    assert patch["params"]["id"] == f"eq.{ACCOUNT}"
+    assert patch["params"]["select"] == "id"
+    assert patch["headers"]["Prefer"] == "return=representation"
+    clause = patch["params"]["or"]
+    prefix = '(deletion_requested_at.is.null,deletion_requested_at.gt."'
+    assert clause.startswith(prefix) and clause.endswith('")'), clause
+    cutoff = datetime.fromisoformat(clause[len(prefix):-2])
+    age_days = (datetime.now(timezone.utc) - cutoff).total_seconds() / 86400
+    assert 29.99 < age_days < 30.01
+
+
+def test_restore_after_the_window_is_refused_and_keeps_the_lock(client, sb, fake_redis):
+    """Past 30 days the purge may already be deleting the account: the UPDATE
+    matches no row, and the user is told so instead of 'restored'."""
+    asyncio.run(fake_redis.setex(f"deleted:{ACCOUNT}", 60, "1"))
+    sb.on("PATCH", "/rest/v1/users", status=200, body=[])
+    resp = client.post("/api/v1/user/account/restore", headers=_auth())
+    assert resp.status_code == 410
+    assert resp.json()["detail"]["code"] == "restore_window_closed"
+    assert fake_redis._kv.get(f"deleted:{ACCOUNT}") == "1"
+    assert sb.to("POST", "/rest/v1/audit_log") == []
+
+
+@pytest.mark.parametrize("answer", [{"status": 204}, {"status": 200, "body": {"id": ACCOUNT}},
+                                    {"status": 200, "body": b"<html>proxy</html>"}])
+def test_restore_without_a_row_list_is_not_reported_as_restored(client, sb, fake_redis, answer):
+    asyncio.run(fake_redis.setex(f"deleted:{ACCOUNT}", 60, "1"))
+    sb.on("PATCH", "/rest/v1/users", **answer)
+    resp = client.post("/api/v1/user/account/restore", headers=_auth())
+    assert resp.status_code == 500
+    assert fake_redis._kv.get(f"deleted:{ACCOUNT}") == "1"
+    assert sb.to("POST", "/rest/v1/audit_log") == []
+
+
 @pytest.mark.parametrize("failure", [{"status": 409}, {"exc": httpx.ReadTimeout("slow")}])
 def test_restore_that_did_not_land_keeps_the_lock(client, sb, fake_redis, failure):
     asyncio.run(fake_redis.setex(f"deleted:{ACCOUNT}", 60, "1"))
@@ -300,6 +349,7 @@ def test_restore_rides_out_one_redis_blip(client, sb, fake_redis, monkeypatch):
     # The auth path reads the flag first: let it through, then fail once.
     _as(AuthUser(id=ACCOUNT, email=None, tier=UserTier.free))
     monkeypatch.setattr(cache, "get_redis", _flaky)
+    _restore_lands(sb)
     resp = client.post("/api/v1/user/account/restore", headers=_auth())
     assert resp.status_code == 200, resp.text
     assert f"deleted:{ACCOUNT}" not in fake_redis._kv
@@ -310,10 +360,11 @@ def test_restore_rides_out_one_redis_blip(client, sb, fake_redis, monkeypatch):
 def test_soft_deleted_user_restores_with_a_real_token_and_is_let_back_in(client, sb, fake_redis):
     asyncio.run(fake_redis.setex(f"deleted:{ACCOUNT}", 60, "1"))
     assert client.get("/api/v1/user/settings", headers=_auth()).status_code == 410
+    _restore_lands(sb)
     resp = client.post("/api/v1/user/account/restore", headers=_auth())
     assert resp.json() == {"restored": True}
     (patch,) = sb.to("PATCH", "/rest/v1/users")
-    assert patch["params"] == {"id": f"eq.{ACCOUNT}"} and patch["json"] == {"deletion_requested_at": None}
+    assert patch["params"]["id"] == f"eq.{ACCOUNT}" and patch["json"] == {"deletion_requested_at": None}
     assert client.get("/api/v1/user/settings", headers=_auth()).status_code == 200
 
 
