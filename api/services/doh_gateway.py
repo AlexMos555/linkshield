@@ -105,10 +105,12 @@ def parse_qname(wire: bytes) -> Optional[str]:
         end = pos + length
         if end > len(wire):
             return None
-        try:
-            label = wire[pos:end].decode("ascii").lower()
-        except UnicodeDecodeError:
-            return None
+        # RFC 2181 §11: a label may hold any octet. Rejecting 8-bit labels, or
+        # letting a literal "." inside one split it into two presentation
+        # labels, made every such subdomain of a listed name ("\xff.phish.x",
+        # "a\x2e.phish.x") unparseable or suffix-less — i.e. not blocked. Map
+        # each wire label to exactly one dot-free label so the parents line up.
+        label = wire[pos:end].decode("utf-8", "replace").lower().replace(".", "\ufffd")
         labels.append(label)
         pos = end
 
@@ -182,7 +184,15 @@ def _question_end(wire: bytes) -> int:
 
 
 def _encode_name(name: str) -> bytes:
-    return b"".join(bytes([len(part)]) + part.encode("ascii", "ignore") for part in name.split(".") if part) + b"\x00"
+    # Only the longest all-ASCII suffix (still an ancestor of the name): a
+    # non-ASCII label (see parse_qname) encoded with "ignore" left a length
+    # prefix that lied about the bytes after it — a malformed answer.
+    parts: list[bytes] = []
+    for part in reversed([p for p in name.split(".") if p]):
+        if not part.isascii():
+            break
+        parts.insert(0, part.encode("ascii"))
+    return b"".join(bytes([len(p)]) + p for p in parts) + b"\x00"
 
 
 def _soa_rr(qname: str) -> bytes:

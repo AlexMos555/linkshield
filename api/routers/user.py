@@ -165,14 +165,16 @@ async def submit_weekly_aggregate(
             "Prefer": "resolution=merge-duplicates",
         }
 
+        # Column names follow supabase/migrations/001_initial_schema.sql
+        # (week_start, security_score). The table has no warnings column,
+        # so total_warnings stays accepted for old clients but is not stored.
         body = {
             "user_id": user.id,
-            "week": week_start.isoformat(),
+            "week_start": week_start.isoformat(),
             "total_checks": data.total_checks,
             "total_blocks": data.total_blocks,
-            "total_warnings": data.total_warnings,
             "total_trackers": data.total_trackers,
-            "score": data.score,
+            "security_score": data.score,
         }
 
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -181,8 +183,10 @@ async def submit_weekly_aggregate(
                 headers=headers,
                 json=body,
             )
-            if resp.status_code not in (200, 201):
+            if resp.status_code not in (200, 201, 204):
                 logger.warning("aggregate_submit_error", extra={"status": resp.status_code})
+                # Not stored: say so, so the client retries next sync.
+                raise HTTPException(500, "Failed to submit aggregate")
 
         logger.info("aggregate_submitted", extra={
             "user_id": user.id, "checks": data.total_checks, "blocks": data.total_blocks,
@@ -236,7 +240,7 @@ async def get_percentile(user: AuthUser = Depends(get_current_user)):
             # Get user's blocks this week
             resp = await client.get(
                 f"{settings.supabase_url}/rest/v1/weekly_aggregates"
-                f"?user_id=eq.{user.id}&week=eq.{week_start.isoformat()}&select=total_blocks",
+                f"?user_id=eq.{user.id}&week_start=eq.{week_start.isoformat()}&select=total_blocks",
                 headers=headers,
             )
             user_data = resp.json()
@@ -256,7 +260,7 @@ async def get_percentile(user: AuthUser = Depends(get_current_user)):
             # small regardless of population size.
             resp = await client.get(
                 f"{settings.supabase_url}/rest/v1/weekly_aggregates"
-                f"?week=eq.{week_start.isoformat()}"
+                f"?week_start=eq.{week_start.isoformat()}"
                 f"&select=total_blocks&order=total_blocks.asc&limit=50000",
                 headers=headers,
             )
@@ -325,15 +329,18 @@ async def sync_score(
         }
 
         async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.post(
+            resp = await client.post(
                 f"{settings.supabase_url}/rest/v1/weekly_aggregates",
                 headers=headers,
                 json={
                     "user_id": user.id,
-                    "week": week_start.isoformat(),
-                    "score": data.score,
+                    "week_start": week_start.isoformat(),
+                    "security_score": data.score,
                 },
             )
+        if resp.status_code not in (200, 201, 204):
+            logger.warning("score_sync_rejected", extra={"status": resp.status_code})
+            return {"status": "ok", "note": "Score sync failed, will retry"}
 
         return {"status": "ok", "score": data.score}
 
@@ -1027,31 +1034,42 @@ async def trigger_welcome_email(user: AuthUser = Depends(get_current_user)) -> W
         **supabase_keys.server_headers(settings),
     }
 
-    # Read the existing settings JSONB so we can preserve other keys, and
-    # the preferred_locale column so the welcome email goes out in the
-    # user's chosen language. The locale defaults to "en" if the column is
-    # null (legacy users) or the row is missing entirely (new users whose
-    # trigger row hasn't materialised yet).
+    # Read the existing settings JSONB so we can preserve other keys
+    # (email_optout, theme, …) and see welcome_sent_at. If it can't be read
+    # we stop: sending anyway would re-send on every sign-in and the write
+    # below would replace the whole JSONB, dropping the user's opt-outs.
+    # The locale lives on `users.preferred_locale` (migration 003); it
+    # defaults to "en" when that row can't be read or is missing.
     current: dict = {}
     user_locale = "en"
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(
                 f"{settings.supabase_url}/rest/v1/user_settings",
-                params={
-                    "user_id": f"eq.{user.id}",
-                    "select": "settings,preferred_locale",
-                },
+                params={"user_id": f"eq.{user.id}", "select": "settings"},
                 headers=headers,
             )
-            if resp.status_code == 200:
-                rows = resp.json()
-                if rows:
-                    if isinstance(rows[0].get("settings"), dict):
-                        current = rows[0]["settings"]
-                    user_locale = rows[0].get("preferred_locale") or "en"
-    except Exception as e:  # pragma: no cover — network failure path
+            if resp.status_code != 200:
+                logger.warning(
+                    "welcome.read_failed",
+                    extra={"user_id": user.id, "status": resp.status_code},
+                )
+                return WelcomeResponse(sent=False, reason="storage_unavailable")
+            rows = resp.json()
+            if rows and isinstance(rows[0].get("settings"), dict):
+                current = rows[0]["settings"]
+            locale_resp = await client.get(
+                f"{settings.supabase_url}/rest/v1/users",
+                params={"id": f"eq.{user.id}", "select": "preferred_locale"},
+                headers=headers,
+            )
+            if locale_resp.status_code == 200:
+                locale_rows = locale_resp.json()
+                if locale_rows:
+                    user_locale = locale_rows[0].get("preferred_locale") or "en"
+    except Exception as e:
         logger.warning("welcome.read_failed", extra={"user_id": user.id, "error": str(e)})
+        return WelcomeResponse(sent=False, reason="storage_unavailable")
 
     if current.get("welcome_sent_at"):
         return WelcomeResponse(sent=False, reason="already_sent")

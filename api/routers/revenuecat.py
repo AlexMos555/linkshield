@@ -65,7 +65,9 @@ async def revenuecat_webhook(request: Request):
         raise HTTPException(413, "Payload too large")
     try:
         body = json.loads(payload)
-    except ValueError:
+    except (ValueError, RecursionError):
+        # RecursionError: pathologically nested JSON ("[" * 100000) is a
+        # malformed body, not a server fault.
         raise HTTPException(400, "Invalid JSON")
     event = body.get("event") if isinstance(body, dict) else None
     if not isinstance(event, dict) or not event.get("id") or not event.get("type"):

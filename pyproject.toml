@@ -43,6 +43,10 @@ filterwarnings = [
 
 [tool.coverage.run]
 source = ["api"]
+# Branch coverage: an untested `else` / early return in a webhook or token
+# check is exactly what the per-module floors must see
+# (scripts/check_critical_coverage.py).
+branch = true
 omit = [
     "api/__init__.py",
     "*/tests/*",
@@ -59,6 +63,8 @@ exclude_lines = [
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
+    # typing.Protocol bodies are interface declarations (`...`), never run.
+    "class .*\\bProtocol\\):",
 ]
 
 [tool.ruff]
