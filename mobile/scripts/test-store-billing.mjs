@@ -235,10 +235,12 @@ check("store policy: the iPhone app never links to the web checkout, never self-
   }
 });
 
-check("'automatic SMS check' is promised only in the RuStore build", () => {
-  assert.equal(smsBenefitShown("rustore"), true);
-  assert.equal(smsBenefitShown("site"), false);
-  assert.equal(smsBenefitShown("play"), false);
+check("'automatic SMS check' is promised by no build until one reads SMS", () => {
+  // Automatic SMS checking lives only on the unmerged feat/sms-auto-rustore
+  // branch, and check-android-permissions.mjs forbids every SMS permission.
+  for (const dist of ["rustore", "site", "play", "appstore"]) {
+    assert.equal(smsBenefitShown(dist), false, dist);
+  }
 });
 
 check("native SDK (Play Billing + BILLING permission) is linked only into the Play build", () => {

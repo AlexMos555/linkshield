@@ -295,27 +295,30 @@ export function webCheckoutAllowed(distribution: Distribution): boolean {
 }
 
 /**
- * List "automatic SMS check" among the plan's benefits? Only in the RuStore
- * build: the APKs from our site and from Google Play cannot read SMS (no SMS
- * permission — scripts/check-android-permissions.mjs), so they never promise it.
+ * List "automatic SMS check" among the plan's benefits? In no build today:
+ * automatic checking lives only on the unmerged feat/sms-auto-rustore branch,
+ * and every build ships without an SMS permission
+ * (scripts/check-android-permissions.mjs). Return `distribution === "rustore"`
+ * again in the change that merges that branch into the RuStore build.
  */
-export function smsBenefitShown(distribution: Distribution): boolean {
-  return distribution === "rustore";
+export function smsBenefitShown(_distribution: Distribution): boolean {
+  return false;
 }
 
-export type PaywallBenefit = "unlimited" | "sms" | "text_model" | "calls" | "devices";
+export type PaywallBenefit = "unlimited" | "sms" | "text_model" | "devices";
 
 /**
  * What the paywall lists as the plan's benefits — only what this build can
- * do (App Review 2.3.1 / Play's deceptive-behaviour rule). The iPhone app
- * has no on-device message analyzer, no SMS reading and no call guard (all
+ * do and what paying adds (App Review 2.3.1 / Play's deceptive-behaviour
+ * rule). The call guard is not listed: it warns every phone, paid or not.
+ * The iPhone app has no on-device message analyzer and no SMS reading (both
  * Android), so it lists the unlimited checks and the devices only.
  */
 export function paywallBenefits(distribution: Distribution): PaywallBenefit[] {
   if (distribution === "appstore") return ["unlimited", "devices"];
   return smsBenefitShown(distribution)
-    ? ["unlimited", "sms", "text_model", "calls", "devices"]
-    : ["unlimited", "text_model", "calls", "devices"];
+    ? ["unlimited", "sms", "text_model", "devices"]
+    : ["unlimited", "text_model", "devices"];
 }
 
 /**

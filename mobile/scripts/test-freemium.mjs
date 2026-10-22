@@ -146,11 +146,13 @@ check("no paid plans in this build (iPhone without App Store billing): no limit,
   assert.equal(readFreemiumConfig(env).enabled, true);
   assert.equal(readFreemiumConfig({}, "android").enabled, false);
 });
-check("paywall benefits: only what the build can do", () => {
+check("paywall benefits: only what the build can do, and only what the plan adds", () => {
   assert.deepEqual(paywallBenefits("appstore"), ["unlimited", "devices"]);
-  assert.deepEqual(paywallBenefits("rustore"), ["unlimited", "sms", "text_model", "calls", "devices"]);
-  assert.deepEqual(paywallBenefits("site"), ["unlimited", "text_model", "calls", "devices"]);
-  assert.deepEqual(paywallBenefits("play"), ["unlimited", "text_model", "calls", "devices"]);
+  // No build reads SMS by itself yet (feat/sms-auto-rustore is not merged), and
+  // the call guard is free for everyone — neither is sold as a plan benefit.
+  for (const dist of ["site", "play", "rustore"]) {
+    assert.deepEqual(paywallBenefits(dist), ["unlimited", "text_model", "devices"], dist);
+  }
 });
 
 console.log("the daily counter");
