@@ -923,7 +923,7 @@
         ],
         "items": [
           "di situs web, pembayaran dilakukan melalui Stripe. Stripe menerima email Anda, paket yang dipilih, dan ID akun Anda, serta menangani kartunya sendiri;",
-          "di aplikasi, jika pembelian ditawarkan, Anda membayar melalui Google Play atau App Store. Toko itulah yang menerima pembayaran dan menangani kartu Anda menurut ketentuan dan kebijakan privasinya sendiri. RevenueCat, layanan yang mengelola langganan dalam aplikasi untuk kami, menerima ID akun anonim dari aplikasi — pengenal acak, bukan nama atau email Anda — dan status pembelian dari toko. Kami hanya menerima informasi apakah langganan Anda aktif, paket apa, dan sampai kapan."
+          "di aplikasi, jika pembelian ditawarkan, Anda membayar melalui Google Play atau App Store. Toko itulah yang menerima pembayaran dan menangani kartu Anda menurut ketentuan dan kebijakan privasinya sendiri. RevenueCat, layanan yang mengelola langganan dalam aplikasi untuk kami, menerima ID akun Cleanway Anda dari aplikasi — pengenal acak, bukan nama atau email Anda — dan status pembelian dari toko. Kami hanya menerima informasi apakah langganan Anda aktif, paket apa, dan sampai kapan."
         ],
         "after": [
           "Kami tidak pernah melihat atau menyimpan data kartu. Kami menyimpan catatan setiap pembelian — tempat pembelian dilakukan, paket, status, dan tanggalnya — bersama akun Anda sampai akun dihapus."
@@ -983,6 +983,7 @@
         "title": "17. Hak Anda",
         "paragraphs": [
           "Anda berhak: mengetahui data apa tentang Anda yang kami miliki dan mendapatkan salinannya (akses); meminta data itu diperbaiki (perbaikan); meminta data itu dihapus (penghapusan); membatasi penggunaannya, misalnya selama keakuratannya sedang diperiksa (pembatasan); menerima data yang Anda berikan kepada kami dalam format yang dapat dibaca mesin, atau memintanya diteruskan ke layanan lain jika secara teknis memungkinkan (portabilitas); menolak penggunaan berdasarkan kepentingan sah kami (keberatan); dan menarik persetujuan yang telah Anda berikan.",
+          "Untuk mengunduh salinan data yang disimpan server kami tentang akun Anda, masuk di cleanway.ai/account lalu pilih “Unduh data saya”.",
           "Untuk menghapus akun sendiri, masuk di cleanway.ai/account lalu pilih “Hapus akun”, atau gunakan “Hapus akun” di Pengaturan aplikasi. Halaman cleanway.ai/delete-account menjelaskan langkah-langkahnya serta apa yang dihapus dan apa yang tetap disimpan.",
           "Tanpa akun, kami tidak tahu siapa Anda: kami tidak memiliki nama, email, atau nomor telepon Anda — hanya data teknis yang dijelaskan di atas, seperti alamat IP Anda di penghitung pemeriksaan dan di log hosting. Untuk permintaan lain, hubungi kami seperti dijelaskan di bawah. Mencopot aplikasi atau ekstensi akan menghapus semua yang disimpannya di perangkat Anda.",
           "Jika Anda merasa kami memproses data Anda secara tidak sah, Anda berhak mengajukan keluhan kepada otoritas pengawas perlindungan data, terutama di negara tempat Anda tinggal atau bekerja atau tempat masalah itu terjadi. Anda juga dapat menulis kepada kami terlebih dahulu."
@@ -1096,7 +1097,13 @@
     "delete_done": "Akun Anda sudah dihapus dan Anda telah keluar. Masuk dalam 30 hari jika ingin memulihkannya.",
     "brand": "Cleanway",
     "manage_cta": "Kelola atau batalkan langganan",
-    "manage_failed": "Tidak dapat membuka pengelolaan langganan. Silakan coba lagi sebentar lagi."
+    "manage_failed": "Tidak dapat membuka pengelolaan langganan. Silakan coba lagi sebentar lagi.",
+    "data_heading": "Data Anda",
+    "data_body": "Unduh salinan semua yang disimpan server kami tentang akun Anda — akun, paket, perangkat, pengaturan, dan data keluarga — dalam satu file JSON.",
+    "download_cta": "Unduh data saya",
+    "download_busy": "Menyiapkan file…",
+    "download_failed": "File tidak dapat disiapkan. Coba lagi sebentar lagi.",
+    "download_rate_limited": "Anda sudah beberapa kali mengunduh data dalam satu jam terakhir. Coba lagi nanti."
   },
   "DeleteAccount": {
     "meta_title": "Hapus akun Cleanway Anda",

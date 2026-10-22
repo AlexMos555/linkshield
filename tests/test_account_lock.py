@@ -13,20 +13,28 @@ contract:
   3. Redis unreachable → the users row (deletion_requested_at) decides;
      Redis AND the database unreachable → 503, never "allowed" and never
      a 410 for everyone. No database configured (local dev) → open.
+  4. The row is the truth, Redis only a cache: a missing flag (expired
+     after 30 days, evicted, never written) is not "not deleted" — the
+     row is read, and its answer cached ("not deleted" for 5 minutes).
 """
 from __future__ import annotations
+
+import time
+import types
 
 import pytest
 from fastapi.testclient import TestClient
 
 from api.models.schemas import AuthUser, UserTier
 
+NOW = 1_800_000_000.0
 
 class _FakeRedis:
     """Just enough Redis surface for the auth gate + restore unlock."""
 
     def __init__(self, deleted: bool = False) -> None:
         self._kv: dict[str, str] = {}
+        self.ttls: dict[str, int] = {}
         if deleted:
             self._kv["deleted:user-lock"] = "1"
 
@@ -35,11 +43,13 @@ class _FakeRedis:
 
     async def setex(self, key: str, ttl: int, val: str):
         self._kv[key] = val
+        self.ttls[key] = ttl
         return True
 
-    async def delete(self, key: str):
-        self._kv.pop(key, None)
-        return 1
+    async def delete(self, *keys: str):
+        for key in keys:
+            self._kv.pop(key, None)
+        return len(keys)
 
     async def set(self, key, val, **_kw):
         self._kv[key] = val
@@ -227,24 +237,158 @@ def test_redis_flag_present_skips_the_database(app_with_redis, account_store):
     assert account_store.deletion_checks == []
 
 
-def test_redis_up_without_flag_does_not_read_the_database(monkeypatch, locked_user, account_store):
-    """Redis answered "no flag": the hot path stays one Redis GET."""
-    fake = _FakeRedis(deleted=False)
-
+def _client_with_redis(monkeypatch, user: AuthUser, fake: "_FakeRedis") -> TestClient:
     async def _get():
         return fake
 
     monkeypatch.setattr("api.services.cache.get_redis", _get)
-    _patch_token_verify(monkeypatch, locked_user)
-    _patch_resolver(monkeypatch, locked_user)
+    _patch_token_verify(monkeypatch, user)
+    _patch_resolver(monkeypatch, user)
     from api.main import app
 
-    resp = TestClient(app).get(
-        "/api/v1/user/settings",
-        headers={"Authorization": "Bearer fake-jwt"},
-    )
-    assert resp.status_code != 410
+    return TestClient(app)
+
+
+def _settings(client: TestClient):
+    return client.get("/api/v1/user/settings", headers={"Authorization": "Bearer fake-jwt"})
+
+
+def test_expired_flag_falls_back_to_the_database(monkeypatch, locked_user, account_store):
+    """The 30-day flag is gone but the purge hasn't run (it was off, or
+    skipped the user): deletion_requested_at is still set, so the account
+    stays locked. A missing flag used to read as "not deleted" — the
+    deleted account got full API access back while /restore refused it."""
+    account_store.deletion_requested.add(locked_user.id)
+    fake = _FakeRedis(deleted=False)
+    client = _client_with_redis(monkeypatch, locked_user, fake)
+
+    resp = _settings(client)
+
+    assert resp.status_code == 410, resp.text
+    assert "restore" in str(resp.json()).lower()
+    assert account_store.deletion_checks == [locked_user.id]
+    # The row's answer is cached again as the flag, for an hour.
+    assert fake._kv[f"deleted:{locked_user.id}"] == "1"
+    assert fake.ttls[f"deleted:{locked_user.id}"] == 3600
+    assert f"notdeleted:{locked_user.id}" not in fake._kv
+    assert _settings(client).status_code == 410
+    assert account_store.deletion_checks == [locked_user.id]
+
+
+def test_a_live_account_is_read_once_then_cached_briefly(monkeypatch, locked_user, account_store):
+    """No flag: the row is read once, and "not deleted" cached — stamped with
+    the time the row said so — so the hot path stays two Redis GETs."""
+    fake = _FakeRedis(deleted=False)
+    client = _client_with_redis(monkeypatch, locked_user, fake)
+
+    assert _settings(client).status_code != 410
+    assert _settings(client).status_code != 410
+
+    assert account_store.deletion_checks == [locked_user.id]
+    stamp = float(fake._kv[f"notdeleted:{locked_user.id}"])
+    assert abs(time.time() - stamp) < 60
+    assert fake.ttls[f"notdeleted:{locked_user.id}"] == 24 * 3600
+    assert f"deleted:{locked_user.id}" not in fake._kv
+
+
+def _freeze(monkeypatch, now: float) -> None:
+    from api.services import auth
+
+    monkeypatch.setattr(auth, "time", types.SimpleNamespace(time=lambda: now, monotonic=time.monotonic))
+
+
+def test_a_not_deleted_answer_older_than_five_minutes_is_read_again(monkeypatch, locked_user, account_store):
+    """The cached answer is trusted for 5 minutes only: an account deleted
+    while Redis missed the delete is locked once it runs out."""
+    fake = _FakeRedis(deleted=False)
+    fake._kv[f"notdeleted:{locked_user.id}"] = str(NOW - 301)
+    account_store.deletion_requested.add(locked_user.id)
+    _freeze(monkeypatch, NOW)
+    client = _client_with_redis(monkeypatch, locked_user, fake)
+
+    assert _settings(client).status_code == 410
+    assert account_store.deletion_checks == [locked_user.id]
+
+
+def test_a_fresh_not_deleted_answer_skips_the_database(monkeypatch, locked_user, account_store):
+    fake = _FakeRedis(deleted=False)
+    fake._kv[f"notdeleted:{locked_user.id}"] = str(NOW - 299)
+    _freeze(monkeypatch, NOW)
+    client = _client_with_redis(monkeypatch, locked_user, fake)
+
+    assert _settings(client).status_code != 410
     assert account_store.deletion_checks == []
+
+
+def test_database_outage_serves_the_last_not_deleted_answer(monkeypatch, locked_user, account_store, caplog):
+    """Stale-if-error: a Supabase outage must not 503 every live account
+    whose answer is a few minutes old — the row said "not deleted" within
+    the day, and that answer is dropped the moment the account is deleted."""
+    import logging
+
+    account_store.fail = True
+    fake = _FakeRedis(deleted=False)
+    fake._kv[f"notdeleted:{locked_user.id}"] = str(NOW - 3 * 3600)
+    _freeze(monkeypatch, NOW)
+    client = _client_with_redis(monkeypatch, locked_user, fake)
+
+    with caplog.at_level(logging.WARNING, logger="cleanway.auth"):
+        resp = _settings(client)
+
+    assert resp.status_code != 410
+    assert "auth_unavailable" not in resp.text
+    (served,) = [r for r in caplog.records if r.getMessage() == "deleted_check_served_stale"]
+    assert served.age_s == 3 * 3600
+    assert fake._kv[f"notdeleted:{locked_user.id}"] == str(NOW - 3 * 3600)  # not refreshed
+
+
+@pytest.mark.parametrize("garbage", ["yes", "", "nan-ish"])
+def test_an_unreadable_cached_answer_counts_as_none(monkeypatch, locked_user, account_store, garbage):
+    """A cached value that is not a time is no answer: the row decides, and
+    with the row down that is a 503."""
+    account_store.fail = True
+    fake = _FakeRedis(deleted=False)
+    fake._kv[f"notdeleted:{locked_user.id}"] = garbage
+    _freeze(monkeypatch, NOW)
+    resp = _settings(_client_with_redis(monkeypatch, locked_user, fake))
+
+    assert resp.status_code == 503
+    assert resp.json()["detail"]["code"] == "auth_unavailable"
+
+
+def test_the_deleted_flag_wins_over_a_cached_not_deleted(monkeypatch, locked_user, account_store):
+    """A request that read the row just before the deletion can leave a
+    "not deleted" behind; the flag set by DELETE /user/account still wins."""
+    fake = _FakeRedis(deleted=True)
+    fake._kv[f"notdeleted:{locked_user.id}"] = "1"
+    client = _client_with_redis(monkeypatch, locked_user, fake)
+
+    assert _settings(client).status_code == 410
+    assert account_store.deletion_checks == []
+
+
+def test_database_down_with_no_flag_answers_503(monkeypatch, locked_user, account_store):
+    """Redis answers "no flag" and the row can't be read: 503, not "allowed"."""
+    account_store.fail = True
+    fake = _FakeRedis(deleted=False)
+    resp = _settings(_client_with_redis(monkeypatch, locked_user, fake))
+
+    assert resp.status_code == 503, resp.text
+    assert resp.json()["detail"]["code"] == "auth_unavailable"
+    assert f"notdeleted:{locked_user.id}" not in fake._kv
+
+
+def test_a_failed_cache_write_still_answers_from_the_row(monkeypatch, locked_user, account_store):
+    class _ReadOnlyRedis(_FakeRedis):
+        async def setex(self, key, ttl, val):
+            raise ConnectionError("read-only replica")
+
+    account_store.deletion_requested.add(locked_user.id)
+    client = _client_with_redis(monkeypatch, locked_user, _ReadOnlyRedis())
+
+    assert _settings(client).status_code == 410
+    assert _settings(client).status_code == 410
+    assert account_store.deletion_checks == [locked_user.id, locked_user.id]
 
 
 def test_postgrest_store_reads_deletion_requested_at(monkeypatch):

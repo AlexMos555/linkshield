@@ -923,7 +923,7 @@
         ],
         "items": [
           "on the website, payment goes through Stripe. Stripe receives your email, the chosen plan and your account ID, and handles the card itself;",
-          "in the app, where purchases are offered, you pay through Google Play or the App Store. The store takes the payment and handles your card under its own terms and privacy policy. RevenueCat, a service that manages in-app subscriptions for us, receives an anonymous account ID from the app — a random identifier, not your name or email — and the status of the purchase from the store. We receive only whether your subscription is active, which plan it is and until when."
+          "in the app, where purchases are offered, you pay through Google Play or the App Store. The store takes the payment and handles your card under its own terms and privacy policy. RevenueCat, a service that manages in-app subscriptions for us, receives your Cleanway account ID from the app — a random identifier, not your name or email — and the status of the purchase from the store. We receive only whether your subscription is active, which plan it is and until when."
         ],
         "after": [
           "We never see or store card details. We keep a record of each purchase — where it was made, the plan, its status and dates — with your account until the account is deleted."
@@ -983,6 +983,7 @@
         "title": "17. Your rights",
         "paragraphs": [
           "You have the right to: know what data about you we hold and get a copy of it (access); have it corrected (rectification); have it deleted (erasure); have its use restricted, for example while its accuracy is being checked (restriction); receive the data you gave us in a machine-readable format, or have it passed to another service where that is technically possible (portability); object to a use based on our legitimate interest (objection); and withdraw a consent you gave.",
+          "To download a copy of the data our server holds about your account, sign in at cleanway.ai/account and choose “Download my data”.",
           "To delete your account yourself, sign in at cleanway.ai/account and choose “Delete account”, or use “Delete account” in the app's Settings. The page cleanway.ai/delete-account explains the steps and what is deleted and what is kept.",
           "Without an account we don't know who you are: we have no name, email or phone number of yours — only the technical data described above, such as your IP address in the check counter and in hosting logs. For other requests, contact us as described below. Removing the app or the extension deletes everything it stored on your device.",
           "If you think we handle your data unlawfully, you have the right to complain to a data protection supervisory authority, in particular in the country where you live or work or where the problem happened. You can also write to us first."
@@ -1096,7 +1097,13 @@
     "delete_done": "Your account is deleted and you're signed out. Sign in within 30 days if you want to restore it.",
     "brand": "Cleanway",
     "manage_cta": "Manage or cancel subscription",
-    "manage_failed": "Couldn't open subscription management. Please try again in a moment."
+    "manage_failed": "Couldn't open subscription management. Please try again in a moment.",
+    "data_heading": "Your data",
+    "data_body": "Download a copy of everything our server holds about your account — the account, plan, devices, settings and family records — as a JSON file.",
+    "download_cta": "Download my data",
+    "download_busy": "Preparing the file…",
+    "download_failed": "Couldn't prepare the file. Please try again in a moment.",
+    "download_rate_limited": "You've downloaded your data several times in the last hour. Please try again later."
   },
   "DeleteAccount": {
     "meta_title": "Delete your Cleanway account",

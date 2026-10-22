@@ -6,21 +6,34 @@ within 30 days." The DELETE /api/v1/user/account endpoint sets
 of the loop — periodically hard-deleting users whose timestamp is older
 than the grace window.
 
-The `users.id` foreign key cascades (declared since migration 001)
-mean a single DELETE wipes every dependent row across:
-  subscriptions, devices, user_settings, weekly_aggregates,
-  family_members, family_alerts (where the user is a recipient), orgs,
-  org_members, feedback_reports (user_id set to NULL by ON DELETE
-  SET NULL), referrals.
+Foreign keys on `users.id` cascade, so one DELETE wipes every row keyed on
+the account: subscriptions, entitlements, devices, user_settings,
+weekly_aggregates, rate_limits, scam_analyses, family_members,
+family_member_keys, family_alerts addressed to the user, family_invites
+the user created, org_members, and the families the user owns (with their
+members, alerts, invites and keys). Columns that only mention the user are
+set to NULL (family_alerts.sender_user_id,
+family_invites.redeemed_by_user_id, sms_reports.reporter_user_id).
+
+`orgs.admin_user_id` is the exception: migration 001 declared it with no
+ON DELETE, so an org admin in the batch made the whole DELETE fail (409),
+every run (migration 026 adds the cascade). The orgs the purged users
+administer — and, by cascade, their member lists — are therefore deleted
+here first, and a 409 on the batch falls back to one DELETE per user so a
+row blocked by anything else can't hold back the rest.
 
 public.users has NO foreign key to auth.users, so that cascade never
 touched the Supabase Auth identity (email, provider identities,
 sessions). Each user's auth record is deleted explicitly through the
 Auth Admin API (DELETE /auth/v1/admin/users/{id}), which also cascades
-the tables keyed on auth.users (brand_watchlist, …). Before anything is
-deleted, any still-live Stripe subscription is cancelled; a user whose
-billing can't be stopped, or whose auth record can't be deleted, is
-skipped and retried on the next run.
+the tables keyed on auth.users (brand_watchlist, …) and nulls
+feedback_reports.user_id. Before anything is deleted, any still-live
+Stripe subscription is cancelled and the Stripe customer deleted, and the
+RevenueCat customer (its app user id is the account id) is deleted when
+REVENUECAT_SECRET_API_KEY is set; a user whose billing can't be stopped or
+erased, or whose auth record can't be deleted, is skipped and retried on
+the next run. Last, the user's Redis keys go (_USER_REDIS_KEYS plus the
+referral code record).
 
 A user who restores while a run is under way is never purged. Restore
 (POST /user/account/restore) only clears a deletion that is still inside
@@ -37,9 +50,12 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from api.config import get_settings
-from api.services.stripe_billing import BillingError, cancel_user_subscriptions
+from api.services.revenuecat import RevenueCatError
+from api.services.revenuecat_sync import delete_subscriber
+from api.services.stripe_billing import BillingError, erase_user_billing
 from api.services import supabase_keys
 
 logger = logging.getLogger("cleanway.account_purge")
@@ -76,7 +92,8 @@ async def purge_expired_accounts() -> dict:
                 f"{settings.supabase_url}/rest/v1/users",
                 params={
                     "deletion_requested_at": f"lte.{cutoff}",
-                    "select": "id",
+                    # email: the referral code record in Redis is keyed by it.
+                    "select": "id,email",
                 },
                 headers=headers,
             )
@@ -86,7 +103,9 @@ async def purge_expired_accounts() -> dict:
                     extra={"status": list_resp.status_code},
                 )
                 return {"deleted": 0, "error": f"list_failed_{list_resp.status_code}"}
-            deleted_ids = [row["id"] for row in list_resp.json()]
+            rows = list_resp.json()
+            deleted_ids = [row["id"] for row in rows]
+            emails = {row["id"]: row.get("email") for row in rows}
         except Exception as e:
             logger.error("account_purge.list_exception", extra={"error": str(e)})
             return {"deleted": 0, "error": "list_exception"}
@@ -113,14 +132,15 @@ async def purge_expired_accounts() -> dict:
                 restored_ids.append(uid)
                 continue
 
-            # Step 1.4: stop Stripe billing. The subscriptions row (with
+            # Step 1.4: stop and erase billing. The subscriptions row (with
             # the Stripe customer id) is wiped by the cascade below; after
             # that nothing links the user to a still-live subscription and
-            # it would bill forever. DELETE /user/account already cancels
-            # at request time — this is the safety net. Can't confirm →
-            # keep the user and retry next run.
+            # it would bill forever, and the Stripe customer (email, cards)
+            # would outlive the account. DELETE /user/account already
+            # cancels at request time — this is the safety net, plus the
+            # customer's deletion. Can't confirm → keep the user and retry.
             try:
-                await cancel_user_subscriptions(uid)
+                await erase_user_billing(uid)
             except BillingError as e:
                 logger.error(
                     "account_purge.stripe_cancel_failed",
@@ -128,6 +148,19 @@ async def purge_expired_accounts() -> dict:
                 )
                 skipped_ids.append(uid)
                 continue
+
+            # Step 1.4b: the RevenueCat customer (in-app purchases). Its app
+            # user id is the account id, so it is the user's data too.
+            if settings.revenuecat_secret_api_key:
+                try:
+                    await delete_subscriber(uid)
+                except RevenueCatError as e:
+                    logger.error(
+                        "account_purge.revenuecat_delete_failed",
+                        extra={"user_id": uid, "error": str(e)},
+                    )
+                    skipped_ids.append(uid)
+                    continue
 
             # Step 1.5: GDPR Art. 17 — anonymise audit_log rows BEFORE the
             # cascade DELETE.
@@ -192,45 +225,28 @@ async def purge_expired_accounts() -> dict:
         if not deleted_ids:
             return _summary([], skipped_ids, restored_ids)
 
-        # Step 2: hard-delete. We rely on the cascading foreign keys
-        # established in migration 001 — a single DELETE on users.id
-        # wipes every dependent row across 8+ tables. Restricted to the
-        # users that cleared every step above, AND still to the grace
-        # cutoff so a bad id list can never reach a user inside grace.
-        # The filter is evaluated on the row itself, atomically, so a row
-        # whose deletion was cleared meanwhile is not deleted; the rows
-        # that were come back (return=representation), and only those
-        # count as purged.
+        # Step 2: hard-delete. We rely on the cascading foreign keys —
+        # a single DELETE on users.id wipes every dependent row. Orgs the
+        # users administer don't cascade (see the module docstring), so
+        # they go first. Restricted to the users that cleared every step
+        # above, AND still to the grace cutoff so a bad id list can never
+        # reach a user inside grace. The filter is evaluated on the row
+        # itself, atomically, so a row whose deletion was cleared meanwhile
+        # is not deleted; the rows that were come back
+        # (return=representation), and only those count as purged.
+        await _delete_admin_orgs(client, settings.supabase_url, headers, deleted_ids)
         try:
-            del_resp = await client.request(
-                "DELETE",
-                f"{settings.supabase_url}/rest/v1/users",
-                params={
-                    "id": f"in.({','.join(deleted_ids)})",
-                    "deletion_requested_at": f"lte.{cutoff}",
-                    "select": "id",
-                },
-                headers={**headers, "Prefer": "return=representation"},
+            removed, blocked, error = await _delete_users(
+                client, settings.supabase_url, headers, deleted_ids, cutoff
             )
-            removed = _returned_ids(del_resp) if del_resp.status_code == 200 else None
-            if removed is None:
-                logger.error(
-                    "account_purge.delete_failed",
-                    extra={
-                        "status": del_resp.status_code,
-                        "candidates": len(deleted_ids),
-                    },
-                )
-                return {
-                    "deleted": 0,
-                    "error": f"delete_failed_{del_resp.status_code}",
-                    "candidates": deleted_ids,
-                }
         except Exception as e:
             logger.error("account_purge.delete_exception", extra={"error": str(e)})
             return {"deleted": 0, "error": "delete_exception"}
+        if error is not None:
+            return {"deleted": 0, "error": error, "candidates": deleted_ids}
 
-        kept = [uid for uid in deleted_ids if uid not in removed]
+        skipped_ids.extend(blocked)
+        kept = [uid for uid in deleted_ids if uid not in removed and uid not in blocked]
         if kept:
             # Restored between the re-read and the DELETE, by a path that
             # doesn't honour the grace window. The account row survives,
@@ -257,7 +273,7 @@ async def purge_expired_accounts() -> dict:
     # exactly what a compliance review needs after the fact (the
     # users.id row itself is gone forever now). audit_log rows do NOT
     # cascade on users.id — see migration 014.
-    await _drop_redis_keys(deleted_ids)
+    await _drop_redis_keys(deleted_ids, emails)
 
     from api.services import audit_log
     for uid in deleted_ids:
@@ -270,6 +286,68 @@ async def purge_expired_accounts() -> dict:
         )
 
     return _summary(deleted_ids, skipped_ids, restored_ids)
+
+
+async def _delete_admin_orgs(client, supabase_url: str, headers: dict, ids: list[str]) -> None:
+    """Delete the orgs these users administer (org_members cascade). Their
+    admin_user_id has no ON DELETE, so they would block the users DELETE.
+    Best-effort: if this fails, the users DELETE says which rows it blocked."""
+    try:
+        resp = await client.request(
+            "DELETE",
+            f"{supabase_url}/rest/v1/orgs",
+            params={"admin_user_id": f"in.({','.join(ids)})"},
+            headers={**headers, "Prefer": "return=minimal"},
+        )
+        if resp.status_code not in (200, 204):
+            logger.error("account_purge.orgs_delete_failed", extra={"status": resp.status_code})
+    except Exception as e:  # noqa: BLE001 — the users DELETE reports the outcome
+        logger.error("account_purge.orgs_delete_exception", extra={"error": str(e)})
+
+
+async def _delete_users(client, supabase_url: str, headers: dict, ids: list[str], cutoff: str):
+    """DELETE the users rows, still past `cutoff`. Returns (removed ids,
+    blocked ids, error). A 409 on the batch (a row still referenced) falls
+    back to one DELETE per user; the ones that still fail are `blocked` —
+    kept for the next run instead of holding back everyone else."""
+
+    async def _delete(id_filter: str):
+        return await client.request(
+            "DELETE",
+            f"{supabase_url}/rest/v1/users",
+            params={"id": id_filter, "deletion_requested_at": f"lte.{cutoff}", "select": "id"},
+            headers={**headers, "Prefer": "return=representation"},
+        )
+
+    resp = await _delete(f"in.({','.join(ids)})")
+    removed = _returned_ids(resp) if resp.status_code == 200 else None
+    if removed is not None:
+        return removed, [], None
+    if resp.status_code != 409:
+        logger.error(
+            "account_purge.delete_failed",
+            extra={"status": resp.status_code, "candidates": len(ids)},
+        )
+        return set(), [], f"delete_failed_{resp.status_code}"
+
+    logger.warning("account_purge.delete_conflict_per_user", extra={"candidates": len(ids)})
+    removed = set()
+    blocked: list[str] = []
+    for uid in ids:
+        status = None
+        try:
+            one = await _delete(f"eq.{uid}")
+            status = one.status_code
+            got = _returned_ids(one) if status == 200 else None
+        except Exception as e:  # noqa: BLE001 — this user waits for the next run
+            logger.error("account_purge.delete_exception", extra={"user_id": uid, "error": str(e)})
+            got = None
+        if got is None:
+            logger.error("account_purge.delete_failed", extra={"user_id": uid, "status": status})
+            blocked.append(uid)
+            continue
+        removed |= got
+    return removed, blocked, None
 
 
 def _summary(deleted_ids: list[str], skipped_ids: list[str], restored_ids: list[str]) -> dict:
@@ -313,21 +391,36 @@ def _returned_ids(resp) -> "set[str] | None":
 
 # Redis keys holding a purged user's data. The whitelist (a list of sites
 # the person trusted) would otherwise outlive the account by up to a year
-# (its TTL); the others are caches.
-_USER_REDIS_KEYS = ("whitelist:{uid}", "percentile:{uid}", "tier:{uid}")
+# (its TTL), the referral marker too; the others are caches.
+_USER_REDIS_KEYS = (
+    "whitelist:{uid}",
+    "percentile:{uid}",
+    "tier:{uid}",
+    "notdeleted:{uid}",
+    "redeemed:{uid}",
+)
+# The users row is gone, so the auth gate can no longer read the deletion
+# from it — but an access token signed before the purge stays valid until it
+# expires (Supabase: an hour). The deletion flag is set for that hour.
+_PURGED_FLAG_TTL_S = 3600
 
 
-async def _drop_redis_keys(user_ids: list[str]) -> None:
+async def _drop_redis_keys(user_ids: list[str], emails: Optional[dict] = None) -> None:
     """Best-effort: a Redis outage never undoes a purge, it only leaves the
-    keys to their TTLs."""
+    keys to their TTLs. The user's own referral code record is keyed by a
+    hash of id + email (api/routers/referral.py), hence `emails`."""
     if not user_ids:
         return
     try:
+        from api.routers.referral import referral_code
         from api.services.cache import get_redis
 
         r = await get_redis()
         keys = [k.format(uid=uid) for uid in user_ids for k in _USER_REDIS_KEYS]
+        keys += [f"referral:{referral_code(uid, (emails or {}).get(uid))}" for uid in user_ids]
         await r.delete(*keys)
+        for uid in user_ids:
+            await r.setex(f"deleted:{uid}", _PURGED_FLAG_TTL_S, "1")
     except Exception as e:  # noqa: BLE001
         logger.warning("account_purge.redis_cleanup_failed", extra={"error": type(e).__name__})
 

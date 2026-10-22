@@ -239,25 +239,56 @@ def require_recent_auth(user: AuthUser, max_age_s: int = RECENT_AUTH_MAX_AGE_S) 
         )
 
 
+# The users row (deletion_requested_at) is the truth about a deletion; Redis
+# only caches its answer. "Not deleted" is stored as the time the row said
+# so: trusted for 5 minutes, and kept a day only to ride out a database
+# outage (stale-if-error). DELETE /user/account drops it at once. "Deleted",
+# read back from the row after the 30-day flag expired, is cached for an
+# hour (restore and the purge drop it).
+_NOT_DELETED_FRESH_S = 300
+_NOT_DELETED_KEEP_S = 24 * 3600
+_DELETED_RECACHE_TTL_S = 3600
+
+
+def _checked_at(value: Any) -> Optional[float]:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 async def _deletion_requested(user_id: str) -> bool:
     """Is this account in its deletion grace window?
 
-    Fast path: the `deleted:{id}` Redis flag written by DELETE /user/account.
-    When Redis cannot answer, the users row (deletion_requested_at) decides:
-    failing open let a deleted account keep full API access for as long as
-    Redis was down. Neither source reachable → 503 — never "allowed", and
+    Fast path: the `deleted:{id}` Redis flag written by DELETE /user/account,
+    then a fresh `notdeleted:{id}` answer cached below. A missing flag is
+    NOT "not deleted": the flag expires after 30 days while the account
+    waits for the purge, and it can be lost (eviction, a Redis blip at
+    deletion time) — reading that as "allowed" gave a deleted account its
+    API access back. Otherwise the users row (deletion_requested_at)
+    decides, and its answer is cached. When the row can't be read, a "not
+    deleted" the row gave in the last day still answers (it is dropped the
+    moment the account is deleted); with none, 503 — never "allowed", and
     never a 410 that would tell every live user their account is going away.
     No database configured (local dev) → there is no row: not deleted."""
+    r = None
+    checked_at: Optional[float] = None
     try:
         from api.services.cache import get_redis
 
         r = await get_redis()
-        return bool(await r.get(f"deleted:{user_id}"))
+        if await r.get(f"deleted:{user_id}"):
+            return True
+        checked_at = _checked_at(await r.get(f"notdeleted:{user_id}"))
     except Exception as e:
+        r = None
         logger.warning(
             "deleted_flag_unreadable",
             extra={"user_id": user_id, "error": type(e).__name__},
         )
+    now = time.time()
+    if checked_at is not None and now - checked_at < _NOT_DELETED_FRESH_S:
+        return False
 
     from api.services import account_store
 
@@ -265,13 +296,33 @@ async def _deletion_requested(user_id: str) -> bool:
     if store is None:
         return False
     try:
-        return await store.is_deletion_requested(user_id)
+        deleted = await store.is_deletion_requested(user_id)
     except account_store.AccountStoreError as e:
+        if checked_at is not None:
+            logger.warning(
+                "deleted_check_served_stale",
+                extra={"user_id": user_id, "age_s": int(now - checked_at), "error": str(e)},
+            )
+            return False
         logger.error(
             "deleted_check_unavailable",
             extra={"user_id": user_id, "error": str(e)},
         )
         raise _auth_unavailable() from e
+
+    if r is not None:
+        try:
+            if deleted:
+                await r.setex(f"deleted:{user_id}", _DELETED_RECACHE_TTL_S, "1")
+            else:
+                await r.setex(f"notdeleted:{user_id}", _NOT_DELETED_KEEP_S, str(int(now)))
+        except Exception as e:
+            # The answer stands; the next request reads the row again.
+            logger.warning(
+                "deleted_flag_cache_failed",
+                extra={"user_id": user_id, "error": type(e).__name__},
+            )
+    return deleted
 
 
 async def _refuse_revoked_device(user_id: str, device_id: Optional[str]) -> None:
@@ -311,13 +362,13 @@ async def get_current_user(
     # Privacy Policy §9: account-deleted users must lose access during
     # the 30-day grace window. Without this check, a user who clicked
     # "Delete account" would still be charged + still use the API
-    # throughout grace. The flag is set in
-    # api/routers/user.py::delete_account via Redis SETEX (TTL = grace
-    # window) and cleared by /user/account/restore. Two endpoints opt
-    # out via `get_current_user_including_deleted` so the user can
-    # still restore + export their data while locked out of everything
-    # else. When Redis can't answer, the users row decides (see
-    # _deletion_requested) — it used to fail open.
+    # throughout grace. The users row (deletion_requested_at) is the
+    # truth; the Redis flag set in api/routers/user.py::delete_account
+    # (and cleared by /user/account/restore) only caches it — a missing
+    # flag sends the gate to the row (see _deletion_requested). Two
+    # endpoints opt out via `get_current_user_including_deleted` so the
+    # user can still restore + export their data while locked out of
+    # everything else.
     if await _deletion_requested(user.id):
         raise HTTPException(
             status_code=410,

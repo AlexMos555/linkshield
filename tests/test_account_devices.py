@@ -207,7 +207,13 @@ def test_account_reads_do_not_spend_the_daily_check_quota(client, fake_redis):
     assert [k for k in fake_redis._kv if k.startswith("rate:sensitive:account_read:")]
 
 
-def test_store_outage_is_503_not_free(client, account_store):
+def test_store_outage_is_503_not_free(client, account_store, fake_redis):
+    import asyncio
+    import time
+
+    # A live account the auth gate checked a minute ago: it passes the gate
+    # on the cached answer, and the account screen itself meets the outage.
+    asyncio.run(fake_redis.setex(f"notdeleted:{ACCOUNT}", 86400, str(int(time.time()) - 60)))
     account_store.fail = True
     resp = client.get("/api/v1/me/entitlement", headers=_headers())
     assert resp.status_code == 503

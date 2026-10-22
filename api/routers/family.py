@@ -257,6 +257,28 @@ async def _is_family_member(family_id: str, user_id: str) -> Optional[str]:
     return rows[0].get("role")
 
 
+async def _undo_family_create(family_id: str, owner_id: str) -> None:
+    """Delete a just-created family (only one this owner owns). Best-effort:
+    a family left without members is invisible to everyone (/family/mine
+    lists memberships) — logged so it can be cleaned up."""
+    try:
+        resp = await _supabase_request(
+            "DELETE",
+            "families",
+            params={"id": f"eq.{family_id}", "owner_id": f"eq.{owner_id}"},
+            extra_headers={"Prefer": "return=minimal"},
+        )
+        status: Optional[int] = resp.status_code
+    except Exception as e:  # noqa: BLE001
+        logger.warning("family.create_rollback_exception", extra={"error": type(e).__name__})
+        status = None
+    if status not in (200, 204):
+        logger.error(
+            "family.create_rollback_failed",
+            extra={"family_id": family_id, "status": status},
+        )
+
+
 async def _check_family_invite_quota(family_id: str) -> None:
     """Enforce MAX_INVITES_PER_FAMILY_PER_DAY via Redis INCR.
 
@@ -424,16 +446,25 @@ async def create_family(
         raise HTTPException(500, "Failed to create family")
     family_id = rows[0]["id"]
 
-    # Add owner to family_members table — their JWT-bound role
-    member_resp = await _supabase_request(
-        "POST",
-        "family_members",
-        json={"family_id": family_id, "user_id": user.id, "role": "owner"},
-        extra_headers={"Prefer": "resolution=merge-duplicates,return=minimal"},
-    )
-    if member_resp.status_code not in (200, 201, 204):
-        logger.warning("family.owner_add_failed", extra={"status": member_resp.status_code})
-        # Owner row missing is recoverable; family row exists. Surface to caller.
+    # Add owner to family_members table — their JWT-bound role. Every later
+    # check reads family_members only (_is_family_member), so a family whose
+    # owner row is missing would lock its owner out: undo the family and
+    # report the failure instead of a success that can't be used.
+    try:
+        member_resp = await _supabase_request(
+            "POST",
+            "family_members",
+            json={"family_id": family_id, "user_id": user.id, "role": "owner"},
+            extra_headers={"Prefer": "resolution=merge-duplicates,return=minimal"},
+        )
+        member_status: Optional[int] = member_resp.status_code
+    except Exception as e:  # noqa: BLE001 — a timeout leaves the same orphan
+        logger.warning("family.owner_add_exception", extra={"error": type(e).__name__})
+        member_status = None
+    if member_status not in (200, 201, 204):
+        logger.warning("family.owner_add_failed", extra={"status": member_status})
+        await _undo_family_create(family_id, user.id)
+        raise HTTPException(500, "Failed to create family")
 
     # Audit trail: family creation is a rare org-relevant event. The
     # family name is intentionally NOT in meta — it's user-supplied free

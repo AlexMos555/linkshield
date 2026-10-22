@@ -2474,7 +2474,7 @@
           ],
           "items": [
             "auf der Website läuft die Zahlung über Stripe. Stripe erhält deine E-Mail-Adresse, den gewählten Tarif und deine Konto-ID und verarbeitet die Karte selbst;",
-            "in der App, wo Käufe angeboten werden, bezahlst du über Google Play oder den App Store. Der Store wickelt die Zahlung ab und verarbeitet deine Karte nach seinen eigenen Bedingungen und seiner eigenen Datenschutzerklärung. RevenueCat, ein Dienst, der für uns Abos in der App verwaltet, erhält von der App eine anonyme Konto-ID – eine zufällige Kennung, nicht deinen Namen oder deine E-Mail-Adresse – und vom Store den Status des Kaufs. Wir erhalten nur die Information, ob dein Abo aktiv ist, welcher Tarif es ist und bis wann es gilt."
+            "in der App, wo Käufe angeboten werden, bezahlst du über Google Play oder den App Store. Der Store wickelt die Zahlung ab und verarbeitet deine Karte nach seinen eigenen Bedingungen und seiner eigenen Datenschutzerklärung. RevenueCat, ein Dienst, der für uns Abos in der App verwaltet, erhält von der App die ID deines Cleanway-Kontos – eine zufällige Kennung, nicht deinen Namen oder deine E-Mail-Adresse – und vom Store den Status des Kaufs. Wir erhalten nur die Information, ob dein Abo aktiv ist, welcher Tarif es ist und bis wann es gilt."
           ],
           "after": [
             "Kartendaten sehen und speichern wir nie. Zu jedem Kauf bewahren wir einen Eintrag auf – wo er getätigt wurde, Tarif, Status und Datumsangaben – zusammen mit deinem Konto, bis das Konto gelöscht wird."
@@ -2534,6 +2534,7 @@
           "title": "17. Deine Rechte",
           "paragraphs": [
             "Du hast das Recht: zu erfahren, welche Daten wir über dich haben, und eine Kopie davon zu erhalten (Auskunft); sie berichtigen zu lassen (Berichtigung); sie löschen zu lassen (Löschung); ihre Nutzung einschränken zu lassen, etwa solange geklärt wird, ob sie richtig sind (Einschränkung); die Daten, die du uns gegeben hast, in einem maschinenlesbaren Format zu erhalten oder, wo technisch möglich, an einen anderen Dienst übermitteln zu lassen (Datenübertragbarkeit); einer Nutzung auf Grundlage unseres berechtigten Interesses zu widersprechen (Widerspruch); und eine erteilte Einwilligung zu widerrufen.",
+            "Um eine Kopie der Daten herunterzuladen, die unser Server zu deinem Konto speichert, melde dich auf cleanway.ai/account an und wähle „Meine Daten herunterladen“.",
             "Um dein Konto selbst zu löschen, melde dich auf cleanway.ai/account an und wähle „Konto löschen“, oder nutze „Konto löschen“ in den Einstellungen der App. Die Seite cleanway.ai/delete-account erklärt die Schritte und was gelöscht und was aufbewahrt wird.",
             "Ohne Konto wissen wir nicht, wer du bist: Wir haben weder deinen Namen noch deine E-Mail-Adresse oder Telefonnummer – nur die oben beschriebenen technischen Daten, etwa deine IP-Adresse im Prüfzähler und in den Protokollen des Hostings. Für andere Anfragen kontaktiere uns wie unten beschrieben. Wenn du die App oder die Erweiterung entfernst, wird alles gelöscht, was sie auf deinem Gerät gespeichert hat.",
             "Wenn du meinst, dass wir deine Daten rechtswidrig verarbeiten, hast du das Recht, dich bei einer Datenschutz-Aufsichtsbehörde zu beschweren, insbesondere in dem Land, in dem du lebst oder arbeitest oder in dem das Problem aufgetreten ist. Du kannst uns auch zuerst schreiben."
@@ -2647,7 +2648,13 @@
       "delete_done": "Ihr Konto ist gelöscht und Sie sind abgemeldet. Melden Sie sich innerhalb von 30 Tagen an, wenn Sie es wiederherstellen möchten.",
       "brand": "Cleanway",
       "manage_cta": "Abo verwalten oder kündigen",
-      "manage_failed": "Die Abo-Verwaltung konnte nicht geöffnet werden. Bitte versuchen Sie es gleich noch einmal."
+      "manage_failed": "Die Abo-Verwaltung konnte nicht geöffnet werden. Bitte versuchen Sie es gleich noch einmal.",
+      "data_heading": "Ihre Daten",
+      "data_body": "Laden Sie eine Kopie von allem herunter, was unser Server zu Ihrem Konto speichert – Konto, Tarif, Geräte, Einstellungen und Familiendaten – als JSON-Datei.",
+      "download_cta": "Meine Daten herunterladen",
+      "download_busy": "Datei wird vorbereitet…",
+      "download_failed": "Die Datei konnte nicht erstellt werden. Bitte versuchen Sie es gleich noch einmal.",
+      "download_rate_limited": "Sie haben Ihre Daten in der letzten Stunde schon mehrmals heruntergeladen. Bitte versuchen Sie es später noch einmal."
     },
     "delete_account": {
       "meta_title": "Cleanway-Konto löschen",
@@ -3852,7 +3859,13 @@
       "delete_store_continue": "Trotzdem löschen",
       "restore_desc_appstore": "Mit dieser Apple-ID auf einem anderen Telefon oder Konto abonniert? Hierher übernehmen",
       "cancel_note_appstore": "Dieses Abo rechnet Apple ab, deshalb kann nur Apple es kündigen: Einstellungen → dein Name → Abonnements → Cleanway. Wenn du dein Cleanway-Konto löschst, wird es nicht gekündigt.",
-      "locked_dismiss": "Nicht jetzt"
+      "locked_dismiss": "Nicht jetzt",
+      "export": "Meine Daten herunterladen",
+      "export_desc": "Eine Kopie von allem, was unser Server zu Ihrem Konto speichert, als Datei",
+      "export_failed_title": "Daten konnten nicht heruntergeladen werden",
+      "export_failed_body": "Prüfen Sie die Verbindung und versuchen Sie es gleich noch einmal.",
+      "export_share_title": "Ihre Cleanway-Daten",
+      "export_rate_limited": "Sie haben Ihre Daten in der letzten Stunde schon mehrmals heruntergeladen. Bitte versuchen Sie es später noch einmal."
     },
     "paywall": {
       "close": "Schließen",

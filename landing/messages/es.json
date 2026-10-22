@@ -923,7 +923,7 @@
         ],
         "items": [
           "en el sitio web, el pago se hace a través de Stripe. Stripe recibe tu correo, el plan elegido y el identificador de tu cuenta, y gestiona la tarjeta por su cuenta;",
-          "en la app, donde se ofrecen compras, pagas a través de Google Play o la App Store. La tienda cobra el pago y gestiona tu tarjeta según sus propias condiciones y su propia política de privacidad. RevenueCat, un servicio que gestiona por nosotros las suscripciones dentro de la app, recibe de la app un identificador de cuenta anónimo (un identificador aleatorio, no tu nombre ni tu correo) y, de la tienda, el estado de la compra. Nosotros solo recibimos si tu suscripción está activa, qué plan es y hasta cuándo."
+          "en la app, donde se ofrecen compras, pagas a través de Google Play o la App Store. La tienda cobra el pago y gestiona tu tarjeta según sus propias condiciones y su propia política de privacidad. RevenueCat, un servicio que gestiona por nosotros las suscripciones dentro de la app, recibe de la app el identificador de tu cuenta de Cleanway (un identificador aleatorio, no tu nombre ni tu correo) y, de la tienda, el estado de la compra. Nosotros solo recibimos si tu suscripción está activa, qué plan es y hasta cuándo."
         ],
         "after": [
           "Nunca vemos ni guardamos los datos de la tarjeta. Guardamos un registro de cada compra (dónde se hizo, el plan, su estado y las fechas) con tu cuenta hasta que la cuenta se elimina."
@@ -983,6 +983,7 @@
         "title": "17. Tus derechos",
         "paragraphs": [
           "Tienes derecho a: saber qué datos tuyos tenemos y obtener una copia (acceso); que los corrijamos (rectificación); que los eliminemos (supresión); que limitemos su uso, por ejemplo mientras se comprueba si son exactos (limitación); recibir los datos que nos diste en un formato legible por máquina o que se los pasemos a otro servicio cuando sea técnicamente posible (portabilidad); oponerte a un uso basado en nuestro interés legítimo (oposición); y retirar el consentimiento que hayas dado.",
+          "Para descargar una copia de los datos que nuestro servidor guarda sobre tu cuenta, inicia sesión en cleanway.ai/account y elige «Descargar mis datos».",
           "Para eliminar tu cuenta sin ayuda, inicia sesión en cleanway.ai/account y elige «Eliminar cuenta», o usa «Eliminar cuenta» en la Configuración de la app. La página cleanway.ai/delete-account explica los pasos y qué se elimina y qué se conserva.",
           "Sin cuenta no sabemos quién eres: no tenemos tu nombre, tu correo ni tu teléfono, solo los datos técnicos descritos arriba, como tu dirección IP en el contador de comprobaciones y en los registros del alojamiento. Para otras solicitudes, contáctanos como se indica abajo. Desinstalar la app o la extensión borra todo lo que guardó en tu dispositivo.",
           "Si crees que tratamos tus datos de forma ilícita, tienes derecho a presentar una reclamación ante una autoridad de control de protección de datos, en particular la del país donde vives o trabajas o donde ocurrió el problema. También puedes escribirnos primero."
@@ -1096,7 +1097,13 @@
     "delete_done": "Tu cuenta se eliminó y has cerrado sesión. Inicia sesión en un plazo de 30 días si quieres restaurarla.",
     "brand": "Cleanway",
     "manage_cta": "Gestionar o cancelar la suscripción",
-    "manage_failed": "No se pudo abrir la gestión de la suscripción. Inténtalo de nuevo en un momento."
+    "manage_failed": "No se pudo abrir la gestión de la suscripción. Inténtalo de nuevo en un momento.",
+    "data_heading": "Tus datos",
+    "data_body": "Descarga una copia de todo lo que nuestro servidor guarda sobre tu cuenta (la cuenta, el plan, los dispositivos, los ajustes y los datos de la familia) en un archivo JSON.",
+    "download_cta": "Descargar mis datos",
+    "download_busy": "Preparando el archivo…",
+    "download_failed": "No se pudo preparar el archivo. Inténtalo de nuevo en un momento.",
+    "download_rate_limited": "Ya descargaste tus datos varias veces en la última hora. Inténtalo más tarde."
   },
   "DeleteAccount": {
     "meta_title": "Eliminar tu cuenta de Cleanway",

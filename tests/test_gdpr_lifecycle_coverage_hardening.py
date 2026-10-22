@@ -37,7 +37,11 @@ OTHER = "44444444-4444-4444-8444-444444444444"
 REVOKED_INSTALL = "browser-install-revoked-01"
 KEY = SigningKey()
 EXPORT_TABLES = {"users", "subscriptions", "entitlements", "user_settings", "devices", "weekly_aggregates",
-                 "family_members", "family_alerts", "feedback_reports", "audit_log"}
+                 "rate_limits", "scam_analyses", "families", "family_members", "family_member_keys",
+                 "family_invites", "family_alerts", "orgs", "org_members", "brand_watchlist", "sms_reports",
+                 "feedback_reports", "audit_log"}
+# Keys of the export: the tables, plus the alerts the user sent (family_alerts read twice).
+EXPORT_KEYS = EXPORT_TABLES | {"family_alerts_sent"}
 
 
 @pytest.fixture(autouse=True)
@@ -156,7 +160,7 @@ def test_timeouts_mid_export_are_flagged_per_table_never_shown_as_empty(client, 
     assert body["tables"]["entitlements"] == {"error": "upstream returned 401"}
     # The tables read after the failures are still there.
     assert body["tables"]["users"] == [{"id": ACCOUNT}]
-    assert set(body["tables"]) == EXPORT_TABLES
+    assert set(body["tables"]) == EXPORT_KEYS
 
 
 # ─── DELETE /account: the reauth window ──────────────────────────
@@ -249,6 +253,8 @@ def test_delete_success_locks_signs_out_and_audits(client, sb, fake_redis, _aler
     assert fake_redis._kv[f"deleted:{ACCOUNT}"] == "1"
     assert fake_redis._ttls[f"deleted:{ACCOUNT}"] == 30 * 24 * 3600
     assert f"tier:{ACCOUNT}" not in fake_redis._kv
+    # The auth gate cached "not deleted" on the way in; it goes at once.
+    assert f"notdeleted:{ACCOUNT}" not in fake_redis._kv
     (logout,) = sb.to("POST", "/auth/v1/logout")
     assert logout["params"] == {"scope": "global"}
     (audit,) = sb.to("POST", "/rest/v1/audit_log")

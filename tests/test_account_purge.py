@@ -34,6 +34,10 @@ class _SupabaseStub:
         self.delete_status = 200
         # Supabase Auth admin API (DELETE /auth/v1/admin/users/{id}).
         self.auth_delete_status = 200
+        # orgs.admin_user_id has no ON DELETE: an org admin's row can't go
+        # while the org exists (PostgREST answers 409, a FK violation).
+        self.org_admins: set = set()
+        self.orgs_delete_status = 204
         # subscriptions rows by user_id — the purge cancels live Stripe
         # billing before anything is deleted.
         self.subscription_rows: Dict[str, Dict[str, Any]] = {}
@@ -88,8 +92,16 @@ class _SupabaseStub:
                 )
                 if "/auth/v1/admin/users/" in url:
                     return _Resp(stub.auth_delete_status, {})
+                if method == "DELETE" and url.endswith("/rest/v1/orgs"):
+                    if stub.orgs_delete_status in (200, 204):
+                        admins = dict(params or {}).get("admin_user_id", "in.()")[4:-1].split(",")
+                        stub.org_admins -= set(admins)
+                    return _Resp(stub.orgs_delete_status)
                 if method == "DELETE" and url.endswith("/rest/v1/users"):
-                    wanted = dict(params or {}).get("id", "in.()")[4:-1].split(",")
+                    id_filter = dict(params or {}).get("id", "in.()")
+                    wanted = id_filter[3:].split(",") if id_filter.startswith("eq.") else id_filter[4:-1].split(",")
+                    if stub.org_admins & set(wanted):
+                        return _Resp(409, {"code": "23503"})
                     return _Resp(stub.delete_status, [r for r in self._live() if r["id"] in wanted])
                 return _Resp(204)
 
@@ -130,7 +142,8 @@ async def test_purges_expired_accounts(supabase_ok, supabase_stub):
 
     Sequence: GET (list) → per user: GET subscriptions row (stop Stripe
     billing first), PATCH audit_log (anonymise, GDPR Art. 17), DELETE the
-    Supabase Auth user → one DELETE on public.users (cascade through FKs).
+    Supabase Auth user → DELETE the orgs they administer (no cascade) → one
+    DELETE on public.users (cascade through FKs).
     """
     from api.services.account_purge import purge_expired_accounts
 
@@ -151,8 +164,12 @@ async def test_purges_expired_accounts(supabase_ok, supabase_stub):
         "GET users",
         "GET users", "GET subscriptions", "PATCH audit_log", "DELETE auth:user-a",
         "GET users", "GET subscriptions", "PATCH audit_log", "DELETE auth:user-b",
-        "DELETE users",
+        "DELETE orgs", "DELETE users",
     ]
+    listing = supabase_stub.requests[0]
+    assert listing["params"]["select"] == "id,email"
+    (orgs,) = [r for r in supabase_stub.requests if r["url"].endswith("/rest/v1/orgs")]
+    assert orgs["params"] == {"admin_user_id": "in.(user-a,user-b)"}
 
 
 @pytest.mark.asyncio
@@ -330,11 +347,16 @@ async def test_purge_drops_the_users_redis_keys(supabase_ok, supabase_stub, monk
     from api.services import account_purge
 
     deleted: list = []
+    flags: dict = {}
 
     class _R:
         async def delete(self, *keys):
             deleted.extend(keys)
             return len(keys)
+
+        async def setex(self, key, ttl, val):
+            flags[key] = (ttl, val)
+            return True
 
     async def _get_redis():
         return _R()
@@ -342,13 +364,24 @@ async def test_purge_drops_the_users_redis_keys(supabase_ok, supabase_stub, monk
     monkeypatch.setattr("api.services.cache.get_redis", _get_redis)
     supabase_stub.list_response = [{"id": "u1"}, {"id": "u2"}]
 
+    supabase_stub.list_response = [{"id": "u1", "email": "one@example.com"}, {"id": "u2", "email": "two@example.com"}]
+
     result = await account_purge.purge_expired_accounts()
 
+    from api.routers.referral import referral_code
+
     assert result["deleted"] == 2
-    for uid in ("u1", "u2"):
+    for uid, email in (("u1", "one@example.com"), ("u2", "two@example.com")):
         assert f"whitelist:{uid}" in deleted
         assert f"percentile:{uid}" in deleted
         assert f"tier:{uid}" in deleted
+        # The referral marker and the user's own code record are personal data.
+        assert f"notdeleted:{uid}" in deleted
+        assert f"redeemed:{uid}" in deleted
+        assert f"referral:{referral_code(uid, email)}" in deleted
+        # With the row gone the auth gate can't read the deletion any more:
+        # an access token signed before the purge is refused for its hour.
+        assert flags[f"deleted:{uid}"] == (3600, "1")
 
 
 @pytest.mark.asyncio
@@ -440,6 +473,8 @@ async def test_purge_cancels_live_stripe_billing_first(supabase_ok, supabase_stu
 
     assert result["deleted"] == 1
     assert [c[0] for c in fake_stripe.cancel_calls] == ["sub_pay"]
+    # The Stripe customer (email, saved cards) goes with the account.
+    assert fake_stripe.deleted_customers == ["cus_pay"]
 
 
 @pytest.mark.asyncio
@@ -604,4 +639,200 @@ async def test_a_delete_answer_without_rows_claims_nothing(supabase_ok, supabase
     result = await purge_expired_accounts()
 
     assert result["deleted"] == 0 and result["error"] == "delete_failed_204"
+    assert supabase_stub.audit_posts == []
+
+
+# ─── Third parties: the Stripe customer and the RevenueCat customer ───
+
+
+def _paying(stub, uid="user-pay", customer="cus_pay"):
+    stub.subscription_rows[uid] = {
+        "user_id": uid, "tier": "personal", "status": "active",
+        "provider": "stripe", "provider_subscription_id": f"sub_{uid}",
+        "stripe_customer_id": customer, "trial_used_at": None,
+    }
+
+
+@pytest.mark.asyncio
+async def test_purge_skips_user_when_the_stripe_customer_cannot_be_deleted(
+    supabase_ok, supabase_stub, fake_stripe
+):
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-pay"}, {"id": "user-free"}]
+    _paying(supabase_stub)
+    fake_stripe.fail_customer_delete = True
+
+    result = await purge_expired_accounts()
+
+    assert result["ids"] == ["user-free"]
+    assert result["skipped"] == ["user-pay"]
+    assert not any("/auth/v1/admin/users/user-pay" in r["url"] for r in supabase_stub.requests)
+
+
+@pytest.mark.asyncio
+async def test_a_stripe_customer_already_gone_counts_as_deleted(supabase_ok, supabase_stub, fake_stripe):
+    """A previous run deleted the customer, then failed later: the retry
+    gets "No such customer" — done, not an error."""
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-pay"}]
+    _paying(supabase_stub)
+    fake_stripe.missing_customers.add("cus_pay")
+
+    result = await purge_expired_accounts()
+
+    assert result == {"deleted": 1, "ids": ["user-pay"]}
+
+
+@pytest.fixture
+def revenuecat_key(monkeypatch):
+    from api import config
+
+    monkeypatch.setattr(config.get_settings(), "revenuecat_secret_api_key", "sk_test_rc", raising=False)
+
+
+@pytest.mark.asyncio
+async def test_purge_deletes_the_revenuecat_customer(supabase_ok, supabase_stub, revenuecat_key):
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-rc"}]
+    result = await purge_expired_accounts()
+
+    assert result["deleted"] == 1
+    (rc,) = [r for r in supabase_stub.requests if "revenuecat" in r["url"]]
+    assert rc["method"] == "DELETE"
+    assert rc["url"] == "https://api.revenuecat.com/v1/subscribers/user-rc"
+    assert rc["headers"]["Authorization"] == "Bearer sk_test_rc"
+    # Before anything irreversible on our side.
+    order = [r["url"] for r in supabase_stub.requests]
+    assert order.index(rc["url"]) < order.index("https://fake.supabase.co/auth/v1/admin/users/user-rc")
+
+
+@pytest.mark.asyncio
+async def test_without_a_revenuecat_key_the_step_is_skipped(supabase_ok, supabase_stub):
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-x"}]
+    result = await purge_expired_accounts()
+
+    assert result["deleted"] == 1
+    assert not any("revenuecat" in r["url"] for r in supabase_stub.requests)
+
+
+@pytest.mark.asyncio
+async def test_purge_skips_user_when_revenuecat_fails(supabase_ok, supabase_stub, revenuecat_key, monkeypatch):
+    import httpx as _httpx
+
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-rc"}, {"id": "user-ok"}]
+    client_cls = supabase_stub.build()
+    real_request = client_cls.request
+
+    async def request(self, method, url, params=None, headers=None, **kw):
+        if "revenuecat" in url and url.endswith("/user-rc"):
+            supabase_stub.requests.append({"method": method, "url": url, "params": {}, "headers": {}})
+
+            class _Down:
+                status_code = 503
+
+            return _Down()
+        return await real_request(self, method, url, params=params, headers=headers, **kw)
+
+    client_cls.request = request
+    monkeypatch.setattr(_httpx, "AsyncClient", client_cls)
+
+    result = await purge_expired_accounts()
+
+    assert result["ids"] == ["user-ok"]
+    assert result["skipped"] == ["user-rc"]
+    assert not any("/auth/v1/admin/users/user-rc" in r["url"] for r in supabase_stub.requests)
+
+
+# ─── Org admins (orgs.admin_user_id has no ON DELETE) ──────────
+
+
+@pytest.mark.asyncio
+async def test_an_org_admin_no_longer_blocks_the_whole_batch(supabase_ok, supabase_stub):
+    """The orgs they administer are deleted first, so the batched DELETE
+    goes through for everyone — before, one admin failed it, every run."""
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "admin"}, {"id": "plain"}]
+    supabase_stub.org_admins.add("admin")
+
+    result = await purge_expired_accounts()
+
+    assert result == {"deleted": 2, "ids": ["admin", "plain"]}
+    deletes = [r["url"].rsplit("/", 1)[1] for r in supabase_stub.requests if r["method"] == "DELETE"]
+    assert deletes[-2:] == ["orgs", "users"]
+
+
+@pytest.mark.asyncio
+async def test_a_409_on_the_batch_falls_back_to_one_delete_per_user(supabase_ok, supabase_stub, caplog):
+    """The orgs DELETE failed too, so the admin's row is still referenced:
+    the others are purged one by one, the admin waits for the next run."""
+    import logging
+
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "u1"}, {"id": "admin"}, {"id": "u3"}]
+    supabase_stub.org_admins.add("admin")
+    supabase_stub.orgs_delete_status = 500
+
+    with caplog.at_level(logging.ERROR, logger="cleanway.account_purge"):
+        result = await purge_expired_accounts()
+
+    assert result == {"deleted": 2, "ids": ["u1", "u3"], "skipped": ["admin"]}
+    assert [row["target_id"] for row in supabase_stub.audit_posts] == ["u1", "u3"]
+    per_user = [r["params"]["id"] for r in supabase_stub.requests
+                if r["method"] == "DELETE" and r["url"].endswith("/rest/v1/users")]
+    assert per_user == ["in.(u1,admin,u3)", "eq.u1", "eq.admin", "eq.u3"]
+    for r in supabase_stub.requests:
+        if r["method"] == "DELETE" and r["url"].endswith("/rest/v1/users"):
+            assert r["params"]["deletion_requested_at"].startswith("lte.")
+    messages = [rec.getMessage() for rec in caplog.records]
+    assert "account_purge.orgs_delete_failed" in messages
+    assert "account_purge.delete_failed" in messages
+    assert "account_purge.restored_during_delete" not in messages
+
+
+@pytest.mark.asyncio
+async def test_a_per_user_delete_that_raises_keeps_that_user(supabase_ok, supabase_stub, monkeypatch):
+    import httpx as _httpx
+
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "u1"}, {"id": "u2"}]
+    supabase_stub.org_admins.add("u2")
+    client_cls = supabase_stub.build()
+    real_request = client_cls.request
+
+    async def request(self, method, url, params=None, headers=None, **kw):
+        if url.endswith("/rest/v1/orgs"):
+            raise _httpx.ConnectError("reset")
+        if method == "DELETE" and url.endswith("/rest/v1/users") and (params or {}).get("id") == "eq.u2":
+            raise _httpx.ReadTimeout("slow")
+        return await real_request(self, method, url, params=params, headers=headers, **kw)
+
+    client_cls.request = request
+    monkeypatch.setattr(_httpx, "AsyncClient", client_cls)
+
+    result = await purge_expired_accounts()
+
+    assert result == {"deleted": 1, "ids": ["u1"], "skipped": ["u2"]}
+
+
+@pytest.mark.asyncio
+async def test_a_single_user_blocked_by_a_409_is_kept_not_an_error(supabase_ok, supabase_stub):
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "admin"}]
+    supabase_stub.org_admins.add("admin")
+    supabase_stub.orgs_delete_status = 500
+
+    result = await purge_expired_accounts()
+
+    assert result == {"deleted": 0, "ids": [], "skipped": ["admin"]}
     assert supabase_stub.audit_posts == []

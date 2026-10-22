@@ -50,7 +50,7 @@ class RedeemRequest(BaseModel):
     code: str
 
 
-def _code_for(user_id: str, email: Optional[str]) -> str:
+def referral_code(user_id: str, email: Optional[str]) -> str:
     """Derive a deterministic 8-char referral code for a user.
 
     Same user_id+email always maps to the same code, so /generate is
@@ -141,7 +141,7 @@ async def generate_referral(user: AuthUser = Depends(get_current_user)):
     Idempotent: same user → same code. We upsert the Redis mapping so the
     code → owner record exists for redeem-time lookups.
     """
-    code = _code_for(user.id, user.email)
+    code = referral_code(user.id, user.email)
 
     # Best-effort Redis upsert — a Redis outage shouldn't block the user
     # from seeing their referral link (it's deterministic, derives from id).
@@ -180,7 +180,7 @@ async def generate_referral(user: AuthUser = Depends(get_current_user)):
 @router.get("/stats", dependencies=[Depends(rate_limit(category="user_read"))])
 async def referral_stats(user: AuthUser = Depends(get_current_user)):
     """Return the user's referral code, share URL, and redemption count."""
-    code = _code_for(user.id, user.email)
+    code = referral_code(user.id, user.email)
 
     try:
         from api.services.cache import get_redis
@@ -269,7 +269,9 @@ async def redeem_referral(
     # Increment redemption count + mark redeemer
     info["redeemed_count"] = int(info.get("redeemed_count", 0)) + 1
     try:
-        await r.set(key, json.dumps(info))
+        # keepttl: a plain SET would drop the record's 1-year TTL (set by
+        # /generate) and keep it forever.
+        await r.set(key, json.dumps(info), keepttl=True)
         await r.set(redeemer_marker, code)
         await r.expire(redeemer_marker, REFERRAL_CODE_TTL_SECONDS)
     except Exception as e:

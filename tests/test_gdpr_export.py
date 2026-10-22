@@ -65,6 +65,31 @@ class _SupabaseStub:
         return _Client
 
 
+# export key → (table, column holding the account id)
+EXPECTED_FILTER = {
+    "users": ("users", "id"),
+    "subscriptions": ("subscriptions", "user_id"),
+    "entitlements": ("entitlements", "account_id"),
+    "user_settings": ("user_settings", "user_id"),
+    "devices": ("devices", "user_id"),
+    "weekly_aggregates": ("weekly_aggregates", "user_id"),
+    "rate_limits": ("rate_limits", "user_id"),
+    "scam_analyses": ("scam_analyses", "user_id"),
+    "families": ("families", "owner_id"),
+    "family_members": ("family_members", "user_id"),
+    "family_member_keys": ("family_member_keys", "user_id"),
+    "family_invites": ("family_invites", "inviter_id"),
+    "family_alerts": ("family_alerts", "recipient_user_id"),
+    "family_alerts_sent": ("family_alerts", "sender_user_id"),
+    "orgs": ("orgs", "admin_user_id"),
+    "org_members": ("org_members", "user_id"),
+    "brand_watchlist": ("brand_watchlist", "user_id"),
+    "sms_reports": ("sms_reports", "reporter_user_id"),
+    "feedback_reports": ("feedback_reports", "user_id"),
+    "audit_log": ("audit_log", "actor_user_id"),
+}
+
+
 @pytest.fixture
 def supabase_ok(monkeypatch):
     from api import config
@@ -117,49 +142,45 @@ def test_export_returns_all_user_tables(client, supabase_ok, supabase_stub):
 
     assert body["user_id"] == "user-42"
     assert body["email"] == "alice@gmail.com"
-    assert body["schema_version"] == 1
+    assert body["schema_version"] == 2
     assert "generated_at" in body
 
-    # Every promised table is included in the export.
-    expected_tables = {
-        "users",
-        "subscriptions",
-        "entitlements",
-        "user_settings",
-        "devices",
-        "weekly_aggregates",
-        "family_members",
-        "family_alerts",
-        "feedback_reports",
-        "audit_log",
-    }
-    assert set(body["tables"].keys()) == expected_tables
+    # Every table keyed on the account is in the export. scam_analyses,
+    # families, family_invites, family_member_keys, orgs, org_members,
+    # brand_watchlist, sms_reports, rate_limits and the alerts the user
+    # sent were missing until schema_version 2.
+    assert set(body["tables"].keys()) == set(EXPECTED_FILTER)
 
 
 def test_export_filters_by_user_id_per_table(client, supabase_ok, supabase_stub):
     """No cross-user leak: every Supabase query must scope to the
     authed user's id via the right filter column."""
     client.get("/api/v1/user/export")
-    # Map (table → expected filter column)
-    expected_filter = {
-        "users": "id",
-        "subscriptions": "user_id",
-        "entitlements": "account_id",
-        "user_settings": "user_id",
-        "devices": "user_id",
-        "weekly_aggregates": "user_id",
-        "family_members": "user_id",
-        "family_alerts": "recipient_user_id",
-        "feedback_reports": "user_id",
-        "audit_log": "actor_user_id",
-    }
+    queried = []
     for got in supabase_stub.gets:
         table = got["url"].rsplit("/", 1)[-1]
-        filter_col = expected_filter.get(table)
-        assert filter_col, f"unexpected table queried: {table}"
-        assert got["params"].get(filter_col) == "eq.user-42", (
-            f"{table} not filtered by {filter_col}=eq.user-42: {got['params']}"
-        )
+        eq = {k: v for k, v in got["params"].items() if v.startswith("eq.")}
+        assert eq and set(eq.values()) == {"eq.user-42"}, f"{table}: {got['params']}"
+        (column,) = eq
+        queried.append((table, column))
+    expected = sorted((EXPECTED_FILTER[key][0], EXPECTED_FILTER[key][1]) for key in EXPECTED_FILTER)
+    assert sorted(queried) == expected
+
+
+def test_secrets_are_left_out_of_the_export(client, supabase_ok, supabase_stub):
+    """Invite code and PIN hashes are secrets (a 4-digit PIN's bcrypt is
+    brute-forced in seconds), an org's SSO config holds credentials."""
+    client.get("/api/v1/user/export")
+    selects = {(g["url"].rsplit("/", 1)[-1], g["params"]["select"]) for g in supabase_stub.gets}
+    by_table = {}
+    for table, select in selects:
+        by_table.setdefault(table, []).append(select)
+    for select in by_table["family_invites"]:
+        assert select != "*" and "hash" not in select
+    for select in by_table["orgs"]:
+        assert select != "*" and "sso" not in select
+    for select in by_table["family_alerts"]:
+        assert select != "*" and "payload" not in select and "nonce" not in select
 
 
 def test_family_alerts_export_excludes_ciphertext(client, supabase_ok, supabase_stub):
@@ -167,12 +188,14 @@ def test_family_alerts_export_excludes_ciphertext(client, supabase_ok, supabase_
     key (would just bloat the export and tempt clients to think they
     can decrypt server-side, which they can't)."""
     client.get("/api/v1/user/export")
-    fa = next(g for g in supabase_stub.gets if g["url"].endswith("family_alerts"))
-    select = fa["params"].get("select", "")
-    for forbidden in ("ciphertext", "nonce"):
-        assert forbidden not in select, (
-            f"family_alerts export must not include {forbidden}; got select={select!r}"
-        )
+    reads = [g for g in supabase_stub.gets if g["url"].endswith("family_alerts")]
+    assert len(reads) == 2  # alerts received and alerts sent
+    for fa in reads:
+        select = fa["params"].get("select", "")
+        for forbidden in ("ciphertext", "nonce", "encrypted_payload", "sender_pubkey"):
+            assert forbidden not in select, (
+                f"family_alerts export must not include {forbidden}; got select={select!r}"
+            )
 
 
 # ─── Failure paths ──────────────────────────────────────────────

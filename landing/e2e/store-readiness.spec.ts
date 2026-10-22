@@ -108,9 +108,12 @@ test.describe("signed in", () => {
     "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
   };
 
-  /** The account API: entitlement answered with `entitlementStatus`, DELETE recorded. */
-  async function fakeAccountApi(page: Page, entitlementStatus: number) {
+  const EXPORT = { user_id: "user-1", email: "ann@example.com", schema_version: 2, tables: { users: [{ id: "user-1" }] } };
+
+  /** The account API: entitlement answered with `entitlementStatus`, DELETE and export recorded. */
+  async function fakeAccountApi(page: Page, entitlementStatus: number, exportStatus = 200) {
     const deletes: string[] = [];
+    const exports: string[] = [];
     await page.route(`${API}/api/v1/**`, async (route) => {
       const req = route.request();
       if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors, body: "" });
@@ -127,6 +130,15 @@ test.describe("signed in", () => {
           body: JSON.stringify(entitlementStatus === 200 ? ok : { detail: "unavailable" }),
         });
       }
+      if (path === "/api/v1/user/export" && req.method() === "GET") {
+        exports.push(req.headers()["authorization"] ?? "");
+        return route.fulfill({
+          status: exportStatus,
+          headers: cors,
+          contentType: "application/json",
+          body: JSON.stringify(exportStatus === 200 ? EXPORT : { detail: "Too many requests" }),
+        });
+      }
       if (path === "/api/v1/user/account" && req.method() === "DELETE") {
         deletes.push(req.headers()["authorization"] ?? "");
         return route.fulfill({
@@ -138,13 +150,13 @@ test.describe("signed in", () => {
       }
       return route.fulfill({ status: 404, headers: cors, contentType: "application/json", body: "{}" });
     });
-    return deletes;
+    return { deletes, exports };
   }
 
   for (const entitlementStatus of [200, 503]) {
     test(`deleting the account works (entitlement ${entitlementStatus})`, async ({ page }) => {
       await signIn(page);
-      const deletes = await fakeAccountApi(page, entitlementStatus);
+      const { deletes } = await fakeAccountApi(page, entitlementStatus);
       page.on("dialog", (dialog) => void dialog.accept());
       await page.goto("/account");
       await page.getByTestId("account-delete").click();
@@ -153,4 +165,33 @@ test.describe("signed in", () => {
       expect(deletes[0]).toMatch(/^Bearer /);
     });
   }
+
+  // The right of access (GDPR Art. 15, 152-FZ art. 14): the export endpoint had
+  // no button anywhere. It must work even when the plan doesn't load, and for
+  // an account waiting for deletion (410), which the server still lets export.
+  for (const entitlementStatus of [200, 503, 410]) {
+    test(`"Download my data" saves the export as a file (entitlement ${entitlementStatus})`, async ({ page }) => {
+      await signIn(page);
+      const { exports } = await fakeAccountApi(page, entitlementStatus);
+      await page.goto("/account");
+      const downloading = page.waitForEvent("download");
+      await page.getByTestId("account-export").click();
+      const download = await downloading;
+      expect(download.suggestedFilename()).toMatch(/^cleanway-data-\d{4}-\d{2}-\d{2}\.json$/);
+      const saved = await download.path();
+      const { readFile } = await import("node:fs/promises");
+      expect(JSON.parse(await readFile(saved, "utf-8"))).toEqual(EXPORT);
+      expect(exports).toHaveLength(1);
+      expect(exports[0]).toMatch(/^Bearer /);
+    });
+  }
+
+  test(`"Download my data" says when the hourly limit is reached`, async ({ page }) => {
+    await signIn(page);
+    await fakeAccountApi(page, 200, 429);
+    await page.goto("/account");
+    await page.getByTestId("account-export").click();
+    // (Next's route announcer is a role=alert too.)
+    await expect(page.getByRole("alert").filter({ hasText: "several times in the last hour" })).toBeVisible();
+  });
 });
