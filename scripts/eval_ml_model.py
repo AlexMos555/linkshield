@@ -2,11 +2,12 @@
 """What the domain ML model says on names it never trained on — alone, and
 inside the name-only pipeline.
 
-The served model (data/phishing_model.onnx) is retrained weekly against a
-Tranco sample (ml/train_model.py) — on the commercially licensed feeds in
-scripts/refresh_training_feeds.py since 2026-10-21, on URLhaus + OpenPhish
-before; a retrain replaces it only when it is no worse on held-out real
-sites. Its test AUC in
+The served model (data/phishing_model.onnx) is retrained weekly
+(ml/train_model.py) on the feeds scripts/refresh_training_feeds.py fetches:
+commercially licensed phishing feeds since 2026-10-21 (URLhaus + OpenPhish
+before), and since 2026-10-22 a benign class from the Majestic Million and
+Chrome UX Report lists (a Tranco sample before); a retrain replaces it only
+when it is no worse on held-out real sites. Its test AUC in
 data/model_meta.json is measured on a split of THAT corpus. This script asks
 the question the founder needs answered instead: on Russian traffic and on
 fresh phishing from sources the training never reads, is the model helping,
@@ -37,9 +38,15 @@ Sets (each a held-out set for the model unless noted):
                                          NOT held-out, reported for completeness)
                                          and the rest; rank 100k–1M; the same tail
                                          restricted to .ru/.su/.рф. Training
-                                         draws its benign half from this list,
-                                         so a tail sample overlaps training by
-                                         roughly its sampling fraction (~1%).
+                                         drew its benign half from Tranco
+                                         until 2026-10-22; since then a tail
+                                         name is a training row only when the
+                                         Majestic / CrUX lists carry it too.
+                                         The file is an evaluation input you
+                                         download (no licence stated; its
+                                         default list averages Cloudflare
+                                         Radar, CC BY-NC 4.0): never train on
+                                         it (docs/THIRD_PARTY_FEEDS.md §3).
   PhishTank online-valid (--phishtank)   verified phish submitted in the last
                                          --days days. PhishTank is never
                                          ingested by training or the blocklist.
@@ -224,7 +231,7 @@ def tranco_samples(path: Path, n: int, seed: int = SAMPLE_SEED,
     return {
         "tranco_10k_100k": (pick(head), {"pool": len(head), "note": "allowlisted in production; in_top_domains=1 for the model — not held-out"}),
         "tranco_10k_100k_unlisted": (pick(head_unlisted), {"pool": len(head_unlisted), "note": "rank 10k–100k in this snapshot but not in the shipped allowlist — scored like the long tail"}),
-        "tranco_100k_1m": (pick(tail), {"pool": len(tail), "note": "training samples its benign half from this range (~1% overlap)"}),
+        "tranco_100k_1m": (pick(tail), {"pool": len(tail), "note": "not a training source since 2026-10-22; names the Majestic / CrUX lists also carry can be training rows"}),
         "tranco_100k_1m_ru": (pick(tail_ru), {"pool": len(tail_ru), "note": ".ru/.su/.рф names below the allowlist — the Russian long tail"}),
     }
 

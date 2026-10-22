@@ -28,19 +28,45 @@ The corpus is all names now (URLhaus was mostly bare IPs), and on
 one — so ml/train_model.py keeps the served model unless the candidate is no
 worse on the held-out real sites (its replacement guard).
 
+Benign sources — the same rule (docs/THIRD_PARTY_FEEDS.md §3). Until
+2026-10-22 both lists were Tranco's, which states no licence of its own and
+whose default list averages Cloudflare Radar (CC BY-NC 4.0). Now:
+  * Majestic Million (CC BY 3.0) — ranked registrable domains, by links;
+  * Chrome UX Report top origins (CC BY 4.0), the global list and Russia's,
+    from the monthly CSV cache of the public BigQuery tables at
+    github.com/zakird/crux-top-lists — ranked by Chrome page loads. CrUX
+    names origins (https://www.example.com), so it has the host shapes a
+    registrable-domain list folds away, and the Russian list carries the
+    names under regional zones (gorzdrav.spb.ru) that the global one barely
+    has (139 against 3,584 on 2026-10-22).
+Majestic alone is not enough for the registrable domains: its long tail is
+what sites link to, not what people open, and a model trained on it scored
+4.3% of CrUX's long tail above 0.6 (the served model 0.5%) — cheap-TLD real
+sites (.online, .shop, .site) were rarer in it than in the phishing feeds.
+So the global CrUX list's registrable domains join it (Tranco averaged
+both, among others); Russia's list stays a host-shape source only: with
+its registrable domains 16.7% of the long tail would be Russian, not 2.2%.
+
 Writes (all gitignored — regenerated each run):
   data/phishtank.csv  — phishing corpus: 'url' (https://<host>/) and 'source'
                         columns. Name kept for train_model.py compatibility.
-  data/top-1m.csv     — Tranco top-1M (benign corpus).
-  data/top-1m-subdomains.csv — Tranco top-1M with subdomains: the benign
-                        host shapes (www.example.com, kvs.gov.spb.ru-style
-                        names) the default list folds into their registrable
-                        domain. See ml/train_model.load_benign_domains.
+  data/benign-domains.csv — `rank,domain`: the Majestic Million and the
+                        registrable domains of the global CrUX list (hosting
+                        tenants left out), one row per domain at its best rank.
+  data/benign-hosts.csv   — `rank,host`: CrUX global + Russia top origins,
+                        one row per host (its best rank; CrUX ranks are
+                        buckets: 1000, 5000, 10000 …): the benign host shapes
+                        (www.example.com, kvs.gov.spb.ru-style names) and
+                        hosting tenants. See ml/train_model.load_benign_domains.
+  data/benign-sources.json — where those two came from: the CrUX month of
+                        each scope, rows per list, licences, the fetch date.
+                        ml/train_model copies it into data/model_meta.json.
 
 Refusal (exit 2, previous files untouched): fewer than MIN_SOURCES feeds
-readable, or fewer than MIN_HOSTS hosts in all. In retrain-ml.yml that stops
-the job before the commit step, so production keeps the last good model
-instead of one trained on a lopsided corpus.
+readable, or fewer than MIN_HOSTS hosts in all; for the benign lists, any
+list unreadable or shorter than its MIN_*. In retrain-ml.yml that stops the
+job before the commit step, so production keeps the last good model instead
+of one trained on a lopsided corpus.
 
 Usage:
     python scripts/refresh_training_feeds.py
@@ -50,14 +76,14 @@ from __future__ import annotations
 
 import argparse
 import csv
-import io
+import datetime
+import gzip
 import json
 import logging
 import os
 import random
 import sys
-import zipfile
-from typing import Callable, Iterable, NamedTuple
+from typing import Callable, Iterable, NamedTuple, Optional
 from urllib.parse import urlparse
 
 import httpx
@@ -65,9 +91,29 @@ import httpx
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("training-feeds")
 
+_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _DATA = os.path.join(os.path.dirname(__file__), "..", "data")
-TRANCO = "https://tranco-list.eu/top-1m.csv.zip"
-TRANCO_SUBDOMAINS = "https://tranco-list.eu/top-1m-incl-subdomains.csv.zip"
+
+# Benign lists (licences read 2026-10-22; the table is docs/THIRD_PARTY_FEEDS.md §3).
+MAJESTIC = "https://downloads.majestic.com/majestic_million.csv"
+# One file per month and scope; the country lists have no 'current' alias.
+CRUX = "https://raw.githubusercontent.com/zakird/crux-top-lists/main/data/{scope}/{month}.csv.gz"
+# Scope → fewest origins a healthy file has. 2026-10-22: Majestic 1,000,000
+# rows, CrUX global 1,000,000 origins, Russia 661,624 (998,690 and 660,433
+# hosts). Far fewer means an error page or a truncated file.
+CRUX_SCOPES = {"global": 500_000, "country/ru": 200_000}
+# The scopes whose registrable domains join the Majestic Million in
+# BENIGN_DOMAINS (see the module docstring).
+CRUX_DOMAIN_SCOPES = ("global",)
+MIN_BENIGN_DOMAINS = 500_000
+# CrUX publishes a month on the second Tuesday of the next one, so early in
+# a month the newest file is two months back.
+CRUX_MONTHS_BACK = 4
+BENIGN_DOMAINS = "benign-domains.csv"
+BENIGN_HOSTS = "benign-hosts.csv"
+# Provenance of the two lists (CrUX month, rows, licences), written with
+# them; ml/train_model copies it into data/model_meta.json.
+BENIGN_SOURCES = "benign-sources.json"
 
 # ml/train_model.train() reads this many phishing hosts (names first, then
 # IP literals, in file order).
@@ -248,26 +294,159 @@ def refresh_phishing() -> int:
     return 0
 
 
-def _refresh_tranco(url: str, filename: str) -> int:
+def parse_majestic(text: str) -> list[tuple[int, str]]:
+    """majestic_million.csv → (GlobalRank, Domain) rows. Domain is the ASCII
+    (punycode) form; IDN_Domain, the Unicode one, is not read. A file
+    without those columns raises — an error page is a dead list."""
+    reader = csv.DictReader(text.splitlines())
+    if not {"GlobalRank", "Domain"} <= set(reader.fieldnames or ()):
+        raise ValueError(f"not the Majestic Million CSV (columns {reader.fieldnames})")
+    rows = []
+    for row in reader:
+        domain = _clean(row["Domain"] or "")
+        try:
+            rank = int(row["GlobalRank"])
+        except (TypeError, ValueError):
+            continue
+        if "." in domain and "/" not in domain:
+            rows.append((rank, domain))
+    return rows
+
+
+def parse_crux(text: str) -> list[tuple[int, str]]:
+    """crux-top-lists `origin,rank` → (rank, host). The rank is CrUX's
+    bucket (1000, 5000, 10000 …), the host the origin's: the scheme and any
+    port are dropped, so https://www.example.com and http://www.example.com
+    are one host."""
+    reader = csv.DictReader(text.splitlines())
+    if not {"origin", "rank"} <= set(reader.fieldnames or ()):
+        raise ValueError(f"not a CrUX top list (columns {reader.fieldnames})")
+    rows = []
+    for row in reader:
+        try:
+            host = urlparse(row["origin"] or "").hostname
+            rank = int(row["rank"])
+        except (TypeError, ValueError):
+            continue
+        if host and "." in host:
+            rows.append((rank, _clean(host)))
+    return rows
+
+
+def crux_months(today: datetime.date, back: int = CRUX_MONTHS_BACK) -> list[str]:
+    """YYYYMM of the last `back` full months, newest first."""
+    out = []
+    year, month = today.year, today.month
+    for _ in range(back):
+        year, month = (year, month - 1) if month > 1 else (year - 1, 12)
+        out.append(f"{year}{month:02d}")
+    return out
+
+
+def fetch_crux(scope: str, today: Optional[datetime.date] = None) -> tuple[str, list[tuple[int, str]]]:
+    """(month, rows) of the newest published month of one CrUX scope. A
+    missing month (404) tries the one before; anything else raises."""
+    for month in crux_months(today or _today()):
+        url = CRUX.format(scope=scope, month=month)
+        try:
+            body = _get(url)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                continue
+            raise
+        return month, parse_crux(gzip.decompress(body).decode("utf-8", "ignore"))
+    raise FileNotFoundError(f"no CrUX {scope} list in the last {CRUX_MONTHS_BACK} months")
+
+
+def registrable_rows(rows: Iterable[tuple[int, str]]) -> list[tuple[int, str]]:
+    """(rank, host) → (rank, registrable domain), the scorer's reading
+    (www.gosuslugi.ru → gosuslugi.ru, kvs.gov.spb.ru → gov.spb.ru). Hosting
+    tenants are left out: foo.github.io is not github.io's popularity, and
+    tenants are the host list's own stratum."""
+    if _ROOT not in sys.path:
+        sys.path.insert(0, _ROOT)
+    from api.services.ml_features import shared_tenant
+    from api.services.scoring import registrable_domain
+
+    return [(rank, registrable_domain(host)) for rank, host in rows if not shared_tenant(host)[0]]
+
+
+def merge_ranked(*lists: Iterable[tuple[int, str]]) -> list[tuple[int, str]]:
+    """One row per host, at its best rank; sorted by rank, then host."""
+    best: dict[str, int] = {}
+    for rows in lists:
+        for rank, host in rows:
+            if rank < best.get(host, rank + 1):
+                best[host] = rank
+    return sorted(((rank, host) for host, rank in best.items()))
+
+
+def _today() -> datetime.date:
+    return datetime.date.today()
+
+
+def _ranked_text(rows: list[tuple[int, str]]) -> str:
+    return "".join(f"{rank},{host}\n" for rank, host in rows)
+
+
+def _write_all(files: dict[str, str]) -> bool:
+    """Every file written in full to a .tmp first, then each moved over the
+    previous one: a write that fails (disk full, permissions) leaves every
+    previous file as it was and no .tmp behind."""
+    pending = [(os.path.join(_DATA, name) + ".tmp", os.path.join(_DATA, name), text)
+               for name, text in files.items()]
     try:
-        raw = _get(url)
-        with zipfile.ZipFile(io.BytesIO(raw)) as zf:
-            member = next(m for m in zf.namelist() if m.endswith(".csv"))
-            data = zf.read(member).decode("utf-8", "ignore")
-        out = os.path.join(_DATA, filename)
-        with open(out, "w") as f:
-            f.write(data)
-        logger.info("Wrote %s (%d bytes)", out, len(data))
-        return 0
-    except Exception as e:  # noqa: BLE001
-        logger.error("Tranco fetch failed (%s): %s", url, e)
-        return 2
+        for tmp, _, text in pending:
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(text)
+    except OSError as e:
+        logger.error("Benign list write failed, keeping the previous files: %s", e)
+        for tmp, _, _ in pending:
+            if os.path.isfile(tmp):
+                os.remove(tmp)
+        return False
+    for tmp, out, _ in pending:
+        os.replace(tmp, out)
+        logger.info("Wrote %s", out)
+    return True
 
 
 def refresh_benign() -> int:
-    # Both lists or neither: a retrain without the subdomain list would
-    # quietly go back to flagging every host that has a subdomain.
-    return _refresh_tranco(TRANCO, "top-1m.csv") or _refresh_tranco(TRANCO_SUBDOMAINS, "top-1m-subdomains.csv")
+    # Both files or neither: a retrain without the host list would quietly
+    # go back to flagging every host that has a subdomain, and one without
+    # the Russian list to flagging names under regional zones.
+    try:
+        majestic = parse_majestic(_get(MAJESTIC, timeout=300.0).decode("utf-8", "ignore"))
+        if len(majestic) < MIN_BENIGN_DOMAINS:
+            raise ValueError(f"Majestic Million: {len(majestic)} rows, need {MIN_BENIGN_DOMAINS}")
+        crux: dict[str, list[tuple[int, str]]] = {}
+        months: dict[str, str] = {}
+        for scope, minimum in CRUX_SCOPES.items():
+            month, rows = fetch_crux(scope)
+            if len(rows) < minimum:
+                raise ValueError(f"CrUX {scope} {month}: {len(rows)} origins, need {minimum}")
+            logger.info("CrUX %s %s: %d origins", scope, month, len(rows))
+            crux[scope], months[scope] = rows, month
+        domains = merge_ranked(majestic, *(registrable_rows(crux[s]) for s in CRUX_DOMAIN_SCOPES))
+        hosts = merge_ranked(*crux.values())
+    except Exception as e:  # noqa: BLE001 — any failure keeps the previous files
+        logger.error("Benign list refresh failed, keeping the previous files: %s", e)
+        return 2
+    provenance = {
+        "fetched": _today().isoformat(),
+        "majestic_million": {"url": MAJESTIC, "licence": "CC BY 3.0", "rows": len(majestic)},
+        "crux": {
+            "url": CRUX, "licence": "CC BY 4.0", "via": "github.com/zakird/crux-top-lists",
+            "months": months, "origins": {scope: len(rows) for scope, rows in crux.items()},
+        },
+        "files": {BENIGN_DOMAINS: len(domains), BENIGN_HOSTS: len(hosts)},
+    }
+    ok = _write_all({
+        BENIGN_DOMAINS: _ranked_text(domains),
+        BENIGN_HOSTS: _ranked_text(hosts),
+        BENIGN_SOURCES: json.dumps(provenance, indent=2) + "\n",
+    })
+    return 0 if ok else 2
 
 
 def main() -> int:

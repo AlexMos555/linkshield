@@ -154,19 +154,38 @@ the free mirrors. Do not re-weight the scorer blind.
 | CERT Polska Lista Ostrzeżeń | API spec §1: processing without restriction (read 2026-09-21) | Phishing corpus, at most 6,000 hosts |
 | TweetFeed `year.csv` | CC0 1.0 (README; the abuse.ch `external` block is never read) | Phishing corpus, at most 6,000 hosts |
 | Phishunt `feed.txt` | CC0 1.0 (terms §7) | Phishing corpus (~1,400 hosts, all it carries) |
-| Tranco top-1M, and with subdomains | No licence stated for the list itself (tranco-list.eu, read 2026-10-22); its default list averages five providers: Cisco Umbrella ("free of charge"), Majestic (CC BY 3.0), CrUX (CC BY-SA 4.0), Farsight (none stated) and **Cloudflare Radar (CC BY-NC 4.0)** — see *Open — the benign list* below | Benign corpus: famous / long tail / host shapes / tenants, and since 2026-10-22 the Russian, IDN, brand-named and lure-word strata (`ml/train_model.load_benign_domains`) |
+| **Majestic Million** `https://downloads.majestic.com/majestic_million.csv` | majestic.com/reports/majestic-million, "License": "Licensed under a Creative Commons Attribution 3.0 Unported License" (read 2026-10-22). CC BY allows commercial use; it asks for attribution (§5) | Benign corpus since 2026-10-22 (`data/benign-domains.csv`, with CrUX's registrable domains): the famous / long tail / Russian (.ru/.su/.рф) / IDN / brand-named / lure-word strata and the labels of the synthetic tenants (`ml/train_model.load_benign_domains`) |
+| **Chrome UX Report (CrUX) top origins**, global and Russia, `https://raw.githubusercontent.com/zakird/crux-top-lists/main/data/{global,country/ru}/<YYYYMM>.csv.gz` | developer.chrome.com/docs/crux/methodology, "License": "CrUX datasets by Google are licensed under a Creative Commons Attribution 4.0 International License" (read 2026-10-22). Read through zakird/crux-top-lists, a monthly CSV cache of the public BigQuery tables: "The data in this repo is all publicly posted by Google to their CrUX dataset … This is simply a cache of that public data" (README, read 2026-10-22); the repository states no licence of its own, and a cache cannot narrow the data's (CC BY 4.0 §2(a)(5)(B): no downstream restrictions) | Benign corpus since 2026-10-22: the registrable domains of the global list join Majestic's (`data/benign-domains.csv`); every origin's host, global and Russia, is the host list (`data/benign-hosts.csv`): subdomain shapes, names under Russian regional zones, real hosting tenants, lure-word real sites |
+| ~~Tranco top-1M, and with subdomains~~ | No licence stated for the list itself (tranco-list.eu, read 2026-10-22); its default list averages five providers: Cisco Umbrella ("free of charge"), Majestic (CC BY 3.0), CrUX (CC BY 4.0 per Google's methodology page; this row said CC BY-SA 4.0 until it was checked there), Farsight (none stated) and **Cloudflare Radar (CC BY-NC 4.0)** | **Removed from training 2026-10-22.** Until then every ranked benign sample (all but the two rows below) |
 | `data/typosquat_targets_ru.json` — the `official` and `unrelated` domains | Our own hand verification (name servers, Wikidata P856, whois; 2026-09-27) — first-party data | Benign corpus since 2026-10-22: ~340 real sites that carry a brand's name (gosuslugi29.ru, sberbank1.ru, sberbank.cz), three times each; the ones in the held-out sets are left out |
-| Synthetic tenants | Built from the Tranco names above (a ranked site's label under a curated hosting platform) | Benign corpus since 2026-10-22, ~2,000: what a real site's name looks like on pages.dev |
+| Synthetic tenants | Built from the Majestic / CrUX names above (a ranked site's label under a curated hosting platform) | Benign corpus since 2026-10-22, ~2,000: what a real site's name looks like on pages.dev |
 
 Since 2026-10-21. Before: the URLhaus full dump (abuse.ch ToU 2025-11-04:
 non-commercial, no derivative works — a trained model is a derivative; the
 anonymous download answers 410 Gone since that day) and the OpenPhish public
 feed (terms: no "product development", "detection" or "customer
 protection"). **Removed from training**: URLhaus and OpenPhish (both
-2026-10-21). **Not used for training**: Phishing.Database (MIT on the
+2026-10-21), Tranco (2026-10-22, the benign side). **Not used for
+training**: Cisco Umbrella's list (no licence stated), Cloudflare Radar
+(CC BY-NC 4.0), Phishing.Database (MIT on the
 compilation, sources unnamed — waits on the provenance e-mail in §1),
 phishing.army (CC BY-NC), PhishTank (needs a key; the weekly benchmark's
 held-out PhishTank sample is evaluation only, never a training row).
+
+**Majestic's site terms against the Majestic Million's licence** (read
+2026-10-23 at majestic.com/company/terms, the Terms and Conditions released
+13 April 2026). The terms' intellectual-property section bars commercial use
+of "the materials on our sites" without a licence from Majestic, and §14.1,
+the customer's obligations "in utilising any Subscription", bars querying
+their servers with automated tools without prior permission (f) and making
+derivative works of what they provide (g). We read the CC BY 3.0 notice on
+the Majestic Million page as that licence for this one file: it is specific
+to the dataset, and CC BY 3.0 has no non-commercial term and allows
+adaptations. §14.1 governs subscriptions, and the download needs none: the
+weekly job fetches the one CSV the page links ("Export CSV"), once a week,
+and never queries their API or search. Low risk. A written confirmation from
+Majestic (majestic.com/help/contact-us) would close it; that e-mail is a
+founder step and has not been sent.
 
 **The served model**: `data/phishing_model.onnx` (2026-10-21, AUC 0.9703)
 was still trained on URLhaus + OpenPhish. A model trained on the clean
@@ -192,18 +211,148 @@ clean (range over the five seeds):
 | Name-only verdict not "safe": fresh phishing / Tranco > 100k / Russian sites | 52.4% / 3.60% / 0.19% | 51.2-52.1% / 3.60-3.74% / 0.19-0.37% |
 | Russian look-alikes (186) caught by the verdict | 93.6% | 93.0% |
 
-So the first weekly retrain after the change ships a model with no
-non-commercial training data. Until then the served file is the old one.
+That table is #279's: the clean phishing feeds with Tranco's benign list.
+The served file stays the old one until a weekly retrain replaces it.
 
-**Open — the benign list**: Tranco states no licence for its lists, and its
-default list averages Cloudflare Radar, which is CC BY-NC 4.0 (alongside
-Umbrella, Majestic CC BY 3.0, CrUX CC BY-SA 4.0, Farsight). Every benign
-sample above, and `in_top_domains`, come from it. A Tranco list configured
-without Cloudflare Radar (tranco-list.eu "Configure", which needs an
-account — a founder step), or Majestic Million alone, would remove the
-question; switching `TRANCO` / `TRANCO_SUBDOMAINS` in
-`scripts/refresh_training_feeds.py` to that list's permanent ID is the code
-change, and the same five-seed check decides it.
+**Measured with the licensed benign lists (2026-10-22)**: the whole
+pipeline offline on the 2026-10-22 feeds (refresh → `ml/train_model.py
+--seed S` → every gate step of `retrain-ml.yml` → full test suite), three
+seeds (42, 7, 123): every gate and the full suite pass on all three, and
+all three replace the served model. The held-out sets are not the ones in
+the table above, so the served model is measured again on them: fresh
+phishing is PhishTank online-valid submitted in the 30 days to 2026-10-21,
+minus every host any of the four training feeds listed on 2026-10-22, by
+exact host or by registrable domain (1,540 hosts); the long tail is a 4% hash
+bucket of the ranked list's names past rank 10k (54,130) and of CrUX's
+global apex domains past 10k (12,259), minus every name any of the nine
+ensemble members trained on.
+
+| Held-out set | Served (URLhaus + OpenPhish, Tranco) | Licensed, 3 seeds |
+|---|---|---|
+| Fresh phishing, model > 0.6 / > 0.85 | 29.3% / 9.5% | 31.0-31.3% / 17.9-18.5% |
+| — at the served model's false-positive rate | 29.4% | 23.5-24.3% |
+| — ROC AUC against the long tail + Russian sites | 0.841 | 0.838-0.839 |
+| Real Russian sites (539), model > 0.6 | 0 | 1 (beeline-online.info) |
+| Ranked-list long tail / CrUX long tail, model > 0.6 | 0.38% / 0.52% | 1.13-1.26% / 2.09-2.32% |
+| Russian look-alikes (186), model > 0.6 | 21.0% | 17.7-20.4% |
+| Name-only verdict not "safe": fresh phishing / ranked > 100k / Russian sites | 42.6% / 3.10% / 0.19% | 40.5-41.3% / 3.42-3.54% / 0.37% |
+| Russian look-alikes caught by the verdict | 93.5% | 93.0-93.5% |
+
+**The regression gate is the thin margin.** secure-login.wasmer.app, the
+recall host the rules leave to the model (it must score above 0.6), scored
+0.69-0.77 on those three seeds. An independent re-run on 2026-10-23 used the
+same benign snapshot (byte-identical Majestic + CrUX 202609), phishing feeds
+re-downloaded about 3 hours later (18,187 rows after exclusions against
+18,202), and seeds 42, 99 and 2026. Seed 42, the one the weekly job always
+uses, passed everything (test AUC 0.903, wasmer 0.712), and so did seed 99
+(0.897, 0.767). Seed 2026 passed the other three gate steps and the full
+suite but **failed the regression gate: wasmer 0.594** (RECALL REGRESSION).
+Over the five draws wasmer is 0.59-0.77, and the 2%-medium-TLD variant below
+gave 0.598. The job's seed is fixed, so the week-to-week change in the feeds
+plays the part of a new seed: about one weekly run in five may fail this
+gate. That is fail-safe, because the job stops before the commit step. But
+until a run passes, production serves the 2026-10-21 model, which was
+trained on URLhaus + OpenPhish with Tranco's benign list. Merging this
+change does not replace that model. A passing retrain does: the Monday
+schedule, or a manual `workflow_dispatch` of `retrain-ml.yml`; then check
+that its "chore(ml): weekly retrain" commit landed.
+
+The re-run's held-out numbers (seeds 2026 and 99, on the sets above after
+dropping every name those seeds trained on) fall inside the table's ranges
+or just past them. Fresh phishing over 0.6 / 0.85 was 30.1-31.5% /
+17.9-18.9%, and 23.7-24.1% at the served model's false-positive rate. ROC
+AUC against the long tail + Russian sites was 0.843. The ranked / CrUX long
+tail over 0.6 was 1.02-1.10% / 1.96-2.12%, and Russian look-alikes over 0.6
+17.2-18.8%. The verdict was not "safe" for 40.8-41.3% / 3.36-3.49% / 0.37%,
+and it caught 93.0-93.5% of the look-alikes. The held-out Russian gate
+flagged only beeline-online.info, and the replacement guard was 1 vs 0 of
+539 on both seeds.
+
+**Leakage, checked.** None of the 756 held-out hosts (both
+`ru_heuristics_*` files and `benchmark_legit_ru.txt`) is a training row on
+any of the 15 ensemble members rebuilt, by exact host or by registrable
+domain, and no regression-gate host is either. The gate hosts are excluded
+by exact name only, so their siblings can be training rows: example.com
+(the gate has www.example.com), sberbank.ru and other *.sberbank.ru hosts
+(online.sberbank.ru), 64 *.yandex.ru and 51 *.google.com hosts. The
+subdomain and false-positive gates therefore partly measure recall of
+close siblings. That design predates the licensed lists, but CrUX's hosts
+add siblings. The PR's evaluation sets were carved from the same pool after
+training, so they hold out only for the draws that built them. Anyone who
+reuses them must first drop their own training union: for seeds 2026 and
+99 on newer feeds, 2,178-2,248 of the 54,130 ranked-tail names and 482-518
+of the 12,259 CrUX-tail names were training rows.
+
+So the first weekly retrain after this ships a model with no
+non-commercial training rows — and a weaker one than the Tranco-trained
+clean model above: at the scorer's 0.6 bar it flags three to four and a
+half times as many long-tail real sites as the served model, and at the
+served model's false-positive rate it catches less fresh phishing (24%
+against 29%),
+where the Tranco-trained one caught a third more. The verdict moves less
+(3.4-3.5% of the long tail past rank 100k not "safe", against 3.1%),
+because 0.6 alone adds 20 points and leaves a name "safe". What is left in
+the long tail is cheap-TLD real sites (.shop, .store, .info, .online):
+26% of the phishing class is under a high- or medium-risk TLD and 3.3% of
+the benign class. Two fixes were measured on one seed each and are not
+in: 3% of the class from ranked names under those TLDs took the long tail
+to 0.25% / 0.40% and the recall at the served model's false-positive rate
+to 30.6%, but put the obvious lures' median at 0.74
+(`tests/test_ml_scorer.py` wants 0.8); 2% from the medium-risk TLDs only
+gave 0.57% / 1.09% and 25.8%, and secure-login.wasmer.app 0.598 against
+the regression gate's 0.6.
+
+**The benign list (closed 2026-10-22)**: Tranco states no licence for its
+lists, and its default list averages Cloudflare Radar, which is CC BY-NC
+4.0. Until 2026-10-22 every ranked benign sample came from it. Since then
+`scripts/refresh_training_feeds.py` writes, and `ml/train_model.py` reads:
+
+* `data/benign-domains.csv` — the Majestic Million plus the registrable
+  domains of CrUX's global top-1M origins (hosting tenants left out), one
+  row per domain at its best rank: 1,568,364 domains on 2026-10-22.
+  Majestic alone was tried first and is not enough: it ranks by links, and
+  a model trained on its long tail scored 4.3% of CrUX's real-traffic long
+  tail above 0.6 (the served model 0.5%) — cheap-TLD real sites (.online,
+  .shop, .site) were rarer in it than in the phishing feeds — and it has
+  110 generic lure-word names to Tranco's ~300, which put
+  shopify-connect.com at 0.87, dangerous (`tests/test_scoring.py`).
+* `data/benign-hosts.csv` — every host of CrUX's global and Russian top
+  origins (1,555,774). The subdomain stratum takes only hosts in CrUX's
+  top-100k buckets (`SHAPE_MAX_RANK`): drawn from the whole 1M, where 67%
+  of the subdomain hosts sit under names outside the ranked top 100k, a
+  subdomain stopped adding anything (track.safeinflow.com 0.099 under its
+  apex's 0.102,
+  `tests/test_ml_scorer.py`). Names under Russian zones and tenants keep
+  every rank. The Russian list is what carries the regional zones: 3,584
+  names under them against the global list's 139.
+* The generic lure-word stratum also reads the registrable domains of the
+  Russian hosts (`lure_word_domains`): 306 names, about Tranco's count.
+
+Russian and .рф coverage against Tranco's: IDN names 2,749 (.рф 1,175)
+against ~1,400 (~500); .ru/.su/.рф registrable domains 32,764; regional-zone
+names 3,574 for the 1,800 the stratum takes. No gap to fill, so the
+hand-verified file is used as #279 used it, no more.
+
+**Still Tranco, not training rows**: two inputs the features read are built
+from Tranco, so nobody can yet say the model carries no Tranco data.
+
+* The `in_top_domains` feature reads `data/top_100k.json`, a Tranco
+  top-100k snapshot (2026-10-05). The scorer's allowlist, the blocklist's
+  veto and the extension also read it (§1, §2), and
+  `.github/workflows/refresh-tranco.yml` / `api/services/tranco.py` keep a
+  Tranco copy for serving. It is one input column, the same at training
+  and serving time, but it is the model's most important one (a third of
+  the importance in the 2026-10-22 retrains; the served model's second,
+  16%).
+* The tenant features (`ml_features.shared_tenant`, through
+  `scoring._SCORER_SHARED_SUFFIXES`) read `data/public_suffixes_in_top.json`.
+  `scripts/build_public_suffixes_in_top.py` builds that file from the Public
+  Suffix List rules whose base is in `data/top_100k.json`, so Tranco
+  decides which hosting suffixes count as shared.
+
+Replacing them (with a Majestic + CrUX top-100k, say) changes serving and
+the allowlist, not only training. That is a separate change, measured on
+its own.
 
 ## 4. Considered and not used
 
@@ -256,3 +405,18 @@ phishing.army (CC BY-NC 4.0) and OpenPhish; until 2026-10-21 also URLhaus
 (abuse.ch). Domain
 popularity from Tranco (Le Pochat et al.). Public suffixes from the Mozilla
 Public Suffix List (MPL 2.0).
+
+Cleanway's phishing model learns what real sites look like from the
+Majestic Million by Majestic (majestic.com/reports/majestic-million),
+licensed under the Creative Commons Attribution 3.0 Unported License
+(https://creativecommons.org/licenses/by/3.0/), and the Chrome UX Report by
+Google (developer.chrome.com/docs/crux), licensed under the Creative Commons
+Attribution 4.0 International License
+(https://creativecommons.org/licenses/by/4.0/), read through the
+crux-top-lists cache by Zakir Durumeric et al.
+(github.com/zakird/crux-top-lists). Its phishing examples come from
+PhishDestroy, CERT Polska, TweetFeed and Phishunt (§3). Changes made: the
+lists are reduced to host names and registrable domains, merged at each
+name's best rank, and sampled as training examples. The lists themselves
+are not redistributed. `data/model_meta.json` (`benign_sources`) records
+the CrUX month and the row counts each served model learned from.

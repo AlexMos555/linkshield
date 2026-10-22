@@ -105,7 +105,10 @@ def test_a_subdomain_of_an_unknown_name_is_suspicious_not_obvious():
     the 2026-10-21 feeds (five: three seeds, two feed subsamples) puts it at
     0.30-0.48 and the same legit peers 3-8% over 0.6. What "suspicious"
     can mean for a name with no lure is relative: it ranks above its own
-    apex and above famous sites' hosts of the same shape."""
+    apex and above famous sites' hosts of the same shape. (Benign lists
+    from Majestic + CrUX, 2026-10-22: 0.13-0.17 over an apex at 0.10-0.11,
+    peers 0.6-1.4% over 0.6. With CrUX subdomains of every rank it sat at
+    0.099 under its apex's 0.102 — train_model.SHAPE_MAX_RANK.)"""
     p = ml_predict("track.safeinflow.com")["phishing_probability"]
     assert p < 0.85, f"track.safeinflow.com={p:.3f} is ml_high_risk: the subdomain shortcut is back"
     for control in ("safeinflow.com", "www.example.com", "docs.google.com", "mail.yandex.ru"):

@@ -12,14 +12,18 @@ the host and nothing else — the part of a verdict the name alone produces.
     ru_legit    tests/data/ru_heuristics_legit.txt   must stay safe
     ru_phish    tests/data/ru_heuristics_phish.txt   must stay caught
     bench_ru    data/benchmark_legit_ru.txt          real Russian sites
-    top100k     data/top_100k.json                   Tranco top-100k
-    shapes      data/top-1m-subdomains.csv           Tranco hosts with a
-                                                     subdomain (optional,
-                                                     from refresh_training_feeds)
+    top100k     data/top_100k.json                   Tranco top-100k (the
+                                                     allowlist's snapshot)
+    shapes      data/benign-hosts.csv                CrUX top-origin hosts
+                                                     with a subdomain
+                                                     (optional, from
+                                                     refresh_training_feeds)
 
 The three Russian sets are held out of training (ml/train_model.HELD_OUT_FILES).
-The Tranco sets are NOT: some of their names are training negatives, so
-their rates flatter any model trained on them. The allowlist answers every
+The other two are NOT: the host list is a training source since 2026-10-22
+(until then data/top-1m-subdomains.csv, Tranco's, was), and top-100k names
+are also in the Majestic / CrUX lists training reads, so their rates flatter
+any model trained on them. The allowlist answers every
 top-100k name 'safe' before the model runs; --no-allowlist scores them as
 the long tail of real sites is scored — same shapes, nothing to spare them.
 
@@ -57,11 +61,11 @@ def _hosts(path: Path) -> list[str]:
 
 
 def _shape_hosts(n: int) -> list[str]:
-    """A seeded sample of Tranco hosts one or two levels under a registered
-    site — what 'has a subdomain' costs a real site."""
+    """A seeded sample of benign-list hosts one or two levels under a
+    registered site — what 'has a subdomain' costs a real site."""
     from api.services.scoring import _subdomain_labels, is_hosting_platform_site
 
-    path = ROOT / "data" / "top-1m-subdomains.csv"
+    path = ROOT / "data" / "benign-hosts.csv"   # `rank,host`
     if not path.exists():
         return []
     pool = []

@@ -28,8 +28,14 @@ coverage.xml
 .mypy_cache/
 
 # Data (large files)
+# Tranco top-1M copies: nothing writes them since 2026-10-22; kept so an old
+# local copy stays out of commits.
 data/top-1m.csv
 data/top-1m-subdomains.csv
+# ML benign lists (scripts/refresh_training_feeds.py): Majestic Million, CrUX top origins
+data/benign-domains.csv
+data/benign-hosts.csv
+data/benign-sources.json
 data/phishtank.csv
 data/feature_log.jsonl
 data/bloom_top100k.json

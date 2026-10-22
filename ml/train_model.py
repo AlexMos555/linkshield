@@ -6,12 +6,16 @@ Data sources (refreshed by scripts/refresh_training_feeds.py, weekly in
   - Positive (phishing): data/phishtank.csv — PhishDestroy, CERT Polska,
                          TweetFeed and Phishunt, capped per feed (until
                          2026-10-21 URLhaus + OpenPhish, both non-commercial)
-  - Negative (benign):   data/top-1m.csv — Tranco top-1M registrable domains
-                         data/top-1m-subdomains.csv — Tranco top-1M with
-                         subdomains, for the host-shape stratum: names under
-                         Russian zones, subdomains of registered sites and
-                         tenants of the curated hosting platforms (see
-                         load_benign_domains)
+  - Negative (benign):   data/benign-domains.csv — ranked registrable
+                         domains: the Majestic Million (CC BY 3.0) and those
+                         of the global Chrome UX Report list (CC BY 4.0)
+                         data/benign-hosts.csv — Chrome UX Report top
+                         origins, global and Russia (CC BY 4.0), for the
+                         host-shape stratum: names under Russian zones,
+                         subdomains of registered sites and tenants of the
+                         curated hosting platforms (see load_benign_domains).
+                         Tranco until 2026-10-22: its default list averages
+                         Cloudflare Radar, CC BY-NC 4.0
                          data/typosquat_targets_ru.json — the hand-verified
                          brand-owned and look-alike-but-unrelated real sites
                          (load_verified_brand_sites)
@@ -80,21 +84,30 @@ from api.services.url_features import FEATURES_VERSION  # noqa: E402
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 DATA_DIR = os.path.join(ROOT, "data")
 MODEL_DIR = os.path.join(ROOT, "data")
+# The benign lists scripts/refresh_training_feeds.py writes into DATA_DIR,
+# `rank,name` per line: registrable domains (Majestic Million + CrUX
+# global) and hosts with subdomains (CrUX top origins, global + Russia).
+BENIGN_DOMAINS_CSV = "benign-domains.csv"
+BENIGN_HOSTS_CSV = "benign-hosts.csv"
+# Written with them: the CrUX month, rows per list, licences (provenance for
+# model_meta.json).
+BENIGN_SOURCES_JSON = "benign-sources.json"
 
 # Evaluation sets that must never be trained on: the Russian false-positive
 # and look-alike sets (scripts/eval_ru_heuristics.py) and the weekly
 # benchmark's legitimate-site sample (scripts/eval_fresh_urls.py). Matched by
 # registrable domain, so kvs.gov.spb.ru in a set also keeps every other
 # *.gov.spb.ru host out of training — near-duplicates would leak the answer.
-# 96 of the LEGIT hosts and 106 of the benchmark's are in the Tranco top-1M,
-# 161 LEGIT hosts in its subdomain list.
+# 139 of the LEGIT hosts and 109 of the benchmark's are in the Majestic
+# Million, 186 and 162 in the CrUX host list (2026-10-22; Tranco top-1M: 96
+# and 106).
 HELD_OUT_FILES = (
     os.path.join(ROOT, "tests", "data", "ru_heuristics_legit.txt"),
     os.path.join(ROOT, "tests", "data", "ru_heuristics_phish.txt"),
     os.path.join(ROOT, "data", "benchmark_legit_ru.txt"),
 )
 
-# Share of the benign class drawn from Tranco's subdomain list (see
+# Share of the benign class drawn from the host list (BENIGN_HOSTS_CSV, see
 # load_benign_domains), and of that stratum at most this much from names
 # under Russian public suffixes. 2026-10-22: 0.25 → 0.15 of a 48,000
 # larger class (7,200 shapes, was 3,000): at 0.25 a weighted benign class
@@ -134,6 +147,17 @@ PHISH_TENANTS_PER_PLATFORM = 200
 # for a tenant) a host-shape sample may have: www.example.com,
 # kvs.gov.spb.ru and foo.github.io are 1, zenit.kfis.gov.spb.ru 2.
 MAX_SHAPE_DEPTH = 2
+# Subdomains of registered sites come from the hosts ranked this high (CrUX
+# buckets: the 100k origins people open most, globally or in Russia). CrUX
+# ranks origins down to 1M, and 67% of its subdomain hosts sit under names
+# outside the ranked top 100k: drawn from all of them (2026-10-22) the model
+# learned that a subdomain of an unknown name is as ordinary as the name
+# (track.safeinflow.com 0.099 under its apex's 0.102, tests/test_ml_scorer.py;
+# the served model adds +0.24 for a subdomain). Of the subdomain hosts in
+# CrUX's top 100k, 76% have their parent in the ranked list's top 100k.
+# Names under Russian zones and tenants keep every rank: they are their own
+# names, not a site's subdomain.
+SHAPE_MAX_RANK = 100_000
 
 # ── The commercially clean corpus (2026-10-22) ──
 #
@@ -167,7 +191,8 @@ N_BENIGN = 48000
 BENIGN_CLASS_WEIGHT = 3.0
 # Registrable domains under .ru / .su / .рф from the ranked list — on top of
 # the Russian-zone host shapes (regional zones such as spb.ru) — and every
-# IDN name in it (about 1,400; .рф alone ~500).
+# IDN name in it (2026-10-22: 2,749, .рф 1,175 — Majestic 1,315 of them;
+# Tranco had ~1,400 and ~500).
 RU_TLDS = (".ru", ".su", ".xn--p1ai")
 RU_PLD_SHARE = 0.10
 # Synthetic tenants: real long-tail names (the label of a ranked registrable
@@ -185,7 +210,12 @@ BRAND_NAME_SHARE = 0.031
 BRAND_MIN_LEN = 4
 # Ranked registrable domains whose name has a GENERIC lure word part and no
 # classic one (_has_generic_lure_word: sncf-connect.com, home-connect.com,
-# aami-rewards.com.au) — ~300 in the 1M list, all of them. A random 48,000
+# aami-rewards.com.au) — ~300 in Tranco's 1M list, all of them. The Majestic
+# Million alone has 110 (51 with "connect"), and with them the model scored
+# shopify-connect.com 0.87 (dangerous, tests/test_scoring.py); with the
+# global CrUX domains the ranked list has 226, and lure_word_domains adds
+# those of the Russian CrUX hosts: ~300 again (2026-10-22), 177 with
+# "connect". A random 48,000
 # of the list held ~15, while the phishing class has hundreds: "connect" or
 # "rewards" in a name had become proof, and the model scored
 # shopify-connect.com 0.97 (tests/test_scoring.py's brand partner names).
@@ -303,7 +333,7 @@ def _committed_flagged(hosts_matrix: np.ndarray) -> Optional[int]:
         return None
 
 
-def _read_tranco(path: str) -> list[tuple[int, str]]:
+def _read_ranked(path: str) -> list[tuple[int, str]]:
     ranked = []
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
         for line in f:
@@ -368,12 +398,12 @@ def _tenant_depth(host: str, suffix: str) -> int:
 
 def _shape_pool(ranked: list[tuple[int, str]], exclude: set[str],
                 held_out: frozenset[str]) -> tuple[list[str], list[str], list[str]]:
-    """(names under a Russian public suffix, subdomains of registered sites,
-    tenants of the curated hosting platforms)."""
+    """(names under a Russian public suffix, subdomains of registered sites
+    ranked SHAPE_MAX_RANK or better, tenants of the curated hosting platforms)."""
     ru_zone: list[str] = []
     subdomains: list[str] = []
     tenants: list[str] = []
-    for _, host in ranked:
+    for rank, host in ranked:
         if host in exclude or host.endswith(".arpa") or registrable_domain(host) in held_out:
             continue
         # A hosting tenant (foo.github.io, bar.tw1.ru) is someone's own NAME
@@ -390,7 +420,7 @@ def _shape_pool(ranked: list[tuple[int, str]], exclude: set[str],
         if _ru_registrable_domain(host):
             if depth <= MAX_SHAPE_DEPTH:
                 ru_zone.append(host)
-        elif 1 <= depth <= MAX_SHAPE_DEPTH and not _is_under_shared_suffix(host):
+        elif 1 <= depth <= MAX_SHAPE_DEPTH and not _is_under_shared_suffix(host) and rank <= SHAPE_MAX_RANK:
             subdomains.append(host)
     return ru_zone, subdomains, tenants
 
@@ -410,13 +440,20 @@ def _cap_per_platform(tenants: list[str], rng: random.Random) -> list[str]:
 
 def load_benign_domains(max_n: int = N_BENIGN, exclude: Iterable[str] = (),
                         held_out: frozenset[str] = frozenset(), seed: int = SEED) -> list[str]:
-    """Benign negatives from Tranco: famous, long tail, and host shapes,
+    """Benign negatives: famous, long tail (BENIGN_DOMAINS_CSV, the
+    Majestic Million and the global CrUX list's registrable domains) and
+    host shapes (BENIGN_HOSTS_CSV, CrUX top origins, global and Russia),
     plus the clean-corpus strata (2026-10-22, see N_BENIGN): every IDN
     name, RU_PLD_SHARE Russian registrable domains, synthetic tenants,
     brand-named and generic-lure-word real sites and the hand-verified
     brand file. `exclude` is
     the phishing class (its tenants set the synthetic tenants' platform
     mix); GATE_HOSTS are always left out.
+
+    Until 2026-10-22 both lists were Tranco's (top-1M, and top-1M with
+    subdomains); the history below names it where it happened. Its default
+    list averages Cloudflare Radar, CC BY-NC 4.0, so a paid product could
+    not train on it (docs/THIRD_PARTY_FEEDS.md §3).
 
     CRITICAL (2026-07-06 fix): the previous version sampled benign ONLY from
     top_10k.json. Training benign purely on famous domains taught the model
@@ -438,8 +475,10 @@ def load_benign_domains(max_n: int = N_BENIGN, exclude: Iterable[str] = (),
     above 0.6 (www.example.com 0.98, docs.google.com 0.91) and every
     kvs.gov.spb.ru-shaped government host 0.92-0.99. And Tranco folds every
     name under a Russian regional zone into the zone (spb.ru ranks, not
-    herzen.spb.ru). So SHAPE_SHARE of the class comes from the same
-    provider's list WITH subdomains: names under Russian public suffixes
+    herzen.spb.ru). So SHAPE_SHARE of the class comes from a list WITH
+    subdomains (CrUX names origins; its Russian list is where the regional
+    zones are — the global one had 139 such names on 2026-10-22, Russia's
+    3,584): names under Russian public suffixes
     (up to RU_ZONE_SHARE_OF_SHAPES of the stratum) and hosts one or two
     levels under a registered site; and, on top of it, TENANT_SHARE of the
     class from tenants of the curated hosting platforms (at most
@@ -463,7 +502,7 @@ def load_benign_domains(max_n: int = N_BENIGN, exclude: Iterable[str] = (),
     tail: list[str] = []  # rank 10k-1M (long tail)
     ru_pld: list[str] = []  # under .ru / .su / .рф (any rank)
     idn: list[str] = []  # any IDN name
-    for rank, domain in _read_tranco(os.path.join(DATA_DIR, "top-1m.csv")):
+    for rank, domain in _read_ranked(os.path.join(DATA_DIR, BENIGN_DOMAINS_CSV)):
         if domain in exclude or registrable_domain(domain) in held_out:
             continue
         if "xn--" in domain:
@@ -472,14 +511,15 @@ def load_benign_domains(max_n: int = N_BENIGN, exclude: Iterable[str] = (),
             ru_pld.append(domain)
         (head if rank <= 10000 else tail).append(domain)
 
-    subdomain_path = os.path.join(DATA_DIR, "top-1m-subdomains.csv")
-    if not os.path.exists(subdomain_path):
+    hosts_path = os.path.join(DATA_DIR, BENIGN_HOSTS_CSV)
+    if not os.path.exists(hosts_path):
         raise FileNotFoundError(
-            f"{subdomain_path} is missing — run scripts/refresh_training_feeds.py. "
+            f"{hosts_path} is missing — run scripts/refresh_training_feeds.py. "
             "Without it the benign class has no subdomain shapes and the model "
             "flags almost every host with a subdomain."
         )
-    ru_zone, subdomains, tenants = _shape_pool(_read_tranco(subdomain_path), exclude, held_out)
+    ranked_hosts = _read_ranked(hosts_path)
+    ru_zone, subdomains, tenants = _shape_pool(ranked_hosts, exclude, held_out)
     n_shape = int(max_n * SHAPE_SHARE)
     n_ru = min(len(ru_zone), int(n_shape * RU_ZONE_SHARE_OF_SHAPES))
     shapes = rng.sample(ru_zone, n_ru)
@@ -505,13 +545,17 @@ def load_benign_domains(max_n: int = N_BENIGN, exclude: Iterable[str] = (),
     tail = [d for d in tail if d not in noise]
     extra += rng.sample(pool, min(len(pool), int(max_n * BRAND_NAME_SHARE)))
     taken |= set(extra)
-    brand_pool = set(pool)
-    lure = sorted({d for d in tail + head if d not in taken and d not in brand_pool and _has_generic_lure_word(d)})
+    # The lure-word names of both lists: the ranked domains and the
+    # registrable domains of the host list (see LURE_WORD_SHARE).
+    lure = {d for d in tail + head if _has_generic_lure_word(d)}
+    lure |= {d for d in lure_word_domains(h for _, h in ranked_hosts)
+             if d not in exclude and registrable_domain(d) not in held_out}
+    lure = sorted(lure - set(brand_named_sites(lure)) - taken)
     extra += rng.sample(lure, min(len(lure), int(max_n * LURE_WORD_SHARE))) * LURE_WORD_REPEAT
     taken |= set(extra)
     verified = [h for h in load_verified_brand_sites()
                 if h not in exclude and h not in taken and registrable_domain(h) not in held_out]
-    # At most 5% of the class, so a small run (the tests' 40) stays mostly Tranco.
+    # At most 5% of the class, so a small run (the tests' 40) stays mostly ranked-list names.
     verified = rng.sample(verified, min(len(verified), int(max_n * 0.05) // VERIFIED_REPEAT))
     extra += verified * VERIFIED_REPEAT
     taken |= set(extra)
@@ -534,8 +578,9 @@ def synthetic_tenants(tail: list[str], phishing_tenants: Iterable[str], n: int, 
     suffix), half spread evenly over the site platforms
     (SYNTHETIC_UNIFORM_SHARE, _site_platform_suffixes).
 
-    Tranco carries a handful of real tenants per platform (7 myshopify.com
-    shops in the 2026-10-21 list) where the feeds carry hundreds, so with
+    Tranco carried a handful of real tenants per platform (7 myshopify.com
+    shops in the 2026-10-21 list; CrUX 120, of which TENANTS_PER_PLATFORM
+    reach the pool) where the feeds carry hundreds, so with
     real tenants alone "is a tenant on pages.dev" stayed a phishing trait
     and official-shop.myshopify.com scored 0.51-0.59. No phishing tenants
     (a test, an empty feed) means no synthetic ones."""
@@ -600,6 +645,23 @@ def _has_generic_lure_word(domain: str) -> bool:
     name = host_shape(domain)[1]
     return has_suspicious_keyword(name) and not (
         set(name.lower().replace("_", "-").split("-")) & _COMBOSQUAT_KEYWORDS)
+
+
+def lure_word_domains(hosts: Iterable[str]) -> set[str]:
+    """Registrable domains of `hosts` (not hosting tenants) whose name has a
+    generic lure word only (_has_generic_lure_word): www.sncf-connect.com
+    gives sncf-connect.com. A substring pass first, so 1.5M hosts cost
+    seconds, not a registrable_domain() each."""
+    from api.services.scoring import _SUSPICIOUS_KEYWORDS
+
+    words = re.compile("|".join(sorted(map(re.escape, _SUSPICIOUS_KEYWORDS), key=len, reverse=True)))
+    out = set()
+    for host in hosts:
+        if words.search(host) and not shared_tenant(host)[0]:
+            domain = registrable_domain(host)
+            if _has_generic_lure_word(domain):
+                out.add(domain)
+    return out
 
 
 def brand_named_sites(domains: Iterable[str]) -> list[str]:
@@ -688,6 +750,18 @@ def phishing_source_mix(hosts: Iterable[str]) -> dict[str, int]:
                 source = row.get("source") or "?"
                 mix[source] = mix.get(source, 0) + 1
     return dict(sorted(mix.items()))
+
+
+def benign_provenance() -> Optional[dict]:
+    """The record refresh_training_feeds wrote beside the benign lists, or
+    None when there is none to read (lists placed by hand, an unreadable
+    file) — model_meta.json then says null rather than guess a month."""
+    try:
+        with open(os.path.join(DATA_DIR, BENIGN_SOURCES_JSON), encoding="utf-8") as f:
+            record = json.load(f)
+    except (OSError, ValueError):
+        return None
+    return record if isinstance(record, dict) else None
 
 
 def average_members(members: list) -> "CatBoostClassifier":
@@ -886,6 +960,9 @@ def train(replace_anyway: bool = False, seed: int = SEED):
             # Provenance: which feeds the phishing class came from (the CC0 /
             # unrestricted ones only since 2026-10-21) and how it was drawn.
             "phishing_sources": phishing_source_mix(phishing),
+            # …and which benign lists (Majestic Million, CrUX month, licences)
+            # since 2026-10-22; plus data/typosquat_targets_ru.json, first-party.
+            "benign_sources": benign_provenance(),
             "benign_class_weight": BENIGN_CLASS_WEIGHT,
             "ensemble_members": ENSEMBLE_MEMBERS,
             "seed": seed,
