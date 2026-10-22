@@ -1,9 +1,22 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
+import { InstallButtons } from "@/components/InstallButtons";
 import { routing, type Locale } from "@/i18n/routing";
+import { localePath } from "@/lib/locale-path";
 
 const SITE_URL = "https://cleanway.ai";
+
+const stepCta: React.CSSProperties = {
+  display: "inline-block",
+  background: "#22c55e",
+  color: "#052e16",
+  padding: "8px 16px",
+  borderRadius: 8,
+  fontWeight: 700,
+  fontSize: 13,
+  textDecoration: "none",
+};
 
 function urlFor(locale: Locale | string): string {
   return locale === routing.defaultLocale ? `${SITE_URL}/success` : `${SITE_URL}/${locale}/success`;
@@ -58,7 +71,7 @@ export default async function SuccessPage({ searchParams, params }: Props) {
     >
       <nav style={{ background: "#0f172af0", borderBottom: "1px solid #1e293b", padding: "14px 24px" }}>
         <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <a href="/" style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>
+          <a href={localePath(safeLocale, "/")} style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}>
             Cleanway
           </a>
         </div>
@@ -98,18 +111,20 @@ export default async function SuccessPage({ searchParams, params }: Props) {
             {t("next_steps_heading")}
           </h2>
 
+          {/* What installs today (lib/install-urls.ts): the Android app and
+              the DNS filter. The browser extensions and the iPhone app show
+              their own localized status pills — they used to be "in store
+              review" here, which was never true, next to a /dns#install
+              anchor that does not exist. */}
           <div style={{ display: "flex", gap: 14, marginBottom: 16, alignItems: "flex-start" }}>
             <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#22c55e", color: "#052e16", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, flexShrink: 0 }}>1</div>
             <div>
               <div style={{ fontSize: 15, fontWeight: 600, color: "#f8fafc", marginBottom: 4 }}>{t("step1_title")}</div>
               <div style={{ fontSize: 13, color: "#94a3b8" }}>{t("step1_body")}</div>
-              <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <a href="/dns#install" style={{ background: "#22c55e", color: "#052e16", padding: "8px 16px", borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: "none" }}>
-                  Browser extensions &amp; DNS profile →
+              <div style={{ marginTop: 10 }}>
+                <a href={localePath(safeLocale, "/android")} data-testid="success-android" style={stepCta}>
+                  {t("step1_cta")}
                 </a>
-              </div>
-              <div style={{ marginTop: 8, fontSize: 12, color: "#94a3b8" }}>
-                Chrome, Firefox, Edge and Safari extensions are in store review. The DNS profile blocks scam sites system-wide today — no app required.
               </div>
             </div>
           </div>
@@ -119,6 +134,14 @@ export default async function SuccessPage({ searchParams, params }: Props) {
             <div>
               <div style={{ fontSize: 15, fontWeight: 600, color: "#f8fafc", marginBottom: 4 }}>{t("step2_title")}</div>
               <div style={{ fontSize: 13, color: "#94a3b8" }}>{t("step2_body")}</div>
+              <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-start" }} data-testid="success-status">
+                <InstallButtons platforms={["ios", "chrome", "firefox", "edge", "safari"]} size="sm" />
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <a href={localePath(safeLocale, "/dns")} data-testid="success-dns" style={stepCta}>
+                  {t("step2_cta")}
+                </a>
+              </div>
             </div>
           </div>
 

@@ -15,7 +15,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { routing, type Locale } from "@/i18n/routing";
 import { localePath } from "@/lib/locale-path";
-import { localeAlternates } from "@/lib/seo";
+import { DEFAULT_OG_IMAGE, localeAlternates } from "@/lib/seo";
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_LIVE } from "@/lib/support";
 
 function resolveLocale(locale: string): Locale {
@@ -29,10 +29,31 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const safeLocale = resolveLocale((await params).locale);
   const t = await getTranslations({ locale: safeLocale, namespace: "Support" });
+  const title = `${t("title")} — Cleanway`;
+  const description = t("subtitle");
+  const alternates = localeAlternates(safeLocale, "/support");
+  // A link people forward ("write to support"): its own preview, not the
+  // site-wide one, and the share image by its locale-free URL, /og.png
+  // (lib/seo.ts).
   return {
-    title: `${t("title")} — Cleanway`,
-    description: t("subtitle"),
-    alternates: localeAlternates(safeLocale, "/support"),
+    title,
+    description,
+    alternates,
+    openGraph: {
+      title,
+      description,
+      url: alternates.canonical,
+      siteName: "Cleanway",
+      type: "website",
+      locale: safeLocale,
+      images: [DEFAULT_OG_IMAGE],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [DEFAULT_OG_IMAGE.url],
+    },
   };
 }
 

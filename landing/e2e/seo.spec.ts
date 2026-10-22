@@ -51,6 +51,61 @@ for (const path of PAGES) {
   }
 }
 
+/** `content` of a <meta property=…> in raw HTML, the way a link-preview bot reads it. */
+function ogTag(head: string, property: string): string | undefined {
+  return head.match(new RegExp(`<meta property="${property}" content="([^"]*)"`))?.[1];
+}
+
+// Pages people send each other ("here is how to delete it", "write to
+// support"). Without their own openGraph block Telegram showed the generic
+// site title, no og:url, and on English pages an og:image that answered 307.
+for (const path of ["/support", "/signup", "/delete-account"]) {
+  for (const locale of ["en", "ru"]) {
+    test(`${local(locale, path)}: its own share preview, og:url and a share image that is not a redirect`, async ({ request }) => {
+      const telegram = { "user-agent": "TelegramBot (like TwitterBot)" };
+      const home = (await (await request.get(local(locale, "/"), { headers: telegram })).text()).split("</head>")[0];
+      const head = (await (await request.get(local(locale, path), { headers: telegram })).text()).split("</head>")[0];
+
+      const title = head.match(/<title>([^<]*)<\/title>/)?.[1];
+      expect(ogTag(head, "og:title")).toBe(title);
+      expect(ogTag(head, "og:title")).not.toBe(ogTag(home, "og:title"));
+      expect(ogTag(head, "og:url")).toBe(abs(locale, path));
+      expect(ogTag(head, "og:image")).toBe(`${SITE}/og.png`);
+      expect(head).toContain('name="twitter:image"');
+    });
+  }
+}
+
+// Pages with no openGraph block of their own inherit the layout's. The
+// file-convention app/[locale]/opengraph-image.tsx used to give them
+// /en/opengraph-image?… — a 307 to /opengraph-image — instead of /og.png.
+for (const path of ["/success", "/cancel", "/transparency/methodology"]) {
+  for (const locale of ["en", "ru"]) {
+    test(`${local(locale, path)}: the inherited share image is /og.png, not a redirecting file-convention URL`, async ({ request }) => {
+      const telegram = { "user-agent": "TelegramBot (like TwitterBot)" };
+      const head = (await (await request.get(local(locale, path), { headers: telegram })).text()).split("</head>")[0];
+      expect(ogTag(head, "og:image")).toBe(`${SITE}/og.png`);
+      expect(head).not.toContain("opengraph-image");
+      expect(head).toContain(`name="twitter:image" content="${SITE}/og.png"`);
+    });
+  }
+}
+
+test("the share image answers 200 in every language, for a bot with no cookies", async ({ playwright, baseURL }) => {
+  // /opengraph-image went through the locale middleware: "Accept-Language: ru"
+  // got a 307 to /ru/opengraph-image. A preview bot does not follow it.
+  for (const language of ["en", "ru-RU,ru;q=0.9", "ar"]) {
+    const bot = await playwright.request.newContext({ baseURL });
+    const image = await bot.get("/og.png", {
+      maxRedirects: 0,
+      headers: { "user-agent": "TelegramBot (like TwitterBot)", "accept-language": language },
+    });
+    expect(image.status(), language).toBe(200);
+    expect(image.headers()["content-type"]).toBe("image/png");
+    await bot.dispose();
+  }
+});
+
 test("/check has its own title and description, not the home page's", async ({ page }) => {
   await page.goto("/ru");
   const homeDescription = await page.locator('meta[name="description"]').getAttribute("content");

@@ -3,11 +3,17 @@
  *
  * Server-rendered landing for the "Cleanway DNS without the app"
  * flow. The same page works for iOS (one-tap .mobileconfig
- * download), macOS Big Sur+ (same .mobileconfig as iOS), and Windows 11
- * (DoH server URL in Settings → Network). Android is sent to the app:
- * its Private DNS needs DNS-over-TLS on port 853, which dns.cleanway.ai
- * does not serve, and a strict Private DNS host that never answers takes
- * the whole phone offline.
+ * download), macOS Big Sur+ (same .mobileconfig as iOS), and Windows
+ * through the browser's own Secure DNS (Chrome, Edge, Firefox). Android is
+ * sent to the app: its Private DNS needs DNS-over-TLS on port 853, which
+ * dns.cleanway.ai does not serve, and a strict Private DNS host that never
+ * answers takes the whole phone offline.
+ *
+ * Not Windows' system-wide DoH: it pairs a server IP with the template, and
+ * dns.cleanway.ai is a CNAME to Railway with no stable IP of its own. The old
+ * steps paired 1.1.1.1 with our template, so Windows sent our DoH request to
+ * Cloudflare, which answers 403 — no DNS, or a silent fallback to unfiltered
+ * 1.1.1.1. System-wide Windows DoH waits for a fixed resolver IP.
  *
  * The page deliberately does NOT use platform detection on the
  * server — Cloudflare Workers and CDNs cache the page across
@@ -18,6 +24,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { routing, type Locale } from "@/i18n/routing";
+import { localePath } from "@/lib/locale-path";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 const SITE_URL = "https://cleanway.ai";
@@ -79,8 +86,7 @@ export default async function DnsPage({
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL;
   const mobileconfigUrl = `${apiBase}/api/v1/mobileconfig?locale=${safeLocale}`;
-  const androidUrl =
-    safeLocale === routing.defaultLocale ? "/android" : `/${safeLocale}/android`;
+  const androidUrl = localePath(safeLocale, "/android");
 
   return (
     <main
@@ -152,15 +158,7 @@ export default async function DnsPage({
         >
           {t("android_app_cta")}
         </a>
-        <div
-          style={{
-            marginTop: 20,
-            padding: "12px 16px",
-            borderRadius: 10,
-            border: "1px solid #f59e0b",
-            background: "rgba(245, 158, 11, 0.08)",
-          }}
-        >
+        <div style={_undoStyle}>
           <p style={{ color: "#fbbf24", fontWeight: 600, marginBottom: 6 }}>
             {t("android_undo_title")}
           </p>
@@ -168,17 +166,26 @@ export default async function DnsPage({
         </div>
       </section>
 
-      {/* Windows 11 — DoH server in network settings */}
-      <section style={_sectionStyle("#a855f7")}>
-        <h2 style={_h2Style}>🪟 Windows 11</h2>
+      {/* Windows — the browser's Secure DNS (the header says why not
+          Windows' own DoH setting), plus the way back for anyone who
+          followed the old network-settings steps. */}
+      <section style={_sectionStyle("#a855f7")} data-testid="dns-windows">
+        <h2 style={_h2Style}>🪟 {t("win_heading")}</h2>
         <p style={{ marginBottom: 12 }}>{t("win_intro")}</p>
-        <ol style={{ paddingLeft: 22, marginBottom: 16 }}>
-          <li>{t("win_step1")}</li>
-          <li>{t("win_step2")}</li>
-          <li>
-            {t("win_step3")} <code style={_codeStyle}>{DOH_URL}</code>
-          </li>
-        </ol>
+        <ul style={{ paddingInlineStart: 22, marginBottom: 16 }}>
+          <li style={{ marginBottom: 6 }}>{t("win_chrome")}</li>
+          <li style={{ marginBottom: 6 }}>{t("win_edge")}</li>
+          <li style={{ marginBottom: 6 }}>{t("win_firefox")}</li>
+        </ul>
+        <p>
+          {t("win_address")} <code style={_codeStyle}>{DOH_URL}</code>
+        </p>
+        <div style={_undoStyle}>
+          <p style={{ color: "#fbbf24", fontWeight: 600, marginBottom: 6 }}>
+            {t("win_undo_title")}
+          </p>
+          <p style={{ fontSize: 14 }}>{t("win_undo_body")}</p>
+        </div>
       </section>
 
       {/* What this protects you from */}
@@ -194,10 +201,12 @@ export default async function DnsPage({
         </ul>
       </section>
 
-      {/* Where DNS fits — honest layering + extension cross-sell.
-          Sets accurate expectations (wide but shallow) and differentiates
-          from generic DNS filters. Roadmap: position DNS as one layer, not
-          a head-to-head NextDNS/ControlD competitor. */}
+      {/* Where DNS fits — honest layering. Sets accurate expectations (wide
+          but shallow) and differentiates from generic DNS filters. The deeper
+          layer that ships today is the Android app; the browser extension is
+          named as coming soon (lib/install-urls.ts: no listing is live), so
+          the link goes to /android, not to install pills that all say
+          "Coming soon". */}
       <section
         style={{
           marginBottom: 40,
@@ -213,8 +222,8 @@ export default async function DnsPage({
         <p style={{ marginBottom: 10 }}>{t("layer_body")}</p>
         <p style={{ marginBottom: 10 }}>{t("layer_extension")}</p>
         <p style={{ marginBottom: 10 }}>
-          <a href="/#features" style={{ color: "#60a5fa", fontWeight: 600 }}>
-            {t("layer_extension_cta")}
+          <a href={androidUrl} style={{ color: "#60a5fa", fontWeight: 600 }}>
+            {t("layer_app_cta")}
           </a>
         </p>
         <p style={{ color: "#94a3b8", fontSize: 14 }}>{t("layer_generic")}</p>
@@ -229,7 +238,7 @@ export default async function DnsPage({
         <p style={{ marginBottom: 8 }}>{t("privacy_logs")}</p>
         <p>
           {t("privacy_more")}{" "}
-          <a href="/transparency" style={{ color: "#60a5fa", textDecoration: "underline" }}>
+          <a href={localePath(safeLocale, "/transparency")} style={{ color: "#60a5fa", textDecoration: "underline" }}>
             {t("transparency_link")}
           </a>
           .
@@ -237,7 +246,7 @@ export default async function DnsPage({
       </section>
 
       <p style={{ textAlign: "center", fontSize: 12, color: "#8796ab", marginTop: 32 }}>
-        <a href="/privacy-policy" style={{ color: "#60a5fa", textDecoration: "underline" }}>
+        <a href={localePath(safeLocale, "/privacy-policy")} style={{ color: "#60a5fa", textDecoration: "underline" }}>
           {t("privacy_policy_link")}
         </a>
       </p>
@@ -261,6 +270,14 @@ function _sectionStyle(accent: string): React.CSSProperties {
     marginBottom: 24,
   };
 }
+
+const _undoStyle: React.CSSProperties = {
+  marginTop: 20,
+  padding: "12px 16px",
+  borderRadius: 10,
+  border: "1px solid #f59e0b",
+  background: "rgba(245, 158, 11, 0.08)",
+};
 
 const _codeStyle: React.CSSProperties = {
   background: "#0f172a",

@@ -30,6 +30,11 @@
  *      this origin — never to a protocol-relative or foreign URL.
  *  15. Every indexable page has a title and description in every locale, no
  *      two share a title, and only the curated /check sites are indexable.
+ *  16. /android shows the version and SHA-256 of the file its button
+ *      downloads — never the checksum of another file — and, for a GitHub
+ *      release, the file store the browser really shows as the source.
+ *  17. /success and /family/join name the app's own Family Hub buttons in
+ *      every language, and promise no family alerts the app does not send.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -45,6 +50,7 @@ import {
   MIN_SAFE_CLASSIFIED,
   MAX_UNKNOWN_RATE,
 } from "../landing/lib/benchmark.ts";
+import { apkReleaseFrom } from "../landing/lib/apk-release.ts";
 import { hostFromSegment, toCheckHost } from "../landing/lib/check-host.ts";
 import { CLIENT_NAMESPACES, pickClientMessages } from "../landing/lib/client-messages.ts";
 import { displayHost } from "../landing/lib/display-host.ts";
@@ -567,6 +573,14 @@ check("/check and /audit pages lose the site name, any locale prefix", () => {
 check("other paths are left alone", () => {
   assert.equal(scrubSitePaths("/ru/android"), "/ru/android");
   assert.equal(scrubSitePaths("/ru/check"), "/ru/check");
+  assert.equal(scrubSitePaths("/pricing#faq"), "/pricing#faq");
+});
+check("a family invite link loses its code and PIN (the page promises they reach no server)", () => {
+  assert.equal(
+    scrubSitePaths("https://cleanway.ai/ru/family/join#code=AbC-123_x&pin=4821"),
+    "https://cleanway.ai/ru/family/join#[invite]",
+  );
+  assert.equal(scrubSitePaths('navigation to "/family/join#code=X1Y2&pin=0001"'), 'navigation to "/family/join#[invite]"');
 });
 
 console.log("world pricing (lib/world-pricing.ts)");
@@ -807,6 +821,153 @@ console.log("SEO metadata strings + indexable /check sites");
     for (const host of ["some-random-site-xyz.com", "paypal.com.login-verify.example", "", "GOOGLE.COM", "sberbank.ru.evil.example"]) {
       assert.equal(isIndexedCheckHost(host), false, host);
     }
+  });
+}
+
+console.log("\npages reached from a shared link or a checkout (/ref, /family/join, /success, /audit)");
+{
+  // They were hard-coded English with stale claims ("7 days free", "ML-powered",
+  // "Google Play (Coming soon)", extensions "in store review").
+  const served = (locale) =>
+    JSON.parse(fs.readFileSync(path.join(ROOT, "landing", "messages", `${locale}.json`), "utf-8"));
+  const REQUIRED = {
+    Ref: ["meta_title", "meta_description", "heading", "body", "code_label", "code_note"],
+    FamilyJoin: [
+      "meta_title", "meta_description", "incomplete_title", "incomplete_body", "back_home", "title", "intro",
+      "code_label", "pin_label", "how_title", "ios_soon", "android_step1", "android_link", "app_step2",
+      "app_step3", "desktop_soon", "desktop_phone", "copy_link", "copied", "privacy_note",
+    ],
+    Success: ["step1_title", "step1_body", "step1_cta", "step2_title", "step2_body", "step2_cta", "step3_title", "step3_body"],
+    Audit: [
+      "meta_title", "meta_description", "og_title", "og_description", "heading", "intro", "grade_hidden",
+      "teaser_body", "label_trackers", "label_cookies", "label_fields", "label_fingerprinting", "on_device_note",
+      "fallback_title", "grade_meta_title", "grade_meta_description", "grade_og_title", "grade_eyebrow",
+      "grade_rating_name", "want_title", "want_body", "scale_title", "footer_note", "privacy_link",
+    ],
+  };
+  check("every locale has every string of these pages", () => {
+    for (const locale of LOCALES) {
+      const messages = served(locale);
+      for (const [ns, keys] of Object.entries(REQUIRED)) {
+        for (const key of keys) {
+          const value = messages[ns]?.[key];
+          assert.ok(typeof value === "string" && value.trim().length > 0, `${locale}: ${ns}.${key} is missing or empty`);
+        }
+      }
+      for (const letter of ["A", "B", "C", "D", "F"]) {
+        const grade = messages.Audit?.grades?.[letter];
+        assert.ok(grade?.label && grade?.description, `${locale}: Audit.grades.${letter} is missing`);
+      }
+    }
+  });
+  check("the audit strings name the site (and the grade) in every locale", () => {
+    for (const locale of LOCALES) {
+      const audit = served(locale).Audit;
+      for (const key of ["meta_title", "meta_description", "og_title", "og_description", "heading", "teaser_body", "grade_meta_title", "grade_meta_description", "grade_og_title"]) {
+        assert.ok(audit[key].includes("{domain}"), `${locale}: Audit.${key} has no {domain}`);
+      }
+      for (const key of ["grade_meta_title", "grade_meta_description", "grade_og_title", "grade_rating_name"]) {
+        assert.ok(audit[key].includes("{grade}"), `${locale}: Audit.${key} has no {grade}`);
+      }
+    }
+  });
+  check("the menu path they give is the app's own buttons, in every locale", () => {
+    // An owner with no family first sees "Create family" (mobile/app/family.tsx);
+    // "Generate invite" appears only after it, so a path without it dead-ends.
+    for (const locale of LOCALES) {
+      const app = JSON.parse(fs.readFileSync(path.join(SOURCE_DIR, `${locale}.json`), "utf-8")).mobile.family;
+      const success = served(locale).Success.step3_body;
+      for (const key of ["title", "create", "generate_invite", "join_with_code"]) {
+        assert.ok(success.includes(app[key]), `${locale}: Success.step3_body lacks the app's "${app[key]}" (mobile.family.${key})`);
+      }
+      assert.ok(success.indexOf(app.create) < success.indexOf(app.generate_invite), `${locale}: "${app.create}" must come before "${app.generate_invite}"`);
+      const join = served(locale).FamilyJoin.app_step2;
+      for (const key of ["title", "join_with_code"]) {
+        assert.ok(join.includes(app[key]), `${locale}: FamilyJoin.app_step2 lacks the app's "${app[key]}" (mobile.family.${key})`);
+      }
+    }
+  });
+  check("the invite does not promise family alerts from the app, which sends none", () => {
+    // Only the browser extension sends alerts (packages/extension-core/src/utils/family-fanout.js);
+    // the app's submitAlerts has no caller. The intro says where alerts will come from.
+    assert.ok(!/warn each other/i.test(served("en").FamilyJoin.intro), "en: 'warn each other'");
+    assert.ok(!/предупреждали друг друга/.test(served("ru").FamilyJoin.intro), "ru: 'предупреждали друг друга'");
+    assert.match(served("en").FamilyJoin.intro, /browser extension[^.]*coming soon/);
+    assert.match(served("ru").FamilyJoin.intro, /расширени[^.]*скоро появится/);
+  });
+  check("no stale promise survives in them, in any language", () => {
+    for (const locale of LOCALES) {
+      const text = JSON.stringify([served(locale).Ref, served(locale).FamilyJoin, served(locale).Success]);
+      assert.ok(!/Google Play/.test(text), `${locale}: names Google Play (blocked; the app is on /android)`);
+      assert.ok(!/\bML\b|7[- ]days? (free|trial)|free 7[- ]day|7 дней бесплатно/i.test(text), `${locale}: the old "7 days free / ML-powered" copy`);
+      assert.ok(!/Settings → Family Hub/.test(text) || locale === "en", `${locale}: an English menu path`);
+    }
+  });
+}
+
+console.log("\napkReleaseFrom (the /android button, its version and its checksum)");
+{
+  const URL_103 = "https://github.com/AlexMos555/linkshield/releases/download/v1.0.3/cleanway-1.0.3-103-arm.apk";
+  const HASH = "a".repeat(40) + "0123456789abcdef01234567";
+  check("no APK URL → no release (the page says the link is coming)", () => {
+    assert.equal(apkReleaseFrom({}), null);
+    assert.equal(apkReleaseFrom({ NEXT_PUBLIC_APK_URL: "   " }), null);
+  });
+  check("the version and the build number come from the file the button downloads", () => {
+    const release = apkReleaseFrom({ NEXT_PUBLIC_APK_URL: URL_103 });
+    assert.equal(release.url, URL_103);
+    assert.equal(release.fileName, "cleanway-1.0.3-103-arm.apk");
+    assert.equal(release.version, "1.0.3");
+    assert.equal(release.versionCode, 103);
+    assert.equal(release.host, "github.com");
+    assert.equal(release.sha256, null);
+  });
+  check("the checksum is the `shasum -a 256` line for that same file", () => {
+    const line = `${HASH}  cleanway-1.0.3-103-arm.apk`;
+    assert.equal(apkReleaseFrom({ NEXT_PUBLIC_APK_URL: URL_103, NEXT_PUBLIC_APK_SHA256: line }).sha256, HASH);
+    // sha256sum's binary-mode marker and upper-case hex are the same line.
+    const binary = `${HASH.toUpperCase()} *cleanway-1.0.3-103-arm.apk\n`;
+    assert.equal(apkReleaseFrom({ NEXT_PUBLIC_APK_URL: URL_103, NEXT_PUBLIC_APK_SHA256: binary }).sha256, HASH);
+  });
+  check("a checksum of another file, or one without its file name, is never shown", () => {
+    const stale = `${HASH}  cleanway-1.0.2-102-arm.apk`;
+    assert.equal(apkReleaseFrom({ NEXT_PUBLIC_APK_URL: URL_103, NEXT_PUBLIC_APK_SHA256: stale }).sha256, null);
+    assert.equal(apkReleaseFrom({ NEXT_PUBLIC_APK_URL: URL_103, NEXT_PUBLIC_APK_SHA256: HASH }).sha256, null);
+    assert.equal(apkReleaseFrom({ NEXT_PUBLIC_APK_URL: URL_103, NEXT_PUBLIC_APK_SHA256: `${HASH.slice(1)}  cleanway-1.0.3-103-arm.apk` }).sha256, null);
+  });
+  check("a file name in another shape keeps the button but shows no version", () => {
+    const release = apkReleaseFrom({ NEXT_PUBLIC_APK_URL: "https://get.cleanway.ai/latest.apk" });
+    assert.equal(release.url, "https://get.cleanway.ai/latest.apk");
+    assert.equal(release.version, null);
+    assert.equal(release.versionCode, null);
+    assert.equal(release.host, "get.cleanway.ai");
+  });
+  check("a GitHub release link names the host the browser really shows: GitHub's file store", () => {
+    // github.com answers the release URL with a 302 to release-assets.githubusercontent.com,
+    // and that is the source the download list shows.
+    const release = apkReleaseFrom({ NEXT_PUBLIC_APK_URL: URL_103 });
+    assert.equal(release.host, "github.com");
+    assert.equal(release.servedFrom, "release-assets.githubusercontent.com");
+    // Any other host serves the file itself.
+    assert.equal(apkReleaseFrom({ NEXT_PUBLIC_APK_URL: "https://get.cleanway.ai/latest.apk" }).servedFrom, null);
+    // A github.com link that is not a release asset is not redirected there.
+    assert.equal(apkReleaseFrom({ NEXT_PUBLIC_APK_URL: "https://github.com/AlexMos555/linkshield/raw/main/app.apk" }).servedFrom, null);
+  });
+  check("both host lines exist in every locale, with their arguments", () => {
+    for (const locale of LOCALES) {
+      const android = JSON.parse(fs.readFileSync(path.join(ROOT, "landing", "messages", `${locale}.json`), "utf-8")).Android;
+      assert.ok(android.file_host.includes("{host}"), `${locale}: Android.file_host has no {host}`);
+      assert.ok(android.file_host_via.includes("{host}"), `${locale}: Android.file_host_via has no {host}`);
+      assert.ok(android.file_host_via.includes("{servedFrom}"), `${locale}: Android.file_host_via has no {servedFrom}`);
+    }
+  });
+  check("not a web address → the link as given, nothing derived from it", () => {
+    const release = apkReleaseFrom({ NEXT_PUBLIC_APK_URL: "cleanway-1.0.3-103-arm.apk" });
+    assert.equal(release.url, "cleanway-1.0.3-103-arm.apk");
+    assert.equal(release.version, null);
+    assert.equal(release.host, null);
+    assert.equal(release.servedFrom, null);
+    assert.equal(release.sha256, null);
   });
 }
 

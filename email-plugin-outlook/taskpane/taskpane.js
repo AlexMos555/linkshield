@@ -2,10 +2,13 @@
  * Cleanway Outlook taskpane — pulls the current message out of Office.js,
  * posts it to the Cleanway analyzer, renders the verdict.
  *
- * Privacy contract:
- * - Only the sender address + display name, auth headers, subject, and body
- *   text leave the device. Recipients, CCs, attachment content, full MIME
- *   headers, thread metadata are all untouched.
+ * Privacy contract (stated in manifest.xml and the privacy policy):
+ * - A scan sends the sender address + display name, the reply-to address,
+ *   the SPF/DKIM/DMARC results, the subject, and the body as text and HTML.
+ *   The server checks it in memory and does not store it. Recipients, CCs,
+ *   attachment content, the other MIME headers and thread metadata are
+ *   untouched.
+ * - A report sends the sender's domain only.
  * - The user's Supabase access token (stored by the Cleanway mobile app
  *   / extension after sign-in) is NOT available to the add-in — so we run
  *   as an anonymous user until Outlook SSO is wired. The backend accepts
@@ -307,18 +310,19 @@ async function reportPhishing() {
   els.btnReport.disabled = true;
   els.btnReport.textContent = "Reporting…";
   try {
-    const message = await loadMessage();
     // The backend's /feedback/report expects a domain-shaped report, not
-    // a free-form email blob. Extract the sender's domain (everything
-    // after the LAST '@' to handle weird quoted-local-part edge cases),
-    // and pack subject + outlook source into the comment field for
-    // human review on the moderation dashboard.
+    // a free-form email blob: the sender's domain (everything after the
+    // LAST '@', for quoted local parts) is all it sends. The subject and
+    // the full address used to go in `comment` and were kept in
+    // feedback_reports — more than the manifest and the policy say.
     //
-    // /feedback/report now accepts anonymous submissions (Optional user
+    // /feedback/report accepts anonymous submissions (Optional user
     // dependency); the Outlook taskpane has no Cleanway session yet
     // (Outlook SSO is a future task). Backend rate-limits by IP.
-    const senderDomain = message.from_address
-      ? String(message.from_address).split("@").pop().trim().toLowerCase()
+    const item = Office.context.mailbox.item;
+    const fromAddress = item && item.from ? item.from.emailAddress || "" : "";
+    const senderDomain = fromAddress
+      ? String(fromAddress).split("@").pop().trim().toLowerCase()
       : "";
     if (!senderDomain) {
       throw new Error("Couldn't determine sender domain");
@@ -329,7 +333,7 @@ async function reportPhishing() {
       body: JSON.stringify({
         domain: senderDomain,
         report_type: "false_negative",
-        comment: `[outlook] subject="${(message.subject || "").slice(0, 200)}" sender="${message.from_address || ""}"`,
+        comment: "[outlook]",
       }),
     });
     if (!resp.ok) {

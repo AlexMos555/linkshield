@@ -1559,7 +1559,8 @@
       "install_short": "Instalar",
       "install_android": "Descargar la app Android",
       "install_android_short": "App Android",
-      "support": "Ayuda"
+      "support": "Ayuda",
+      "skip_to_content": "Saltar al contenido principal"
     },
     "hero": {
       "badge": "En nuestra última medición, nuestro servidor marcó como peligrosos el {recall}% de los enlaces de phishing recientes",
@@ -1751,16 +1752,18 @@
     },
     "success": {
       "page_title": "Bienvenido a Cleanway",
-      "page_description": "Tu suscripción está activa. Añade Cleanway a tu navegador para empezar a bloquear enlaces fraudulentos.",
+      "page_description": "Tu suscripción está activa. Así puedes tener Cleanway en tus dispositivos.",
       "heading": "¡Listo!",
       "subheading": "Tu suscripción está activa. El recibo y el correo de bienvenida están en camino.",
       "next_steps_heading": "Siguiente: protégete",
-      "step1_title": "Añade la extensión",
-      "step1_body": "Un clic. Cleanway empieza a comprobar enlaces al instante.",
-      "step2_title": "Descarga la app móvil",
-      "step2_body": "iOS y Android. La misma protección en movimiento.",
-      "step3_title": "Invita a la familia (plan Family)",
-      "step3_body": "Inicia sesión en el teléfono de un familiar y envíale una invitación desde Settings → Family Hub.",
+      "step1_title": "Instala la app para Android",
+      "step1_body": "Cleanway bloquea los sitios fraudulentos en todas las apps del teléfono y revisa los enlaces que tocas.",
+      "step1_cta": "Descargar la app Android →",
+      "step2_title": "iPhone, Mac o Windows: Cleanway DNS",
+      "step2_body": "El filtro DNS bloquea los sitios fraudulentos conocidos en iPhone y Mac, y en el navegador en Windows. La app para iPhone y las extensiones para navegador llegarán pronto:",
+      "step2_cta": "Configurar Cleanway DNS →",
+      "step3_title": "Invita a tu familia",
+      "step3_body": "En la app: Configuración → Espacio Familiar → «Crear familia» y después «Generar invitación». Tu familiar se une desde su teléfono con «Unirse con código».",
       "support_question": "¿Preguntas sobre tu suscripción? Escribe a",
       "reference_label": "Referencia"
     },
@@ -2005,10 +2008,10 @@
     },
     "dns": {
       "page_title": "DNS antiphishing — un toque, sin aplicación",
-      "page_description": "Instala el filtro DNS de Cleanway en 30 segundos en iPhone, Mac o Windows. Protección de todo el sistema, sin VPN y sin app. En Android, usa la app gratuita de Cleanway.",
+      "page_description": "Instala el filtro DNS de Cleanway en 30 segundos: para todas las apps en iPhone y Mac, y en el navegador en Windows. Sin VPN y sin app. En Android, usa la app gratuita de Cleanway.",
       "hero_title": "Bloquea el phishing en cada aplicación — sin instalar ninguna",
-      "hero_subtitle": "Cleanway opera un resolutor DNS que filtra el phishing. Apunta tu teléfono o portátil hacia él y cada aplicación del dispositivo —Safari, Chrome, Mail, apps bancarias— recibe la misma protección.",
-      "hero_meta": "Funciona en iOS 14+, iPadOS 14+, macOS 11+ y Windows 11. Sin VPN. No gasta batería. En Android: la app gratuita de Cleanway.",
+      "hero_subtitle": "Cleanway opera un resolutor DNS que filtra el phishing. Apunta tu iPhone, iPad o Mac hacia él y cada aplicación del dispositivo —Safari, Chrome, Mail, apps bancarias— recibe la misma protección. En Windows protege el navegador en el que lo configures.",
+      "hero_meta": "Protege todas las apps en iOS 14+, iPadOS 14+ y macOS 11+, y en Windows los sitios que abres en Chrome, Edge y Firefox. Sin VPN. No gasta batería. En Android: la app gratuita de Cleanway.",
       "ios_intro": "Pulsa el botón inferior desde tu iPhone o iPad. iOS te pedirá permiso para instalar un perfil de configuración.",
       "ios_step1": "Pulsa «Permitir» cuando iOS solicite descargar el perfil.",
       "ios_step2": "Abre Ajustes → General → VPN y gestión de dispositivos → Cleanway DNS.",
@@ -2019,26 +2022,30 @@
       "android_app_cta": "Descargar Cleanway para Android",
       "android_undo_title": "¿Ya escribiste dns.cleanway.ai en «DNS privado»?",
       "android_undo_body": "Vuelve a cambiarlo: abre «DNS privado» en Ajustes (en Samsung: Conexiones → Más ajustes de conexión) y elige «Automático». Este método aún no está disponible y con él tu teléfono puede quedarse sin internet.",
-      "win_intro": "Windows 11 admite DNS-over-HTTPS de forma nativa. Las versiones anteriores de Windows requieren una herramienta de terceros, como Cloudflare 1.1.1.1 — lo sentimos.",
-      "win_step1": "Abre Configuración → Redes e Internet → Wi-Fi → haz clic en tu red → Asignación de servidor DNS → Editar.",
-      "win_step2": "Cambia a Manual, activa IPv4, define el DNS preferido en 1.1.1.1 y pon DNS sobre HTTPS en «Activado (plantilla manual)».",
-      "win_step3": "Pega esta plantilla DoH:",
+      "win_heading": "Windows: en el navegador",
+      "win_intro": "En Windows, Cleanway DNS funciona dentro del navegador: Chrome, Edge y Firefox pueden enviarle sus consultas. Así se protegen los sitios que abres en ese navegador, no los demás programas del ordenador.",
+      "win_chrome": "Chrome: Configuración → Privacidad y seguridad → Seguridad → «Usar DNS seguro» → elige un proveedor personalizado y pega la dirección de abajo.",
+      "win_edge": "Edge: Configuración → Privacidad, búsqueda y servicios → Seguridad → «Usar DNS seguro» → «Elegir un proveedor de servicios» → pega la dirección de abajo.",
+      "win_firefox": "Firefox: Ajustes → Privacidad y seguridad → «DNS sobre HTTPS» → «Protección máxima» → proveedor «Personalizado» → pega la dirección de abajo.",
+      "win_address": "Dirección que debes pegar:",
+      "win_undo_title": "¿Ya configuraste Cleanway en la configuración de red de Windows?",
+      "win_undo_body": "La opción propia de Windows «DNS sobre HTTPS» necesita una dirección IP fija del servidor, y Cleanway DNS todavía no la tiene, así que configurado de esa forma no filtra nada. Abre Configuración → Red e Internet → tu red → Asignación de servidor DNS → Editar, elige «Automático (DHCP)» y configura el navegador como se explica arriba.",
       "benefits_heading": "¿De qué te protege esto?",
       "benefit_1": "Los enlaces de phishing en SMS, correo y Telegram se abren como «sitio no encontrado» en lugar de una página que roba credenciales.",
       "benefit_2": "Los servidores de control de malware conocidos se detienen antes de que tu teléfono los alcance, siempre que estén en la lista.",
       "benefit_3": "Los dominios que se hacen pasar por marcas (paypal-secure-login.com) se bloquean en el propio resolutor — tu navegador ni siquiera llega a cargarlos.",
-      "benefit_4": "Funciona en cualquier app, no solo en el navegador. Enlaces de WhatsApp, apps bancarias, navegadores integrados — todo protegido.",
+      "benefit_4": "En iPhone, iPad y Mac funciona en cualquier app, no solo en el navegador: enlaces de WhatsApp, apps bancarias, navegadores integrados — todo protegido.",
       "privacy_heading": "Privacidad — lo que vemos y lo que no",
       "privacy_body": "Cleanway DNS solo resuelve el dominio. No registramos las consultas en disco, no las enviamos a Sentry, no las vendemos a nadie. Las consultas viven en memoria justo el tiempo necesario para responder.",
       "privacy_logs": "Lo que SÍ guardamos: un contador diario anónimo del total de consultas y bloqueos, usado para publicar nuestro informe trimestral de transparencia. Sin dominios, sin IP, sin usuarios.",
       "privacy_more": "Arquitectura y metodología completas:",
       "transparency_link": "informe de transparencia",
       "privacy_policy_link": "Política de privacidad",
-      "layer_heading": "Where DNS fits in your protection",
-      "layer_body": "DNS is the widest layer — it protects every app on your device, not just the browser. It is also the shallowest: it can only block a domain that is already on our phishing blocklist. It cannot read a page, so on its own it will not catch a brand-new phishing kit the moment it appears, or a credential form hiding on a trusted-but-hacked site.",
-      "layer_extension": "For that deeper protection, add the Cleanway browser extension. It runs the full per-page analysis on every site you open, spots look-alike login forms in real time, and warns you before you type a password. DNS covers the widest surface; the extension adds the deepest checks — together they cover both.",
-      "layer_generic": "This is not a generic DNS filter. Cleanway DNS is tuned specifically for phishing and credential theft, driven by the same threat intelligence that powers the extension — not a repurposed ad-blocking list.",
-      "layer_extension_cta": "Instalar la extensión Cleanway →"
+      "layer_heading": "Dónde encaja el DNS en tu protección",
+      "layer_body": "El DNS es la capa más amplia: en iPhone, iPad y Mac protege todas las apps, no solo el navegador. También es la menos profunda: solo puede bloquear un dominio que ya está en nuestra lista de sitios de phishing. No lee la página, así que por sí solo no detectará un sitio de phishing recién creado en el momento en que aparece, ni un formulario de inicio de sesión falso en un sitio de confianza que ha sido hackeado.",
+      "layer_extension": "Las comprobaciones más profundas miran el propio sitio, no solo su nombre. En Android, la app gratuita de Cleanway revisa los enlaces que tocas. Pronto llegará una extensión de Cleanway para el navegador que revisará cada página que abras y te avisará antes de que escribas una contraseña en una página de inicio de sesión falsa. El DNS cubre la superficie más amplia; estas comprobaciones añaden profundidad.",
+      "layer_generic": "No es un filtro DNS genérico. Cleanway DNS está ajustado específicamente contra el phishing y el robo de contraseñas, y se basa en la misma información sobre amenazas que la app de Cleanway: no es una lista de bloqueo de anuncios reutilizada.",
+      "layer_app_cta": "Consigue Cleanway para Android →"
     },
     "install": {
       "browser_label": "Extensiones de navegador",
@@ -2136,6 +2143,10 @@
       "benefit_3": "Comprueba SMS sospechosos en el propio teléfono: el texto no va a ninguna parte.",
       "download_cta": "Descargar la app",
       "download_note": "Archivo .apk · Android 7 o posterior · archivo grande, mejor con Wi-Fi",
+      "file_version": "Versión {version}",
+      "file_host": "El botón descarga el archivo desde {host}, donde Cleanway guarda sus versiones; puede que tu navegador muestre esa dirección.",
+      "file_host_via": "El botón descarga el archivo de las versiones de Cleanway en {host}. GitHub entrega el archivo desde {servedFrom}, así que puede que tu navegador muestre esa dirección como origen.",
+      "file_sha256": "Suma de comprobación SHA-256 de este archivo:",
       "download_soon": "El enlace de descarga estará disponible muy pronto.",
       "steps_title": "Cómo instalarla",
       "step_1": "Toca «Descargar la app» y espera a que termine la descarga.",
@@ -2167,7 +2178,7 @@
       "screenshot_alt_samsung": "Pantalla de ajustes del Bloqueador automático de Samsung",
       "screenshot_alt_protect": "Aviso de Play Protect con «Más detalles» e «Instalar de todos modos»",
       "never_calls_title": "Cleanway nunca te envía enlaces por SMS ni te llama",
-      "never_calls_body": "Si alguien llama o escribe en nombre de Cleanway y te pide instalar algo, dictar un código o desactivar la protección, es una estafa. Descarga Cleanway solo desde este sitio, cleanway.ai.",
+      "never_calls_body": "Si alguien llama o escribe en nombre de Cleanway y te pide instalar algo, dictar un código o desactivar la protección, es una estafa. Descarga Cleanway solo con el botón de esta página de cleanway.ai; el archivo se guarda en la página de Cleanway en GitHub.",
       "links_privacy": "Política de privacidad",
       "links_support": "Ayuda y soporte"
     },
@@ -2432,7 +2443,8 @@
           ],
           "after": [
             "Inicias sesión en cleanway.ai con un código o un enlace de un solo uso que se envía a tu correo. Después, la extensión guarda sus claves de inicio de sesión (tokens), tu dirección de correo y el identificador de tu cuenta en el almacenamiento de extensiones del navegador y solo los usa para comunicarse con nuestros servidores. «Cerrar sesión» en los Ajustes de la extensión los borra.",
-            "Tu historial de comprobaciones (se borra a los 30 días), los contadores y los ajustes se quedan en tu navegador. Desinstalar la extensión borra todo lo que guardó."
+            "Tu historial de comprobaciones (se borra a los 30 días), los contadores y los ajustes se quedan en tu navegador. Desinstalar la extensión borra todo lo que guardó.",
+            "El complemento de Cleanway para Outlook (aún no publicado) revisa un correo solo cuando pulsas «Scan email»: envía a nuestro servidor el nombre y la dirección del remitente, la dirección de respuesta, el asunto, el texto y el HTML de ese correo, y los resultados de SPF, DKIM y DMARC de sus encabezados. El servidor lo revisa en memoria y no lo guarda; los nombres de los sitios a los que enlaza se comprueban como se describe en la sección 5. «Report phishing» solo envía el dominio del remitente. El complemento solo lee el correo que tienes abierto y no guarda nada en Outlook."
           ]
         },
         {
@@ -2456,7 +2468,7 @@
           "title": "11. El sitio web y el filtro DNS",
           "paragraphs": [
             "cleanway.ai no tiene publicidad ni rastreadores de analítica. Nuestros proveedores de alojamiento —Vercel para el sitio web y Railway para el servidor— guardan registros técnicos habituales de las peticiones, que pueden incluir la dirección solicitada y tu dirección IP. Nuestro servidor, incluido el filtro DNS descrito más abajo, funciona en la UE, en Ámsterdam (Países Bajos).",
-            "Si configuras el filtro DNS de Cleanway (dns.cleanway.ai) en un iPhone, un Mac o un ordenador con Windows, todas las consultas DNS del dispositivo van a nuestro servidor. Este bloquea los nombres de la lista y pasa el resto a Cloudflare para encontrar la dirección. Las consultas no se escriben en disco ni en ningún registro: nuestro servidor solo guarda totales, como cuántas consultas ha respondido y cuántas ha bloqueado. Para responder antes a las preguntas repetidas, guarda las respuestas recientes en su memoria, por la pregunta en sí (el nombre del sitio y el tipo de registro), nunca por quién preguntó: mientras la respuesta es válida, como mucho una hora, y hasta 6 horas más como reserva por si Cloudflare deja de responder. Nunca se escriben en disco ni en una base de datos y desaparecen cuando el servidor se reinicia.",
+            "Si configuras el filtro DNS de Cleanway (dns.cleanway.ai), las consultas DNS para las que lo configuras van a nuestro servidor: en un iPhone, un iPad o un Mac, todas las del dispositivo; en un ordenador con Windows, las del navegador en el que lo configuras. El servidor bloquea los nombres de la lista y pasa el resto a Cloudflare para encontrar la dirección. Las consultas no se escriben en disco ni en ningún registro: nuestro servidor solo guarda totales, como cuántas consultas ha respondido y cuántas ha bloqueado. Para responder antes a las preguntas repetidas, guarda las respuestas recientes en su memoria, por la pregunta en sí (el nombre del sitio y el tipo de registro), nunca por quién preguntó: mientras la respuesta es válida, como mucho una hora, y hasta 6 horas más como reserva por si Cloudflare deja de responder. Nunca se escriben en disco ni en una base de datos y desaparecen cuando el servidor se reinicia.",
             "La app de Cleanway para iPhone puede configurar este mismo filtro DNS por ti como «Protección DNS»: la app guarda en el iPhone el ajuste de DNS cifrado de Cleanway, que solo empieza a funcionar cuando lo eliges en los Ajustes del iPhone. A diferencia de la app para Android, que compara los nombres de los sitios con una lista guardada en el teléfono, en el iPhone la comparación se hace en nuestro servidor: mientras la protección DNS está activada, el iPhone envía a nuestro servidor, cifrado, el nombre de cada sitio que busca cualquier app, y el servidor lo trata como se describe en el párrafo anterior. Para limitar cuántas consultas puede hacer una conexión, nuestro servidor las cuenta en su memoria bajo un código cifrado obtenido de tu dirección IP (un hash con clave), no bajo la dirección misma, y pone la cuenta a cero cada hora; nunca se guarda junto con los nombres que buscas. En iOS 26 y posteriores, si nuestro servidor no responde, el iPhone puede preguntar al servidor DNS de la propia red, como sin Cleanway. Puedes desactivar la protección DNS en los Ajustes del iPhone o eliminarla en la app en cualquier momento."
           ]
         },
@@ -2506,7 +2518,7 @@
             "Las leyes de protección de datos, como el RGPD europeo, exigen una base legal para cada uso de datos personales. Las nuestras son:"
           ],
           "items": [
-            "prestar el servicio que pediste (ejecución de un contrato): tu cuenta y el inicio de sesión, tu lista de dispositivos, las funciones familiares, los planes de pago, el filtro DNS una vez que lo configuras y los correos del servicio relacionados;",
+            "prestar el servicio que pediste (ejecución de un contrato): tu cuenta y el inicio de sesión, tu lista de dispositivos, las funciones familiares, los planes de pago, el filtro DNS una vez que lo configuras, «Scan email» y «Report phishing» del complemento para Outlook cuando los pulsas, y los correos del servicio relacionados;",
             "nuestro interés legítimo en un servicio que funcione y sea seguro de usar: comprobar los nombres de los sitios que abres o consultas, los límites de comprobaciones por conexión o por teléfono, la verificación de Turnstile, el registro de seguridad de las acciones de la cuenta y los avisos de seguridad, los informes de errores y las mediciones de tiempos, y las copias de seguridad. Sin las comprobaciones no hay protección, y sin los límites y los registros se podría abusar del servicio;",
             "tu consentimiento: el análisis de correos en el correo web, que está desactivado hasta que lo activas en la extensión del navegador, y, en Firefox, el consentimiento de datos que pide el complemento. Puedes retirarlo en cualquier momento: las comprobaciones se detienen al instante, y lo hecho antes sigue siendo lícito."
           ],
@@ -2524,6 +2536,7 @@
             "registro de seguridad de las acciones de la cuenta (con direcciones IP en hash): 2 años;",
             "contadores semanales de las cuentas (solo números, sin nombres de sitios): 1 año;",
             "alertas familiares cifradas: hasta 30 días;",
+            "denuncias de un resultado erróneo o de un correo de phishing (el dominio del sitio o del remitente, y el ID de tu cuenta si habías iniciado sesión): 1 año;",
             "tu lista de dispositivos y los registros de compras: hasta que elimines la cuenta; Stripe y las tiendas de apps guardan sus propios registros de pagos como les exige la ley;",
             "el historial de comprobaciones de la extensión: 30 días, en tu navegador;",
             "datos en tu teléfono o en tu navegador: hasta que los borres o desinstales la app o la extensión."
@@ -2699,10 +2712,10 @@
       "brand": "Cleanway",
       "badge": "Para equipos",
       "title": "Protección contra estafas para los teléfonos y navegadores de tu equipo",
-      "subtitle": "Cleanway bloquea los sitios fraudulentos y de phishing conocidos en teléfonos Android y avisa de ellos en el navegador. Cuenta dispositivos, no personas, así que un equipo pequeño paga solo por los dispositivos que protege.",
+      "subtitle": "Cleanway bloquea los sitios fraudulentos y de phishing conocidos en teléfonos Android y, en los ordenadores, en el navegador mediante Cleanway DNS. Cuenta dispositivos, no personas, así que un equipo pequeño paga solo por los dispositivos que protege.",
       "how_heading": "Cómo funciona para un equipo",
       "how_items": [
-        "Cada persona instala la app de Cleanway en su teléfono Android o la extensión en su navegador.",
+        "Cada persona instala la app de Cleanway en su teléfono Android. En un ordenador, el navegador puede usar Cleanway DNS; la extensión para el navegador llegará pronto.",
         "Bloquear sitios fraudulentos conocidos es gratis en cada dispositivo, sin cuenta y sin límite.",
         "El plan de pago añade comprobaciones detalladas de enlaces y mensajes sin límite. Una cuenta cubre varios dispositivos, y puedes añadir más.",
         "En tu cuenta en cleanway.ai/account ves cada dispositivo y desvinculas el que ya no se use."
@@ -2714,7 +2727,108 @@
       "contact_live": "Si quieres proteger muchos dispositivos o necesitas una factura, escríbenos:",
       "contact_not_live": "Nuestro buzón no funciona temporalmente, así que ahora no podemos recibir solicitudes por correo. Mientras tanto, usa el plan de la página de Precios; esta página volverá a mostrar nuestra dirección en cuanto funcione.",
       "honest_heading": "Lo que Cleanway no hace",
-      "honest_body": "Cleanway no es una suite de seguridad corporativa: no hay consola de administración, inicio de sesión único, políticas centralizadas ni formación sobre phishing. No ve la navegación, los mensajes ni las contraseñas de tu equipo. Ninguna herramienta detecta cada nuevo sitio fraudulento, así que mantén las reglas de siempre: nunca compartas códigos de SMS y confirma por teléfono las solicitudes de pago urgentes."
+      "honest_body": "Cleanway no es una suite de seguridad corporativa: no hay consola de administración, inicio de sesión único, políticas centralizadas ni formación sobre phishing. No ve la navegación, los mensajes ni las contraseñas de tu equipo. Ninguna herramienta detecta cada nuevo sitio fraudulento, así que mantén las reglas de siempre: nunca compartas códigos de SMS y confirma por teléfono las solicitudes de pago urgentes.",
+      "free": {
+        "meta_description": "Protege los teléfonos y ordenadores de tu equipo frente a sitios fraudulentos y de phishing. En tu país Cleanway es gratis: ahora mismo no hay planes de pago.",
+        "subtitle": "Cleanway bloquea los sitios fraudulentos y de phishing conocidos en teléfonos Android y, en los ordenadores, en el navegador mediante Cleanway DNS. En tu país es gratis también para un equipo, como para todos: ahora mismo no hay planes de pago.",
+        "how_items": [
+          "Cada persona instala la app de Cleanway en su teléfono Android. En un ordenador, el navegador puede usar Cleanway DNS; la extensión para el navegador llegará pronto.",
+          "Bloquear sitios fraudulentos conocidos es gratis en cada dispositivo, sin cuenta y sin límite.",
+          "Comprobar enlaces y mensajes también es gratis y no necesita cuenta.",
+          "Si creas una cuenta, en cleanway.ai/account ves cada dispositivo y puedes desvincular el que ya no se use."
+        ],
+        "pricing_body": "Ahora mismo no hay planes de pago en tu país, ni para equipos ni para nadie. La página de Precios muestra lo que incluye.",
+        "pricing_cta": "Qué incluye"
+      },
+      "operator": {
+        "meta_description": "Protege los teléfonos de tu equipo frente a sitios fraudulentos y de phishing. El bloqueo por lista funciona sin pagar nada; la suscripción para las comprobaciones detalladas se cobra en la cuenta del teléfono móvil.",
+        "subtitle": "Cleanway bloquea los sitios fraudulentos y de phishing conocidos en teléfonos Android y, en los ordenadores, en el navegador mediante Cleanway DNS. El bloqueo por lista funciona sin pagar nada; la suscripción quita el límite de comprobaciones detalladas.",
+        "how_items": [
+          "Cada persona instala la app de Cleanway en su teléfono Android. En un ordenador, el navegador puede usar Cleanway DNS; la extensión para el navegador llegará pronto.",
+          "Bloquear sitios fraudulentos conocidos funciona en cada dispositivo sin pagar nada, sin cuenta y sin límite.",
+          "La suscripción quita el límite de comprobaciones detalladas de enlaces y mensajes. Se activa en la app del teléfono y se cobra en la cuenta de ese número móvil; una suscripción cubre varios dispositivos de una misma cuenta.",
+          "En tu cuenta en cleanway.ai/account ves cada dispositivo y desvinculas el que ya no se use."
+        ],
+        "pricing_body": "Un equipo contrata la misma suscripción que cualquier otra persona: se activa en la app de Cleanway y se cobra en la cuenta de un teléfono móvil. El precio y las condiciones están en la página de Precios."
+      }
+    },
+    "ref": {
+      "meta_title": "Un amigo te invita a Cleanway",
+      "meta_description": "Cleanway bloquea los sitios fraudulentos y de phishing conocidos. El bloqueo no cuesta nada y no necesita cuenta.",
+      "heading": "Un amigo te invita a Cleanway",
+      "body": "Cleanway bloquea los sitios fraudulentos y de phishing conocidos en todas las apps de un teléfono Android y revisa los enlaces que tocas. En iPhone, Mac y Windows, el filtro DNS de Cleanway también bloquea los sitios fraudulentos conocidos. El bloqueo no cuesta nada y no necesita cuenta.",
+      "code_label": "Código de invitación",
+      "code_note": "No tienes que introducirlo en ningún sitio: la protección funciona sin el código."
+    },
+    "family_join": {
+      "meta_title": "Únete a una familia en Cleanway",
+      "meta_description": "Te han invitado a un grupo familiar de Cleanway. Instala Cleanway y únete con el código y el PIN de la invitación.",
+      "incomplete_title": "El enlace de invitación parece incompleto",
+      "incomplete_body": "El enlace que abriste no contiene un código de invitación. Pide a quien te invitó que te envíe uno nuevo. El enlace debería verse así:",
+      "back_home": "Volver a Cleanway",
+      "title": "Te han invitado a una familia en Cleanway",
+      "intro": "Cleanway protege a las familias de los sitios fraudulentos y de phishing. Quien te invitó quiere tenerte en su círculo familiar privado. Los avisos familiares —una nota a la familia cuando se bloquea un sitio fraudulento— llegarán desde la extensión de Cleanway para el navegador, que estará disponible pronto.",
+      "code_label": "Código",
+      "pin_label": "PIN",
+      "how_title": "Cómo unirte",
+      "ios_soon": "La app de Cleanway para iPhone llegará pronto. Mientras tanto, puedes unirte desde un teléfono Android: abre este enlace en él.",
+      "android_step1": "Instala la app de Cleanway para Android.",
+      "android_link": "Página de descarga →",
+      "app_step2": "Abre Cleanway → Configuración → Espacio Familiar, inicia sesión y toca «Unirse con código».",
+      "app_step3": "Escribe el código y el PIN que ves arriba.",
+      "desktop_soon": "En un ordenador te unirás con la extensión de Cleanway para el navegador, que llegará pronto.",
+      "desktop_phone": "Hoy ya puedes unirte desde un teléfono Android: abre este enlace en él.",
+      "copy_link": "Copiar enlace de invitación",
+      "copied": "Copiado ✓",
+      "privacy_note": "El código y el PIN van en la parte del enlace que sigue a «#», que los navegadores nunca envían a un servidor, así que esta página no se los pasa a Cleanway. Las invitaciones caducan 7 días después de crearse."
+    },
+    "audit": {
+      "meta_title": "Auditoría de privacidad de {domain} — Cleanway",
+      "meta_description": "Auditoría de privacidad de {domain}: rastreadores, cookies, recogida de datos y huella digital, con nota de la A a la F. Funcionará en la extensión de Cleanway para el navegador, en tu dispositivo.",
+      "og_title": "Auditoría de privacidad de {domain}",
+      "og_description": "¿Cuántos datos recoge {domain}? La auditoría de privacidad de Cleanway califica rastreadores, cookies y huella digital de la A a la F.",
+      "heading": "Auditoría de privacidad: {domain}",
+      "intro": "La auditoría de privacidad forma parte de la extensión de Cleanway para el navegador, que llegará pronto.",
+      "grade_hidden": "Nota: aún no disponible",
+      "teaser_body": "La extensión mostrará los rastreadores, cookies, formularios de recogida de datos y técnicas de huella digital que encuentre en {domain}.",
+      "label_trackers": "Rastreadores",
+      "label_cookies": "Cookies",
+      "label_fields": "Campos de datos",
+      "label_fingerprinting": "Huella digital",
+      "on_device_note": "La auditoría de privacidad se ejecuta en tu dispositivo, dentro de la extensión: el contenido de la página no se envía a Cleanway.",
+      "fallback_title": "Auditoría de privacidad — Cleanway",
+      "grade_meta_title": "{domain} — nota de privacidad {grade} · Cleanway",
+      "grade_meta_description": "{domain} obtuvo la nota de privacidad {grade}. {label}. {description}",
+      "grade_og_title": "Nota {grade}: {domain}",
+      "grade_eyebrow": "Auditoría de privacidad",
+      "grade_rating_name": "Nota {grade}",
+      "want_title": "¿Quieres calificar cualquier sitio?",
+      "want_body": "La auditoría de privacidad llegará con la extensión de Cleanway para el navegador, que estará disponible pronto. La nota se calcula en tu dispositivo: el contenido de la página no se envía a Cleanway.",
+      "scale_title": "Cómo funcionan las notas",
+      "footer_note": "La auditoría de privacidad se ejecuta en tu dispositivo. El contenido de la página nunca se envía a Cleanway.",
+      "privacy_link": "Política de privacidad",
+      "grades": {
+        "A": {
+          "label": "Privacidad excelente",
+          "description": "Rastreo mínimo. Sin huella digital. Pocos rastreadores de terceros o ninguno."
+        },
+        "B": {
+          "label": "Buena privacidad",
+          "description": "Algo de rastreo, pero sobre todo propio. Huella razonable para el uso diario."
+        },
+        "C": {
+          "label": "Privacidad media",
+          "description": "Número moderado de rastreadores. La combinación habitual de analítica y anuncios. Conviene revisar qué se recoge."
+        },
+        "D": {
+          "label": "Mucho rastreo",
+          "description": "Muchos rastreadores de terceros. Probables intentos de huella digital. Limita aquí tus datos personales."
+        },
+        "F": {
+          "label": "Privacidad pobre",
+          "description": "Se detectaron rastreo agresivo, huella digital o patrones de recogida de datos."
+        }
+      }
     }
   },
   "email": {

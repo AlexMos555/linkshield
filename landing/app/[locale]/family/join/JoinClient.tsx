@@ -7,16 +7,23 @@
 // Hash params NEVER reach the server, so the secret stays client-side.
 // All this page does:
 //   1. Read the hash and surface code + PIN to the user.
-//   2. Show install CTAs for whichever platform they're on.
-//   3. Tell them how to paste this same URL back into Cleanway once installed.
+//   2. Say how to join on the platform they're on, in their language.
+//   3. Offer to copy the link, to open it again on another device.
 //
 // We deliberately do NOT round-trip the invite to our backend from this
 // page — the extension/mobile app does that itself once installed. Keeping
 // this page dumb means there's no way for it to leak the invite, and there's
 // no auth required.
+//
+// What each platform can do today (lib/install-urls.ts): Android has the app
+// (/android — never "Google Play", which is blocked), whose Family Hub joins
+// with the code and PIN typed in; the iPhone app and the browser extension
+// are coming soon, so those visitors are pointed at an Android phone.
 
 import { useEffect, useState } from "react";
-import { PRIMARY_INSTALL_HREF } from "@/lib/install-urls";
+import { useLocale, useTranslations } from "next-intl";
+
+import { localePath } from "@/lib/locale-path";
 
 type ParsedInvite = {
   code: string;
@@ -46,7 +53,13 @@ function detectPlatform(): Platform {
   return "desktop";
 }
 
+const link: React.CSSProperties = { color: "#60a5fa", textDecoration: "underline" };
+const label: React.CSSProperties = { fontSize: 12, color: "#8796ab", textTransform: "uppercase", marginBottom: 6 };
+const mono = "ui-monospace, SFMono-Regular, Menlo, monospace";
+
 export default function JoinClient() {
+  const t = useTranslations("FamilyJoin");
+  const locale = useLocale();
   const [invite, setInvite] = useState<ParsedInvite | null>(null);
   const [platform, setPlatform] = useState<Platform>("desktop");
   const [readyToRead, setReadyToRead] = useState(false);
@@ -74,20 +87,18 @@ export default function JoinClient() {
   // No invite in URL → bad/old/manual link. Tell them what to do.
   if (readyToRead && !invite) {
     return (
-      <Frame>
+      <Frame home={localePath(locale, "/")}>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "#f8fafc", marginBottom: 12 }}>
-          Invite link looks incomplete
+          {t("incomplete_title")}
         </h1>
         <p style={{ color: "#94a3b8", lineHeight: 1.7, marginBottom: 24 }}>
-          The link you opened doesn&apos;t carry an invite code. Ask the person who invited you
-          to send you a new one — the link should look like{" "}
-          <code style={{ background: "#1e293b", padding: "2px 6px", borderRadius: 4 }}>
+          {t("incomplete_body")}{" "}
+          <code dir="ltr" style={{ background: "#1e293b", padding: "2px 6px", borderRadius: 4 }}>
             cleanway.ai/family/join#code=…&pin=…
           </code>
-          .
         </p>
         <a
-          href="/"
+          href={localePath(locale, "/")}
           style={{
             display: "inline-block",
             background: "#22c55e",
@@ -98,7 +109,7 @@ export default function JoinClient() {
             fontWeight: 700,
           }}
         >
-          Back to Cleanway
+          {t("back_home")}
         </a>
       </Frame>
     );
@@ -108,21 +119,20 @@ export default function JoinClient() {
   // so the page doesn't flash empty.
   if (!readyToRead || !invite) {
     return (
-      <Frame>
+      <Frame home={localePath(locale, "/")}>
         <div style={{ height: 200 }} />
       </Frame>
     );
   }
 
+  const androidPage = localePath(locale, "/android");
+
   return (
-    <Frame>
+    <Frame home={localePath(locale, "/")}>
       <h1 style={{ fontSize: 28, fontWeight: 800, color: "#f8fafc", marginBottom: 12 }}>
-        You&apos;ve been invited to a Cleanway family
+        {t("title")}
       </h1>
-      <p style={{ color: "#94a3b8", lineHeight: 1.7, marginBottom: 24 }}>
-        Cleanway protects families from phishing and scam links. The person who invited you wants
-        you in their private alert circle so you can warn each other when scams hit.
-      </p>
+      <p style={{ color: "#94a3b8", lineHeight: 1.7, marginBottom: 24 }}>{t("intro")}</p>
 
       {/* Show the parsed code + PIN — nothing leaves this device. */}
       <div
@@ -134,89 +144,45 @@ export default function JoinClient() {
           marginBottom: 24,
         }}
       >
-        <div style={{ fontSize: 12, color: "#8796ab", textTransform: "uppercase", marginBottom: 6 }}>
-          Code
-        </div>
+        <div style={label}>{t("code_label")}</div>
         <div
-          style={{
-            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-            fontSize: 18,
-            color: "#22c55e",
-            fontWeight: 700,
-            wordBreak: "break-all",
-            marginBottom: 16,
-          }}
+          dir="ltr"
+          data-testid="family-join-code"
+          style={{ fontFamily: mono, fontSize: 18, color: "#22c55e", fontWeight: 700, wordBreak: "break-all", marginBottom: 16 }}
         >
           {invite.code}
         </div>
-        <div style={{ fontSize: 12, color: "#8796ab", textTransform: "uppercase", marginBottom: 6 }}>
-          PIN
-        </div>
+        <div style={label}>{t("pin_label")}</div>
         <div
-          style={{
-            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-            fontSize: 28,
-            color: "#22c55e",
-            fontWeight: 700,
-            letterSpacing: 8,
-            textAlign: "center",
-          }}
+          dir="ltr"
+          style={{ fontFamily: mono, fontSize: 28, color: "#22c55e", fontWeight: 700, letterSpacing: 8, textAlign: "center" }}
         >
           {invite.pin}
         </div>
       </div>
 
-      <h2 style={{ fontSize: 18, fontWeight: 700, color: "#f8fafc", marginBottom: 12 }}>
-        How to join
-      </h2>
+      <h2 style={{ fontSize: 18, fontWeight: 700, color: "#f8fafc", marginBottom: 12 }}>{t("how_title")}</h2>
 
       <ol
-        style={{
-          color: "#cbd5e1",
-          lineHeight: 1.8,
-          paddingLeft: 24,
-          marginBottom: 24,
-        }}
+        data-testid={`family-join-steps-${platform}`}
+        style={{ color: "#cbd5e1", lineHeight: 1.8, paddingInlineStart: 24, marginBottom: 24 }}
       >
-        {platform === "ios" && (
-          <>
-            <li>
-              Install the Cleanway app from the App Store. <em>(Coming soon)</em>
-            </li>
-            <li>Open Cleanway → Family → &quot;Join with code&quot;.</li>
-            <li>Paste this link, or type the code + PIN above.</li>
-          </>
-        )}
         {platform === "android" && (
           <>
             <li>
-              Install the Cleanway app from Google Play. <em>(Coming soon)</em>
+              {t("android_step1")} <a href={androidPage} style={link}>{t("android_link")}</a>
             </li>
-            <li>Open Cleanway → Family → &quot;Join with code&quot;.</li>
-            <li>Paste this link, or type the code + PIN above.</li>
+            <li>{t("app_step2")}</li>
+            <li>{t("app_step3")}</li>
           </>
         )}
+        {platform === "ios" && <li>{t("ios_soon")}</li>}
         {platform === "desktop" && (
           <>
+            <li>{t("desktop_soon")}</li>
             <li>
-              Install the Cleanway browser extension (
-              <a
-                href={PRIMARY_INSTALL_HREF}
-                style={{ color: "#60a5fa", textDecoration: "underline" }}
-              >
-                Chrome
-              </a>{" "}
-              /{" "}
-              <a
-                href={PRIMARY_INSTALL_HREF}
-                style={{ color: "#60a5fa", textDecoration: "underline" }}
-              >
-                Firefox
-              </a>
-              ).
+              {t("desktop_phone")} <a href={androidPage} style={link}>{t("android_link")}</a>
             </li>
-            <li>Click the Cleanway icon → Settings → Family Hub.</li>
-            <li>Click &quot;Join with code&quot; and paste this link, or type the code + PIN above.</li>
           </>
         )}
       </ol>
@@ -232,26 +198,17 @@ export default function JoinClient() {
           fontSize: 14,
           fontWeight: 600,
           cursor: "pointer",
-          marginRight: 8,
         }}
       >
-        {copied ? "Copied ✓" : "Copy invite link"}
+        {copied ? t("copied") : t("copy_link")}
       </button>
 
-      <p style={{ color: "#8796ab", fontSize: 13, marginTop: 24, lineHeight: 1.6 }}>
-        Privacy note: the code + PIN above are kept in the URL fragment (after the{" "}
-        <code style={{ background: "#1e293b", padding: "1px 4px", borderRadius: 3 }}>#</code>) and
-        never sent to Cleanway servers. Even our analytics see only{" "}
-        <code style={{ background: "#1e293b", padding: "1px 4px", borderRadius: 3 }}>
-          /family/join
-        </code>{" "}
-        without the secret. Invites expire 7 days after creation.
-      </p>
+      <p style={{ color: "#8796ab", fontSize: 13, marginTop: 24, lineHeight: 1.6 }}>{t("privacy_note")}</p>
     </Frame>
   );
 }
 
-function Frame({ children }: { children: React.ReactNode }) {
+function Frame({ children, home }: { children: React.ReactNode; home: string }) {
   return (
     <div
       style={{
@@ -279,14 +236,14 @@ function Frame({ children }: { children: React.ReactNode }) {
           }}
         >
           <a
-            href="/"
+            href={home}
             style={{ color: "#f8fafc", textDecoration: "none", fontWeight: 800, fontSize: 20 }}
           >
             Cleanway
           </a>
         </div>
       </nav>
-      <div style={{ maxWidth: 600, margin: "0 auto", padding: "60px 24px" }}>{children}</div>
+      <main style={{ maxWidth: 600, margin: "0 auto", padding: "60px 24px" }}>{children}</main>
     </div>
   );
 }

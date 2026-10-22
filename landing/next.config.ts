@@ -64,9 +64,9 @@ const CSP_DIRECTIVES = [
   // `*.ingest.sentry.io` does not match — a wildcard covers one label, so
   // every browser event was blocked by this CSP and never reached Sentry.
   "connect-src 'self' https://api.cleanway.ai https://*.supabase.co https://*.supabase.in https://api.stripe.com https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://*.ingest.us.sentry.io",
-  // Stripe Checkout + the Outlook add-in iframe surface (addin domain
-  // sits on the same Vercel deploy) + the Turnstile widget iframe.
-  "frame-src https://js.stripe.com https://hooks.stripe.com https://addin.cleanway.ai https://challenges.cloudflare.com",
+  // Stripe Checkout + the Turnstile widget iframe. (The site never frames the
+  // Outlook add-in; Outlook does — see OUTLOOK_ADDIN_CSP below.)
+  "frame-src https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com",
   "frame-ancestors 'none'",
   "form-action 'self' https://checkout.stripe.com",
   "base-uri 'self'",
@@ -74,14 +74,12 @@ const CSP_DIRECTIVES = [
   "upgrade-insecure-requests",
 ].join("; ");
 
-const SECURITY_HEADERS = [
-  { key: "Content-Security-Policy", value: CSP_DIRECTIVES },
+const COMMON_HEADERS = [
   {
     // 1 year, preload-eligible. cleanway.ai is HTTPS-only on Vercel.
     key: "Strict-Transport-Security",
     value: "max-age=31536000; includeSubDomains; preload",
   },
-  { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
@@ -91,6 +89,54 @@ const SECURITY_HEADERS = [
     value: "camera=(), microphone=(), geolocation=(), payment=(self \"https://checkout.stripe.com\"), interest-cohort=()",
   },
 ];
+
+const SECURITY_HEADERS = [
+  { key: "Content-Security-Policy", value: CSP_DIRECTIVES },
+  { key: "X-Frame-Options", value: "DENY" },
+  ...COMMON_HEADERS,
+];
+
+/**
+ * The Outlook add-in (email-plugin-outlook/, copied to public/outlook/ by the
+ * prebuild step and named by its manifest at https://cleanway.ai/outlook/…).
+ * Outlook shows its task pane inside its own frame, and the
+ * pane must load Microsoft's office.js from appsforoffice.microsoft.com — the
+ * site-wide policy above forbids both (frame-ancestors 'none' + X-Frame-Options
+ * DENY, a script-src without that host), so the add-in could not start. These
+ * pages get their own policy: no inline script, office.js only from
+ * Microsoft's host, calls only to our API, and framing only by Outlook's own
+ * web hosts (Outlook on the web, Microsoft 365, outlook.live.com, the new
+ * outlook.cloud.microsoft). Desktop Outlook shows the pane top-level, where
+ * frame-ancestors does not apply. No X-Frame-Options here: DENY would refuse
+ * Outlook, and ALLOW-FROM is ignored by every current browser.
+ */
+const OUTLOOK_FRAME_ANCESTORS = [
+  "https://outlook.office.com",
+  "https://outlook.office365.com",
+  "https://outlook.live.com",
+  "https://outlook.cloud.microsoft",
+  "https://*.office.com",
+  "https://*.office365.com",
+  "https://*.officeapps.live.com",
+  "https://*.cloud.microsoft",
+];
+
+const OUTLOOK_ADDIN_CSP = [
+  "default-src 'self'",
+  "script-src 'self' https://appsforoffice.microsoft.com",
+  // The pane's own stylesheet; office.js may set style attributes.
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://api.cleanway.ai https://appsforoffice.microsoft.com",
+  `frame-ancestors ${OUTLOOK_FRAME_ANCESTORS.join(" ")}`,
+  "form-action 'none'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "upgrade-insecure-requests",
+].join("; ");
+
+const OUTLOOK_ADDIN_HEADERS = [{ key: "Content-Security-Policy", value: OUTLOOK_ADDIN_CSP }, ...COMMON_HEADERS];
 
 /**
  * Crawlers and link-preview bots that read <title>/<meta> from the raw HTML
@@ -123,8 +169,14 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: "/:path*",
+        // Everything but the Outlook add-in: one header set per response, so
+        // the add-in's frame-ancestors is not overridden by the site's DENY.
+        source: "/:path((?!outlook/).*)",
         headers: SECURITY_HEADERS,
+      },
+      {
+        source: "/outlook/:path*",
+        headers: OUTLOOK_ADDIN_HEADERS,
       },
     ];
   },

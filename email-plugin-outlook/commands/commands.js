@@ -39,9 +39,9 @@ function reportPhishing(event) {
   // every ribbon click to 422. For an Outlook user marking an email
   // as phishing, this is a false-negative report (Cleanway did not
   // already flag it). The "domain" is the sender's email domain —
-  // that's what the ML retraining pipeline keys off. Full sender +
-  // subject go in `comment` for triage, both length-capped to stay
-  // under the 500-char backend limit.
+  // that's what the review keys off, and all a report sends: the full
+  // address and the subject used to ride along in `comment` and were kept
+  // in feedback_reports, though the manifest says only the domain goes.
   const senderEmail = item.from.emailAddress;
   const atIdx = senderEmail.lastIndexOf("@");
   const senderDomain = atIdx >= 0 ? senderEmail.slice(atIdx + 1).toLowerCase() : "";
@@ -54,12 +54,10 @@ function reportPhishing(event) {
     return;
   }
 
-  const sender = senderEmail.slice(0, 200);
-  const subject = (item.subject || "").slice(0, 200);
   const payload = {
     domain: senderDomain,
     report_type: "false_negative",
-    comment: `[outlook] sender=${sender}; subject=${subject}`.slice(0, 500),
+    comment: "[outlook]",
   };
 
   fetch(`${API_BASE}/api/v1/feedback/report`, {

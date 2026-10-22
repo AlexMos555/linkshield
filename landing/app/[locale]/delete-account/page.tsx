@@ -17,6 +17,7 @@ import { getTranslations } from "next-intl/server";
 
 import { routing, RTL_LOCALES, type Locale } from "@/i18n/routing";
 import { localePath } from "@/lib/locale-path";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_LIVE } from "@/lib/support";
 
 const SITE_URL = "https://cleanway.ai";
@@ -38,11 +39,32 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const languages: Record<string, string> = {};
   for (const loc of routing.locales) languages[loc] = urlFor(loc as Locale, PATH);
   languages["x-default"] = urlFor(routing.defaultLocale, PATH);
+  const title = t("meta_title");
+  const description = t("meta_description");
+  const canonical = urlFor(locale, PATH);
   return {
-    title: t("meta_title"),
-    description: t("meta_description"),
+    title,
+    description,
     metadataBase: new URL(SITE_URL),
-    alternates: { canonical: urlFor(locale, PATH), languages },
+    alternates: { canonical, languages },
+    // Support sends this link to people asking how to delete an account: its
+    // own preview, and the share image by its locale-free URL, /og.png
+    // (lib/seo.ts).
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      siteName: "Cleanway",
+      type: "website",
+      locale,
+      images: [DEFAULT_OG_IMAGE],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [DEFAULT_OG_IMAGE.url],
+    },
     robots: { index: true, follow: true },
   };
 }

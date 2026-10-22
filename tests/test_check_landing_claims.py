@@ -190,6 +190,21 @@ def test_unreleased_version_is_caught_anywhere_on_the_site() -> None:
     assert len(findings) == 1 and "names app version 1.0.2" in findings[0]
 
 
+def test_business_operator_copy_is_held_to_the_billing_rules() -> None:
+    # /business shows Business.operator.* once the operator-billed subscription
+    # is on: the same paid product as /pricing, so the same rules apply.
+    landing = {"business": {"operator": {"subtitle": "Подписка бесплатна для команд, оплата через Stripe, 99 ₽."}}}
+    findings = _findings("ru", landing)
+    assert any("calls the subscription free" in f for f in findings), findings
+    assert any("names Stripe" in f for f in findings), findings
+    assert any("hard-codes a price" in f for f in findings), findings
+
+
+def test_business_free_copy_is_out_of_the_billing_on_review() -> None:
+    # With the subscription on, a Russian reader sees Business.operator.*, never Business.free.*.
+    assert any(prefix.startswith("landing.business.free") for prefix in guard.BILLING_ON_EXEMPT)
+
+
 def test_ip_addresses_are_not_versions() -> None:
     landing = _policy("В версии 1.0.1: Cloudflare (1.1.1.1), Quad9 (9.9.9.9), 10.0.0.2.")
     assert guard.check_app_version({"ru": landing}, RELEASED) == []
