@@ -409,7 +409,14 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     assert.ok(pages.length >= 5, `expected the extension's pages, found ${pages.join(", ")}`);
     for (const page of pages) {
       const html = readFileSync(join(ROOT, page), "utf8");
-      const first = /<script\b[^>]*>/.exec(html.replace(/<!--[\s\S]*?-->/g, ""));
+      // Our own markup, read and not sanitized: only what is outside <!-- … -->
+      // counts (a comment there mentions "<script src>").
+      const outside = html.split("<!--").map((part, i) => {
+        if (i === 0) return part;
+        const end = part.indexOf("-->");
+        return end < 0 ? "" : part.slice(end + 3);
+      }).join(" ");
+      const first = /<script\b[^>]*>/i.exec(outside);
       assert.ok(first, `${page} loads no script`);
       const src = /\ssrc="([^"]+)"/.exec(first[0]);
       assert.ok(src, `${page}: the first <script> is inline, not the alias`);

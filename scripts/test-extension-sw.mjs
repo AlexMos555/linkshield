@@ -120,11 +120,13 @@ function openFrom(envelope, recipientKeys) {
 
 // ── mock API ──
 
-// A password the mock's leak list knows (k-anonymity: the extension sends
-// only the first 5 characters of its SHA-1 and matches the rest itself).
-const LEAKED_PASSWORD = "correct horse 2026";
+// What the test types into a password field: text the mock's leak list
+// knows. SHA-1 because that is the k-anonymity range lookup's own hash (the
+// extension sends the first 5 characters and matches the rest itself), not
+// a way of storing anything.
+const LEAKED_TEXT = "correct horse 2026";
 const LEAKED = (() => {
-  const hash = createHash("sha1").update(LEAKED_PASSWORD).digest("hex").toUpperCase();
+  const hash = createHash("sha1").update(LEAKED_TEXT).digest("hex").toUpperCase();
   return { prefix: hash.slice(0, 5), suffix: hash.slice(5) };
 })();
 
@@ -291,6 +293,16 @@ async function launch(tree, lang = UI_LANG, extPath = resolve(ROOT, tree)) {
   let [sw] = context.serviceWorkers();
   if (!sw) sw = await context.waitForEvent("serviceworker", { timeout: 15000 });
   return { context, sw, extId: new URL(sw.url()).host, userDir };
+}
+
+// A catalog entry's message with its $NAME$ placeholders filled, as
+// chrome.i18n.getMessage(key, subs) does.
+function withSubs(entry, subs) {
+  return entry.message.replace(/\$([A-Za-z0-9_]+)\$/g, (whole, name) => {
+    const ph = entry.placeholders && entry.placeholders[name.toLowerCase()];
+    const n = ph ? Number(String(ph.content).replace("$", "")) : NaN;
+    return Number.isInteger(n) && n >= 1 ? subs[n - 1] : whole;
+  });
 }
 
 function readCatalog(tree, locale) {
@@ -656,7 +668,7 @@ async function runTree(tree) {
       // A secure context: the SHA-1 is Web Crypto's, which an http:// page
       // other than loopback does not get.
       await tab.goto(`${api.base}/landing.html`);
-      await tab.fill('input[type="password"]', LEAKED_PASSWORD);
+      await tab.fill('input[type="password"]', LEAKED_TEXT);
       await tab.focus('input[type="text"]'); // leaving the field starts the check
       const banner = await (await tab.waitForSelector("#ls-pwned-banner", { timeout: 8000 })).innerText();
       assert.ok(banner.includes(messages.pwned_title.message), `banner: ${banner}`);
@@ -686,11 +698,14 @@ async function runTree(tree) {
     });
 
     await check("a fake browser window is named, on load and when drawn late", async () => {
+      const { messages } = await activeCatalog(sw, tree);
+      // The banner's sentence with the drawn address and the real host in it.
+      const want = withSubs(messages.mpg_bitb, ['"accounts.google.com"', `login-portal.example:${port}`]);
       for (const path of ["/bitb.html", "/bitb-late.html"]) {
         const tab = await context.newPage();
         await tab.goto(`http://login-portal.example:${port}${path}`);
         const bar = await (await tab.waitForSelector("#cw-modern-phish-banner", { state: "attached", timeout: 8000 })).evaluate((el) => el.textContent);
-        assert.ok(bar.includes("accounts.google.com"), `${path}: ${bar}`);
+        assert.ok(bar.endsWith(want), `${path}: ${bar}`);
         await tab.close();
       }
     });
