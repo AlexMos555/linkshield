@@ -89,6 +89,15 @@ try {
     ["https://google.com/", "evil.tld/x", null],
     ["https://google.com/", "google.com@evil.tld", null],
     ["https://google.com/", "localhost", null],
+    // --- not strings (a repeated deep-link param is an array) ----------------
+    // Must answer, never throw during render: the screen reads the first
+    // value (src/utils/route-params.ts), these are the backstop.
+    [["https://google.com/x", "https://evil.tld/"], undefined, null],
+    [["https://evil.tld/"], "google.com", "https://google.com/"],
+    [42, "google.com", "https://google.com/"],
+    [undefined, "google.com", "https://google.com/"],
+    ["https://google.com/", ["google.com"], null],
+    ["https://google.com/", 42, null],
   ];
 
   let failed = 0;
@@ -111,7 +120,7 @@ try {
       }
     }
     if (ok) {
-      console.log(`  ok    ${JSON.stringify(raw)} -> ${JSON.stringify(got)}`);
+      console.log(`  ok    ${JSON.stringify(raw) ?? String(raw)} -> ${JSON.stringify(got)}`);
     } else {
       failed++;
       console.error(`  FAIL  ${JSON.stringify(raw)} [checked ${JSON.stringify(checked)}] -> ${JSON.stringify(got)}, expected ${JSON.stringify(expected)} ${why}`);

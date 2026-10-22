@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Platform } from "react-native";
-import { Stack, useRouter, usePathname } from "expo-router";
+import { Stack, useRouter, usePathname, type ErrorBoundaryProps } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
@@ -30,6 +30,7 @@ import "../src/lib/sentry";
 import { AccountLockedModal } from "../src/components/AccountLockedModal";
 import { AccountWatcher } from "../src/components/AccountWatcher";
 import { CallGuardProvider } from "../src/components/call/CallGuardProvider";
+import { AppErrorScreen } from "../src/components/AppFallbacks";
 import { isMessageCheckSupported } from "../modules/cleanway-vpn";
 import { handOffMessage } from "../src/services/message-handoff";
 import { isMessageText } from "../src/utils/message-verdict";
@@ -134,6 +135,16 @@ function ShareIntentRouter() {
   }, [hasShareIntent, shareIntent]);
 
   return null;
+}
+
+/**
+ * expo-router wraps this layout — and so every screen under it — in an error
+ * boundary when the module exports one. Without it a render error closed the
+ * app in a release build, and the Android shield in the same process with it
+ * (src/components/AppFallbacks.tsx).
+ */
+export function ErrorBoundary(props: ErrorBoundaryProps) {
+  return <AppErrorScreen {...props} />;
 }
 
 export default function RootLayout() {
@@ -241,6 +252,8 @@ export default function RootLayout() {
         <Stack.Screen name="captcha-return" options={{ headerShown: false }} />
         {/* The stop screen on demand ("I'm being called"); also where the after-call notice lands. */}
         <Stack.Screen name="call-guard" options={{ title: t("mobile.call_guard.nav_title") }} />
+        {/* A cleanway:// path with no screen (app/+not-found.tsx); its own button goes home. */}
+        <Stack.Screen name="+not-found" options={{ headerShown: false }} />
       </Stack>
       {/* Global overlay — subscribes to accountLockedEvents and renders
           the restore CTA whenever any authed call returns 410 Gone. */}

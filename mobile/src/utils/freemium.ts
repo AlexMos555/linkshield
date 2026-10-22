@@ -262,6 +262,24 @@ export function marketFor(language: string, region: string | null | undefined): 
   return (language || "").split("-")[0].toLowerCase() === "ru" ? "ru" : "world";
 }
 
+/**
+ * Show "Upgrade", the Plan row and "Add a device"? Not where the paywall can
+ * only say "coming soon" (purchaseAction: the "ru" market — Stripe and Google
+ * Play cannot take Russian cards, phone-balance billing is not merged; the old
+ * upgrade screen led there to a page in dollars no one could pay, report #15).
+ * The upgrade code stays; only its entry points are hidden.
+ *
+ * Decided by marketFor, the paywall's own signal (region, else language), so
+ * the two never disagree. It used to read the app's language alone; once the
+ * app started in the first language it has (utils/device-locale.ts), a phone
+ * set to Ukrainian, Kazakh or Belarusian with Russian second lost every entry
+ * point in a country where it can pay, while the paywall still priced it in
+ * dollars.
+ */
+export function paidPlansVisible(language: string, region: string | null | undefined): boolean {
+  return marketFor(language, region) !== "ru";
+}
+
 /** Prices shown on the paywall. Amounts are display strings; the store / checkout charges. */
 export const PRICES = {
   ru: { month: "99 ₽", devices: 3 },

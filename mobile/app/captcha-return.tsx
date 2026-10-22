@@ -27,12 +27,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { colors, spacing, fontSize } from "../src/utils/theme";
 import { deliverCaptchaToken } from "../src/services/captcha";
-
-/** expo-router hands back `string | string[]` for a repeated query param. */
-function firstValue(v: string | string[] | undefined): string {
-  if (Array.isArray(v)) return v[0] ?? "";
-  return v ?? "";
-}
+// expo-router hands back `string | string[]` for a repeated query param.
+import { firstValue } from "../src/utils/route-params";
 
 export default function CaptchaReturnScreen() {
   const router = useRouter();

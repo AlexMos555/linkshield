@@ -71,7 +71,12 @@
     },
     "plugins": [
       "./plugins/withIosAppStore",
-      "expo-router",
+      [
+        "expo-router",
+        {
+          "sitemap": false
+        }
+      ],
       [
         "expo-secure-store",
         {

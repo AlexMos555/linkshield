@@ -1846,6 +1846,7 @@
   "mobile.account.delete_store_continue": "Delete anyway",
   "mobile.account.restore_desc_appstore": "Subscribed with this Apple ID on another phone or account? Bring it here",
   "mobile.account.cancel_note_appstore": "Apple bills this subscription, so only Apple can cancel it: Settings → your name → Subscriptions → Cleanway. Deleting your Cleanway account does not cancel it.",
+  "mobile.account.locked_dismiss": "Not now",
   "mobile.paywall.close": "Close",
   "mobile.paywall.title": "Check without limits",
   "mobile.paywall.lead": "Today's free detailed checks are used up. Sites on our scam list are still blocked — with or without a subscription.",
@@ -1979,5 +1980,10 @@
   "mobile.ios.dns.step_done": "Done",
   "mobile.ios.dns.error_status": "Couldn't read your iPhone's DNS settings. Close this and try again.",
   "mobile.ios.dns.error_add": "Your iPhone didn't save the setting. Try again; if it keeps failing, update Cleanway.",
-  "mobile.ios.dns.error_remove": "Your iPhone didn't remove the setting. You can remove it in Settings → General → VPN & Device Management → DNS."
+  "mobile.ios.dns.error_remove": "Your iPhone didn't remove the setting. You can remove it in Settings → General → VPN & Device Management → DNS.",
+  "mobile.fallback.not_found_title": "Cleanway can't open this link",
+  "mobile.fallback.not_found_body": "It may be meant for a newer version of the app. Update Cleanway, or go to the home screen.",
+  "mobile.fallback.error_title": "Something went wrong",
+  "mobile.fallback.error_body": "This screen couldn't be shown. Go back to the home screen and try again from there.",
+  "mobile.fallback.home": "Go to the home screen"
 }

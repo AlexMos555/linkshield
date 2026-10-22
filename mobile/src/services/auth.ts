@@ -10,7 +10,7 @@
  * - `POST /auth/v1/signup`
  * - `POST /auth/v1/token?grant_type=password`
  * - `POST /auth/v1/token?grant_type=refresh_token`
- * - `POST /auth/v1/logout`
+ * - `POST /auth/v1/logout?scope=local`
  * - `POST /auth/v1/recover` (password reset email)
  *
  * Session persistence contract:
@@ -20,7 +20,8 @@
  * - `restoreSession` reads them on app boot and returns an `AuthSession`
  *   or `null`; if the access token is <2 min from expiry it transparently
  *   refreshes before returning.
- * - `signOut` clears all four keys and hits the logout endpoint best-effort.
+ * - `signOut` clears all four keys and ends this phone's session on the
+ *   server, best-effort.
  *
  * Keeping the session fresh (so a signed-in person is never bounced by an
  * expired token):
@@ -41,7 +42,7 @@ import * as SecureStore from "expo-secure-store";
 import { AppState, type AppStateStatus } from "react-native";
 import { EventEmitter } from "events";
 import { setAuthToken, setTokenProvider } from "./api";
-import { needsRefresh, refreshDelayMs, singleFlight } from "../utils/account-session";
+import { needsRefresh, refreshDelayMs, refreshFailure, singleFlight } from "../utils/account-session";
 import { otpRequestBody } from "../utils/otp-request";
 import {
   SUPABASE_URL,
@@ -358,12 +359,23 @@ export async function verifyEmailOtp(
     : new AuthError("auth_error", "Authentication failed");
 }
 
+/**
+ * Ends THIS phone's session only. Without the scope GoTrue's default is
+ * "global": signing out on the phone signed the same account out on the
+ * website, the extension and every other phone — and an unlinked phone, whose
+ * token stays valid (unlinking does not end GoTrue sessions), did the same on
+ * its way out. Every other client sends scope=local too (extension-core
+ * auth-session.js, landing ConnectClient.tsx). Only account deletion ends all
+ * sessions on purpose, server-side.
+ */
+const LOGOUT_PATH = "/auth/v1/logout?scope=local";
+
 export async function signOut(): Promise<void> {
   const stored = await readStoredSession();
   // Best-effort logout: clear local state even if the API call fails.
   try {
     if (stored?.accessToken) {
-      await goTrue("/auth/v1/logout", null, "POST", stored.accessToken);
+      await goTrue(LOGOUT_PATH, null, "POST", stored.accessToken);
     }
   } catch {
     // ignore — session is invalidated server-side eventually anyway
@@ -372,11 +384,15 @@ export async function signOut(): Promise<void> {
 }
 
 /**
- * Internal refresh that keeps the failure kinds apart. Only a definitive 401
- * means the session is gone; a network failure (status 0, timeout, 5xx) means
- * WE DON'T KNOW — the refresh token is untouched in SecureStore and the next
- * online attempt will likely succeed. Collapsing both into null is what made
- * the app tell an offline-but-signed-in user to go type her password again.
+ * Internal refresh that keeps the failure kinds apart. A refresh token GoTrue
+ * refuses (400 refresh_token_not_found / invalid_grant, 403 session_expired,
+ * 401) means the session is gone; a network failure (status 0, timeout, 429,
+ * 5xx), a 400 / 403 page GoTrue did not write (Cloudflare's block page, a
+ * proxy's) or an unusable 200 means WE DON'T KNOW — the refresh token is
+ * untouched in SecureStore and the next online attempt will likely succeed.
+ * Collapsing both into null is what made the app tell an offline-but-signed-in
+ * user to go type her password again; counting only 401 as final kept a dead
+ * session as "offline" forever (utils/account-session.ts `refreshFailure`).
  */
 const _refresh = singleFlight(_refreshOnce);
 
@@ -387,10 +403,11 @@ async function _refreshOnce(): Promise<AuthSession | "offline" | null> {
     const data = await goTrue("/auth/v1/token?grant_type=refresh_token", {
       refresh_token: stored.refreshToken,
     });
-    return await persistSession(data, stored.email);
+    // A 200 without tokens (a proxy's page, a cut-off body) is not a refusal.
+    return (await persistSession(data, stored.email)) ?? "offline";
   } catch (err) {
-    // Refresh tokens don't come back — a 401 is a real logout.
-    if (err instanceof AuthError && err.status === 401) {
+    // Refresh tokens don't come back — a refused one is a real logout.
+    if (err instanceof AuthError && refreshFailure(err.status, err.code) === "signed_out") {
       await clearSession();
       return null;
     }

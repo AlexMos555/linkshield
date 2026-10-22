@@ -14,6 +14,7 @@ import { ListedMark, NotFoundCard, ServerDetailsNote } from "../src/components/c
 import { LockedDetailsCard, NotListedCard } from "../src/components/paywall/LockedDetails";
 import { useAutoPaywall, useDetailGate } from "../src/hooks/useFreemium";
 import { useAnnounce } from "../src/hooks/useAnnounce";
+import { firstValue } from "../src/utils/route-params";
 
 /**
  * Say what actually went wrong. A rate limit, a slow server and a dead server
@@ -32,7 +33,11 @@ export default function ResultScreen() {
   // already stopped (a History entry, or the link guard's screen). Show the
   // check, but do not save it as a new one — a second "dangerous" row would
   // count the same block twice on the home screen.
-  const { domain, from } = useLocalSearchParams<{ domain: string; from?: string }>();
+  // First value of each: a repeated param in a cleanway:///result deep link
+  // arrives as an array (src/utils/route-params.ts).
+  const params = useLocalSearchParams<{ domain?: string | string[]; from?: string | string[] }>();
+  const domain = firstValue(params.domain);
+  const from = firstValue(params.from);
   const record = from !== "history" && from !== "guard";
   const { t } = useTranslation();
   // The on-device list first, the server after — a listed site never waits

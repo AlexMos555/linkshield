@@ -23,7 +23,11 @@
  *   • after the limit a message keeps the scam list's verdict: a listed link
  *     is still "dangerous", and nothing else is claimed;
  *   • a store build never links out to the web checkout; Russia shows
- *     "coming soon"; signed out → sign in first.
+ *     "coming soon"; signed out → sign in first;
+ *   • "Upgrade" / the Plan row are hidden exactly where the paywall would say
+ *     "coming soon" — by the phone's region, like the paywall's prices, not
+ *     by the app's language (a Ukrainian phone with Russian second opens in
+ *     Russian, and in Ukraine it can pay).
  */
 import assert from "node:assert/strict";
 
@@ -43,6 +47,7 @@ import {
   localDayKey,
   marketFor,
   paidFromCache,
+  paidPlansVisible,
   parseEntitlementCache,
   paywallBenefits,
   priceDisplay,
@@ -54,6 +59,7 @@ import {
   withPaywallShown,
 } from "../src/utils/freemium.ts";
 import { listOnlyVerdict } from "../src/utils/message-verdict.ts";
+import { firstSupportedLocale } from "../src/utils/device-locale.ts";
 
 let failures = 0;
 function check(name, fn) {
@@ -366,6 +372,33 @@ check("market: the region decides, else the language", () => {
   assert.equal(marketFor("ru", "AE"), "world");
   assert.equal(marketFor("ru-RU", null), "ru");
   assert.equal(marketFor("de", undefined), "world");
+});
+check("upgrade entry points: hidden where the paywall says \"coming soon\", by the same signal", () => {
+  const pairs = [
+    ["ru", "RU"], ["ru-RU", null], ["en", "RU"], ["ru", undefined],
+    ["ru", "UA"], ["ru", "KZ"], ["ru", "AE"], ["en", "US"], ["de", undefined], ["en", ""],
+  ];
+  for (const [language, region] of pairs) {
+    const market = marketFor(language, region);
+    const soon = purchaseAction({ signedIn: true, market, distribution: "play" }) === "soon";
+    assert.equal(paidPlansVisible(language, region), !soon, `${language} / ${region}`);
+  }
+  assert.equal(paidPlansVisible("ru", "RU"), false);
+  assert.equal(paidPlansVisible("ru", null), false, "no region: the language decides");
+  assert.equal(paidPlansVisible("en", "RU"), false, "an English phone in Russia cannot pay either");
+});
+check("a Ukrainian phone with Russian second opens in Russian and keeps \"Upgrade\" in Ukraine", () => {
+  // The app starts in the first language it has (utils/device-locale.ts); the
+  // region is the first preferred locale's, as on the paywall.
+  const SUPPORTED = ["en", "ru", "es", "pt", "fr", "de", "it", "id", "hi", "ar"];
+  for (const region of ["UA", "KZ", "BY"]) {
+    const phone = [{ languageCode: region === "KZ" ? "kk" : region === "BY" ? "be" : "uk", regionCode: region },
+                   { languageCode: "ru", regionCode: region }];
+    const language = firstSupportedLocale(phone, SUPPORTED);
+    assert.equal(language, "ru");
+    assert.equal(paidPlansVisible(language, phone[0].regionCode), true, region);
+    assert.equal(marketFor(language, phone[0].regionCode), "world", region);
+  }
 });
 check("prices: RU 99 ₽ a month; site sells $9.99 a year; stores $0.99 a month", () => {
   assert.deepEqual(priceDisplay("ru", "site"), { price: "99 ₽", period: "month", alt: null });

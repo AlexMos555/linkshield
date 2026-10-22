@@ -13,8 +13,12 @@
  *  - those codes (and the phone's own on_device_list) read in Russian;
  *  - every mapped code has its label in every locale, so no mapping can
  *    quietly point at a key that does not exist.
- * Same approach as test-host-parser.mjs: compile the one file with the tree's
- * TypeScript and run it against the generated mobile/i18n/*.json.
+ * Also the language the app starts in (src/utils/device-locale.ts): the first
+ * of the phone's preferred languages the app has. It used to read only the
+ * first one, so a phone set to Ukrainian, Kazakh or Belarusian with Russian
+ * second opened in English.
+ * Same approach as test-host-parser.mjs: compile the files with the tree's
+ * TypeScript and run them against the generated mobile/i18n/*.json.
  */
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
@@ -26,6 +30,7 @@ import { deepStrictEqual } from "node:assert";
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
 const src = resolve(root, "src/utils/reason-label.ts");
+const deviceLocale = resolve(root, "src/utils/device-locale.ts");
 const out = mkdtempSync(join(tmpdir(), "cleanway-reason-label-"));
 
 const locales = Object.fromEntries(
@@ -47,12 +52,17 @@ try {
   execFileSync(
     "npx",
     [
-      "tsc", src, "--outDir", out, "--rootDir", root,
+      "tsc", src, deviceLocale, "--outDir", out, "--rootDir", root,
       "--module", "esnext", "--target", "es2020", "--moduleResolution", "bundler", "--skipLibCheck",
     ],
     { cwd: root, stdio: "inherit" },
   );
   const m = await import(pathToFileURL(join(out, "src/utils/reason-label.js")).href);
+  const { firstSupportedLocale } = await import(pathToFileURL(join(out, "src/utils/device-locale.js")).href);
+  // The app's locales are the generated files (src/i18n/index.ts imports each).
+  const SUPPORTED = Object.keys(locales).sort();
+  /** expo-localization's getLocales(), reduced to what the picker reads. */
+  const phone = (...codes) => codes.map((languageCode) => ({ languageCode }));
   const ru = tFor("ru");
   const english = "English detail from the server";
 
@@ -84,6 +94,37 @@ try {
       "no code at all (older API builds): the detail as sent",
       () => m.reasonLabel({ detail: english }, ru),
       english,
+    ],
+    // --- the language the app starts in -------------------------------------
+    [
+      "the app ships the 10 locales the picker is given",
+      () => SUPPORTED,
+      ["ar", "de", "en", "es", "fr", "hi", "id", "it", "pt", "ru"],
+    ],
+    [
+      "Russian second after a language the app lacks: Russian, not English",
+      () => [phone("uk", "ru"), phone("kk", "ru"), phone("be", "ru", "en")].map((p) => firstSupportedLocale(p, SUPPORTED)),
+      ["ru", "ru", "ru"],
+    ],
+    [
+      "the phone's order decides between two the app has",
+      () => [phone("kk", "en", "ru"), phone("ru", "en"), phone("de")].map((p) => firstSupportedLocale(p, SUPPORTED)),
+      ["en", "ru", "de"],
+    ],
+    [
+      "Android's legacy code for Indonesian (\"in\") is Indonesian",
+      () => firstSupportedLocale(phone("in"), SUPPORTED),
+      "id",
+    ],
+    [
+      "a missing code is skipped, and case does not matter",
+      () => firstSupportedLocale([{ languageCode: null }, {}, { languageCode: "RU" }], SUPPORTED),
+      "ru",
+    ],
+    [
+      "none the app has, or no list at all: null (the app then starts in English)",
+      () => [phone("uk", "be"), [], undefined, null].map((p) => firstSupportedLocale(p, SUPPORTED)),
+      [null, null, null, null],
     ],
   ];
 

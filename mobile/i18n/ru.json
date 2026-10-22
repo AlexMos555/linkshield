@@ -1846,6 +1846,7 @@
   "mobile.account.delete_store_continue": "Всё равно удалить",
   "mobile.account.restore_desc_appstore": "Оформили подписку с этим Apple ID на другом телефоне или аккаунте? Перенесите её сюда",
   "mobile.account.cancel_note_appstore": "Эту подписку оплачивает Apple, поэтому отменить её можно только у Apple: Настройки → ваше имя → Подписки → Cleanway. Удаление аккаунта Cleanway её не отменяет.",
+  "mobile.account.locked_dismiss": "Не сейчас",
   "mobile.paywall.close": "Закрыть",
   "mobile.paywall.title": "Проверяйте без ограничений",
   "mobile.paywall.lead": "Бесплатные подробные проверки на сегодня закончились. Сайты из нашего списка мошеннических блокируются всегда — с подпиской и без.",
@@ -1979,5 +1980,10 @@
   "mobile.ios.dns.step_done": "Готово",
   "mobile.ios.dns.error_status": "Не удалось прочитать настройки DNS на iPhone. Закройте окно и попробуйте снова.",
   "mobile.ios.dns.error_add": "iPhone не сохранил настройку. Попробуйте ещё раз; если не получается, обновите Cleanway.",
-  "mobile.ios.dns.error_remove": "iPhone не удалил настройку. Удалить её можно в Настройках → Основные → VPN и управление устройством → DNS."
+  "mobile.ios.dns.error_remove": "iPhone не удалил настройку. Удалить её можно в Настройках → Основные → VPN и управление устройством → DNS.",
+  "mobile.fallback.not_found_title": "Cleanway не может открыть эту ссылку",
+  "mobile.fallback.not_found_body": "Возможно, она для более новой версии приложения. Обновите Cleanway или перейдите на главный экран.",
+  "mobile.fallback.error_title": "Что-то пошло не так",
+  "mobile.fallback.error_body": "Не удалось показать этот экран. Вернитесь на главный экран и попробуйте снова.",
+  "mobile.fallback.home": "На главный экран"
 }
