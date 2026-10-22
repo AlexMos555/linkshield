@@ -1,28 +1,37 @@
 /**
  * The count on the toolbar icon: how many risky sites (caution or
- * dangerous) the page in THIS tab is, or links to, since it last loaded.
- * Red when one of them is dangerous, amber when all are caution, nothing
- * when there are none.
+ * dangerous) the page in THIS tab is, or links to. Red when one of them is
+ * dangerous, amber when all are caution, nothing when there are none.
  *
  * It used to be one global badge, set without a tabId and never cleared: a
  * red "3" from one page stayed on every tab, including clean ones, and the
- * number was only the last batch of links. Now each tab has its own set of
- * risky hosts (one host counts once however many links point at it), a
- * navigation ("loading") clears it, and a closed tab is forgotten. The sets
- * live in chrome.storage.session where the browser has it, so a restarted
- * worker keeps counting from where it was; else in memory.
+ * number was only the last batch of links. Now each tab counts risky hosts
+ * (one host counts once however many links point at it) per DOCUMENT: the
+ * content script sends an id it made for its document with every check
+ * (content/index.js), and a check from another document makes the tab show
+ * that one's count.
  *
- * A check answered after its tab moved on (a slow API, then a click) is not
- * counted on the new page: every navigation starts a new generation.
+ * Not tabs.onUpdated "loading": Chromium fires it for history.pushState, a
+ * #fragment link and a back/forward-cache restore too, where the page and
+ * its links stay the same and nothing scans them again — the count went
+ * blank on every SPA. A cross-document navigation resets the tab's badge in
+ * the browser itself (Chrome, Firefox), and the new page's own check paints
+ * its count. A page restored from the back/forward cache keeps its id, so
+ * its stored count comes back with its page check.
+ *
+ * The counts live in chrome.storage.session where the browser has it, so a
+ * restarted worker keeps counting from where it was; else in memory. A
+ * closed tab is forgotten.
  */
 
 export const BADGE_KEY = "toolbar_badge_tabs";
 export const BADGE_RED = "#ef4444";
 export const BADGE_AMBER = "#f59e0b";
 const MAX_HOSTS = 200;
-const MAX_TABS = 300;
+const MAX_PAGES = 300;
+const MAX_DOC_ID = 64;
 
-/** Pure: the badge for one tab's risky hosts. */
+/** Pure: the badge for one page's risky hosts. */
 export function badgeFor(entry) {
   const dangerous = (entry && entry.dangerous) || [];
   const caution = (entry && entry.caution) || [];
@@ -46,12 +55,23 @@ export function addResults(entry, results) {
   return { dangerous: [...dangerous].slice(0, MAX_HOSTS), caution: [...caution].slice(0, MAX_HOSTS) };
 }
 
+/** Pure: a document id as the content script sends it, else null. */
+export function docIdOf(value) {
+  return typeof value === "string" && value.length > 0 && value.length <= MAX_DOC_ID ? value : null;
+}
+
+const pageKey = (tabId, doc) => `${tabId}:${doc}`;
+
+function settle(p) {
+  if (p && typeof p.catch === "function") p.catch(() => { /* the tab is gone */ });
+}
+
 export function createToolbarBadge(api, { session = null } = {}) {
   // `action` in MV3, `browserAction` in Firefox MV2; absent on mobile
   // browsers with no toolbar.
   const toolbar = api && (api.action || api.browserAction);
   const available = Boolean(toolbar) && typeof toolbar.setBadgeText === "function";
-  const generations = new Map(); // tabId → navigations seen by this worker
+  const shown = new Map(); // tabId → the document whose count the tab shows
   let memory = {};
   let chain = Promise.resolve();
 
@@ -74,7 +94,7 @@ export function createToolbarBadge(api, { session = null } = {}) {
 
   async function save(all) {
     const keys = Object.keys(all);
-    if (keys.length > MAX_TABS) for (const k of keys.slice(0, keys.length - MAX_TABS)) delete all[k];
+    if (keys.length > MAX_PAGES) for (const k of keys.slice(0, keys.length - MAX_PAGES)) delete all[k];
     memory = all;
     if (!session) return;
     try {
@@ -82,59 +102,65 @@ export function createToolbarBadge(api, { session = null } = {}) {
     } catch (e) { /* the memory copy holds it */ }
   }
 
-  async function paint(tabId, entry) {
+  // Not awaited: a toolbar call that never settles (no test drives Safari's)
+  // must not hold up every count after it. Issued in order, applied in order.
+  function paint(tabId, entry) {
     const { text, color } = badgeFor(entry);
     try {
-      await toolbar.setBadgeText({ tabId, text });
+      settle(toolbar.setBadgeText({ tabId, text }));
       if (text && typeof toolbar.setBadgeBackgroundColor === "function") {
-        await toolbar.setBadgeBackgroundColor({ tabId, color });
+        settle(toolbar.setBadgeBackgroundColor({ tabId, color }));
       }
     } catch (e) { /* the tab is gone */ }
   }
 
-  /** The tab's current generation: pass it back to record(). */
-  function generation(tabId) {
-    return generations.get(tabId) || 0;
+  /**
+   * A check from document `doc` arrived from tab `tabId`: from now on the tab
+   * shows that document's count. Call it when the message arrives, before
+   * anything is awaited, so a late answer for the page the tab left is not
+   * painted over the one it is on.
+   */
+  function enter(tabId, doc) {
+    const id = docIdOf(doc);
+    if (available && Number.isInteger(tabId) && id) shown.set(tabId, id);
   }
 
-  function record(tabId, gen, results) {
-    if (!available || !Number.isInteger(tabId)) return Promise.resolve();
+  /** Count one check's results for its document; repaint if the tab shows it. */
+  function record(tabId, doc, results) {
+    const id = docIdOf(doc);
+    if (!available || !Number.isInteger(tabId) || !id) return Promise.resolve();
     return serial(async () => {
-      if (generation(tabId) !== gen) return; // the tab moved on meanwhile
+      if (!shown.has(tabId)) return; // the tab was closed meanwhile
       const all = await load();
-      const before = all[tabId];
+      const key = pageKey(tabId, id);
+      const before = all[key];
       const entry = addResults(before, results);
       const changed = JSON.stringify(entry) !== JSON.stringify(before || { dangerous: [], caution: [] });
       if (changed) {
-        all[tabId] = entry;
+        all[key] = entry;
         await save(all);
       }
-      await paint(tabId, entry);
+      if (shown.get(tabId) === id) paint(tabId, entry);
     });
   }
 
-  function forget(tabId, { repaint }) {
-    generations.set(tabId, generation(tabId) + 1);
+  function forget(tabId) {
+    shown.delete(tabId);
     return serial(async () => {
       const all = await load();
-      if (tabId in all) {
-        delete all[tabId];
-        await save(all);
-      }
-      if (repaint) await paint(tabId, null);
+      const prefix = `${tabId}:`;
+      const gone = Object.keys(all).filter((k) => k.startsWith(prefix));
+      if (gone.length === 0) return;
+      for (const k of gone) delete all[k];
+      await save(all);
     });
   }
 
   if (available) {
     try {
-      api.tabs.onUpdated.addListener((tabId, info) => {
-        if (info && info.status === "loading") forget(tabId, { repaint: true }).catch(() => {});
-      });
-    } catch (e) { /* tabs events unavailable: the badge still follows its tab */ }
-    try {
-      api.tabs.onRemoved.addListener((tabId) => { forget(tabId, { repaint: false }).catch(() => {}); });
-    } catch (e) { /* idem */ }
+      api.tabs.onRemoved.addListener((tabId) => { forget(tabId).catch(() => {}); });
+    } catch (e) { /* tabs events unavailable: closed tabs age out at MAX_PAGES */ }
   }
 
-  return { available, generation, record };
+  return { available, enter, record };
 }
