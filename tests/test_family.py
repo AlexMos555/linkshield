@@ -96,6 +96,12 @@ class FakeSupabase:
         self.keys: Dict[str, Dict[str, Any]] = {}  # key: f"{family_id}:{user_id}"
         self.invites: Dict[str, Dict[str, Any]] = {}
         self.alerts: List[Dict[str, Any]] = []
+        # Simulated failures of the owner's family_members insert / of the
+        # rollback DELETE on families.
+        self.member_insert_status: Optional[int] = None
+        self.member_insert_exc: Optional[Exception] = None
+        self.family_delete_status = 204
+        self.family_deletes: List[Dict[str, Any]] = []
 
     def build(self):
         fake = self
@@ -153,10 +159,20 @@ class FakeSupabase:
                     if method == "GET":
                         # /family/mine queries here with ?id=in.(...) — list lookup.
                         return _Resp(200, _filter(list(fake.families.values()), params))
+                    if method == "DELETE":
+                        fake.family_deletes.append(dict(params or {}))
+                        if fake.family_delete_status in (200, 204):
+                            for row in _filter(list(fake.families.values()), params):
+                                fake.families.pop(row["id"], None)
+                        return _Resp(fake.family_delete_status, "")
                 if url.endswith("/family_members"):
                     if method == "GET":
                         return _Resp(200, _filter(fake.members, params))
                     if method == "POST":
+                        if fake.member_insert_exc is not None:
+                            raise fake.member_insert_exc
+                        if fake.member_insert_status is not None:
+                            return _Resp(fake.member_insert_status, {"message": "simulated"})
                         rows = json if isinstance(json, list) else [json]
                         for row in rows:
                             existing = [
@@ -330,6 +346,39 @@ def test_create_family_makes_caller_owner(authed_user, supabase_ok, fake_sb, cli
     # Owner row created in family_members
     owners = [m for m in fake_sb.members if m["family_id"] == fid and m["role"] == "owner"]
     assert len(owners) == 1
+
+
+@pytest.mark.parametrize("failure", ["status", "exception"])
+def test_create_family_rolls_back_when_the_owner_cannot_be_added(
+    authed_user, supabase_ok, fake_sb, client_factory, failure
+):
+    """Every later check reads family_members only, so a family whose owner
+    row is missing locks its owner out. It used to answer success anyway."""
+    import httpx
+
+    if failure == "status":
+        fake_sb.member_insert_status = 409
+    else:
+        fake_sb.member_insert_exc = httpx.ReadTimeout("slow")
+    resp = client_factory(authed_user).post("/api/v1/family", json={"name": "Smiths"})
+
+    assert resp.status_code == 500, resp.text
+    assert fake_sb.families == {}
+    (delete,) = fake_sb.family_deletes
+    assert delete["owner_id"] == "eq.user-A" and delete["id"].startswith("eq.")
+    assert fake_sb.members == []
+
+
+def test_create_family_failed_rollback_is_still_a_500(authed_user, supabase_ok, fake_sb, client_factory, caplog):
+    import logging
+
+    fake_sb.member_insert_status = 500
+    fake_sb.family_delete_status = 503
+    with caplog.at_level(logging.ERROR, logger="cleanway.family"):
+        resp = client_factory(authed_user).post("/api/v1/family", json={"name": "Smiths"})
+
+    assert resp.status_code == 500
+    assert "family.create_rollback_failed" in [r.getMessage() for r in caplog.records]
 
 
 def test_create_family_503_when_supabase_missing(authed_user, monkeypatch, client_factory):
@@ -584,6 +633,12 @@ def test_accept_self_invite_blocked(supabase_ok, fake_sb, client_factory):
     assert resp.status_code == 400
 
 
+def _wrong_pins(pin: str, n: int = 1) -> list[str]:
+    """`n` four-digit PINs that are not the invite's: the PIN is random, and a
+    fixed "0000" is the real one once in 10,000 runs (CI hit it)."""
+    return [p for p in (f"{i:04d}" for i in range(n + 1)) if p != pin][:n]
+
+
 def test_accept_wrong_pin_returns_404_not_403(authed_user, supabase_ok, fake_sb, client_factory):
     """Same error as wrong code — no enumeration of valid codes via PIN check."""
     inviter = AuthUser(id="user-X", email="x@t.com", tier=UserTier.free)
@@ -593,7 +648,7 @@ def test_accept_wrong_pin_returns_404_not_403(authed_user, supabase_ok, fake_sb,
 
     resp = client_factory(authed_user).post(
         "/api/v1/family/accept",
-        json={"code": invite["code"], "pin": "0000"},  # wrong
+        json={"code": invite["code"], "pin": _wrong_pins(invite["pin"])[0]},
     )
     assert resp.status_code == 404
 
@@ -650,10 +705,10 @@ def test_accept_pin_lockout_after_five_wrong_attempts(
     # 5 wrong PINs — all return 404
     accepter = AuthUser(id="user-attacker", email="a@t.com", tier=UserTier.free)
     accept_client = client_factory(accepter)
-    for i in range(5):
+    for i, wrong in enumerate(_wrong_pins(invite["pin"], 5)):
         resp = accept_client.post(
             "/api/v1/family/accept",
-            json={"code": invite["code"], "pin": f"{i:04d}"},
+            json={"code": invite["code"], "pin": wrong},
         )
         assert resp.status_code == 404, f"attempt {i+1} returned {resp.status_code}"
 
@@ -686,10 +741,10 @@ def test_accept_pin_lockout_fails_open_on_redis_outage(
     accepter = AuthUser(id="user-real-user", email="ok@t.com", tier=UserTier.free)
     accept_client = client_factory(accepter)
     # Five wrong PINs — still 404 each
-    for i in range(5):
+    for wrong in _wrong_pins(invite["pin"], 5):
         resp = accept_client.post(
             "/api/v1/family/accept",
-            json={"code": invite["code"], "pin": f"{i:04d}"},
+            json={"code": invite["code"], "pin": wrong},
         )
         assert resp.status_code == 404
 

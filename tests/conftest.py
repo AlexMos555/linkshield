@@ -187,6 +187,10 @@ class FakeStripe:
         self.list_calls: list[dict] = []
         self.fail_cancel = False
         self.fail_list = False
+        # Customers deleted (the GDPR purge), and how a delete should fail.
+        self.deleted_customers: list[str] = []
+        self.missing_customers: set[str] = set()
+        self.fail_customer_delete = False
 
     def add_subscription(self, sub_id: str, customer: str, status: str = "active", **extra) -> dict:
         sub = {"id": sub_id, "customer": customer, "status": status, "metadata": {}, **extra}
@@ -222,6 +226,16 @@ class FakeStripe:
         async def charge_retrieve(charge_id, **_params):
             return fake.charges[charge_id]
 
+        async def customer_delete(customer_id, **_params):
+            if fake.fail_customer_delete:
+                raise stripe.APIConnectionError("simulated Stripe outage")
+            if customer_id in fake.missing_customers:
+                raise stripe.InvalidRequestError(
+                    f"No such customer: {customer_id}", "id", code="resource_missing"
+                )
+            fake.deleted_customers.append(customer_id)
+            return {"id": customer_id, "object": "customer", "deleted": True}
+
         class _Portal:
             url = "https://billing.stripe.com/p/session/fake"
 
@@ -238,6 +252,7 @@ class FakeStripe:
         monkeypatch.setattr(stripe.Charge, "retrieve_async", charge_retrieve)
         monkeypatch.setattr(stripe.billing_portal.Session, "create_async", portal_create)
         monkeypatch.setattr(stripe.Customer, "list_async", must_not_search)
+        monkeypatch.setattr(stripe.Customer, "delete_async", customer_delete)
         return self
 
 

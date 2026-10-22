@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 /**
  * /account — the signed-in person's plan and linked devices, with unlink,
- * sign out and delete account. Signed in through the same email code /
+ * download my data, sign out and delete account. Signed in through the same email code /
  * magic link as /signup (Supabase session in cookies); the plan and devices
  * come from the API (GET /api/v1/me/entitlement) in the client component.
  */

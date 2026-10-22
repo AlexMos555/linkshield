@@ -923,7 +923,7 @@
         ],
         "items": [
           "no site, o pagamento passa pela Stripe. A Stripe recebe seu e-mail, o plano escolhido e o identificador da sua conta, e cuida do cartão por conta própria;",
-          "no app, onde há compras, você paga pelo Google Play ou pela App Store. A loja recebe o pagamento e cuida do seu cartão conforme os próprios termos e a própria política de privacidade. A RevenueCat, um serviço que gerencia para nós as assinaturas dentro do app, recebe do app um identificador de conta anônimo — um identificador aleatório, não o seu nome nem o seu e-mail — e, da loja, o status da compra. Nós recebemos só se a sua assinatura está ativa, qual é o plano e até quando."
+          "no app, onde há compras, você paga pelo Google Play ou pela App Store. A loja recebe o pagamento e cuida do seu cartão conforme os próprios termos e a própria política de privacidade. A RevenueCat, um serviço que gerencia para nós as assinaturas dentro do app, recebe do app o identificador da sua conta Cleanway — um identificador aleatório, não o seu nome nem o seu e-mail — e, da loja, o status da compra. Nós recebemos só se a sua assinatura está ativa, qual é o plano e até quando."
         ],
         "after": [
           "Nunca vemos nem guardamos os dados do cartão. Guardamos um registro de cada compra — onde foi feita, o plano, o status e as datas — junto com a sua conta até a conta ser excluída."
@@ -983,6 +983,7 @@
         "title": "17. Seus direitos",
         "paragraphs": [
           "Você tem direito a: saber quais dados seus temos e receber uma cópia (acesso); corrigi-los (retificação); apagá-los (eliminação); limitar o uso deles, por exemplo enquanto se verifica se estão corretos (limitação); receber os dados que você nos deu em um formato legível por máquina ou pedir que os passemos a outro serviço, quando for tecnicamente possível (portabilidade); se opor a um uso baseado no nosso interesse legítimo (oposição); e retirar um consentimento que tenha dado.",
+          "Para baixar uma cópia dos dados que o nosso servidor guarda sobre a sua conta, entre em cleanway.ai/account e escolha “Baixar meus dados”.",
           "Você mesmo pode excluir a sua conta: entre em cleanway.ai/account e escolha “Excluir conta”, ou use “Excluir conta” nos Ajustes do app. A página cleanway.ai/delete-account explica os passos e o que é excluído e o que é mantido.",
           "Sem conta, não sabemos quem você é: não temos seu nome, e-mail nem telefone — só os dados técnicos descritos acima, como seu endereço IP no contador de verificações e nos registros da hospedagem. Para outros pedidos, fale com a gente como descrito abaixo. Remover o app ou a extensão apaga tudo o que ele guardou no seu dispositivo.",
           "Se você achar que tratamos seus dados de forma ilegal, tem direito de apresentar uma reclamação a uma autoridade de proteção de dados, em especial a do país onde mora ou trabalha ou onde o problema aconteceu. Você também pode nos escrever antes."
@@ -1096,7 +1097,13 @@
     "delete_done": "Sua conta foi excluída e você saiu. Entre em até 30 dias se quiser restaurá-la.",
     "brand": "Cleanway",
     "manage_cta": "Gerenciar ou cancelar a assinatura",
-    "manage_failed": "Não foi possível abrir o gerenciamento da assinatura. Tente de novo daqui a pouco."
+    "manage_failed": "Não foi possível abrir o gerenciamento da assinatura. Tente de novo daqui a pouco.",
+    "data_heading": "Seus dados",
+    "data_body": "Baixe uma cópia de tudo o que o nosso servidor guarda sobre a sua conta — a conta, o plano, os dispositivos, as configurações e os dados da família — em um arquivo JSON.",
+    "download_cta": "Baixar meus dados",
+    "download_busy": "Preparando o arquivo…",
+    "download_failed": "Não foi possível preparar o arquivo. Tente de novo daqui a pouco.",
+    "download_rate_limited": "Você já baixou seus dados várias vezes na última hora. Tente mais tarde."
   },
   "DeleteAccount": {
     "meta_title": "Excluir sua conta Cleanway",

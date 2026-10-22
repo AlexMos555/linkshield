@@ -5,9 +5,13 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "r
 import { createClient, type AccountDevice, type EntitlementResponse } from "@cleanway/api-client";
 
 import { getSupabaseClient, isAuthConfigured } from "@/lib/supabase/client";
+import { exportFileName, saveJsonFile } from "@/lib/download-json";
 import { localePath } from "@/lib/locale-path";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://api.cleanway.ai";
+// The export reads every table of the account: give it longer than the
+// default 8 s before calling it a failure.
+const EXPORT_TIMEOUT_MS = 30_000;
 
 const KNOWN_PLANS = new Set(["free", "personal", "family", "business"]);
 const KNOWN_SOURCES = new Set(["stripe", "google_play", "app_store", "rustore", "operator_ru", "promo", "partner"]);
@@ -33,17 +37,16 @@ export default function AccountClient() {
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const api = useMemo(
-    () =>
-      createClient({
-        baseUrl: API_BASE,
-        getAuthToken: async () => {
-          const { data } = await getSupabaseClient().auth.getSession();
-          return data.session?.access_token ?? null;
-        },
-      }),
-    [],
-  );
+  const [api, exportApi] = useMemo(() => {
+    const getAuthToken = async () => {
+      const { data } = await getSupabaseClient().auth.getSession();
+      return data.session?.access_token ?? null;
+    };
+    return [
+      createClient({ baseUrl: API_BASE, getAuthToken }),
+      createClient({ baseUrl: API_BASE, getAuthToken, timeoutMs: EXPORT_TIMEOUT_MS }),
+    ];
+  }, []);
 
   const fmt = useCallback(
     (iso?: string | null) => {
@@ -146,6 +149,44 @@ export default function AccountClient() {
     setState({ kind: "deleted" });
   }
 
+  /**
+   * GDPR Art. 15 / 152-FZ: everything the server holds about the account, as
+   * a file. Works while the account waits for deletion too (the server lets
+   * the export through the 410 lock), so it is offered in that state as well.
+   */
+  async function downloadData() {
+    setBusy("export");
+    setNotice(null);
+    let r = await exportApi.user.exportData();
+    if (r.error?.kind === "unauthorized") {
+      await getSupabaseClient().auth.refreshSession().catch(() => null);
+      r = await exportApi.user.exportData();
+    }
+    setBusy(null);
+    if (r.data) {
+      saveJsonFile(r.data, exportFileName(new Date()));
+      return;
+    }
+    if (r.error.kind === "unauthorized") setState({ kind: "no_session" });
+    else setNotice(t(r.error.kind === "rate_limited" ? "download_rate_limited" : "download_failed"));
+  }
+
+  const dataSection = (
+    <section style={card} aria-labelledby="data-h">
+      <h2 id="data-h" style={h2}>{t("data_heading")}</h2>
+      <p style={muted}>{t("data_body")}</p>
+      <button
+        type="button"
+        style={{ ...ghostButton, marginTop: 12 }}
+        disabled={busy !== null}
+        onClick={() => void downloadData()}
+        data-testid="account-export"
+      >
+        {busy === "export" ? t("download_busy") : t("download_cta")}
+      </button>
+    </section>
+  );
+
   const deleteSection = (
     <section style={card} aria-labelledby="delete-h">
       <h2 id="delete-h" style={h2}>{t("delete_heading")}</h2>
@@ -187,10 +228,14 @@ export default function AccountClient() {
 
   if (state.kind === "locked") {
     return (
-      <section style={card}>
-        <p style={{ ...body, marginTop: 0 }}>{t("locked_body")}</p>
-        <a href={`${localePath(locale, "/account/restore")}?reason=locked`} style={button}>{t("locked_cta")}</a>
-      </section>
+      <div style={{ display: "grid", gap: 20 }}>
+        <section style={card}>
+          <p style={{ ...body, marginTop: 0 }}>{t("locked_body")}</p>
+          <a href={`${localePath(locale, "/account/restore")}?reason=locked`} style={button}>{t("locked_cta")}</a>
+        </section>
+        {notice && <p role="alert" style={{ ...body, color: "#fca5a5", margin: 0 }}>{notice}</p>}
+        {dataSection}
+      </div>
     );
   }
 
@@ -205,6 +250,7 @@ export default function AccountClient() {
             down): deleting the account must still work — it is a separate
             endpoint, and /delete-account sends people here for it. */}
         {notice && <p role="alert" style={{ ...body, color: "#fca5a5", margin: 0 }}>{notice}</p>}
+        {dataSection}
         {deleteSection}
       </div>
     );
@@ -282,6 +328,7 @@ export default function AccountClient() {
         )}
       </section>
 
+      {dataSection}
       {deleteSection}
     </div>
   );

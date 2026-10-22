@@ -207,7 +207,9 @@ def test_account_reads_do_not_spend_the_daily_check_quota(client, fake_redis):
     assert [k for k in fake_redis._kv if k.startswith("rate:sensitive:account_read:")]
 
 
-def test_store_outage_is_503_not_free(client, account_store):
+def test_store_outage_is_503_not_free(client, account_store, fake_redis):
+    # Redis answers "no deleted flag", so the auth gate lets the request
+    # through the outage; the account screen itself meets it.
     account_store.fail = True
     resp = client.get("/api/v1/me/entitlement", headers=_headers())
     assert resp.status_code == 503

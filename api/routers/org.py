@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 
 from api.services.auth import get_current_user
 from api.services.rate_limiter import rate_limit
-from api.models.schemas import AuthUser
+from api.models.schemas import AuthUser, UserTier
 from api.config import get_settings
 from api.services import supabase_keys
 
@@ -137,6 +137,17 @@ async def create_org(
 ):
     """Create a new organization. Requires business tier."""
     import httpx
+
+    # The docstring said so, the code never checked: any account could
+    # create an org (and become its admin) without the plan it belongs to.
+    if user.tier != UserTier.business:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "business_plan_required",
+                "error": "Organizations are part of the Business plan.",
+            },
+        )
 
     settings = get_settings()
     if not settings.supabase_url or not supabase_keys.server_key(settings):

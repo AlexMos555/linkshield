@@ -2474,7 +2474,7 @@
           ],
           "items": [
             "sur le site web, le paiement passe par Stripe. Stripe reçoit votre e-mail, l'offre choisie et l'identifiant de votre compte, et gère la carte lui-même ;",
-            "dans l'appli, là où des achats sont proposés, vous payez via Google Play ou l'App Store. La boutique encaisse le paiement et gère votre carte selon ses propres conditions et sa propre politique de confidentialité. RevenueCat, un service qui gère pour nous les abonnements dans l'appli, reçoit de l'appli un identifiant de compte anonyme — un identifiant aléatoire, ni votre nom ni votre e-mail — et, de la boutique, l'état de l'achat. Nous savons seulement si votre abonnement est actif, de quelle offre il s'agit et jusqu'à quand."
+            "dans l'appli, là où des achats sont proposés, vous payez via Google Play ou l'App Store. La boutique encaisse le paiement et gère votre carte selon ses propres conditions et sa propre politique de confidentialité. RevenueCat, un service qui gère pour nous les abonnements dans l'appli, reçoit de l'appli l'identifiant de votre compte Cleanway — un identifiant aléatoire, ni votre nom ni votre e-mail — et, de la boutique, l'état de l'achat. Nous savons seulement si votre abonnement est actif, de quelle offre il s'agit et jusqu'à quand."
           ],
           "after": [
             "Nous ne voyons ni ne conservons jamais les données de carte. Nous gardons une trace de chaque achat — où il a été fait, l'offre, son état et ses dates — avec votre compte, jusqu'à la suppression du compte."
@@ -2534,6 +2534,7 @@
           "title": "17. Vos droits",
           "paragraphs": [
             "Vous avez le droit : de savoir quelles données vous concernant nous détenons et d'en obtenir une copie (accès) ; de les faire corriger (rectification) ; de les faire supprimer (effacement) ; d'en faire limiter l'utilisation, par exemple le temps de vérifier leur exactitude (limitation) ; de recevoir les données que vous nous avez fournies dans un format lisible par machine, ou de les faire transmettre à un autre service lorsque c'est techniquement possible (portabilité) ; de vous opposer à une utilisation fondée sur notre intérêt légitime (opposition) ; et de retirer un consentement donné.",
+            "Pour télécharger une copie des données que notre serveur conserve sur votre compte, connectez-vous sur cleanway.ai/account et choisissez « Télécharger mes données ».",
             "Pour supprimer votre compte vous-même, connectez-vous sur cleanway.ai/account et choisissez « Supprimer le compte », ou utilisez « Supprimer le compte » dans les Réglages de l'appli. La page cleanway.ai/delete-account explique les étapes, ce qui est supprimé et ce qui est conservé.",
             "Sans compte, nous ne savons pas qui vous êtes : nous n'avons ni votre nom, ni votre e-mail, ni votre numéro de téléphone — seulement les données techniques décrites plus haut, comme votre adresse IP dans le compteur de vérifications et dans les journaux d'hébergement. Pour toute autre demande, contactez-nous comme indiqué ci-dessous. Supprimer l'appli ou l'extension efface tout ce qu'elle avait enregistré sur votre appareil.",
             "Si vous estimez que nous traitons vos données de manière illicite, vous avez le droit d'introduire une réclamation auprès d'une autorité de contrôle de la protection des données, notamment dans le pays où vous vivez ou travaillez, ou dans celui où le problème s'est produit. Vous pouvez aussi nous écrire d'abord."
@@ -2647,7 +2648,13 @@
       "delete_done": "Votre compte est supprimé et vous êtes déconnecté. Connectez-vous dans les 30 jours pour le restaurer.",
       "brand": "Cleanway",
       "manage_cta": "Gérer ou résilier l'abonnement",
-      "manage_failed": "Impossible d'ouvrir la gestion de l'abonnement. Réessayez dans un instant."
+      "manage_failed": "Impossible d'ouvrir la gestion de l'abonnement. Réessayez dans un instant.",
+      "data_heading": "Vos données",
+      "data_body": "Téléchargez une copie de tout ce que notre serveur conserve sur votre compte — le compte, l'offre, les appareils, les réglages et les données de la famille — dans un fichier JSON.",
+      "download_cta": "Télécharger mes données",
+      "download_busy": "Préparation du fichier…",
+      "download_failed": "Impossible de préparer le fichier. Réessayez dans un instant.",
+      "download_rate_limited": "Vous avez déjà téléchargé vos données plusieurs fois au cours de la dernière heure. Réessayez plus tard."
     },
     "delete_account": {
       "meta_title": "Supprimer votre compte Cleanway",
@@ -3852,7 +3859,13 @@
       "delete_store_continue": "Supprimer quand même",
       "restore_desc_appstore": "Abonné avec cet identifiant Apple sur un autre téléphone ou compte ? Récupérez-le ici",
       "cancel_note_appstore": "Cet abonnement est facturé par Apple : seul Apple peut le résilier, dans Réglages → votre nom → Abonnements → Cleanway. Supprimer votre compte Cleanway ne le résilie pas.",
-      "locked_dismiss": "Pas maintenant"
+      "locked_dismiss": "Pas maintenant",
+      "export": "Télécharger mes données",
+      "export_desc": "Une copie de tout ce que notre serveur conserve sur votre compte, dans un fichier",
+      "export_failed_title": "Impossible de télécharger vos données",
+      "export_failed_body": "Vérifiez votre connexion et réessayez dans un instant.",
+      "export_share_title": "Vos données Cleanway",
+      "export_rate_limited": "Vous avez déjà téléchargé vos données plusieurs fois au cours de la dernière heure. Réessayez plus tard."
     },
     "paywall": {
       "close": "Fermer",

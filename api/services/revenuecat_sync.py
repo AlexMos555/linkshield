@@ -64,6 +64,30 @@ async def fetch_subscriber(app_user_id: str) -> dict:
     return subscriber
 
 
+async def delete_subscriber(app_user_id: str) -> None:
+    """DELETE /v1/subscribers/{app_user_id}: RevenueCat deletes the customer
+    and its purchase history (GDPR erasure — run by the account purge; the
+    app user id is the account id). One RevenueCat no longer has (404) is
+    done. Raises RevenueCatNotConfigured without the secret key,
+    RevenueCatError on any other failure."""
+    import httpx
+
+    key = get_settings().revenuecat_secret_api_key
+    if not key:
+        raise RevenueCatNotConfigured("REVENUECAT_SECRET_API_KEY is not set")
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.request(
+                "DELETE",
+                f"{API_BASE}/subscribers/{quote(app_user_id, safe='')}",
+                headers={"Authorization": f"Bearer {key}", "Accept": "application/json"},
+            )
+    except Exception as e:
+        raise RevenueCatError(f"RevenueCat request failed: {e}") from e
+    if resp.status_code not in (200, 202, 204, 404):
+        raise RevenueCatError(f"RevenueCat answered {resp.status_code}")
+
+
 def _rest_status(sub: dict, now: datetime) -> tuple[str, Optional[str]]:
     expires = sub.get("expires_date")
     grace = sub.get("grace_period_expires_date")

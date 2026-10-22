@@ -2,7 +2,7 @@
 Tests for the referral program.
 
 Covers:
-- _code_for is deterministic per (user_id, email)
+- referral_code is deterministic per (user_id, email)
 - /generate idempotently returns the same code on repeat calls
 - /generate succeeds even when Redis is unavailable (fail-soft, returns
   the deterministic code so the user can still share their link)
@@ -62,10 +62,13 @@ class FakeRedis:
             raise RuntimeError("redis offline")
         return self.kv.get(key)
 
-    async def set(self, key: str, value: str) -> bool:
+    async def set(self, key: str, value: str, keepttl: bool = False) -> bool:
         if self.fail_mode:
             raise RuntimeError("redis offline")
         self.kv[key] = value
+        if not keepttl:
+            # Real Redis: a plain SET removes the key's TTL.
+            self.ttls.pop(key, None)
         return True
 
     async def expire(self, key: str, seconds: int) -> bool:
@@ -102,13 +105,13 @@ def grant_calls(monkeypatch):
 
 
 def test_code_for_deterministic():
-    from api.routers.referral import _code_for
+    from api.routers.referral import referral_code
 
-    assert _code_for("u1", "a@test.com") == _code_for("u1", "a@test.com")
+    assert referral_code("u1", "a@test.com") == referral_code("u1", "a@test.com")
     # Different user → different code
-    assert _code_for("u1", "a@test.com") != _code_for("u2", "a@test.com")
+    assert referral_code("u1", "a@test.com") != referral_code("u2", "a@test.com")
     # Always 8 uppercase chars
-    code = _code_for("u1", "a@test.com")
+    code = referral_code("u1", "a@test.com")
     assert len(code) == 8
     assert code.isupper() or code.isalnum()
 
@@ -169,9 +172,9 @@ def test_stats_zero_when_no_redis_record(client, fake_redis):
 
 def test_stats_reflects_redis_count(client, fake_redis):
     # Pre-populate as if 3 friends redeemed
-    from api.routers.referral import _code_for
+    from api.routers.referral import referral_code
 
-    code = _code_for("user-A", "a@test.com")
+    code = referral_code("user-A", "a@test.com")
     fake_redis.kv[f"referral:{code}"] = json.dumps(
         {"owner_id": "user-A", "created": "2026-04-26T00:00:00", "redeemed_count": 3}
     )
@@ -197,9 +200,9 @@ def test_redeem_rejects_unknown_code(client, fake_redis):
 
 def test_redeem_blocks_self_redeem(client, fake_redis, grant_calls):
     """user-A's own code can't be redeemed by user-A."""
-    from api.routers.referral import _code_for
+    from api.routers.referral import referral_code
 
-    own_code = _code_for("user-A", "a@test.com")
+    own_code = referral_code("user-A", "a@test.com")
     fake_redis.kv[f"referral:{own_code}"] = json.dumps(
         {"owner_id": "user-A", "created": "2026-04-26T00:00:00", "redeemed_count": 0}
     )
@@ -250,6 +253,21 @@ def test_redeem_increments_count_in_redis(client, fake_redis, grant_calls):
     assert info["redeemed_count"] == 5
     # Redeemer marker set
     assert fake_redis.kv["redeemed:user-A"] == "FRIENDREF"
+
+
+def test_redeem_keeps_the_code_records_one_year_ttl(client, fake_redis, grant_calls):
+    """The count update used a plain SET, which drops the TTL /generate set:
+    the record (owner id included) then lived forever."""
+    fake_redis.kv["referral:FRIENDREF"] = json.dumps(
+        {"owner_id": "user-B", "created": "2026-04-26T00:00:00", "redeemed_count": 1}
+    )
+    fake_redis.ttls["referral:FRIENDREF"] = 86400 * 365
+
+    assert client.post("/api/v1/referral/redeem", json={"code": "FRIENDREF"}).status_code == 200
+
+    assert json.loads(fake_redis.kv["referral:FRIENDREF"])["redeemed_count"] == 2
+    assert fake_redis.ttls["referral:FRIENDREF"] == 86400 * 365
+    assert fake_redis.ttls["redeemed:user-A"] == 86400 * 365
 
 
 def test_redeem_returns_503_when_redis_offline(client, monkeypatch, grant_calls):

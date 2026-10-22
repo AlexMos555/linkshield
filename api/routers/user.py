@@ -1146,18 +1146,17 @@ async def trigger_welcome_email(user: AuthUser = Depends(get_current_user)) -> W
 # ─── GDPR: data export (right to access) ─────────────────────────────
 
 
-# Per Privacy Policy §9 we promise: "Access: export all your server-side
-# data from Settings." This endpoint fulfils that promise. Every table
-# where we store a user_id (or family_id reachable from a user) is
-# included. We deliberately do NOT join with payment records held by
-# Stripe — those are managed by the Stripe Customer Portal directly,
-# which we already link from /api/v1/payments/portal. Including them
-# here would mean syncing a third-party billing system into our export,
-# which adds risk for marginal value.
+# GDPR Art. 15 / 152-FZ art. 14: the person downloads everything the server
+# holds about the account — "Download my data" on cleanway.ai/account and in
+# the app's Account screen (Privacy Policy §17). Which tables, and what is
+# left out on purpose, lives in api/services/export.py, shared with the
+# operator's CLI for requests that arrive by email
+# (docs/runbooks/data-requests.md). Payment records held by Stripe are the
+# Stripe Customer Portal's, linked from /api/v1/payments/portal.
 #
-# Rate-limited as a sensitive action: exports run 5+ queries against
-# Supabase per call and produce a downloadable file; we don't want a
-# bot grinding this endpoint to enumerate user state.
+# Rate-limited as a sensitive action: an export reads ~20 tables and
+# produces a downloadable file; we don't want a bot grinding this endpoint
+# to enumerate user state.
 from fastapi import Header as _ExportHeader  # noqa: E402 — kept beside its only user
 
 
@@ -1196,103 +1195,12 @@ async def export_user_data(
     # mass account takeover looks like.
     await security_alerts.record("user_export", key=user.id)
 
-    settings = get_settings()
-    if not settings.supabase_url or not supabase_keys.server_key(settings):
+    from api.services.export import ExportUnavailable, build_export
+
+    try:
+        export = await build_export(user.id, user.email)
+    except ExportUnavailable:
         raise HTTPException(503, "Database not configured")
-
-    headers = {
-        **supabase_keys.server_headers(settings),
-    }
-
-    # Tables to dump: (table_name, filter_column). Family-scoped data
-    # lives in family_alerts (where the user is a recipient) and
-    # family_members (where the user is listed). We include both so
-    # the export shows the user's membership graph but NOT the alert
-    # ciphertext (those are E2E-encrypted on the device and useless
-    # without the private key which never leaves the device).
-    tables: list[tuple[str, str, str]] = [
-        ("users", "id", "*"),
-        ("subscriptions", "user_id", "*"),
-        ("entitlements", "account_id", "*"),
-        ("user_settings", "user_id", "*"),
-        ("devices", "user_id", "*"),
-        ("weekly_aggregates", "user_id", "*"),
-        ("family_members", "user_id", "*"),
-        # ciphertext + nonce excluded to keep the export small and
-        # because they're undecryptable without the device's private key
-        ("family_alerts", "recipient_user_id", "id,family_id,sender_user_id,created_at,alert_type"),
-        ("feedback_reports", "user_id", "*"),
-        # Audit log rows where THIS user was the actor — gives the SAR
-        # response a full timeline of their privileged actions (account
-        # delete requests, family invites created/accepted, etc.).
-        # actor_ip_hash is intentionally included (it's already a hash,
-        # not the raw IP) — operators may want it for cross-row
-        # correlation. The audit_log table's RLS allows service_role
-        # reads, which is what we use here.
-        ("audit_log", "actor_user_id", "*"),
-    ]
-
-    import httpx
-
-    export: dict[str, object] = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "user_id": user.id,
-        "email": user.email,
-        "schema_version": 1,
-        "tables": {},
-    }
-
-    # Cap per-table rows so a user with five years of weekly_aggregates
-    # or thousands of audit rows doesn't get a 100 MB JSON dump that
-    # times out the browser. 5000 is plenty for any realistic user's
-    # history and protects the API from accidental memory pressure
-    # when a future RLS bug means we read more rows than intended.
-    # (Audit backend MEDIUM "GDPR export fetches SELECT * with no row
-    # limit on weekly_aggregates, family_members, feedback_reports,
-    # and audit_log".)
-    EXPORT_ROW_CAP = 5000
-
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        for table, filter_col, select in tables:
-            try:
-                resp = await client.get(
-                    f"{settings.supabase_url}/rest/v1/{table}",
-                    params={
-                        filter_col: f"eq.{user.id}",
-                        "select": select,
-                        # PostgREST honours `limit` regardless of whether
-                        # the table has an `id` column; omit `order` here
-                        # because users / user_settings / subscriptions
-                        # would 400 on order=id.desc (different PK
-                        # shapes). For a SAR export "order" doesn't
-                        # carry meaning — only "everything we have".
-                        "limit": str(EXPORT_ROW_CAP),
-                    },
-                    headers=headers,
-                )
-                if resp.status_code == 200:
-                    export["tables"][table] = resp.json()
-                else:
-                    # Don't fail the whole export on one table — surface
-                    # the issue per-table so the user still gets what we
-                    # could fetch.
-                    export["tables"][table] = {
-                        "error": f"upstream returned {resp.status_code}",
-                    }
-                    logger.warning(
-                        "export_table_failed",
-                        extra={
-                            "user_id": user.id,
-                            "table": table,
-                            "status": resp.status_code,
-                        },
-                    )
-            except Exception as e:  # pragma: no cover — network path
-                export["tables"][table] = {"error": type(e).__name__}
-                logger.warning(
-                    "export_table_exception",
-                    extra={"user_id": user.id, "table": table, "error": str(e)},
-                )
 
     logger.info(
         "user_data_exported",
@@ -1413,22 +1321,22 @@ async def delete_account(
 
     await security_alerts.record("account_delete", key=user.id)
 
-    # Invalidate the user's tier cache so the next request sees the
-    # Two Redis ops, both best-effort:
+    # Redis ops, all best-effort:
     #   1. Invalidate the tier cache so the next request re-reads from
     #      Supabase (catches any post-PATCH state that we want fresh).
-    #   2. Set a `deleted:{user_id}` flag with TTL = grace window.
-    #      The auth dependency reads this on every authenticated
-    #      request and 410-rejects (except on /restore and /export).
-    #      While Redis is down the gate reads deletion_requested_at
-    #      (PATCHed above) instead. A flag lost here is bounded by the
-    #      global sign-out below: no refresh token survives, so the last
-    #      access tokens expire within the hour.
+    #   2. Drop the auth gate's cached "not deleted" answer and set a
+    #      `deleted:{user_id}` flag with TTL = grace window. Both only
+    #      cache deletion_requested_at (PATCHed above), which is what the
+    #      gate reads whenever the flag is missing — expired, evicted, or
+    #      never written because Redis was down here. A "not deleted"
+    #      left behind by a failure here lives at most 5 minutes (its
+    #      TTL), and the global sign-out below means no refresh token
+    #      survives.
     try:
         from api.services.cache import get_redis
 
         r = await get_redis()
-        await r.delete(f"tier:{user.id}")
+        await r.delete(f"tier:{user.id}", f"notdeleted:{user.id}")
         grace_seconds = _DELETION_GRACE_DAYS * 24 * 3600
         await r.setex(f"deleted:{user.id}", grace_seconds, "1")
     except Exception as e:

@@ -16,6 +16,7 @@ import { FREEMIUM, PAID_PLANS_OFFERED, rememberEntitlement } from "../src/servic
 import { BILLING_STORE, restoreStorePurchases, storeBillingOn } from "../src/services/store-billing";
 import { manageSubscriptionUrl, storeCopyKeys, storeErrorNoteKey } from "../src/utils/store-billing";
 import { confirmDeleteAccount, signOutEverywhereLocal } from "../src/services/account-actions";
+import { downloadAccountData } from "../src/services/account-export";
 import { accountFailure, planKey, platformKey, sourceKey, statusKey } from "../src/utils/account-session";
 import { paidPlansVisible } from "../src/utils/freemium";
 
@@ -38,7 +39,7 @@ type Load =
 
 /**
  * Account: who is signed in, the plan, the devices it covers (unlink one),
- * sign out, delete account.
+ * download my data, sign out, delete account.
  *
  * Opened with `?limit=1` when this phone could not be linked because every
  * device seat is taken (src/services/account.ts): a banner explains it and
@@ -52,6 +53,7 @@ export default function AccountScreen() {
   const [limitMode, setLimitMode] = useState(params.limit === "1");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const formatDate = useCallback(
     (iso?: string | null) => {
@@ -147,6 +149,16 @@ export default function AccountScreen() {
       if (key) Alert.alert(t("mobile.account.restore"), t(key));
     } finally {
       setRestoring(false);
+    }
+  }
+
+  /** "Download my data": the server's copy of the account, through the share sheet. */
+  async function exportData(): Promise<void> {
+    setExporting(true);
+    try {
+      await downloadAccountData(t);
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -293,7 +305,15 @@ export default function AccountScreen() {
       </Section>
 
       <Section title={t("mobile.settings.account")}>
-        <Row first icon="log-out-outline" label={t("mobile.settings.sign_out")} onPress={() => void signOutHere()} />
+        <Row
+          first
+          icon="download-outline"
+          label={t("mobile.account.export")}
+          desc={t("mobile.account.export_desc")}
+          right={exporting ? <ActivityIndicator color={colors.textSecondary} /> : undefined}
+          onPress={exporting ? undefined : () => void exportData()}
+        />
+        <Row icon="log-out-outline" label={t("mobile.settings.sign_out")} onPress={() => void signOutHere()} />
         <Row
           icon="trash-outline"
           iconColor={colors.danger}

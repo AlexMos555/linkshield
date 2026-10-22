@@ -22,6 +22,7 @@ import {
   type DeviceRegisterRequest,
   type DeviceRegisterResponse,
   type DeleteAccountResponse,
+  type GdprExport,
 } from "@cleanway/api-client";
 import { getInstallId } from "./install-id";
 import { getDeviceId } from "./device-id";
@@ -144,6 +145,19 @@ const _client: CleanwayClient = createClient({
 });
 
 /**
+ * "Download my data" gets its own client: the export reads every table of the
+ * account, which can take longer than the 6 s the other account calls get.
+ */
+const EXPORT_TIMEOUT_MS = 30_000;
+const _exportClient: CleanwayClient = createClient({
+  baseUrl: API_BASE,
+  timeoutMs: EXPORT_TIMEOUT_MS,
+  getAuthToken: currentToken,
+  defaultHeaders: CLIENT_HEADERS,
+  fetchImpl: fetchWithDeviceId,
+});
+
+/**
  * Run a signed-in call: one forced refresh + retry on 401, then route the
  * account-wide answers (410 locked, 403 device_revoked) to their listeners.
  */
@@ -240,6 +254,11 @@ export async function unlinkDevice(deviceId: string): Promise<Result<Entitlement
 /** DELETE /api/v1/user/account — 30-day grace, cancels a Stripe plan at once. */
 export async function deleteAccount(): Promise<Result<DeleteAccountResponse>> {
   return withAuth(() => _client.user.deleteAccount());
+}
+
+/** GET /api/v1/user/export — everything the server holds about the account (GDPR Art. 15). */
+export async function exportAccountData(): Promise<Result<GdprExport>> {
+  return withAuth(() => _exportClient.user.exportData());
 }
 
 export async function getPricingForCountry(cc?: string | null): Promise<Result<PricingFor>> {

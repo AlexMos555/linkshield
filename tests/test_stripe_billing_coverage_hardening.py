@@ -328,3 +328,56 @@ async def test_legacy_row_derives_the_customer_and_cancels_through_it(supabase, 
     fake_stripe.add_subscription("sub_leg", "cus_leg", status="active")
     assert await sb.cancel_user_subscriptions("u1") == ["sub_leg"]
     assert fake_stripe.list_calls[0]["customer"] == "cus_leg"
+
+
+# ─── erase_user_billing (the GDPR purge) ───────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_erase_cancels_then_deletes_the_customer(supabase, http, fake_stripe):
+    http.rows = [_row(stripe_customer_id="cus_1", provider_subscription_id="sub_a")]
+    fake_stripe.add_subscription("sub_a", "cus_1", status="active")
+    assert await sb.erase_user_billing("u1") == (["sub_a"], "cus_1")
+    assert [c[0] for c in fake_stripe.cancel_calls] == ["sub_a"]
+    assert fake_stripe.deleted_customers == ["cus_1"]
+    assert [c[0] for c in http.calls] == ["GET"]  # the row is read once
+
+
+@pytest.mark.asyncio
+async def test_erase_deletes_a_customer_with_nothing_live(supabase, http, fake_stripe):
+    """A past subscriber: nothing to cancel, but the customer (email, cards)
+    is still the user's data."""
+    http.rows = [_row(tier="free", status="cancelled", stripe_customer_id="cus_old")]
+    fake_stripe.add_subscription("sub_old", "cus_old", status="canceled")
+    assert await sb.erase_user_billing("u1") == ([], "cus_old")
+    assert fake_stripe.deleted_customers == ["cus_old"]
+
+
+@pytest.mark.asyncio
+async def test_erase_without_stripe_history_touches_nothing(supabase, http, fake_stripe):
+    http.rows = [_row(tier="free")]
+    assert await sb.erase_user_billing("u1") == ([], None)
+    assert fake_stripe.deleted_customers == [] and fake_stripe.list_calls == []
+
+
+@pytest.mark.asyncio
+async def test_erase_without_a_row_touches_nothing(supabase, http, fake_stripe):
+    assert await sb.erase_user_billing("u1") == ([], None)
+    assert fake_stripe.deleted_customers == []
+
+
+@pytest.mark.asyncio
+async def test_erase_a_customer_stripe_no_longer_has_is_done(supabase, http, fake_stripe):
+    http.rows = [_row(stripe_customer_id="cus_gone")]
+    fake_stripe.missing_customers.add("cus_gone")
+    assert await sb.erase_user_billing("u1") == ([], None)
+
+
+@pytest.mark.asyncio
+async def test_erase_customer_delete_outage_is_a_billing_error(supabase, http, fake_stripe):
+    """The purge must keep the user (and retry) rather than lose the only
+    link to a Stripe customer that still holds their email and cards."""
+    http.rows = [_row(stripe_customer_id="cus_1")]
+    fake_stripe.fail_customer_delete = True
+    with pytest.raises(sb.BillingError, match="customer delete failed"):
+        await sb.erase_user_billing("u1")

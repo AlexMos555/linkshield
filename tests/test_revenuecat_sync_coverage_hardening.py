@@ -248,3 +248,47 @@ def test_tier_cache_is_dropped_after_a_sync(revenuecat_api, account_store, fake_
     fake_redis._kv[f"tier:{ACCOUNT}"] = "free"
     run_sync()
     assert f"tier:{ACCOUNT}" not in fake_redis._kv
+
+
+# ─── delete_subscriber (the GDPR purge) ───────────────────────────
+
+
+@pytest.mark.parametrize("status", [200, 202, 204, 404])
+def test_delete_subscriber_accepts_deleted_and_already_gone(revenuecat_api, status):
+    requests = revenuecat_api(lambda request: httpx.Response(status, json={"app_user_id": ACCOUNT}))
+    asyncio.run(sync.delete_subscriber(ACCOUNT))
+    [req] = requests
+    assert req.method == "DELETE"
+    assert str(req.url) == f"https://api.revenuecat.com/v1/subscribers/{ACCOUNT}"
+    assert req.headers["Authorization"] == "Bearer sk_test_revenuecat_secret"
+
+
+@pytest.mark.parametrize("status", [400, 401, 429, 500, 503])
+def test_delete_subscriber_failure_is_an_error(revenuecat_api, status):
+    revenuecat_api(lambda request: httpx.Response(status, json={}))
+    with pytest.raises(RevenueCatError, match=str(status)):
+        asyncio.run(sync.delete_subscriber(ACCOUNT))
+
+
+def test_delete_subscriber_network_failure_is_an_error(revenuecat_api):
+    def boom(request):
+        raise httpx.ConnectError("refused")
+
+    revenuecat_api(boom)
+    with pytest.raises(RevenueCatError, match="request failed"):
+        asyncio.run(sync.delete_subscriber(ACCOUNT))
+
+
+def test_delete_subscriber_without_a_key_sends_nothing(revenuecat_api, settings):
+    requests = revenuecat_api()
+    settings.revenuecat_secret_api_key = ""
+    with pytest.raises(RevenueCatNotConfigured):
+        asyncio.run(sync.delete_subscriber(ACCOUNT))
+    assert requests == []
+
+
+def test_delete_subscriber_escapes_the_id_into_one_path_segment(revenuecat_api):
+    requests = revenuecat_api(lambda request: httpx.Response(200, json={}))
+    asyncio.run(sync.delete_subscriber("../x?y=1"))
+    [req] = requests
+    assert req.url.raw_path.decode() == "/v1/subscribers/..%2Fx%3Fy%3D1"

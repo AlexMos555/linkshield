@@ -273,11 +273,41 @@ async def cancel_user_subscriptions(user_id: str) -> list[str]:
     that were cancelled ([] when the user never paid through Stripe).
     """
     row = await fetch_subscription_row(user_id=user_id)
+    cancelled, _customer_id = await _cancel_live_subscriptions(user_id, row)
+    return cancelled
+
+
+async def erase_user_billing(user_id: str) -> tuple[list[str], Optional[str]]:
+    """The GDPR purge's billing step: cancel every live subscription (as
+    `cancel_user_subscriptions`), then delete the Stripe customer — its
+    email, name and saved cards. Stripe itself keeps the invoices and
+    payments it must keep by law. Returns (cancelled subscription ids,
+    deleted customer id or None). Raises BillingError; a customer Stripe
+    no longer has counts as deleted, so a retry after a partial run is safe."""
+    row = await fetch_subscription_row(user_id=user_id)
+    cancelled, customer_id = await _cancel_live_subscriptions(user_id, row)
+    if not customer_id:
+        return cancelled, None
+    stripe = stripe_client()
+    try:
+        await stripe.Customer.delete_async(customer_id)
+    except Exception as e:
+        if _resource_missing(e):
+            return cancelled, None
+        raise BillingError(f"customer delete failed: {e}") from e
+    logger.info("stripe_customer_deleted", extra={"user_id": user_id, "customer_id": customer_id})
+    return cancelled, customer_id
+
+
+async def _cancel_live_subscriptions(
+    user_id: str, row: Optional[dict]
+) -> tuple[list[str], Optional[str]]:
+    """Cancel the live subscriptions of `row`; (cancelled ids, customer id)."""
     if not row:
-        return []
+        return [], None
     sub_id = row.get("provider_subscription_id") if row.get("provider", "stripe") == "stripe" else None
     if not row.get("stripe_customer_id") and not sub_id:
-        return []
+        return [], None
 
     customer_id = await resolve_customer_id(row)
     stripe = stripe_client()
@@ -309,4 +339,4 @@ async def cancel_user_subscriptions(user_id: str) -> list[str]:
             "stripe_subscriptions_cancelled",
             extra={"user_id": user_id, "subscription_ids": cancelled},
         )
-    return cancelled
+    return cancelled, customer_id
