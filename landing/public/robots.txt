@@ -1,10 +1,13 @@
 # Cleanway — privacy-first phishing protection.
-# Robots are welcome to crawl every public page so /check/{domain} and
-# /audit/{domain} pages can be indexed in 10 languages.
+# Robots are welcome to crawl every public page. Which pages may be indexed
+# is decided per page by <meta name="robots">: the curated /check/{domain}
+# pages are, in 10 languages (landing/lib/seo-domains.ts); arbitrary
+# /check/{domain}, /audit/* and personal links (/ref, /account) are noindex.
 
 User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /auth/
 
 # Block AI training crawlers — we publish content but don't consent to it
 # being scraped for model training. Search-engine crawlers (Googlebot,

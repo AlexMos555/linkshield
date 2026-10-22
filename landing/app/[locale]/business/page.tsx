@@ -18,6 +18,7 @@ import { getTranslations } from "next-intl/server";
 import { routing, type Locale } from "@/i18n/routing";
 import { localePath } from "@/lib/locale-path";
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_LIVE } from "@/lib/support";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -48,8 +49,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description,
     metadataBase: new URL(SITE_URL),
     alternates: { canonical, languages },
-    openGraph: { title, description, url: canonical, siteName: "Cleanway", type: "website", locale: safeLocale },
-    twitter: { card: "summary", title, description, site: "@cleanwayai" },
+    openGraph: { title, description, url: canonical, siteName: "Cleanway", type: "website", locale: safeLocale, images: [DEFAULT_OG_IMAGE] },
+    twitter: { card: "summary_large_image", title, description, site: "@cleanwayai", images: [DEFAULT_OG_IMAGE.url] },
     robots: { index: true, follow: true },
   };
 }

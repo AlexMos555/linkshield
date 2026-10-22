@@ -26,6 +26,8 @@
  *      goes through safeJsonLd, which escapes <, >, & and U+2028/U+2029.
  *  14. The language switcher only ever navigates to a locale we serve, on
  *      this origin — never to a protocol-relative or foreign URL.
+ *  15. Every indexable page has a title and description in every locale, no
+ *      two share a title, and only the curated /check sites are indexable.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -70,6 +72,7 @@ import { REASON_CODE_TO_KEY, reasonLabelKey, reasonLines } from "../landing/lib/
 import { safeJsonLd } from "../landing/lib/json-ld.ts";
 import { scrubSitePaths } from "../landing/lib/sentry-scrub.ts";
 import { switchLocaleHref } from "../landing/lib/switch-locale.ts";
+import { INDEXED_CHECK_DOMAINS, isIndexedCheckHost } from "../landing/lib/seo-domains.ts";
 import { isFlagOn } from "../landing/lib/support.ts";
 import {
   DEFAULT_PRICING,
@@ -675,6 +678,90 @@ console.log("switchLocaleHref");
         assert.ok(out.startsWith("/") && !out.startsWith("//"), `${p} → ${next}: ${out}`);
         assert.equal(new URL(out, "https://cleanway.ai").origin, "https://cleanway.ai");
       }
+    }
+  });
+}
+
+console.log("SEO metadata strings + indexable /check sites");
+{
+  // The strings every indexable page builds its <title> and description from
+  // (each page's generateMetadata). A missing key renders the key name itself
+  // as the title — in search results, in that language, for every page.
+  const META_KEYS = {
+    Meta: ["title", "description"],
+    Hero: ["title_part1", "title_part2"],
+    Android: ["og_title", "og_description"],
+    Support: ["title", "subtitle"],
+    Check: ["index_title", "index_subtitle", "meta_title", "meta_description", "heading", "og_description"],
+    Pricing: ["page_title", "hero_subtitle", "free_title", "free_subtitle"],
+    Billing: ["meta_title", "meta_description"],
+    Transparency: ["page_title", "page_description"],
+    Methodology: ["page_title", "page_description"],
+    Dns: ["page_title", "page_description"],
+    Business: ["meta_title", "meta_description"],
+    PrivacyPolicy: ["meta_title", "meta_description"],
+    Terms: ["meta_title", "meta_description"],
+    DeleteAccount: ["meta_title", "meta_description"],
+    Signup: ["meta_title", "meta_description"],
+  };
+  const served = (locale) =>
+    JSON.parse(fs.readFileSync(path.join(ROOT, "landing", "messages", `${locale}.json`), "utf-8"));
+  check("every locale has a non-empty title and description for every indexable page", () => {
+    for (const locale of LOCALES) {
+      const messages = served(locale);
+      for (const [ns, keys] of Object.entries(META_KEYS)) {
+        for (const key of keys) {
+          const value = messages[ns]?.[key];
+          assert.ok(typeof value === "string" && value.trim().length > 0, `${locale}: ${ns}.${key} is missing or empty`);
+        }
+      }
+    }
+  });
+  check("per-site titles and descriptions name the site in every locale", () => {
+    for (const locale of LOCALES) {
+      const check = served(locale).Check;
+      for (const key of ["meta_title", "meta_description", "heading", "og_description"]) {
+        assert.ok(check[key].includes("{domain}"), `${locale}: Check.${key} has no {domain}`);
+      }
+    }
+  });
+  check("no two indexable pages share a title within a locale", () => {
+    for (const locale of LOCALES) {
+      const m = served(locale);
+      const titles = [
+        m.Meta.title,
+        `Cleanway — ${m.Hero.title_part1} ${m.Hero.title_part2}`,
+        m.Android.og_title,
+        `${m.Support.title} — Cleanway`,
+        `${m.Check.index_title} — Cleanway`,
+        `${m.Transparency.page_title} — Cleanway`,
+        `${m.Methodology.page_title} — Cleanway`,
+        `${m.Dns.page_title} — Cleanway`,
+        m.Business.meta_title,
+        m.PrivacyPolicy.meta_title,
+        m.Terms.meta_title,
+        m.DeleteAccount.meta_title,
+      ];
+      const seen = new Set();
+      for (const title of titles) {
+        assert.ok(!seen.has(title), `${locale}: duplicate title ${JSON.stringify(title)}`);
+        seen.add(title);
+      }
+    }
+  });
+  check("every indexable /check site is written the way the route normalizes it", () => {
+    // The page looks the host up after hostFromSegment(); an entry in any other
+    // form would sit in sitemap.xml while its page says noindex.
+    assert.ok(INDEXED_CHECK_DOMAINS.length > 0);
+    assert.equal(new Set(INDEXED_CHECK_DOMAINS).size, INDEXED_CHECK_DOMAINS.length, "duplicate entries");
+    for (const host of INDEXED_CHECK_DOMAINS) {
+      assert.equal(hostFromSegment(host), host, host);
+      assert.equal(isIndexedCheckHost(host), true, host);
+    }
+  });
+  check("anything else under /check is not indexable", () => {
+    for (const host of ["some-random-site-xyz.com", "paypal.com.login-verify.example", "", "GOOGLE.COM", "sberbank.ru.evil.example"]) {
+      assert.equal(isIndexedCheckHost(host), false, host);
     }
   });
 }

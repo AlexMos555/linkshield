@@ -21,6 +21,7 @@ import { replaceSection } from "@/lib/billing";
 import { BILLING_ENABLED } from "@/lib/billing-config";
 import { localePath } from "@/lib/locale-path";
 import { SUPPORT_EMAIL, SUPPORT_EMAIL_LIVE } from "@/lib/support";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 const SITE_URL = "https://cleanway.ai";
 
@@ -60,12 +61,14 @@ export async function generateMetadata({
       siteName: "Cleanway",
       type: "article",
       locale: safeLocale,
+      images: [DEFAULT_OG_IMAGE],
     },
     twitter: {
       card: "summary",
       title,
       description,
       site: "@cleanwayai",
+      images: [DEFAULT_OG_IMAGE.url],
     },
     robots: { index: true, follow: true },
   };

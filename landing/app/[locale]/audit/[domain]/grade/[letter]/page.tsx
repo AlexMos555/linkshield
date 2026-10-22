@@ -112,11 +112,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       site: "@cleanwayai",
     },
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: { index: true, follow: true, "max-image-preview": "large" },
-    },
+    // Never indexed: the grade comes from the URL, so anyone can mint
+    // "<any site> got a privacy grade of F" — a share card, not a finding we
+    // stand behind in search results.
+    robots: { index: false, follow: true },
   };
 }
 

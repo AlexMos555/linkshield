@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import { withSentryConfig } from "@sentry/nextjs";
+// Next's default list of HTML-only bots (see HTML_LIMITED_BOTS below).
+import { HTML_LIMITED_BOT_UA_RE } from "next/dist/shared/lib/router/utils/html-bots";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
@@ -87,7 +89,34 @@ const SECURITY_HEADERS = [
   },
 ];
 
+/**
+ * Crawlers and link-preview bots that read <title>/<meta> from the raw HTML
+ * <head> and never run JavaScript. Next 15 streams metadata into <body> for
+ * every other client, so a bot missing from this list sees a page with no
+ * title, description, canonical or og:image. Next's own list (which already
+ * covers Yandex, Bing, VK, WhatsApp, and Telegram via "TwitterBot") plus the
+ * Russian and messenger bots it lacks: Mail.ru search, Odnoklassniki, Viber.
+ * Setting this option replaces Next's list, hence the import.
+ */
+const HTML_LIMITED_BOTS = new RegExp(
+  `${HTML_LIMITED_BOT_UA_RE.source}|Mail\\.RU_Bot|OdklBot|Odnoklassniki|Viber|TelegramBot|Pinterestbot|Iframely|Embedly`,
+  "i",
+);
+
 const nextConfig: NextConfig = {
+  htmlLimitedBots: HTML_LIMITED_BOTS,
+  async redirects() {
+    return [
+      {
+        // www.cleanway.ai served the whole site as a second copy (200, same
+        // HTML): one host for search engines, one for links people share.
+        source: "/:path*",
+        has: [{ type: "host", value: "www.cleanway.ai" }],
+        destination: "https://cleanway.ai/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

@@ -57,11 +57,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: `How much data does ${decoded} collect? Cleanway grades trackers, cookies, fingerprinting A-F.`,
       site: "@cleanwayai",
     },
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: { index: true, follow: true, "max-image-preview": "large" },
-    },
+    // Never indexed: the page is a teaser ("Grade: Hidden") with the same
+    // English text for every site and every locale — thousands of thin,
+    // near-duplicate pages. Links on it are still followed.
+    robots: { index: false, follow: true },
   };
 }
 

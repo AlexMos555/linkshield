@@ -22,13 +22,9 @@ import { getTranslations } from "next-intl/server";
 import { routing, type Locale } from "@/i18n/routing";
 import { installScreenshotSrc, type InstallScreenshotSlot } from "@/lib/install-screenshots";
 import { localePath } from "@/lib/locale-path";
+import { DEFAULT_OG_IMAGE, localeAlternates } from "@/lib/seo";
 
-const SITE_URL = "https://cleanway.ai";
 const APK_URL = process.env.NEXT_PUBLIC_APK_URL || "";
-
-function urlFor(locale: Locale | string): string {
-  return locale === routing.defaultLocale ? `${SITE_URL}/android` : `${SITE_URL}/${locale}/android`;
-}
 
 function resolveLocale(locale: string): Locale {
   return (routing.locales as readonly string[]).includes(locale) ? (locale as Locale) : routing.defaultLocale;
@@ -41,16 +37,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const safeLocale = resolveLocale((await params).locale);
   const t = await getTranslations({ locale: safeLocale, namespace: "Android" });
-  const languages: Record<string, string> = {};
-  for (const loc of routing.locales) languages[loc] = urlFor(loc as Locale);
-  const canonical = urlFor(safeLocale);
+  const alternates = localeAlternates(safeLocale, "/android");
+  const canonical = alternates.canonical;
   // The link preview in Telegram / WhatsApp / VK is how most people will see
   // this page first, so it gets its own localized title and description and
   // the wordless brand image (no "Add to Chrome" button on an Android page).
   return {
     title: t("og_title"),
     description: t("og_description"),
-    alternates: { canonical, languages },
+    alternates,
     openGraph: {
       title: t("og_title"),
       description: t("og_description"),
@@ -58,13 +53,13 @@ export async function generateMetadata({
       siteName: "Cleanway",
       type: "website",
       locale: safeLocale,
-      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Cleanway" }],
+      images: [DEFAULT_OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",
       title: t("og_title"),
       description: t("og_description"),
-      images: ["/opengraph-image"],
+      images: [DEFAULT_OG_IMAGE.url],
     },
   };
 }
