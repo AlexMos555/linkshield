@@ -633,6 +633,12 @@ def test_accept_self_invite_blocked(supabase_ok, fake_sb, client_factory):
     assert resp.status_code == 400
 
 
+def _wrong_pins(pin: str, n: int = 1) -> list[str]:
+    """`n` four-digit PINs that are not the invite's: the PIN is random, and a
+    fixed "0000" is the real one once in 10,000 runs (CI hit it)."""
+    return [p for p in (f"{i:04d}" for i in range(n + 1)) if p != pin][:n]
+
+
 def test_accept_wrong_pin_returns_404_not_403(authed_user, supabase_ok, fake_sb, client_factory):
     """Same error as wrong code — no enumeration of valid codes via PIN check."""
     inviter = AuthUser(id="user-X", email="x@t.com", tier=UserTier.free)
@@ -642,7 +648,7 @@ def test_accept_wrong_pin_returns_404_not_403(authed_user, supabase_ok, fake_sb,
 
     resp = client_factory(authed_user).post(
         "/api/v1/family/accept",
-        json={"code": invite["code"], "pin": "0000"},  # wrong
+        json={"code": invite["code"], "pin": _wrong_pins(invite["pin"])[0]},
     )
     assert resp.status_code == 404
 
@@ -699,10 +705,10 @@ def test_accept_pin_lockout_after_five_wrong_attempts(
     # 5 wrong PINs — all return 404
     accepter = AuthUser(id="user-attacker", email="a@t.com", tier=UserTier.free)
     accept_client = client_factory(accepter)
-    for i in range(5):
+    for i, wrong in enumerate(_wrong_pins(invite["pin"], 5)):
         resp = accept_client.post(
             "/api/v1/family/accept",
-            json={"code": invite["code"], "pin": f"{i:04d}"},
+            json={"code": invite["code"], "pin": wrong},
         )
         assert resp.status_code == 404, f"attempt {i+1} returned {resp.status_code}"
 
@@ -735,10 +741,10 @@ def test_accept_pin_lockout_fails_open_on_redis_outage(
     accepter = AuthUser(id="user-real-user", email="ok@t.com", tier=UserTier.free)
     accept_client = client_factory(accepter)
     # Five wrong PINs — still 404 each
-    for i in range(5):
+    for wrong in _wrong_pins(invite["pin"], 5):
         resp = accept_client.post(
             "/api/v1/family/accept",
-            json={"code": invite["code"], "pin": f"{i:04d}"},
+            json={"code": invite["code"], "pin": wrong},
         )
         assert resp.status_code == 404
 
