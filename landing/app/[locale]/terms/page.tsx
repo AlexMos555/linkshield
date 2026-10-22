@@ -4,8 +4,9 @@
  * The previous page was English-only and promised things the product does not
  * do (a 14-day trial on every plan, App Store / Google Play billing, "your
  * browsing data stays on your device"). This version states only what is
- * true today and what we explicitly do NOT promise. A lawyer still has to
- * review it (governing law and the operator's details are not filled in).
+ * true today and what we explicitly do NOT promise. Section 1 names the
+ * operator (lib/operator.ts). A lawyer still has to review it: governing law
+ * is not filled in.
  */
 import type { Metadata } from "next";
 import { headers } from "next/headers";

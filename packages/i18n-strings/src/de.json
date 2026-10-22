@@ -1584,7 +1584,8 @@
       "contact": "Hilfe",
       "github": "GitHub",
       "tagline": "Schutz vor Betrugsseiten.",
-      "methodology": "Methodik"
+      "methodology": "Methodik",
+      "operator": "Cleanway wird betrieben von {name}, {address}. Registernummer: {registration}."
     },
     "language_switcher": {
       "label": "Sprache"
@@ -1674,7 +1675,7 @@
       ],
       "device_note": "Den Prüfverlauf kannst du in den Einstellungen der App löschen.",
       "dns_heading": "Wer die Seitennamen noch sieht",
-      "dns_note": "Solange der Schutz an ist, fragt dein Handy die Adressen nicht blockierter Seiten bei einem öffentlichen DNS-Dienst ab – Cloudflare oder Quad9 – statt beim DNS deines Anbieters. Wie jeder DNS-Dienst sieht er den Seitennamen und die IP-Adresse deiner Verbindung. Cleanway erhält diese Anfragen nicht."
+      "dns_note": "Auf Android fragt dein Handy, solange der Schutz an ist, die Adressen nicht blockierter Seiten so ab wie ohne Cleanway: beim DNS deines Netzes – dem deines Mobilfunkanbieters oder deines WLAN-Routers – und nur wenn der nicht antwortet, bei Cloudflare oder Quad9. Wie jeder DNS-Dienst sehen sie den Seitennamen und die IP-Adresse deiner Verbindung; Cleanway erhält diese Anfragen nicht. Wenn du den DNS-Filter von Cleanway auf einem iPhone, Mac oder Windows-Computer einrichtest, gehen die Seitennamen stattdessen an den DNS-Server von Cleanway (Abschnitt 11 der Datenschutzerklärung)."
     },
     "testimonials": {
       "heading": "Woran wir uns halten",
@@ -1709,7 +1710,7 @@
         },
         {
           "q": "Kann ich es zusammen mit einem VPN nutzen?",
-          "a": "Nicht gleichzeitig. Der Schutz von Cleanway nutzt den VPN-Mechanismus von Android nur für Seitennamen: Das Handy vergleicht jeden Namen mit der Liste und fragt nicht blockierte Namen bei einem öffentlichen DNS-Dienst ab (Cloudflare oder Quad9). Dein übriger Datenverkehr läuft wie gewohnt – weder über Cleanway noch über ein anderes Land. Android lässt immer nur einen solchen Dienst laufen; schaltest du ein anderes VPN ein, geht der Schutz von Cleanway aus. Wenn du fertig bist, öffne Cleanway und schalte den Schutz wieder ein. Eine Seite oder Nachricht von Hand in der App zu prüfen, funktioniert in jedem Fall."
+          "a": "Nicht gleichzeitig. Der Schutz von Cleanway nutzt den VPN-Mechanismus von Android nur für Seitennamen: Das Handy vergleicht jeden Namen mit der Liste und fragt Namen, die nicht darauf stehen, so ab wie ohne Cleanway – beim DNS deines Netzes oder, wenn der nicht antwortet, bei Cloudflare oder Quad9. Dein übriger Datenverkehr läuft wie gewohnt – weder über Cleanway noch über ein anderes Land. Android lässt immer nur einen solchen Dienst laufen; schaltest du ein anderes VPN ein, geht der Schutz von Cleanway aus. Wenn du fertig bist, öffne Cleanway und schalte den Schutz wieder ein. Eine Seite oder Nachricht von Hand in der App zu prüfen, funktioniert in jedem Fall."
         },
         {
           "q": "Was ist anders als bei Google Safe Browsing?",
@@ -2227,7 +2228,7 @@
       "meta_description": "Die Regeln für die Nutzung von Cleanway: was der Dienst verspricht und was nicht, der kostenlose Tarif, Konten und Geräte, kostenpflichtige Tarife, Kündigung und Erstattungen sowie zulässige Nutzung.",
       "back": "Zurück zu Cleanway",
       "title": "Nutzungsbedingungen",
-      "updated": "Zuletzt aktualisiert: 8. Oktober 2026",
+      "updated": "Zuletzt aktualisiert: 22. Oktober 2026",
       "privacy_link": "Datenschutzerklärung lesen",
       "contact_live": "Fragen zu diesen Bedingungen:",
       "contact_not_live": "Unser Support-Postfach funktioniert vorübergehend nicht, daher können wir gerade keine E-Mails empfangen. Die Hilfeseite beantwortet häufige Fragen.",
@@ -2236,7 +2237,8 @@
         {
           "title": "1. Was Cleanway ist",
           "paragraphs": [
-            "Cleanway hilft dir, dich vor Betrugs- und Phishing-Seiten zu schützen. Dazu gehören die Android-App, die Browser-Erweiterung, die Seitenprüfung auf cleanway.ai und ein DNS-Filter für iPhone, Mac und Windows. Cleanway gleicht Seitennamen mit Listen bekannter Bedrohungen und anderen Hinweisen ab und sagt dir, was es gefunden hat."
+            "Cleanway hilft dir, dich vor Betrugs- und Phishing-Seiten zu schützen. Dazu gehören die Apps für Android und iPhone, die Browser-Erweiterung, die Seitenprüfung auf cleanway.ai und ein DNS-Filter für iPhone, Mac und Windows. Cleanway gleicht Seitennamen mit Listen bekannter Bedrohungen und anderen Hinweisen ab und sagt dir, was es gefunden hat.",
+            "Cleanway wird von der ACECORE GLOBAL TECHNOLOGIES – FZCO betrieben, Registernummer 43029, Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE („wir“, „uns“)."
           ]
         },
         {
@@ -2342,7 +2344,7 @@
       "meta_description": "Was Cleanway erhält, was auf deinem Handy oder in deinem Browser bleibt, wer sonst was sieht und wie lange alles gespeichert wird.",
       "back": "Zurück zu Cleanway",
       "title": "Datenschutzerklärung",
-      "updated": "Zuletzt aktualisiert: 15. Oktober 2026",
+      "updated": "Zuletzt aktualisiert: 22. Oktober 2026",
       "intro": "Diese Erklärung beschreibt in einfachen Worten, welche Daten Cleanway verarbeitet, warum und wer sie sonst noch sieht. Sie beschreibt den Dienst so, wie er heute funktioniert. Wenn hier etwas nicht zu dem passt, was Cleanway tatsächlich tut, ist das ein Fehler, und wir möchten davon erfahren.",
       "contact_live": "Fragen und Anfragen zu deinen Daten:",
       "contact_not_live": "Unser Support-Postfach funktioniert vorübergehend nicht, daher können wir gerade keine E-Mails empfangen. Die Adresse erscheint hier wieder, sobald es funktioniert.",
@@ -2359,7 +2361,8 @@
         {
           "title": "2. Wer wir sind",
           "paragraphs": [
-            "Cleanway (cleanway.ai) schützt vor Betrugs- und Phishing-Seiten. Dazu gehören eine Android-App, eine Browser-Erweiterung, eine Seitenprüfung auf cleanway.ai und ein DNS-Filter für iPhone, Mac und Windows. Wie du uns erreichst, steht am Ende dieser Erklärung."
+            "Cleanway (cleanway.ai) schützt vor Betrugs- und Phishing-Seiten. Dazu gehören die Apps für Android und iPhone, eine Browser-Erweiterung, eine Seitenprüfung auf cleanway.ai und ein DNS-Filter für iPhone, Mac und Windows. Wie du uns erreichst, steht am Ende dieser Erklärung.",
+            "Cleanway wird von der ACECORE GLOBAL TECHNOLOGIES – FZCO betrieben, Registernummer 43029, Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE. Dieses Unternehmen entscheidet, warum und wie die in dieser Erklärung beschriebenen Daten verarbeitet werden – im Sinne des Datenschutzrechts ist es der Verantwortliche. „Wir“ und „uns“ meinen in dieser Erklärung dieses Unternehmen."
           ]
         },
         {
@@ -2398,8 +2401,9 @@
         {
           "title": "6. Prüfen von Nachrichten",
           "paragraphs": [
-            "Cleanway liest deine SMS nicht von sich aus und fragt nicht nach Zugriff darauf. Es prüft nur eine Nachricht, die du selbst teilst oder einfügst.",
-            "Der Text wird auf dem Handy ausgewertet und nirgendwohin gesendet – weder an uns noch an sonst jemanden. Bis zu drei Seitennamen aus Links in der Nachricht können wie oben beschrieben auf unserem Server geprüft werden, ohne den Rest des Links. Der Verlauf speichert das Urteil und die Seitennamen, nie den Text."
+            "Die Android-App liest deine SMS nicht von sich aus und fragt nicht nach Zugriff darauf: Sie prüft nur eine Nachricht, die du selbst teilst oder einfügst. Die Nachrichtenprüfung in der iPhone-App funktioniert genauso.",
+            "Eine solche Nachricht wird auf dem Handy ausgewertet und nirgendwohin gesendet – weder an uns noch an sonst jemanden. Bis zu drei Seitennamen aus ihren Links können wie oben beschrieben auf unserem Server geprüft werden, ohne den Rest des Links. Der Verlauf speichert das Urteil und die Seitennamen, nie den Text.",
+            "Die iPhone-App enthält außerdem einen SMS-Filter. Er ist aus, bis du Cleanway in den Einstellungen des iPhone als Filter für Nachrichten auswählst (unter „Nachrichten“, im Bereich zu unbekannten Absendern). Ab dann gibt iOS jede SMS und MMS von einer Nummer, die nicht in deinen Kontakten steht, an Cleanway – nie iMessage und nie Nachrichten deiner Kontakte –, und Cleanway entscheidet auf dem Handy, ob sie in den Spam-Ordner kommt. Der Filter geht nicht ins Internet: Text und Absender werden nirgendwohin gesendet – weder an uns noch an sonst jemanden – und nicht gespeichert. Du kannst den Filter an derselben Stelle in den Einstellungen ausschalten."
           ]
         },
         {
@@ -2490,11 +2494,27 @@
             "Stripe – Zahlungen auf der Website; Google Play, der App Store und RevenueCat – Käufe in der App (in Russland werden keine Zahlungen angeboten)."
           ],
           "after": [
-            "Diese Unternehmen sitzen außerhalb Russlands, vor allem in den USA und der EU; die Daten, die sie verarbeiten, werden also ins Ausland übermittelt. Unser Server und die Sicherungskopien der Datenbank befinden sich in der EU."
+            "Diese Unternehmen sitzen außerhalb Russlands, vor allem in den USA und der EU; die Daten, die sie verarbeiten, werden also ins Ausland übermittelt. Unser Server und die Sicherungskopien der Datenbank befinden sich in der EU.",
+            "Einige dieser Unternehmen sitzen in den USA. Erhalten sie personenbezogene Daten von Menschen aus dem Europäischen Wirtschaftsraum (EWR), stützt sich die Übermittlung auf das EU-US Data Privacy Framework, wenn das Unternehmen danach zertifiziert ist, und sonst auf die von der Europäischen Kommission genehmigten Standardvertragsklauseln, die Teil der Datenverarbeitungsbedingungen des Unternehmens sind. Du kannst uns nach den Einzelheiten dieser Garantien fragen (Abschnitt 19)."
           ]
         },
         {
-          "title": "15. Wie lange wir Daten speichern",
+          "id": "legal_bases",
+          "title": "15. Auf welcher Grundlage wir deine Daten nutzen",
+          "paragraphs": [
+            "Datenschutzgesetze wie die europäische DSGVO verlangen für jede Nutzung personenbezogener Daten eine Rechtsgrundlage. Unsere sind:"
+          ],
+          "items": [
+            "die Erbringung des Dienstes, um den du gebeten hast (Vertragserfüllung): dein Konto und die Anmeldung, deine Geräteliste, die Familienfunktionen, die kostenpflichtigen Tarife, der DNS-Filter, sobald du ihn eingerichtet hast, und die dazugehörigen Service-E-Mails;",
+            "unser berechtigtes Interesse an einem Dienst, der funktioniert und sicher nutzbar ist: das Prüfen der Namen von Seiten, die du öffnest oder abfragst, die Begrenzung der Prüfungen pro Verbindung oder Handy, die Turnstile-Prüfung, das Sicherheitsprotokoll der Kontoaktionen und Sicherheitshinweise, Fehlerberichte und Zeitmessungen sowie Sicherungskopien. Ohne die Prüfungen gibt es keinen Schutz, und ohne Grenzen und Protokolle ließe sich der Dienst missbrauchen;",
+            "deine Einwilligung: die E-Mail-Prüfung im Webmail, die aus ist, bis du sie in der Browser-Erweiterung einschaltest, und in Firefox die Dateneinwilligung, die das Add-on erfragt. Du kannst sie jederzeit widerrufen: Die Prüfungen enden sofort, und was vorher geschah, bleibt rechtmäßig."
+          ],
+          "after": [
+            "Du kannst jeder Nutzung widersprechen, die auf unserem berechtigten Interesse beruht – siehe Abschnitt 17."
+          ]
+        },
+        {
+          "title": "16. Wie lange wir Daten speichern",
           "items": [
             "Prüfergebnisse im Server-Cache – bis zu 24 Stunden;",
             "deine IP-Adresse im Zähler für die Prüfgrenze – höchstens eine Stunde;",
@@ -2509,22 +2529,24 @@
           ]
         },
         {
-          "title": "16. Deine Rechte",
+          "id": "rights",
+          "title": "17. Deine Rechte",
           "paragraphs": [
-            "Du kannst fragen, welche Daten wir über dich haben, uns bitten, sie zu berichtigen oder zu löschen, und deine Einwilligung widerrufen.",
+            "Du hast das Recht: zu erfahren, welche Daten wir über dich haben, und eine Kopie davon zu erhalten (Auskunft); sie berichtigen zu lassen (Berichtigung); sie löschen zu lassen (Löschung); ihre Nutzung einschränken zu lassen, etwa solange geklärt wird, ob sie richtig sind (Einschränkung); die Daten, die du uns gegeben hast, in einem maschinenlesbaren Format zu erhalten oder, wo technisch möglich, an einen anderen Dienst übermitteln zu lassen (Datenübertragbarkeit); einer Nutzung auf Grundlage unseres berechtigten Interesses zu widersprechen (Widerspruch); und eine erteilte Einwilligung zu widerrufen.",
             "Um dein Konto selbst zu löschen, melde dich auf cleanway.ai/account an und wähle „Konto löschen“, oder nutze „Konto löschen“ in den Einstellungen der App. Die Seite cleanway.ai/delete-account erklärt die Schritte und was gelöscht und was aufbewahrt wird.",
-            "Ohne Konto wissen wir nicht, wer du bist: Wir haben weder deinen Namen noch deine E-Mail-Adresse oder Telefonnummer – nur die oben beschriebenen technischen Daten, etwa deine IP-Adresse im Prüfzähler und in den Protokollen des Hostings. Für andere Anfragen kontaktiere uns wie unten beschrieben. Wenn du die App oder die Erweiterung entfernst, wird alles gelöscht, was sie auf deinem Gerät gespeichert hat."
+            "Ohne Konto wissen wir nicht, wer du bist: Wir haben weder deinen Namen noch deine E-Mail-Adresse oder Telefonnummer – nur die oben beschriebenen technischen Daten, etwa deine IP-Adresse im Prüfzähler und in den Protokollen des Hostings. Für andere Anfragen kontaktiere uns wie unten beschrieben. Wenn du die App oder die Erweiterung entfernst, wird alles gelöscht, was sie auf deinem Gerät gespeichert hat.",
+            "Wenn du meinst, dass wir deine Daten rechtswidrig verarbeiten, hast du das Recht, dich bei einer Datenschutz-Aufsichtsbehörde zu beschweren, insbesondere in dem Land, in dem du lebst oder arbeitest oder in dem das Problem aufgetreten ist. Du kannst uns auch zuerst schreiben."
           ]
         },
         {
-          "title": "17. Kinder",
+          "title": "18. Kinder",
           "paragraphs": [
             "Cleanway ist nicht dafür gedacht, dass Kinder unter 13 Jahren es allein nutzen; Familienfunktionen verwaltet ein Erwachsener."
           ]
         },
         {
           "id": "contact",
-          "title": "18. Änderungen und Kontakt",
+          "title": "19. Änderungen und Kontakt",
           "paragraphs": [
             "Wenn wir diese Erklärung ändern, veröffentlichen wir die neue Fassung mit neuem Datum auf dieser Seite.",
             "E-Mails, die du an unsere Adressen bei cleanway.ai schickst, laufen über Cloudflare, das sie an unser Postfach weiterleitet."

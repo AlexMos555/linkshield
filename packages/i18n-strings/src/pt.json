@@ -1584,7 +1584,8 @@
       "contact": "Ajuda",
       "github": "GitHub",
       "tagline": "Proteção contra sites de golpe.",
-      "methodology": "Metodologia"
+      "methodology": "Metodologia",
+      "operator": "O Cleanway é operado pela {name}, {address}. Número de registro: {registration}."
     },
     "language_switcher": {
       "label": "Idioma"
@@ -1674,7 +1675,7 @@
       ],
       "device_note": "Você pode apagar o histórico de verificações nos Ajustes do app.",
       "dns_heading": "Quem mais vê os nomes dos sites",
-      "dns_note": "Enquanto a proteção está ligada, o celular busca os endereços dos sites que não bloqueia em um serviço de DNS público — Cloudflare ou Quad9 — em vez do DNS da sua operadora. Como qualquer serviço de DNS, ele vê o nome do site e o endereço IP da sua conexão. O Cleanway não recebe essas consultas."
+      "dns_note": "No Android, enquanto a proteção está ligada, o celular busca os endereços dos sites que não bloqueia como faria sem o Cleanway: no DNS da sua rede — o da sua operadora ou do seu roteador Wi-Fi — e, só se ele não responder, na Cloudflare ou no Quad9. Como qualquer serviço de DNS, eles veem o nome do site e o endereço IP da sua conexão; o Cleanway não recebe essas consultas. Se você configurar o filtro DNS do Cleanway em um iPhone, Mac ou computador com Windows, os nomes dos sites vão para o servidor DNS do próprio Cleanway (seção 11 da política de privacidade)."
     },
     "testimonials": {
       "heading": "Nossos compromissos",
@@ -1709,7 +1710,7 @@
         },
         {
           "q": "Posso usar junto com uma VPN?",
-          "a": "Não ao mesmo tempo. A proteção do Cleanway usa o mecanismo de VPN do Android só para os nomes dos sites: o celular compara cada nome com a lista e busca os que não estão bloqueados em um serviço de DNS público (Cloudflare ou Quad9). O resto do seu tráfego segue normalmente — nem pelo Cleanway, nem por outro país. O Android só roda um serviço desse tipo por vez; por isso, se você ligar outra VPN, a proteção do Cleanway desliga. Quando terminar, abra o Cleanway e ative a proteção de novo. A verificação manual de um site ou mensagem no app continua funcionando de qualquer jeito."
+          "a": "Não ao mesmo tempo. A proteção do Cleanway usa o mecanismo de VPN do Android só para os nomes dos sites: o celular compara cada nome com a lista e busca os que não estão nela como faria sem o Cleanway, no DNS da sua rede ou, se ele não responder, na Cloudflare ou no Quad9. O resto do seu tráfego segue normalmente — nem pelo Cleanway, nem por outro país. O Android só roda um serviço desse tipo por vez; por isso, se você ligar outra VPN, a proteção do Cleanway desliga. Quando terminar, abra o Cleanway e ative a proteção de novo. A verificação manual de um site ou mensagem no app continua funcionando de qualquer jeito."
         },
         {
           "q": "Qual a diferença para o Google Safe Browsing?",
@@ -2227,7 +2228,7 @@
       "meta_description": "As regras de uso do Cleanway: o que o serviço promete e o que não promete, o plano grátis, contas e dispositivos, planos pagos, cancelamento e reembolsos, e uso aceitável.",
       "back": "Voltar para o Cleanway",
       "title": "Termos de uso",
-      "updated": "Última atualização: 8 de outubro de 2026",
+      "updated": "Última atualização: 22 de outubro de 2026",
       "privacy_link": "Ler a política de privacidade",
       "contact_live": "Dúvidas sobre estes termos:",
       "contact_not_live": "Nossa caixa de suporte está temporariamente fora do ar, então no momento não conseguimos receber e-mails. A página de ajuda responde às dúvidas mais comuns.",
@@ -2236,7 +2237,8 @@
         {
           "title": "1. O que é o Cleanway",
           "paragraphs": [
-            "O Cleanway ajuda a proteger você contra sites de golpe e de phishing. Ele é formado pelo app para Android, pela extensão do navegador, pela verificação de sites em cleanway.ai e por um filtro DNS para iPhone, Mac e Windows. O Cleanway compara nomes de sites com listas de ameaças conhecidas e outros sinais e diz o que encontrou."
+            "O Cleanway ajuda a proteger você contra sites de golpe e de phishing. Ele é formado pelos apps para Android e iPhone, pela extensão do navegador, pela verificação de sites em cleanway.ai e por um filtro DNS para iPhone, Mac e Windows. O Cleanway compara nomes de sites com listas de ameaças conhecidas e outros sinais e diz o que encontrou.",
+            "O Cleanway é operado pela ACECORE GLOBAL TECHNOLOGIES – FZCO, número de registro 43029, Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE (“nós”)."
           ]
         },
         {
@@ -2342,7 +2344,7 @@
       "meta_description": "O que o Cleanway recebe, o que fica no seu celular ou no seu navegador, quem mais vê o quê e por quanto tempo tudo é guardado.",
       "back": "Voltar para o Cleanway",
       "title": "Política de privacidade",
-      "updated": "Última atualização: 15 de outubro de 2026",
+      "updated": "Última atualização: 22 de outubro de 2026",
       "intro": "Esta política explica em palavras simples quais dados o Cleanway trata, por quê e quem mais os vê. Ela descreve o serviço como funciona hoje. Se algo aqui não bater com o que o Cleanway realmente faz, é um erro e queremos saber.",
       "contact_live": "Dúvidas e pedidos sobre os seus dados:",
       "contact_not_live": "Nossa caixa de suporte está temporariamente fora do ar, então no momento não conseguimos receber e-mails. O endereço vai voltar a aparecer nesta seção assim que funcionar.",
@@ -2359,7 +2361,8 @@
         {
           "title": "2. Quem somos",
           "paragraphs": [
-            "O Cleanway (cleanway.ai) protege contra sites de golpe e de phishing. Ele é formado por um app para Android, uma extensão de navegador, uma verificação de sites em cleanway.ai e um filtro DNS para iPhone, Mac e Windows. Como falar com a gente está no fim desta política."
+            "O Cleanway (cleanway.ai) protege contra sites de golpe e de phishing. Ele é formado pelos apps para Android e iPhone, uma extensão de navegador, uma verificação de sites em cleanway.ai e um filtro DNS para iPhone, Mac e Windows. Como falar com a gente está no fim desta política.",
+            "O Cleanway é operado pela ACECORE GLOBAL TECHNOLOGIES – FZCO, número de registro 43029, Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE. Essa empresa decide por que e como os dados descritos nesta política são tratados: em termos de proteção de dados, ela é a controladora. “Nós” nesta política quer dizer essa empresa."
           ]
         },
         {
@@ -2398,8 +2401,9 @@
         {
           "title": "6. Verificação de mensagens",
           "paragraphs": [
-            "O Cleanway não lê seus SMS por conta própria e não pede acesso a eles. Ele verifica só a mensagem que você compartilha com ele ou cola.",
-            "O texto é analisado no celular e não é enviado para lugar nenhum — nem para nós, nem para ninguém. Até três nomes de sites dos links da mensagem podem ser verificados no nosso servidor como descrito acima, sem o resto do link. O Histórico guarda o veredito e os nomes dos sites, nunca o texto."
+            "O app para Android não lê seus SMS por conta própria e não pede acesso a eles: ele verifica só a mensagem que você compartilha com ele ou cola. A verificação de mensagens dentro do app para iPhone funciona do mesmo jeito.",
+            "Essa mensagem é analisada no celular e não é enviada para lugar nenhum — nem para nós, nem para ninguém. Até três nomes de sites dos links dela podem ser verificados no nosso servidor como descrito acima, sem o resto do link. O Histórico guarda o veredito e os nomes dos sites, nunca o texto.",
+            "O app para iPhone também tem um filtro de SMS, que fica desligado até você escolher o Cleanway como filtro de mensagens nos Ajustes do iPhone (em Mensagens, na parte de remetentes desconhecidos). A partir daí, o iOS passa ao Cleanway cada SMS e MMS de um número que não está nos seus contatos — nunca iMessage nem mensagens dos seus contatos — e o Cleanway decide no próprio celular se ela vai para a pasta Lixo. O filtro não se conecta à internet: o texto e o remetente não são enviados para lugar nenhum — nem para nós, nem para ninguém — e não são guardados. Você pode desligar o filtro no mesmo lugar dos Ajustes."
           ]
         },
         {
@@ -2490,11 +2494,27 @@
             "Stripe — pagamentos no site; Google Play, App Store e RevenueCat — compras no app (não há pagamentos na Rússia)."
           ],
           "after": [
-            "Essas empresas ficam fora da Rússia, principalmente nos EUA e na UE, então os dados que elas tratam são transferidos para o exterior. Nosso servidor e as cópias de segurança do banco de dados ficam na UE."
+            "Essas empresas ficam fora da Rússia, principalmente nos EUA e na UE, então os dados que elas tratam são transferidos para o exterior. Nosso servidor e as cópias de segurança do banco de dados ficam na UE.",
+            "Algumas dessas empresas ficam nos EUA. Quando recebem dados pessoais de pessoas do Espaço Econômico Europeu (EEE), a transferência se apoia no EU–US Data Privacy Framework, se a empresa for certificada nele, e, caso contrário, nas cláusulas contratuais-padrão aprovadas pela Comissão Europeia, que fazem parte dos termos de tratamento de dados da empresa. Você pode nos pedir detalhes sobre essas garantias (seção 19)."
           ]
         },
         {
-          "title": "15. Por quanto tempo guardamos os dados",
+          "id": "legal_bases",
+          "title": "15. Com que base usamos seus dados",
+          "paragraphs": [
+            "Leis de proteção de dados, como o RGPD europeu, exigem uma base legal para cada uso de dados pessoais. As nossas são:"
+          ],
+          "items": [
+            "prestar o serviço que você pediu (execução de contrato): sua conta e o login, sua lista de dispositivos, os recursos de família, os planos pagos, o filtro DNS depois que você o configura e os e-mails do serviço ligados a isso;",
+            "nosso interesse legítimo em um serviço que funcione e seja seguro de usar: verificar os nomes dos sites que você abre ou consulta, os limites de verificações por conexão ou por celular, a verificação do Turnstile, o registro de segurança das ações da conta e os avisos de segurança, os relatórios de erros e as medições de tempo, e as cópias de segurança. Sem as verificações não há proteção, e sem os limites e os registros o serviço poderia ser usado de forma abusiva;",
+            "seu consentimento: a verificação de e-mails no webmail, que fica desligada até você ligá-la na extensão do navegador, e, no Firefox, o consentimento de dados que o complemento pede. Você pode retirá-lo a qualquer momento: as verificações param na hora, e o que foi feito antes continua lícito."
+          ],
+          "after": [
+            "Você pode se opor a qualquer uso baseado no nosso interesse legítimo — veja a seção 17."
+          ]
+        },
+        {
+          "title": "16. Por quanto tempo guardamos os dados",
           "items": [
             "resultados de verificação no cache do servidor — até 24 horas;",
             "seu endereço IP no contador que limita as verificações — no máximo uma hora;",
@@ -2509,22 +2529,24 @@
           ]
         },
         {
-          "title": "16. Seus direitos",
+          "id": "rights",
+          "title": "17. Seus direitos",
           "paragraphs": [
-            "Você pode perguntar quais dados seus temos, pedir que os corrijamos ou apaguemos e retirar seu consentimento.",
+            "Você tem direito a: saber quais dados seus temos e receber uma cópia (acesso); corrigi-los (retificação); apagá-los (eliminação); limitar o uso deles, por exemplo enquanto se verifica se estão corretos (limitação); receber os dados que você nos deu em um formato legível por máquina ou pedir que os passemos a outro serviço, quando for tecnicamente possível (portabilidade); se opor a um uso baseado no nosso interesse legítimo (oposição); e retirar um consentimento que tenha dado.",
             "Você mesmo pode excluir a sua conta: entre em cleanway.ai/account e escolha “Excluir conta”, ou use “Excluir conta” nos Ajustes do app. A página cleanway.ai/delete-account explica os passos e o que é excluído e o que é mantido.",
-            "Sem conta, não sabemos quem você é: não temos seu nome, e-mail nem telefone — só os dados técnicos descritos acima, como seu endereço IP no contador de verificações e nos registros da hospedagem. Para outros pedidos, fale com a gente como descrito abaixo. Remover o app ou a extensão apaga tudo o que ele guardou no seu dispositivo."
+            "Sem conta, não sabemos quem você é: não temos seu nome, e-mail nem telefone — só os dados técnicos descritos acima, como seu endereço IP no contador de verificações e nos registros da hospedagem. Para outros pedidos, fale com a gente como descrito abaixo. Remover o app ou a extensão apaga tudo o que ele guardou no seu dispositivo.",
+            "Se você achar que tratamos seus dados de forma ilegal, tem direito de apresentar uma reclamação a uma autoridade de proteção de dados, em especial a do país onde mora ou trabalha ou onde o problema aconteceu. Você também pode nos escrever antes."
           ]
         },
         {
-          "title": "17. Crianças",
+          "title": "18. Crianças",
           "paragraphs": [
             "O Cleanway não foi feito para ser usado sozinho por crianças com menos de 13 anos; os recursos de família são administrados por um adulto."
           ]
         },
         {
           "id": "contact",
-          "title": "18. Mudanças e contato",
+          "title": "19. Mudanças e contato",
           "paragraphs": [
             "Se mudarmos esta política, publicaremos a nova versão nesta página com uma data nova.",
             "Os e-mails que você envia para os nossos endereços em cleanway.ai passam pela Cloudflare, que os encaminha para a nossa caixa."

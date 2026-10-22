@@ -33,7 +33,8 @@
     "contact": "Bantuan",
     "github": "GitHub",
     "tagline": "Perlindungan dari situs penipuan.",
-    "methodology": "Metodologi"
+    "methodology": "Metodologi",
+    "operator": "Cleanway dijalankan oleh {name}, {address}. Nomor registrasi: {registration}."
   },
   "LanguageSwitcher": {
     "label": "Bahasa"
@@ -123,7 +124,7 @@
     ],
     "device_note": "Anda bisa menghapus riwayat pemeriksaan di Pengaturan aplikasi.",
     "dns_heading": "Siapa lagi yang melihat nama situs",
-    "dns_note": "Selama perlindungan aktif, ponsel Anda mencari alamat situs yang tidak diblokir melalui layanan DNS publik — Cloudflare atau Quad9 — bukan DNS operator Anda. Seperti layanan DNS mana pun, layanan ini melihat nama situs dan alamat IP koneksi Anda. Cleanway tidak menerima permintaan ini."
+    "dns_note": "Di Android, selama perlindungan aktif, ponsel Anda mencari alamat situs yang tidak diblokir seperti tanpa Cleanway: melalui DNS jaringan Anda — milik operator seluler atau router Wi-Fi Anda — dan hanya jika DNS itu tidak menjawab, melalui Cloudflare atau Quad9. Seperti layanan DNS mana pun, mereka melihat nama situs dan alamat IP koneksi Anda; Cleanway tidak menerima permintaan ini. Jika Anda menyiapkan filter DNS Cleanway di iPhone, Mac, atau komputer Windows, nama situs justru dikirim ke server DNS milik Cleanway (bagian 11 kebijakan privasi)."
   },
   "Testimonials": {
     "heading": "Komitmen kami",
@@ -158,7 +159,7 @@
       },
       {
         "q": "Bisakah saya memakainya bersama VPN?",
-        "a": "Tidak bersamaan. Perlindungan Cleanway memakai mekanisme VPN Android hanya untuk nama situs: ponsel mencocokkan setiap nama dengan daftar dan mencari nama yang tidak diblokir melalui layanan DNS publik (Cloudflare atau Quad9). Lalu lintas Anda yang lain berjalan seperti biasa — tidak lewat Cleanway dan tidak lewat negara lain. Android hanya menjalankan satu layanan seperti itu dalam satu waktu, jadi jika Anda menyalakan VPN lain, perlindungan Cleanway akan mati. Setelah selesai, buka Cleanway dan nyalakan lagi perlindungannya. Memeriksa situs atau pesan secara manual di aplikasi tetap berfungsi."
+        "a": "Tidak bersamaan. Perlindungan Cleanway memakai mekanisme VPN Android hanya untuk nama situs: ponsel mencocokkan setiap nama dengan daftar dan mencari nama yang tidak ada di daftar seperti tanpa Cleanway, melalui DNS jaringan Anda atau, jika DNS itu tidak menjawab, melalui Cloudflare atau Quad9. Lalu lintas Anda yang lain berjalan seperti biasa — tidak lewat Cleanway dan tidak lewat negara lain. Android hanya menjalankan satu layanan seperti itu dalam satu waktu, jadi jika Anda menyalakan VPN lain, perlindungan Cleanway akan mati. Setelah selesai, buka Cleanway dan nyalakan lagi perlindungannya. Memeriksa situs atau pesan secara manual di aplikasi tetap berfungsi."
       },
       {
         "q": "Apa bedanya dengan Google Safe Browsing?",
@@ -676,7 +677,7 @@
     "meta_description": "Aturan penggunaan Cleanway: apa yang dijanjikan dan tidak dijanjikan layanan ini, paket gratis, akun dan perangkat, paket berbayar, pembatalan dan pengembalian dana, serta penggunaan yang diperbolehkan.",
     "back": "Kembali ke Cleanway",
     "title": "Ketentuan penggunaan",
-    "updated": "Terakhir diperbarui: 8 Oktober 2026",
+    "updated": "Terakhir diperbarui: 22 Oktober 2026",
     "privacy_link": "Baca kebijakan privasi",
     "contact_live": "Pertanyaan tentang ketentuan ini:",
     "contact_not_live": "Kotak surat dukungan kami untuk sementara tidak berfungsi, jadi saat ini kami tidak bisa menerima email. Halaman bantuan menjawab pertanyaan yang umum.",
@@ -685,7 +686,8 @@
       {
         "title": "1. Apa itu Cleanway",
         "paragraphs": [
-          "Cleanway membantu melindungi Anda dari situs penipuan dan phishing. Cleanway terdiri dari aplikasi Android, ekstensi browser, pemeriksaan situs di cleanway.ai, dan filter DNS untuk iPhone, Mac, dan Windows. Cleanway mencocokkan nama situs dengan daftar ancaman yang dikenal dan tanda-tanda lain, lalu memberi tahu Anda apa yang ditemukannya."
+          "Cleanway membantu melindungi Anda dari situs penipuan dan phishing. Cleanway terdiri dari aplikasi Android dan iPhone, ekstensi browser, pemeriksaan situs di cleanway.ai, dan filter DNS untuk iPhone, Mac, dan Windows. Cleanway mencocokkan nama situs dengan daftar ancaman yang dikenal dan tanda-tanda lain, lalu memberi tahu Anda apa yang ditemukannya.",
+          "Cleanway dijalankan oleh ACECORE GLOBAL TECHNOLOGIES – FZCO, nomor registrasi 43029, Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE (“kami”)."
         ]
       },
       {
@@ -791,7 +793,7 @@
     "meta_description": "Apa yang diterima Cleanway, apa yang tetap di ponsel atau browser Anda, siapa lagi yang melihat apa, dan berapa lama semuanya disimpan.",
     "back": "Kembali ke Cleanway",
     "title": "Kebijakan privasi",
-    "updated": "Terakhir diperbarui: 15 Oktober 2026",
+    "updated": "Terakhir diperbarui: 22 Oktober 2026",
     "intro": "Kebijakan ini menjelaskan dengan kata-kata sederhana data apa yang ditangani Cleanway, mengapa, dan siapa lagi yang melihatnya. Isinya menggambarkan layanan seperti yang berjalan saat ini. Jika ada yang tidak sesuai dengan apa yang sebenarnya dilakukan Cleanway, itu adalah kesalahan dan kami ingin mengetahuinya.",
     "contact_live": "Pertanyaan dan permintaan tentang data Anda:",
     "contact_not_live": "Kotak surat dukungan kami untuk sementara tidak berfungsi, jadi saat ini kami tidak bisa menerima email. Alamatnya akan muncul lagi di bagian ini begitu berfungsi.",
@@ -808,7 +810,8 @@
       {
         "title": "2. Siapa kami",
         "paragraphs": [
-          "Cleanway (cleanway.ai) melindungi dari situs penipuan dan phishing. Cleanway terdiri dari aplikasi Android, ekstensi browser, pemeriksaan situs di cleanway.ai, dan filter DNS untuk iPhone, Mac, dan Windows. Cara menghubungi kami ada di akhir kebijakan ini."
+          "Cleanway (cleanway.ai) melindungi dari situs penipuan dan phishing. Cleanway terdiri dari aplikasi Android dan iPhone, ekstensi browser, pemeriksaan situs di cleanway.ai, dan filter DNS untuk iPhone, Mac, dan Windows. Cara menghubungi kami ada di akhir kebijakan ini.",
+          "Cleanway dijalankan oleh ACECORE GLOBAL TECHNOLOGIES – FZCO, nomor registrasi 43029, Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE. Perusahaan inilah yang menentukan mengapa dan bagaimana data yang dijelaskan dalam kebijakan ini diproses: dalam istilah perlindungan data, perusahaan ini adalah pengendali data. “Kami” dalam kebijakan ini berarti perusahaan ini."
         ]
       },
       {
@@ -847,8 +850,9 @@
       {
         "title": "6. Memeriksa pesan",
         "paragraphs": [
-          "Cleanway tidak membaca SMS Anda dengan sendirinya dan tidak meminta akses ke sana. Cleanway hanya memeriksa pesan yang Anda bagikan kepadanya atau Anda tempelkan.",
-          "Teks dianalisis di ponsel dan tidak dikirim ke mana pun, baik kepada kami maupun kepada siapa pun. Hingga tiga nama situs dari tautan di pesan dapat diperiksa di server kami seperti dijelaskan di atas, tanpa sisa tautannya. Riwayat menyimpan putusan dan nama situs, tidak pernah teksnya."
+          "Aplikasi Android tidak membaca SMS Anda dengan sendirinya dan tidak meminta akses ke sana: aplikasi hanya memeriksa pesan yang Anda bagikan kepadanya atau Anda tempelkan. Pemeriksaan pesan di dalam aplikasi iPhone bekerja dengan cara yang sama.",
+          "Pesan seperti itu dianalisis di ponsel dan tidak dikirim ke mana pun, baik kepada kami maupun kepada siapa pun. Hingga tiga nama situs dari tautan di dalamnya dapat diperiksa di server kami seperti dijelaskan di atas, tanpa sisa tautannya. Riwayat menyimpan putusan dan nama situs, tidak pernah teksnya.",
+          "Aplikasi iPhone juga memiliki filter SMS, yang nonaktif sampai Anda memilih Cleanway sebagai filter pesan di Pengaturan iPhone (di bagian Pesan, pada pengaturan untuk pengirim tak dikenal). Sejak itu, iOS menyerahkan kepada Cleanway setiap SMS dan MMS dari nomor yang tidak ada di kontak Anda — tidak pernah iMessage atau pesan dari kontak Anda — dan Cleanway memutuskan di ponsel apakah pesan itu masuk ke folder Sampah. Filter ini tidak terhubung ke internet: teks dan pengirimnya tidak dikirim ke mana pun, baik kepada kami maupun kepada siapa pun, dan tidak disimpan. Anda dapat mematikan filter di tempat yang sama di Pengaturan."
         ]
       },
       {
@@ -939,11 +943,27 @@
           "Stripe: pembayaran di situs web; Google Play, App Store, dan RevenueCat: pembelian di aplikasi (pembayaran tidak ditawarkan di Rusia)."
         ],
         "after": [
-          "Perusahaan-perusahaan ini berada di luar Rusia, terutama di AS dan UE, sehingga data yang mereka proses ditransfer ke luar negeri. Server kami dan salinan cadangan basis data berada di UE."
+          "Perusahaan-perusahaan ini berada di luar Rusia, terutama di AS dan UE, sehingga data yang mereka proses ditransfer ke luar negeri. Server kami dan salinan cadangan basis data berada di UE.",
+          "Beberapa perusahaan ini berada di AS. Saat mereka menerima data pribadi orang-orang dari Wilayah Ekonomi Eropa (EEA), transfer tersebut bersandar pada EU–US Data Privacy Framework jika perusahaan itu tersertifikasi di dalamnya, dan jika tidak, pada klausul kontrak standar yang disetujui Komisi Eropa, yang menjadi bagian dari ketentuan pemrosesan data perusahaan itu. Anda dapat meminta rincian perlindungan ini kepada kami (bagian 19)."
         ]
       },
       {
-        "title": "15. Berapa lama kami menyimpan data",
+        "id": "legal_bases",
+        "title": "15. Atas dasar apa kami menggunakan data Anda",
+        "paragraphs": [
+          "Undang-undang perlindungan data, seperti GDPR di Eropa, mensyaratkan dasar hukum untuk setiap penggunaan data pribadi. Dasar kami adalah:"
+        ],
+        "items": [
+          "menyediakan layanan yang Anda minta (pelaksanaan kontrak): akun dan proses masuk Anda, daftar perangkat Anda, fitur keluarga, paket berbayar, filter DNS setelah Anda menyiapkannya, dan email layanan yang terkait;",
+          "kepentingan sah kami atas layanan yang berfungsi dan aman digunakan: memeriksa nama situs yang Anda buka atau tanyakan, batas jumlah pemeriksaan per koneksi atau per ponsel, pemeriksaan Turnstile, log keamanan tindakan akun dan pemberitahuan keamanan, laporan kesalahan dan pengukuran waktu, serta cadangan data. Tanpa pemeriksaan tidak ada perlindungan, dan tanpa batas serta log, layanan ini bisa disalahgunakan;",
+          "persetujuan Anda: pemeriksaan email di webmail, yang nonaktif sampai Anda menyalakannya di ekstensi browser, dan, di Firefox, persetujuan data yang diminta oleh add-on. Anda dapat menarik persetujuan kapan saja: pemeriksaan langsung berhenti, dan apa yang dilakukan sebelumnya tetap sah."
+        ],
+        "after": [
+          "Anda dapat menolak penggunaan apa pun yang didasarkan pada kepentingan sah kami — lihat bagian 17."
+        ]
+      },
+      {
+        "title": "16. Berapa lama kami menyimpan data",
         "items": [
           "hasil pemeriksaan di cache server: hingga 24 jam;",
           "alamat IP Anda di penghitung batas pemeriksaan: paling lama satu jam;",
@@ -958,22 +978,24 @@
         ]
       },
       {
-        "title": "16. Hak Anda",
+        "id": "rights",
+        "title": "17. Hak Anda",
         "paragraphs": [
-          "Anda dapat menanyakan data apa tentang Anda yang kami miliki, meminta kami memperbaiki atau menghapusnya, dan menarik persetujuan Anda.",
+          "Anda berhak: mengetahui data apa tentang Anda yang kami miliki dan mendapatkan salinannya (akses); meminta data itu diperbaiki (perbaikan); meminta data itu dihapus (penghapusan); membatasi penggunaannya, misalnya selama keakuratannya sedang diperiksa (pembatasan); menerima data yang Anda berikan kepada kami dalam format yang dapat dibaca mesin, atau memintanya diteruskan ke layanan lain jika secara teknis memungkinkan (portabilitas); menolak penggunaan berdasarkan kepentingan sah kami (keberatan); dan menarik persetujuan yang telah Anda berikan.",
           "Untuk menghapus akun sendiri, masuk di cleanway.ai/account lalu pilih “Hapus akun”, atau gunakan “Hapus akun” di Pengaturan aplikasi. Halaman cleanway.ai/delete-account menjelaskan langkah-langkahnya serta apa yang dihapus dan apa yang tetap disimpan.",
-          "Tanpa akun, kami tidak tahu siapa Anda: kami tidak memiliki nama, email, atau nomor telepon Anda — hanya data teknis yang dijelaskan di atas, seperti alamat IP Anda di penghitung pemeriksaan dan di log hosting. Untuk permintaan lain, hubungi kami seperti dijelaskan di bawah. Mencopot aplikasi atau ekstensi akan menghapus semua yang disimpannya di perangkat Anda."
+          "Tanpa akun, kami tidak tahu siapa Anda: kami tidak memiliki nama, email, atau nomor telepon Anda — hanya data teknis yang dijelaskan di atas, seperti alamat IP Anda di penghitung pemeriksaan dan di log hosting. Untuk permintaan lain, hubungi kami seperti dijelaskan di bawah. Mencopot aplikasi atau ekstensi akan menghapus semua yang disimpannya di perangkat Anda.",
+          "Jika Anda merasa kami memproses data Anda secara tidak sah, Anda berhak mengajukan keluhan kepada otoritas pengawas perlindungan data, terutama di negara tempat Anda tinggal atau bekerja atau tempat masalah itu terjadi. Anda juga dapat menulis kepada kami terlebih dahulu."
         ]
       },
       {
-        "title": "17. Anak-anak",
+        "title": "18. Anak-anak",
         "paragraphs": [
           "Cleanway tidak ditujukan untuk dipakai sendiri oleh anak di bawah 13 tahun; fitur keluarga dikelola oleh orang dewasa."
         ]
       },
       {
         "id": "contact",
-        "title": "18. Perubahan dan kontak",
+        "title": "19. Perubahan dan kontak",
         "paragraphs": [
           "Jika kami mengubah kebijakan ini, versi baru akan kami publikasikan di halaman ini dengan tanggal baru.",
           "Email yang Anda kirim ke alamat kami di cleanway.ai melewati Cloudflare, yang meneruskannya ke kotak surat kami."

@@ -284,6 +284,41 @@ CLAIMS: tuple[Claim, ...] = (
               "hi": r"ब्लॉक",
               "ar": r"حظر|محظور",
           }, scope="landing.hero.badge"),
+    # 2026-10-22 (backlog rank 20): commit 1983d12c moved the policy to the
+    # app's real order — the network's own DNS first, Cloudflare / Quad9 only
+    # when it does not answer (UnderlyingDns.kt) — but the home page's privacy
+    # note and the VPN FAQ kept saying "instead of your operator's".
+    Claim("says the Android app looks up unblocked sites in Cloudflare / Quad9 instead of the network's DNS — "
+          "it asks the network's (operator's or router's) DNS first and falls back to them (UnderlyingDns.kt, "
+          "policy section 3)", {
+              "en": r"instead of your operator's|(aren't|not) blocked in a public DNS",
+              "ru": r"вместо DNS вашего оператора|незаблокированных сайтов (телефон )?узнаёт у публичной DNS",
+              "es": r"en lugar del de tu operador|bloqueados en un servicio DNS p[uú]blico",
+              "pt": r"em vez do DNS da sua operadora|bloqueados em um servi[cç]o de DNS p[uú]blico",
+              "fr": r"au lieu de celui de votre op[ée]rateur|bloqu[ée]s aupr[èe]s d'un service DNS public",
+              "de": r"statt beim DNS deines Anbieters|nicht blockierte Namen bei einem [öo]ffentlichen DNS-Dienst",
+              "it": r"invece di quello del tuo operatore|non bloccati presso un servizio DNS pubblico",
+              "id": r"bukan DNS operator Anda|tidak diblokir melalui layanan DNS publik",
+              "hi": r"ऑपरेटर के DNS के बजाय|ब्लॉक नहीं हैं, उन्हें एक सार्वजनिक DNS सेवा",
+              "ar": r"بدلًا من DNS مشغّلك|غير المحظورة لدى خدمة DNS عامة",
+          }),
+    # 2026-10-22 (backlog rank 8): the iPhone app's text filter, once turned
+    # on in Settings, receives every SMS from an unknown number
+    # (ILMessageFilterExtension, docs/IOS.md §5). The policy may no longer say
+    # that Cleanway never reads text messages by itself.
+    Claim("says Cleanway never reads text messages by itself — the iPhone app's text filter, once turned on, "
+          "is handed every SMS from an unknown number (checked on the phone, never sent)", {
+              "en": r"Cleanway does not read your text messages by itself",
+              "ru": r"Cleanway сам не читает",
+              "es": r"Cleanway no lee tus SMS por su cuenta",
+              "pt": r"Cleanway n[aã]o l[eê] seus SMS por conta pr[oó]pria",
+              "fr": r"Cleanway ne lit pas vos SMS de lui-m[eê]me",
+              "de": r"Cleanway liest deine SMS nicht von sich aus",
+              "it": r"Cleanway non legge i tuoi SMS di sua iniziativa",
+              "id": r"Cleanway tidak membaca SMS Anda dengan sendirinya",
+              "hi": r"Cleanway अपने आप आपके SMS नहीं पढ़ता",
+              "ar": r"لا يقرأ Cleanway رسائلك القصيرة من تلقاء نفسه",
+          }, scope="landing.privacy_policy"),
     # 2026-10-08 store readiness: an "automatic SMS check" exists only on the
     # unmerged RuStore branch (feat/sms-auto-rustore); the site and the Google
     # Play build check a message only when the person shares or pastes it, and

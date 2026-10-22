@@ -1586,7 +1586,8 @@
       "contact": "Support",
       "github": "GitHub",
       "tagline": "Protection from scam sites.",
-      "methodology": "Methodology"
+      "methodology": "Methodology",
+      "operator": "Cleanway is run by {name}, {address}. Registration no. {registration}."
     },
     "language_switcher": {
       "label": "Language"
@@ -1676,7 +1677,7 @@
       ],
       "device_note": "You can clear the check history in the app's Settings.",
       "dns_heading": "Who else sees site names",
-      "dns_note": "While protection is on, your phone looks up the addresses of sites it doesn't block through a public DNS service — Cloudflare or Quad9 — instead of your operator's. Like any DNS service, it sees the site's name and your connection's IP address. Cleanway does not receive these lookups."
+      "dns_note": "On Android, while protection is on, your phone looks up the addresses of sites it doesn't block as it would without Cleanway: through your network's DNS — your mobile operator's or your Wi-Fi router's — and only if that doesn't answer, through Cloudflare or Quad9. Like any DNS service, they see the site's name and your connection's IP address; Cleanway does not receive these lookups. If you set up Cleanway's DNS filter on an iPhone, Mac or Windows computer, site names go to Cleanway's own DNS server instead (section 11 of the privacy policy)."
     },
     "testimonials": {
       "heading": "What we hold ourselves to",
@@ -1711,7 +1712,7 @@
         },
         {
           "q": "Can I use it together with a VPN?",
-          "a": "Not at the same time. Cleanway's protection uses Android's VPN mechanism only for site names: the phone checks each name against the list and looks up the ones that aren't blocked in a public DNS service (Cloudflare or Quad9). The rest of your traffic goes as usual — not through Cleanway and not through another country. Android runs only one such service at a time, so if you turn on another VPN, Cleanway's protection switches off. When you are done, open Cleanway and turn protection back on. Checking a site or a message by hand in the app keeps working either way."
+          "a": "Not at the same time. Cleanway's protection uses Android's VPN mechanism only for site names: the phone checks each name against the list and looks up the ones that aren't on it as it would without Cleanway — through your network's DNS, or through Cloudflare or Quad9 if that doesn't answer. The rest of your traffic goes as usual — not through Cleanway and not through another country. Android runs only one such service at a time, so if you turn on another VPN, Cleanway's protection switches off. When you are done, open Cleanway and turn protection back on. Checking a site or a message by hand in the app keeps working either way."
         },
         {
           "q": "How is this different from Google Safe Browsing?",
@@ -2229,7 +2230,7 @@
       "meta_description": "The rules for using Cleanway: what the service does and does not promise, the free plan, accounts and devices, paid plans, cancelling and refunds, and acceptable use.",
       "back": "Back to Cleanway",
       "title": "Terms of use",
-      "updated": "Last updated: October 8, 2026",
+      "updated": "Last updated: October 22, 2026",
       "privacy_link": "Read the privacy policy",
       "contact_live": "Questions about these terms:",
       "contact_not_live": "Our support mailbox is temporarily not working, so we cannot receive email right now. The support page has answers to common questions.",
@@ -2238,7 +2239,8 @@
         {
           "title": "1. What Cleanway is",
           "paragraphs": [
-            "Cleanway helps protect you from scam and phishing sites. It consists of the Android app, the browser extension, the site check on cleanway.ai and a DNS filter for iPhone, Mac and Windows. Cleanway checks site names against lists of known threats and other signals and tells you what it found."
+            "Cleanway helps protect you from scam and phishing sites. It consists of the Android and iPhone apps, the browser extension, the site check on cleanway.ai and a DNS filter for iPhone, Mac and Windows. Cleanway checks site names against lists of known threats and other signals and tells you what it found.",
+            "Cleanway is run by ACECORE GLOBAL TECHNOLOGIES – FZCO, registration no. 43029, Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE (“we”, “us”)."
           ]
         },
         {
@@ -2344,7 +2346,7 @@
       "meta_description": "What Cleanway receives, what stays on your phone or in your browser, who else sees what, and how long anything is kept.",
       "back": "Back to Cleanway",
       "title": "Privacy policy",
-      "updated": "Last updated: October 15, 2026",
+      "updated": "Last updated: October 22, 2026",
       "intro": "This policy explains in plain words what data Cleanway handles, why, and who else sees it. It describes the service as it works today. If something here does not match what Cleanway actually does, that is a mistake and we want to hear about it.",
       "contact_live": "Questions and requests about your data:",
       "contact_not_live": "Our support mailbox is temporarily not working, so we cannot receive email right now. This section will show the address again as soon as it works.",
@@ -2361,7 +2363,8 @@
         {
           "title": "2. Who we are",
           "paragraphs": [
-            "Cleanway (cleanway.ai) protects against scam and phishing sites. It consists of an Android app, a browser extension, a site check on cleanway.ai and a DNS filter for iPhone, Mac and Windows. How to contact us is at the end of this policy."
+            "Cleanway (cleanway.ai) protects against scam and phishing sites. It consists of the Android and iPhone apps, a browser extension, a site check on cleanway.ai and a DNS filter for iPhone, Mac and Windows. How to contact us is at the end of this policy.",
+            "Cleanway is run by ACECORE GLOBAL TECHNOLOGIES – FZCO, registration no. 43029, Dubai Silicon Oasis (DSO), Dubai Digital Park, Building A2, Office 43029-001, Dubai, UAE. This company decides why and how the data described in this policy is processed: in data-protection terms, it is the controller. “We” and “us” in this policy mean this company."
           ]
         },
         {
@@ -2400,8 +2403,9 @@
         {
           "title": "6. Checking messages",
           "paragraphs": [
-            "Cleanway does not read your text messages by itself and does not ask for access to them. It checks only a message you share with it or paste in.",
-            "The text is analysed on the phone and is not sent anywhere — not to us and not to anyone else. Up to three site names from links in the message may be checked on our server as described above, without the rest of the link. History keeps the verdict and the site names, never the text."
+            "The Android app does not read your text messages by itself and does not ask for access to them: it checks only a message you share with it or paste in. The message check inside the iPhone app works the same way.",
+            "Such a message is analysed on the phone and is not sent anywhere — not to us and not to anyone else. Up to three site names from links in it may be checked on our server as described above, without the rest of the link. History keeps the verdict and the site names, never the text.",
+            "The iPhone app also contains a filter for text messages, which stays off until you choose Cleanway as the message filter in the iPhone's Settings (under Messages, in the part about unknown senders). From then on, iOS passes Cleanway every SMS and MMS from a number that is not in your contacts — never iMessage, and never messages from your contacts — and Cleanway decides on the phone whether it goes to the Junk folder. The filter does not connect to the internet: the text and the sender are not sent anywhere — not to us and not to anyone else — and are not saved. You can switch the filter off in the same place in Settings."
           ]
         },
         {
@@ -2492,11 +2496,27 @@
             "Stripe — payments on the website; Google Play, the App Store and RevenueCat — purchases in the app (payments are not offered in Russia)."
           ],
           "after": [
-            "These companies are based outside Russia, mainly in the USA and the EU, so the data they process is transferred abroad. Our server and our database backups are located in the EU."
+            "These companies are based outside Russia, mainly in the USA and the EU, so the data they process is transferred abroad. Our server and our database backups are located in the EU.",
+            "Some of these companies are based in the USA. When they receive personal data of people in the European Economic Area (EEA), the transfer relies on the EU–US Data Privacy Framework if the company is certified under it, and otherwise on the standard contractual clauses approved by the European Commission, which are part of the company's data processing terms. You can ask us for details of these safeguards (section 19)."
           ]
         },
         {
-          "title": "15. How long we keep data",
+          "id": "legal_bases",
+          "title": "15. Why we may use your data",
+          "paragraphs": [
+            "Data-protection laws such as the EU's GDPR require a legal basis for each use of personal data. Ours are:"
+          ],
+          "items": [
+            "providing the service you asked for (performance of a contract): your account and sign-in, your device list, family features, paid plans, the DNS filter once you set it up, and the service emails that go with them;",
+            "our legitimate interest in a service that works and is safe to use: checking the names of sites you open or ask about, the limits on how many checks one connection or phone can make, the Turnstile check, the security log of account actions and security notices, error reports and timing measurements, and backups. Without the checks there is no protection, and without the limits and logs the service could be abused;",
+            "your consent: the email check in web mail, which stays off until you switch it on in the browser extension, and, in Firefox, the data consent the add-on asks for. You can withdraw consent at any time: the checks stop at once, and what was done before stays lawful."
+          ],
+          "after": [
+            "You can object to any use based on our legitimate interest — see section 17."
+          ]
+        },
+        {
+          "title": "16. How long we keep data",
           "items": [
             "site check results in the server cache — up to 24 hours;",
             "your IP address in the check-limit counter — up to an hour;",
@@ -2511,22 +2531,24 @@
           ]
         },
         {
-          "title": "16. Your rights",
+          "id": "rights",
+          "title": "17. Your rights",
           "paragraphs": [
-            "You can ask what data about you we hold, ask us to correct or delete it, and withdraw your consent.",
+            "You have the right to: know what data about you we hold and get a copy of it (access); have it corrected (rectification); have it deleted (erasure); have its use restricted, for example while its accuracy is being checked (restriction); receive the data you gave us in a machine-readable format, or have it passed to another service where that is technically possible (portability); object to a use based on our legitimate interest (objection); and withdraw a consent you gave.",
             "To delete your account yourself, sign in at cleanway.ai/account and choose “Delete account”, or use “Delete account” in the app's Settings. The page cleanway.ai/delete-account explains the steps and what is deleted and what is kept.",
-            "Without an account we don't know who you are: we have no name, email or phone number of yours — only the technical data described above, such as your IP address in the check counter and in hosting logs. For other requests, contact us as described below. Removing the app or the extension deletes everything it stored on your device."
+            "Without an account we don't know who you are: we have no name, email or phone number of yours — only the technical data described above, such as your IP address in the check counter and in hosting logs. For other requests, contact us as described below. Removing the app or the extension deletes everything it stored on your device.",
+            "If you think we handle your data unlawfully, you have the right to complain to a data protection supervisory authority, in particular in the country where you live or work or where the problem happened. You can also write to us first."
           ]
         },
         {
-          "title": "17. Children",
+          "title": "18. Children",
           "paragraphs": [
             "Cleanway is not meant for children under 13 to use on their own; family features are managed by an adult."
           ]
         },
         {
           "id": "contact",
-          "title": "18. Changes and contact",
+          "title": "19. Changes and contact",
           "paragraphs": [
             "If we change this policy, we will publish the new version on this page with a new date.",
             "Email you send to our addresses at cleanway.ai passes through Cloudflare, which forwards it to our mailbox."

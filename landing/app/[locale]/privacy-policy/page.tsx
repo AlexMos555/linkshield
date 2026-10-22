@@ -10,7 +10,11 @@
  * described a browser extension that isn't published, and said "your browsing
  * data lives only on your device" (report #11).
  *
- * A lawyer still has to review it against 152-FZ before it is final.
+ * Section 2 names the operator and controller (lib/operator.ts); sections
+ * 14, 15 and 17 carry the GDPR Art. 13 items (transfer safeguards, legal
+ * bases, the full list of rights and the complaint to a supervisory
+ * authority). A lawyer still has to review it — against the GDPR and 152-FZ —
+ * before it is final.
  */
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
