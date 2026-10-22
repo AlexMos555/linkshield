@@ -32,8 +32,10 @@ def _node() -> str | None:
 @pytest.mark.skipif(_node() is None, reason="Node 20.6+ not installed")
 def test_uptime_worker_suite_passes():
     proc = subprocess.run(
-        [_node(), "--test", str(TEST)], capture_output=True, text=True, cwd=ROOT, timeout=120, check=False,
+        [_node(), "--test", "--test-reporter=tap", str(TEST)], capture_output=True, text=True, cwd=ROOT, timeout=120,
+        check=False,
     )
     assert proc.returncode == 0, proc.stdout[-4000:] + proc.stderr[-2000:]
+    # TAP explicitly: newer Node prints its "spec" reporter even into a pipe.
     assert re.search(r"^# pass (\d+)", proc.stdout, re.M), proc.stdout[-2000:]
     assert re.search(r"^# fail 0$", proc.stdout, re.M), proc.stdout[-2000:]
