@@ -54,6 +54,8 @@ ALLOWED_EXTRAS = frozenset({
     "mode", "tables", "table", "accounts_deleted", "accounts_would_delete",
     "failed", "interval_s", "cutoff", "candidates", "deleted", "restored",
     "skipped", "ids", "user_ids",
+    # data export (api/services/export.py): which part failed, never its content
+    "part",
     # email (never the address, subject or body)
     "template", "send_id", "provider", "locale", "fallback", "html_len",
     "text_len",
