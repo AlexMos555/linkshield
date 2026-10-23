@@ -2477,7 +2477,7 @@
           "email"
         ],
         "summary": "Unsubscribe Confirm",
-        "description": "Process unsubscribe. Supports both browser POST and RFC 8058 one-click.",
+        "description": "Process unsubscribe. Supports both browser POST and RFC 8058 one-click.\n\nThe signed token is the whole authorisation:\n  - invalid or expired token → 400, nothing recorded, whatever the body;\n  - valid token → unsubscribed and 200 (never a redirect, RFC 8058 §3.1),\n    whatever the body — with `List-Unsubscribe=One-Click` (mail client),\n    without the field (the confirmation page's form), or with any other\n    value of it (logged).",
         "operationId": "unsubscribe_confirm_api_v1_email_unsubscribe__token__post",
         "parameters": [
           {
@@ -4428,7 +4428,7 @@
       },
       "Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post": {
         "properties": {
-          "List_Unsubscribe": {
+          "List-Unsubscribe": {
             "anyOf": [
               {
                 "type": "string"
@@ -4437,7 +4437,7 @@
                 "type": "null"
               }
             ],
-            "title": "List Unsubscribe"
+            "title": "List-Unsubscribe"
           }
         },
         "type": "object",
