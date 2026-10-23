@@ -15,7 +15,7 @@ once a day, how their TLS sessions to us went.
 |---|---|
 | `https://mta-sts.cleanway.ai/.well-known/mta-sts.txt` (custom domain) | serves the policy. Anything else on that host is a 404 |
 | `tls-reports@cleanway.ai` (Email Routing rule → this Worker) | reads each TLS report, adds its session counts to the summary of the UTC day it arrived, and mails the founder when sessions failed |
-| `https://cleanway-mail-security.amoskotin.workers.dev/` | `GET /`: the policy in force and the summaries of the last 30 days (counts only) |
+| `https://cleanway-mail-security.amoskotin.workers.dev/` | `GET /`: the policy in force and the summaries of the last 30 days (counts only), one KV read |
 
 The policy, as served with `MTA_STS_MODE` unset or `testing`:
 
@@ -39,41 +39,75 @@ and must match the zone's MX records.
 
 ## What a report leaves behind
 
-One KV key per UTC day the reports arrived on, `day:YYYY-MM-DD`, expiring
-after 90 days:
+One KV key, `summary`: the summaries of the last 30 UTC days the reports
+arrived on, newest first. The key expires 31 days after its last write. Each
+day has:
 
 | Field | Meaning |
 |---|---|
 | `reports`, `successful`, `failed` | reports read and their summed `total-successful-session-count` / `total-failure-session-count` |
-| `policies` | the same sums per policy, e.g. `"sts cleanway.ai"` (the sender used our MTA-STS policy) or `"no-policy-found cleanway.ai"` (it did not see one) |
-| `failures` | failed sessions per `result-type` and our MX host, e.g. `"certificate-host-mismatch route2.mx.cloudflare.net": 3` |
-| `reporters` | reports per `organization-name` (Google Inc., Microsoft Corporation, ...) |
+| `policies` | the same sums per policy, e.g. `"sts cleanway.ai"` (the sender used our MTA-STS policy) or `"no-policy-found cleanway.ai"` (it did not see one). A `policy-type` outside RFC 8460 is `other`, and a `policy-domain` other than `cleanway.ai` is `other-domain` |
+| `failures` | failed sessions per `result-type` and our MX host, e.g. `"certificate-host-mismatch route2.mx.cloudflare.net": 3`. A `result-type` outside RFC 8460 is `other`, a host not in `MX_HOSTS` is `other-host`, no host is `?` |
+| `reporters` | reports per domain of the mail's `From` header (`google.com`, `microsoft.com`, ...). `unknown` when the header is not exactly one plain address |
 | `covers` | the days the reports describe (usually yesterday) |
 | `errors`, `error_kinds` | mails that were not a readable report: `no report in the mail`, `bad base64`, `bad gzip`, `bad JSON`, `not a TLS report`, `bad session count`, `report too large` (over 256 KB unzipped), `mail too large` (over 256 KB). Real reports are a few KB, and the limits keep one mail inside the free plan's 10 ms of CPU |
-| `alerted_at`, `alert_error` | when that day's alert went out; why the send failed (retried with the next failing report) |
-| `capped` | 100 mails arrived that day; later ones were dropped unread |
+| `errors_capped` | 20 such mails arrived that day; later ones were not counted |
+| `capped` | 100 reports were counted that day; later ones were not counted, but can still send an alert |
+| `alerts` | when each of that day's alerts was sent: `google.com`, `microsoft.com`, `other` (see Alert) |
+| `alert_tries`, `alert_error` | sends attempted that day (at most 5); the last send that failed and why (that alert is retried with the next failing report) |
 
 Lists keep at most 20 names, and the rest are counted as `other`. The report
 itself is never stored or forwarded. Sender and receiver IPs, contact
-addresses and policy strings are dropped as the report is read. The free-text
-`failure-reason-code` appears only in the alert mail. A mail that is not a
-readable report is counted and then accepted and dropped, never rejected or
-thrown back: a temporary failure would make the sender retry for days.
+addresses, policy strings and `failure-reason-code` are dropped as the report
+is read (a reason that looks like a code, e.g. `X509_V_ERR_HOSTNAME_MISMATCH`,
+goes into the alert mail only). A redelivered report counts once: today's
+entry keeps a hash of each report's JSON. A mail that is not a readable
+report is counted and then accepted and dropped, never rejected or thrown
+back: a temporary failure would make the sender retry for days.
 
-**Alert:** at most one mail per UTC day, from `alerts@cleanway.ai` to
-`ALERT_TO`, sent with the first report that counts failed sessions. Subject:
-`Cleanway: сбои TLS при доставке почты на cleanway.ai (<n>)`. It names the
-reporter, the policy counts and each failure type with our MX host, says
-whether the mode is `testing` (mail still arrives) or `enforce` (that mail is
-not delivered), and links the summary page. Later reports that day only go to
-the summary.
+**Alert:** a mail from `alerts@cleanway.ai` to `ALERT_TO`, sent with the first
+report of the UTC day that counts failed sessions, at most once a day for
+each known reporter (`KNOWN_REPORTERS` in `worker.js`: `google.com`,
+`microsoft.com`) and once a day for all other reporters together, so at most
+three a day. Subject: `Cleanway: сбои TLS при доставке почты на cleanway.ai
+(<n>)`. It gives the policy counts and up to 5 policies × 5 failure types
+with our MX host, says whether the mode is `testing` (mail still arrives) or
+`enforce` (that mail is not delivered), and links the summary page. Later
+reports from that reporter that day only go to the summary. The alert is
+recorded in KV before it is sent. If that write fails, nothing is sent and
+the next failing report tries again. If the send fails, the record is undone
+and the next failing report retries, at most 5 sends a day.
 
-**Forged reports.** Anyone can mail `tls-reports@cleanway.ai`. A forged
-report can skew a day's counts and send at most one alert that day. After 100
-mails in a day the Worker stops writing. The free plan allows 1,000 KV writes
-a day for the whole account, shared with the uptime monitor, so this Worker
-uses at most 101 of them. It also uses one KV read per mail and 30 per view of
-the summary page.
+**Forged reports.** Anyone can mail `tls-reports@cleanway.ai`: the address is
+public in the `_smtp._tls` record. What a forger can and cannot do:
+
+- **Shadow a real report: no.** Reports are deduplicated by a hash of their
+  JSON, not by `organization-name` and `report-id`, which anyone can copy
+  (Google's id is predictable).
+- **Silence Google's or Microsoft's alert: no.** A reporter is the domain of
+  the mail's `From` header. `google.com` and `microsoft.com` publish DMARC
+  `p=reject`, and Email Routing rejects mail that fails the sender's DMARC
+  policy, so mail `From` them is theirs. Every other reporter, forged or not,
+  shares the third daily alert. An alert from such a reporter says it may be
+  forged and shows nothing the sender wrote. Its address is in the summary
+  under `reporters`.
+- **Put words into the alert: no.** It repeats only values from closed sets
+  (RFC 8460 `result-type` and `policy-type`, our MX hosts, `cleanway.ai`, ISO
+  dates, numbers), a `failure-reason-code` only when it looks like a code (no
+  spaces, no dots), and, for a known reporter, its plain company name.
+  Invisible and bidi control characters are stripped.
+- **Skew a day's counts: yes.** Forged reports add to that day's summary.
+  20 junk mails or 100 reports end the counting for the day. Junk cannot use
+  up the reports' budget, and a capped day still sends alerts.
+
+KV on the free plan allows 1,000 writes and 100,000 reads a day for the whole
+account, shared with the uptime monitor (about 150 writes a day and a read
+every minute). This Worker writes at most once per mail, twice when an alert
+fails to send: at most 20 + 1 for junk, 100 + 1 for reports and 10 for
+alerts, so about 130 a day. It reads
+once per mail and once per view of the summary page. KV has no atomic update,
+and a read can be up to 60 s stale at another location. Under concurrent
+delivery these daily limits (and the counts) are best effort.
 
 ## Deploy (Cloudflare API, by hand)
 
@@ -179,8 +213,9 @@ curl -sS -X POST "$CF/zones/$CF_ZONE_ID/dns_records" "${auth[@]}" -H "Content-Ty
    Gmail and an Outlook account to `hello@cleanway.ai` a few times during the
    two weeks. Reports usually arrive the day after.
 2. **Read the summaries** at `https://cleanway-mail-security.amoskotin.workers.dev/`.
-   Go ahead when `policies` shows `sts cleanway.ai` from Google (and ideally
-   Microsoft), so senders see the policy, and `failed` stayed `0`.
+   Go ahead when `reporters` has `google.com` (and ideally `microsoft.com`),
+   `policies` shows `sts cleanway.ai` (senders see the policy), and `failed`
+   stayed `0`.
 3. **Enforce.** Upload again with `"MTA_STS_MODE"` → `"enforce"` (step 2), or
    use Workers & Pages → `cleanway-mail-security` → Settings → Variables →
    `MTA_STS_MODE` → Deploy. Check that `curl` shows `mode: enforce` and
@@ -236,8 +271,12 @@ The mail's `result-type` says what failed. The first step for each:
 | `sts-policy-invalid` | the policy text did not parse | should not happen (the tests pin it): compare `curl` with the policy above |
 
 A few failures from one sender on one day in `testing` are usually that
-sender's own TLS stack. Watch whether they come back. A forged report shows up
-as a reporter that is not a mail provider you know.
+sender's own TLS stack. Watch whether they come back. An alert from a reporter
+outside `KNOWN_REPORTERS` may be forged: look at `reporters` in the summary.
+If it is a real mail provider that reports every day, add its `From` domain to
+`KNOWN_REPORTERS`, but only if that domain publishes DMARC `p=reject`
+(`dig +short TXT _dmarc.<domain>`).
 
-Tests: `node --test ops/mail-security-worker/worker.test.mjs` (CI runs it
-through `tests/test_mail_security_worker.py`).
+Tests: `node --test ops/mail-security-worker/worker.test.mjs
+ops/mail-security-worker/forged.test.mjs` (CI runs both through
+`tests/test_mail_security_worker.py`).
