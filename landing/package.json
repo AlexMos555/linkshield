@@ -17,7 +17,7 @@
     "@cleanway/api-types": "*",
     "@sentry/nextjs": "^10.76.2",
     "@supabase/ssr": "^0.12.7",
-    "@supabase/supabase-js": "^2.117.3",
+    "@supabase/supabase-js": "^2.118.0",
     "@tailwindcss/postcss": "^4.2.2",
     "next": "^15.5.28",
     "next-intl": "^4.14.9",
