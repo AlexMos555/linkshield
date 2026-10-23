@@ -31,22 +31,20 @@ Sets (each a held-out set for the model unless noted):
   tests/data/ru_heuristics_legit.txt     Russian sites that must stay safe
   tests/data/ru_heuristics_phish.txt     constructed Russian look-alikes
   data/benchmark_legit_ru.txt            the weekly benchmark's RU legit sample
-  Tranco top-1M (--tranco)               four samples: rank 10k–100k split by
+  Majestic Million (--majestic)          four samples: rank 10k–100k split by
                                          the shipped allowlist (data/top_100k.json
-                                         is another snapshot): the allowlisted
-                                         part (in_top_domains=1 for the model —
-                                         NOT held-out, reported for completeness)
-                                         and the rest; rank 100k–1M; the same tail
-                                         restricted to .ru/.su/.рф. Training
-                                         drew its benign half from Tranco
-                                         until 2026-10-22; since then a tail
-                                         name is a training row only when the
-                                         Majestic / CrUX lists carry it too.
-                                         The file is an evaluation input you
-                                         download (no licence stated; its
-                                         default list averages Cloudflare
-                                         Radar, CC BY-NC 4.0): never train on
-                                         it (docs/THIRD_PARTY_FEEDS.md §3).
+                                         merges this list with CrUX): the
+                                         allowlisted part (in_top_domains=1 for
+                                         the model — NOT held-out, reported for
+                                         completeness) and the rest; rank
+                                         100k–1M; the same tail restricted to
+                                         .ru/.su/.рф. The Majestic Million is a
+                                         training source (CC BY 3.0), so a
+                                         sampled name can be a training row.
+                                         Until 2026-10-23 this read Tranco's
+                                         list (--tranco), which states no
+                                         licence and averages Cloudflare Radar
+                                         (CC BY-NC 4.0); it is no longer read.
   PhishTank online-valid (--phishtank)   verified phish submitted in the last
                                          --days days. PhishTank is never
                                          ingested by training or the blocklist.
@@ -58,12 +56,12 @@ Usage:
     python3 scripts/eval_ml_model.py                       # the three RU files only
     python3 scripts/eval_ml_model.py \
         --phishtank feeds/online-valid.csv.gz --tweetfeed feeds/week.csv \
-        --tranco feeds/top-1m.csv.zip --blocklist feeds/blocklist-dns.txt \
+        --majestic feeds/majestic_million.csv --blocklist feeds/blocklist-dns.txt \
         --out docs/benchmarks/2026-10-04-ml-eval.json
 
     curl -A Cleanway-benchmark/1.0 -o feeds/online-valid.csv.gz https://data.phishtank.com/data/online-valid.csv.gz
     curl -o feeds/week.csv https://raw.githubusercontent.com/0xDanielLopez/TweetFeed/master/week.csv
-    curl -o feeds/top-1m.csv.zip https://tranco-list.eu/top-1m.csv.zip
+    curl -o feeds/majestic_million.csv https://downloads.majestic.com/majestic_million.csv
     curl -o feeds/blocklist-dns.txt https://api.cleanway.ai/api/v1/blocklist/dns
 
 PhishTank throttles repeated anonymous pulls (HTTP 404): download once and
@@ -79,7 +77,6 @@ import ipaddress
 import json
 import random
 import sys
-import zipfile
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -195,28 +192,20 @@ def tweetfeed_week(path: Path) -> tuple[list[str], dict]:
     return unique, {"rows_total": rows, "unique_hosts": len(unique)}
 
 
-def tranco_samples(path: Path, n: int, seed: int = SAMPLE_SEED,
-                   allowlisted: Optional[Callable[[str], bool]] = None) -> dict[str, tuple[list[str], dict]]:
-    """`allowlisted` decides the head split; default: the production allowlist
-    (data/top_100k.json), which is a different Tranco snapshot than the file."""
+def ranking_samples(path: Path, n: int, seed: int = SAMPLE_SEED,
+                    allowlisted: Optional[Callable[[str], bool]] = None) -> dict[str, tuple[list[str], dict]]:
+    """Samples of a downloaded Majestic Million CSV by rank. `allowlisted`
+    decides the head split; default: the production allowlist
+    (data/top_100k.json), which merges this list with CrUX."""
     if allowlisted is None:
         from api.services.scoring import is_trusted_top_domain as allowlisted
-    with zipfile.ZipFile(path) as zf:
-        member = next(m for m in zf.namelist() if m.endswith(".csv"))
-        text = zf.read(member).decode("utf-8", "ignore")
+    from refresh_training_feeds import parse_majestic
+
     head: list[str] = []
     head_unlisted: list[str] = []
     tail: list[str] = []
     tail_ru: list[str] = []
-    for line in text.splitlines():
-        parts = line.strip().split(",", 1)
-        if len(parts) != 2:
-            continue
-        try:
-            rank = int(parts[0])
-        except ValueError:
-            continue
-        dom = parts[1].lower()
+    for rank, dom in parse_majestic(path.read_text(encoding="utf-8", errors="ignore")):
         if 10_000 < rank <= 100_000:
             (head if allowlisted(dom) else head_unlisted).append(dom)
         elif rank > 100_000:
@@ -229,10 +218,10 @@ def tranco_samples(path: Path, n: int, seed: int = SAMPLE_SEED,
         return sorted(rng.sample(pool, min(n, len(pool))))
 
     return {
-        "tranco_10k_100k": (pick(head), {"pool": len(head), "note": "allowlisted in production; in_top_domains=1 for the model — not held-out"}),
-        "tranco_10k_100k_unlisted": (pick(head_unlisted), {"pool": len(head_unlisted), "note": "rank 10k–100k in this snapshot but not in the shipped allowlist — scored like the long tail"}),
-        "tranco_100k_1m": (pick(tail), {"pool": len(tail), "note": "not a training source since 2026-10-22; names the Majestic / CrUX lists also carry can be training rows"}),
-        "tranco_100k_1m_ru": (pick(tail_ru), {"pool": len(tail_ru), "note": ".ru/.su/.рф names below the allowlist — the Russian long tail"}),
+        "majestic_10k_100k": (pick(head), {"pool": len(head), "note": "allowlisted in production; in_top_domains=1 for the model — not held-out"}),
+        "majestic_10k_100k_unlisted": (pick(head_unlisted), {"pool": len(head_unlisted), "note": "rank 10k–100k in this list but not in the shipped allowlist — scored like the long tail"}),
+        "majestic_100k_1m": (pick(tail), {"pool": len(tail), "note": "a training source (CC BY 3.0): a sampled name can be a training row"}),
+        "majestic_100k_1m_ru": (pick(tail_ru), {"pool": len(tail_ru), "note": ".ru/.su/.рф names below the allowlist — the Russian long tail"}),
     }
 
 
@@ -427,10 +416,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--phishtank", type=Path, help="PhishTank online-valid.csv.gz")
     ap.add_argument("--tweetfeed", type=Path, help="TweetFeed week.csv")
-    ap.add_argument("--tranco", type=Path, help="Tranco top-1m.csv.zip")
+    ap.add_argument("--majestic", type=Path, help="a downloaded Majestic Million CSV (majestic_million.csv)")
     ap.add_argument("--blocklist", type=Path, help="published blocklist artifact (v2 binary)")
     ap.add_argument("--days", type=int, default=7, help="PhishTank window in days (default 7)")
-    ap.add_argument("--sample", type=int, default=1000, help="hosts per Tranco sample (default 1000)")
+    ap.add_argument("--sample", type=int, default=1000, help="hosts per ranking sample (default 1000)")
     ap.add_argument("--out", type=Path, help="write the full report (per-host rows included) as JSON")
     args = ap.parse_args(argv)
 
@@ -469,8 +458,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     add("ru_heuristics_legit", "legit", [h.host for h in legit], {h.host: h.category for h in legit})
     add("ru_heuristics_phish", "phish", [h.host for h in phish], {h.host: h.category for h in phish})
     add("benchmark_legit_ru", "legit", [s.host for s in bench], {s.host: s.category for s in bench})
-    if args.tranco:
-        for name, (hosts, info) in tranco_samples(args.tranco, args.sample).items():
+    if args.majestic:
+        for name, (hosts, info) in ranking_samples(args.majestic, args.sample).items():
             add(name, "legit", hosts, info=info)
     if args.phishtank:
         hosts, info = phishtank_recent(args.phishtank, args.days, now)
@@ -492,9 +481,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     }
     if "phishtank_recent" in report["rows"]:
         report["auc"]["phishtank vs benchmark_legit_ru"] = auc(probs("phishtank_recent"), probs("benchmark_legit_ru"))
-        if "tranco_100k_1m" in report["rows"]:
-            report["auc"]["phishtank vs tranco_100k_1m"] = auc(probs("phishtank_recent"), probs("tranco_100k_1m"))
-            report["auc"]["phishtank vs tranco_100k_1m_ru"] = auc(probs("phishtank_recent"), probs("tranco_100k_1m_ru"))
+        if "majestic_100k_1m" in report["rows"]:
+            report["auc"]["phishtank vs majestic_100k_1m"] = auc(probs("phishtank_recent"), probs("majestic_100k_1m"))
+            report["auc"]["phishtank vs majestic_100k_1m_ru"] = auc(probs("phishtank_recent"), probs("majestic_100k_1m_ru"))
 
     print(render_md(report))
     if args.out:

@@ -580,10 +580,28 @@ def load_infrastructure_domains(path: str = os.path.join(_DATA_DIR, "infrastruct
         return set()
 
 
+def load_reported_popular(path: str = os.path.join(_DATA_DIR, "top_domains_reported.json")) -> set[str]:
+    """data/top_domains_reported.json — popular names a licensed phishing feed
+    reports. scripts/build_top_domains.py keeps them off the instant-safe
+    allowlist (data/top_100k.json) but not out of the ranking: maya.ph (a
+    bank, CrUX's top 10,000), rezultati.com, dub.sh and ~700 more would
+    otherwise be blocked whole for every DNS user on one feed's report —
+    the report this guard exists to overrule. The Redis top-1M carries them
+    too; this copy guards a run that cannot reach Redis."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        return {d.lower() for d in (data.keys() if isinstance(data, dict) else data)}
+    except Exception as e:  # noqa: BLE001
+        logger.warning("top_domains_reported.json not loaded (%s) — popular-domain guard weaker", e)
+        return set()
+
+
 def load_popular_guard() -> set[str]:
-    """The bundled popular-domain guard: the top 100k plus the
-    infrastructure names (the Redis top-1M is consulted on top, _tranco_guard)."""
-    return _load_top_100k() | load_infrastructure_domains()
+    """The bundled popular-domain guard: the top 100k, the popular names kept
+    off it because a feed reports them, and the infrastructure names (the
+    Redis top-1M is consulted on top, _tranco_guard)."""
+    return _load_top_100k() | load_reported_popular() | load_infrastructure_domains()
 
 
 def load_brand_owned_hosts(path: str = BRAND_OWNED_PATH) -> frozenset[str]:
@@ -839,6 +857,47 @@ UNRANKED_SHARED_DOMAINS = frozenset({
     "mysecurecloudhost.com", "misitiohostgator.com", "hostwindsdns.com", "dns-parking.com",
     # Microsoft's US government cloud: one subdomain per customer tenant
     "sharepoint.us", "sharepoint-mil.us", "mcas-gov.us",
+    # Found by the 2026-10-23 dry run against Tranco's top-1M guard (the
+    # zones it protected that the licensed ranking does not carry, with
+    # several listed tenants each):
+    # more free dynamic-DNS zones, tunnels and device DDNS
+    "2mydns.net", "airdns.org", "anondns.net", "d-n-s.name", "dd-dns.de", "didns.ru", "diskstation.eu",
+    "dns-stuff.com", "dns.navy", "dnsdyn.net", "duia.eu", "dynip.org", "dynnamn.ru", "laviewddns.com",
+    "lndyn.com", "nowddns.com", "privatedns.org", "sieraddns.com", "v6.army", "myq-see.com",
+    "lhr.life", "localhost.run", "loophole.site", "pagekite.me", "pktriot.net", "serveo.net",
+    "serveousercontent.com", "mytunnel.org", "bore.pub", "dataplicity.io",
+    "n-e.kr", "o-r.kr", "p-e.kr", "r-e.kr",
+    "xn--2i0b10rqve.xn--3e0b707e", "xn--9i1b01onwqqzd.xn--3e0b707e", "xn--h32bi4v.xn--3e0b707e",
+    "xn--hk3b17f.xn--3e0b707e", "xn--hu5b25b77nvwc.xn--3e0b707e", "xn--oi2b61z32a.xn--3e0b707e",
+    "xn--yq5b.xn--3e0b707e",
+    # hosting, site builders, staging and storage hosts: one subdomain per customer
+    "000nethost.com", "4everland.io", "bero-webspace.de", "builderallwppro.com", "cloudlets.zone",
+    "cloudworkstations.dev", "dreamwp.com", "freewebhostmost.com", "free.hr", "fornex.host",
+    "fozzyhost.com", "hidora.com", "hidora.net", "hostenko.net", "instawp.site", "ionoscloud.com",
+    "kinsta.page", "myhostgator.site", "prohoster.biz", "rollout.site", "staticdomains.app",
+    "sviluppo.host", "teste.website", "tiiny.io", "webpages.one", "webspace.re", "wstd.io",
+    "zap-webspace.com", "x10.network", "thehost.com.ua", "gtempurl.com", "justns.ru", "njalla.net",
+    "nipa.cloud", "mtxserv.com", "b4a.app", "arvanstorage.com", "cubbit.eu", "ucarecd.net", "ufs.sh",
+    "mailersend.net",
+    # services Tranco's top-100k protected, one subdomain (or path) per customer:
+    # Microsoft Defender for Cloud Apps (government), Skyhigh / McAfee cloud
+    # proxy tenants, SpamExperts filtering, form / link-tracking / chatbot
+    # endpoints, a shortener, wildcard DNS and a hoster's reverse zone
+    "admin-mcas-df.ms", "admin-mcas-gov.ms", "mcas-gov.ms", "myshn.eu", "myshn.net", "antispamcloud.com", "submit-form.com",
+    "emlnk.com", "rdtk.io", "chatbot.page", "sl.pt", "cloud-xip.com", "mschosting.com",
+    # Blogger's country domains (blogspot.com and most are in data/hosting_platforms.json)
+    "blogspot.ae", "blogspot.al", "blogspot.am", "blogspot.ba", "blogspot.be", "blogspot.bg", "blogspot.bj",
+    "blogspot.ca", "blogspot.cf", "blogspot.ch", "blogspot.cl", "blogspot.co.at", "blogspot.co.id",
+    "blogspot.co.il", "blogspot.co.ke", "blogspot.co.nz", "blogspot.co.uk", "blogspot.co.za",
+    "blogspot.com.ar", "blogspot.com.au", "blogspot.com.br", "blogspot.com.by", "blogspot.com.co",
+    "blogspot.com.cy", "blogspot.com.ee", "blogspot.com.eg", "blogspot.com.es", "blogspot.com.mt",
+    "blogspot.com.ng", "blogspot.com.tr", "blogspot.com.uy", "blogspot.cv", "blogspot.cz", "blogspot.de",
+    "blogspot.dk", "blogspot.fi", "blogspot.fr", "blogspot.gr", "blogspot.hk", "blogspot.hr", "blogspot.hu",
+    "blogspot.ie", "blogspot.in", "blogspot.is", "blogspot.it", "blogspot.jp", "blogspot.kr", "blogspot.li",
+    "blogspot.lt", "blogspot.lu", "blogspot.md", "blogspot.mk", "blogspot.mr", "blogspot.mx", "blogspot.my",
+    "blogspot.nl", "blogspot.no", "blogspot.pe", "blogspot.pt", "blogspot.qa", "blogspot.re", "blogspot.ro",
+    "blogspot.rs", "blogspot.ru", "blogspot.se", "blogspot.sg", "blogspot.si", "blogspot.sk", "blogspot.sn",
+    "blogspot.td", "blogspot.tw", "blogspot.ug", "blogspot.vn",
 })
 
 

@@ -296,6 +296,17 @@ DATA_JS_HEADER = """\
 """
 
 
+def attribution_comment() -> str:
+    """hostingTenantSuffixes are the public-suffix rules under the ranked
+    names (data/public_suffixes_in_top.json), adapted from the Majestic
+    Million (CC BY 3.0) and the Chrome UX Report (CC BY 4.0): their notice."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from build_top_domains import attribution_lines
+
+    record = json.loads((ROOT / "data" / "top_domains_sources.json").read_text(encoding="utf-8"))
+    return "//\n// hostingTenantSuffixes:\n" + "".join(f"// {line}\n" for line in attribution_lines(record))
+
+
 def render_data_js() -> str:
     # One key per line, each value compact: a data change shows as a changed
     # line under its key, and the file stays small enough to load per page.
@@ -305,6 +316,7 @@ def render_data_js() -> str:
     ]
     return (
         DATA_JS_HEADER
+        + attribution_comment()
         + "(function (root) {\n"
         + '  "use strict";\n'
         + "  root.cleanwayScorerData = {\n"

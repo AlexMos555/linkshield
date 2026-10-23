@@ -367,6 +367,13 @@ def _at_most(confidence: ConfidenceLevel, cap: ConfidenceLevel) -> ConfidenceLev
     return confidence if _CONFIDENCE_RANK[confidence] <= _CONFIDENCE_RANK[cap] else cap
 
 
+def _popularity_rank(tranco_result: dict) -> Optional[int]:
+    """The best top-1M rank of the host or its registrable domain, or None."""
+    ranks = [r for r in (tranco_result.get("rank") if tranco_result.get("ranked") else None,
+                         tranco_result.get("registrable_rank")) if isinstance(r, int) and 0 < r <= 1_000_000]
+    return min(ranks) if ranks else None
+
+
 def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
                    total_checks: int = TOTAL_CHECKS) -> dict:
     """The scorer's input — all 42+ signals, from the gathered outcomes. A
@@ -386,6 +393,12 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
         "safe_browsing", "phishtank", "urlhaus", "phishstats", "threatfox",
         "spamhaus", "surbl", "malware_bazaar", "feodo",
     )]
+    # An AlienVault OTX mention of a name in the top 1M (itself or its
+    # registrable domain) is a victim reference far more often than a
+    # verdict — rostelecom.ru, rosbank.ru and certum.pl all have pulses. It
+    # is not a blocklist hit: counted as one it would also stop the LLM judge
+    # (llm_judge gate 2) from looking at the caution it causes.
+    otx_counts = bool(alienvault_data.get("hit")) and not _popularity_rank(tranco_result)
 
     return {
         "domain": domain,
@@ -406,11 +419,12 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
         "malware_bazaar_hit": _value(outcomes, "malware_bazaar", False),
         "feodo_hit": _value(outcomes, "feodo", False),
         "blocklist_hits": sum(bool(h) for h in hard_hits)
-        + bool(alienvault_data.get("hit")) + bool(ipqs_data.get("hit")),
+        + otx_counts + bool(ipqs_data.get("hit")),
         # Strategy #14 — top-1M popularity (negative weight = trust). The keys
         # keep Tranco's name; the ranks are Majestic + CrUX (api/services/tranco.py).
         "tranco_ranked": bool(tranco_result.get("ranked")),
         "tranco_rank": tranco_result.get("rank"),
+        "tranco_registrable_rank": tranco_result.get("registrable_rank"),
         "tranco_weight": tranco_result.get("weight", 0),
         "tranco_label": tranco_result.get("label", ""),
         # Strategy #2 — favicon brand-clone

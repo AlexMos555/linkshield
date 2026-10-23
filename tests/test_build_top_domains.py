@@ -133,6 +133,62 @@ def test_fold_reads_registrable_domains_and_drops_tenants():
         "google.com": 3, "bbc.co.uk": 9, "gov.spb.ru": 6, "github.io": 1}
 
 
+ICANN_PSL_TEXT = (
+    "// ===BEGIN ICANN DOMAINS===\ncom\nca\ngc.ca\nuk\nco.uk\nnhs.uk\nus\nmi.us\nk12.mi.us\nbr\ngov.br\n"
+    "sp.gov.br\nblog.br\njp\n*.kawasaki.jp\n!city.kawasaki.jp\n// ===END ICANN DOMAINS===\n"
+    "// ===BEGIN PRIVATE DOMAINS===\ngithub.io\n// ===END PRIVATE DOMAINS===\n"
+)
+
+
+def test_icann_registrable_is_the_psl_reading():
+    psl = btd.parse_psl(ICANN_PSL_TEXT)
+    assert btd.icann_registrable("srv265.hrdc-drhc.gc.ca", psl) == "hrdc-drhc.gc.ca"
+    assert btd.icann_registrable("overseas-healthcare.nhsbsa.nhs.uk", psl) == "nhsbsa.nhs.uk"
+    assert btd.icann_registrable("tp-chp-prd.state.mi.us", psl) == "state.mi.us"
+    assert btd.icann_registrable("a.school.k12.mi.us", psl) == "school.k12.mi.us"
+    assert btd.icann_registrable("saladofuturo.educacao.sp.gov.br", psl) == "educacao.sp.gov.br"
+    assert btd.icann_registrable("x.y.kawasaki.jp", psl) == "x.y.kawasaki.jp"  # *.kawasaki.jp
+    assert btd.icann_registrable("www.city.kawasaki.jp", psl) == "city.kawasaki.jp"  # the exception
+    assert btd.icann_registrable("news.bbc.co.uk", psl) == "bbc.co.uk"
+    assert btd.icann_registrable("example.zz", psl) == "example.zz"  # the implicit '*' rule
+    for suffix in ("gc.ca", "nhs.uk", "mi.us", "sp.gov.br", "uk", "y.kawasaki.jp"):
+        assert btd.icann_registrable(suffix, psl) is None, suffix
+        assert btd.is_icann_suffix(suffix, psl), suffix
+    assert btd.is_icann_suffix("kawasaki.jp", psl)  # every child is a suffix
+    for name in ("bbc.co.uk", "hrdc-drhc.gc.ca", "city.kawasaki.jp", "github.io"):
+        assert not btd.is_icann_suffix(name, psl), name
+
+
+def test_a_public_suffix_is_never_a_ranked_name():
+    """The scorer reads srv265.hrdc-drhc.gc.ca as gc.ca and
+    overseas-healthcare.nhsbsa.nhs.uk as nhs.uk. Ranked under those names,
+    gc.ca and nhs.uk pulled every ICANN rule under them into
+    data/public_suffixes_in_top.json (12 → 2,364 on 2026-10-23), and the
+    model read Canadian, British and Brazilian government hosts as hosting
+    tenants. A host is folded to its PSL registrable instead (what Tranco
+    ranks), and a suffix by itself is left out."""
+    psl = btd.parse_psl(ICANN_PSL_TEXT)
+    rows = [(1, "gc.ca"), (2, "srv265.hrdc-drhc.gc.ca"), (3, "www.nhs.uk"), (4, "overseas.nhsbsa.nhs.uk"),
+            (5, "nhs.uk"), (6, "tp-chp-prd.state.mi.us"), (7, "saladofuturo.educacao.sp.gov.br"),
+            (8, "x.blog.br"), (9, "blog.br"), (10, "www.city.kawasaki.jp"), (11, "kawasaki.jp"),
+            (12, "news.bbc.co.uk"), (13, "gov.br")]
+    folded = btd.fold(rows, btd.tenant_suffixes(psl), psl)
+    assert folded == {"hrdc-drhc.gc.ca": 2, "www.nhs.uk": 3, "nhsbsa.nhs.uk": 4, "state.mi.us": 6,
+                      "educacao.sp.gov.br": 7, "x.blog.br": 8, "city.kawasaki.jp": 10, "bbc.co.uk": 12}
+    rules = btd.psl_in_top.rules_in_top(set(folded), ICANN_PSL_TEXT)
+    assert rules == []  # no ICANN rule has its base ranked any more
+
+
+def test_the_committed_top_has_no_public_suffix_and_no_icann_rule():
+    psl_rules = json.loads((DATA / "public_suffixes_in_top.json").read_text())
+    top = json.loads((DATA / "top_100k.json").read_text())
+    for name in ("gc.ca", "nhs.uk", "nic.in", "jus.br", "sp.gov.br", "tokyo.jp", "mi.us", "gov.br", "blog.br",
+                 "my.id", "com.br", "co.uk"):
+        assert name not in top and name not in psl_rules, name
+    for name in ("canada.ca", "www.nhs.uk", "gosuslugi.ru"):
+        assert name in top, name
+
+
 def _sources(majestic, crux_global, crux_ru, reported=()):
     return btd.Sources(majestic, {"global": crux_global, "country/ru": crux_ru},
                        {"global": "202609", "country/ru": "202609"}, btd.parse_psl(PSL_TEXT),
@@ -172,6 +228,10 @@ def test_a_reported_name_needs_both_lists_or_many_links_or_the_very_top():
     assert set(ranking.names) == {"platform.com", "abused.com", "files.example", "visited.example"}
     # lure.top: CrUX 50,000 only; scam.example: Russia 5,000 x 6; linked.com: Majestic 500,000.
     assert set(ranking.removed_reported) == {"lure.top", "linked.com", "scam.example"}
+    # Only the allowlist loses them: the whole ranking (Redis, the
+    # publisher's never-block guard) keeps every name in its place.
+    assert set(ranking.popular) == set(ranking.names) | set(ranking.removed_reported)
+    assert btd.reported_popular(ranking) == {d: ranking.popular.index(d) + 1 for d in ranking.removed_reported}
 
 
 # ── Building the files ──
@@ -232,17 +292,57 @@ def _build(data, responses, meta=None, **kw):
                      fetch=_fetch(responses), today=TODAY)
 
 
-def test_build_writes_the_four_files(small):
+def test_build_writes_the_five_files(small, monkeypatch):
+    monkeypatch.setattr(btd, "REDIS_N", 44)  # every name of the small world
     assert _build(small, _world()) == 0
     top = json.loads((small / "top_100k.json").read_text())
     assert len(top) == 20 and {"evil-login.com"}.isdisjoint(top)  # reported, one list only
     assert json.loads((small / "top_10k.json").read_text()) == {d: i + 1 for i, d in enumerate(top[:5])}
     rules = json.loads((small / "public_suffixes_in_top.json").read_text())
     assert rules == ["github.io", "us.org"]
+    # ...but it is ranked all the same: the publisher never darkens it.
+    assert json.loads((small / "top_domains_reported.json").read_text()) == {"evil-login.com": 43}  # gorzdrav.spb.ru, Russia 1,000 x 6, is 44th
     record = json.loads((small / "top_domains_sources.json").read_text())
     assert record["built"] == "2026-10-23"
-    assert record["files"]["top_100k.json"]["sha256"] == hashlib.sha256((small / "top_100k.json").read_bytes()).hexdigest()
+    for name in ("top_100k.json", "top_10k.json", "public_suffixes_in_top.json", "top_domains_reported.json"):
+        assert record["files"][name]["sha256"] == hashlib.sha256((small / name).read_bytes()).hexdigest()
+    gz = _world()[btd.CRUX.format(scope="global", month="202609")]
+    assert record["sources"]["crux"]["files"]["global"] == {"month": "202609",
+                                                           "sha256": hashlib.sha256(gz).hexdigest()}
     assert not list(small.glob("*.tmp"))
+
+
+def test_the_redis_ranking_keeps_the_reported_names(small, monkeypatch):
+    monkeypatch.setattr(btd, "REDIS_N", 44)
+    pairs, meta = btd.popularity_ranking(fetch=_fetch(_world()), limit=44, pinned={})
+    assert ("evil-login.com", 43) in pairs and len(pairs) == 44
+    assert meta["source"] == "majestic+crux" and meta["names"] == 44 and meta["reported_ranked"] == 1
+    assert meta["crux_months"] == {"global": "202609", "country/ru": "202609"}
+    # ranked_domains() checks the committed CrUX pins; this world's 202609 is another file.
+    monkeypatch.setattr(btd, "recorded_crux_files", lambda *_a: {})
+    assert btd.ranked_domains(fetch=_fetch(_world()), limit=44) == pairs
+
+
+def test_a_recorded_crux_month_with_other_bytes_is_refused(small):
+    world = _world()
+    url = btd.CRUX.format(scope="global", month="202609")
+    pinned = {"global": {"month": "202609", "sha256": hashlib.sha256(world[url]).hexdigest()}}
+    assert btd.popularity_ranking(fetch=_fetch(world), limit=30, pinned=pinned)[0]
+    world[url] = _crux_gz([(1000, f"www.site{i}.com") for i in range(39)] + [(1000, "swapped.example")])
+    with pytest.raises(ValueError, match="CrUX global 202609 changed"):
+        btd.popularity_ranking(fetch=_fetch(world), limit=30, pinned=pinned)
+    # A newer month is the list moving on, not a changed file.
+    moved = {"global": {"month": "202608", "sha256": "0" * 64}}
+    assert btd.popularity_ranking(fetch=_fetch(world), limit=30, pinned=moved)[0]
+
+
+def test_the_refresh_reads_the_pins_the_committed_record_holds():
+    pins = btd.recorded_crux_files()
+    record = json.loads((DATA / btd.SOURCES).read_text())
+    assert set(pins) == set(record["sources"]["crux"]["months"]) == {"global", "country/ru"}
+    for scope, pin in pins.items():
+        assert pin["month"] == record["sources"]["crux"]["months"][scope]
+        assert len(pin["sha256"]) == 64
 
 
 @pytest.mark.parametrize("broken", ["majestic", "crux", "psl", "feeds"])

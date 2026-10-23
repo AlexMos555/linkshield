@@ -30,21 +30,21 @@
   ],
   "n_features": 27,
   "features_version": 6,
-  "train_samples": 53026,
+  "train_samples": 52821,
   "total_samples": 66256,
-  "test_auc": 0.9057,
+  "test_auc": 0.912,
   "test_names_only": {
-    "n_phishing": 3570,
-    "n_benign": 9574,
-    "auc": 0.9034,
-    "recall_at_0.6": 0.3591,
-    "recall_at_0.85": 0.1835,
-    "benign_flagged_at_0.6": 0.0088
+    "n_phishing": 3790,
+    "n_benign": 9551,
+    "auc": 0.9098,
+    "recall_at_0.6": 0.4253,
+    "recall_at_0.85": 0.2058,
+    "benign_flagged_at_0.6": 0.0094
   },
   "phishing_names": 17795,
   "phishing_ips": 461,
-  "benign_host_shapes": 10621,
-  "benign_tenants": 3287,
+  "benign_host_shapes": 10682,
+  "benign_tenants": 3329,
   "held_out_registrable_domains": 665,
   "phishing_sources": {
     "CERT Polska": 5955,
@@ -73,25 +73,25 @@
       }
     },
     "files": {
-      "benign-domains.csv": 1568355,
+      "benign-domains.csv": 1568368,
       "benign-hosts.csv": 1555774
     }
   },
   "benign_class_weight": 3.0,
   "ensemble_members": 3,
   "seed": 42,
-  "shared_suffixes": 3832,
+  "shared_suffixes": 1501,
   "feature_data": {
     "top_domains": {
       "file": "top_100k.json",
-      "sha256": "4c1b1ebe38cd1736a78da63321d99a4aa8119c415360d650c969cb952f26d32c",
+      "sha256": "133153f2d5e90ef8fa15b073dbc400f1789c5b6478ce54dc6ddec599b4587619",
       "entries": 100000,
       "source": "Majestic Million + Chrome UX Report country/ru 202609, global 202609, built 2026-10-23 (data/top_domains_sources.json)"
     },
     "public_suffixes_in_top": {
       "file": "public_suffixes_in_top.json",
-      "sha256": "dbdc0f63483a55a4ad2bf26ead76937fa381b08afaad5860beba5999e8eaa260",
-      "entries": 3606,
+      "sha256": "8a40e6f92329ec95f1047e30512355b0a96569d877f905dadb71a6a7cc60ef72",
+      "entries": 1187,
       "source": "Majestic Million + Chrome UX Report country/ru 202609, global 202609, built 2026-10-23 (data/top_domains_sources.json)"
     }
   }

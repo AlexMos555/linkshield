@@ -1,6 +1,6 @@
 {
   "built": "2026-10-23",
-  "method": "Hosts folded to registrable domains (best rank per list), hosting tenants dropped, the CrUX rank taken as the better of the global bucket and Russia's bucket x 6, the two lists merged by the Dowdall rule, names a licensed phishing feed reports dropped unless both lists rank them in their top 100,000, Majestic in its top 10,000 or either in its top 1,000, cut to the top 100,000 / 10,000 (and 1,000,000 for the Redis rank).",
+  "method": "Hosts folded to registrable domains (best rank per list; public suffixes left out), hosting tenants dropped, the CrUX rank taken as the better of the global bucket and Russia's bucket x 6, the two lists merged by the Dowdall rule, cut to the top 100,000 / 10,000 (and 1,000,000 for the Redis rank); for the allowlist files only, names a licensed phishing feed reports dropped unless both lists rank them in their top 100,000, Majestic in its top 10,000 or either in its top 1,000.",
   "parameters": {
     "top_n": 100000,
     "ranked_n": 10000,
@@ -14,14 +14,16 @@
     "majestic_million": {
       "url": "https://downloads.majestic.com/majestic_million.csv",
       "licence": "CC BY 3.0",
+      "licence_url": "https://creativecommons.org/licenses/by/3.0/",
       "attribution": "The Majestic Million, by Majestic-12 Ltd (majestic.com), CC BY 3.0",
       "rows": 1000000,
-      "registrable_domains": 997434
+      "registrable_domains": 998150
     },
     "crux": {
       "url": "https://raw.githubusercontent.com/zakird/crux-top-lists/main/data/{scope}/{month}.csv.gz",
       "licence": "CC BY 4.0",
       "via": "github.com/zakird/crux-top-lists",
+      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
       "attribution": "Chrome UX Report top origins, by Google (developer.chrome.com/docs/crux), CC BY 4.0",
       "months": {
         "global": "202609",
@@ -31,7 +33,17 @@
         "global": 1000000,
         "country/ru": 661624
       },
-      "registrable_domains": 1153533
+      "files": {
+        "country/ru": {
+          "month": "202609",
+          "sha256": "8538dd2233571bc4c34cb1609b10b449acd6bffd57f2c7eb7c99440f0cbba6a3"
+        },
+        "global": {
+          "month": "202609",
+          "sha256": "be444a341be6b4b0ffb2acae08acef67c77243c01bb071a69b26f87c53011f88"
+        }
+      },
+      "registrable_domains": 1160479
     },
     "public_suffix_list": {
       "url": "https://publicsuffix.org/list/public_suffix_list.dat",
@@ -39,30 +51,35 @@
       "rules": 10389
     },
     "phishing_feeds": {
-      "CERT Polska": 125336,
+      "CERT Polska": 125400,
       "PhishDestroy": 137921,
-      "Phishunt": 1370,
-      "TweetFeed": 41231
+      "Phishunt": 1364,
+      "TweetFeed": 41034
     }
   },
-  "ranked_names": 1956743,
-  "reported_names_removed": 1293,
+  "ranked_names": 1965448,
+  "reported_names_removed": 1296,
+  "reported_names_in_redis_rank": 701,
   "russian_names": {
-    "top_10k": 389,
+    "top_10k": 410,
     "top_100k": 4986
   },
   "files": {
     "top_100k.json": {
       "names": 100000,
-      "sha256": "4c1b1ebe38cd1736a78da63321d99a4aa8119c415360d650c969cb952f26d32c"
+      "sha256": "133153f2d5e90ef8fa15b073dbc400f1789c5b6478ce54dc6ddec599b4587619"
     },
     "top_10k.json": {
       "names": 10000,
-      "sha256": "5946060b2498ed6391bf17ee9db14ff0e48c60ca589c3421523cae5a119f9d20"
+      "sha256": "7971e32de61fb6bfe7e79adb61830ea60c2a8ac0e6147cc48a7a8bd67f665d7a"
     },
     "public_suffixes_in_top.json": {
-      "rules": 3606,
-      "sha256": "dbdc0f63483a55a4ad2bf26ead76937fa381b08afaad5860beba5999e8eaa260"
+      "rules": 1187,
+      "sha256": "8a40e6f92329ec95f1047e30512355b0a96569d877f905dadb71a6a7cc60ef72"
+    },
+    "top_domains_reported.json": {
+      "names": 701,
+      "sha256": "152944226d1571338dea0775cefc673d51748d80a659a0397dcf957956e1c37d"
     }
   }
 }

@@ -167,6 +167,43 @@ def test_unranked_multi_tenant_zones_are_shared_never_promoted():
     assert rdd.UNRANKED_SHARED_DOMAINS.isdisjoint(rdd.OPERATOR_SUFFIXES)
 
 
+@pytest.mark.parametrize("zone", ["blogspot.sn", "blogspot.is", "dns.navy", "v6.army", "localhost.run",
+                                  "serveo.net", "n-e.kr", "webspace.re", "justns.ru", "tiiny.io"])
+def test_zones_tranco_1m_protected_stay_shared(zone):
+    """The 2026-10-23 dry run against Tranco's top-1M guard: Blogger's country
+    domains, free DNS zones, tunnels and hosting zones Tranco ranked and the
+    licensed list does not — blocked whole on a few listed tenants (blogspot.sn
+    on 822) until they joined the shared set."""
+    hosts = [f"a.{zone}", f"b.{zone}", f"c.{zone}", f"d.{zone}"]
+    out = rdd.build_blockset(hosts, set(), public_suffixes=PSL_EU, brand_owned=frozenset())
+    assert zone not in out and set(hosts) <= out
+
+
+def test_a_popular_name_a_feed_reports_is_never_blocked_whole():
+    """scripts/build_top_domains.py keeps a name a licensed feed reports off
+    the instant-safe allowlist unless the lists vouch for it strongly — but
+    not out of the ranking. Until 2026-10-23 that rule took maya.ph (a bank in
+    CrUX's top 10,000), rezultati.com, dub.sh and ~700 more out of the
+    publisher's guard as well, so one feed's report blocked them whole."""
+    reported = rdd.load_reported_popular()
+    assert {"maya.ph", "rezultati.com", "dub.sh", "filemail.com", "eim.ae", "kasserver.com"} <= reported
+    guard = rdd.load_popular_guard()
+    assert reported <= guard
+    hosts = ["maya.ph", "login.maya.ph", "rezultati.com", "www.rezultati.com", "dub.sh", "x.dub.sh",
+             "filemail.com", "eim.ae", "kasserver.com", "scam-shop.com", "pay.scam-shop.com"]
+    out = rdd.build_blockset(hosts, guard, shared_suffixes=set(), public_suffixes=PSL_EU,
+                             brand_owned=frozenset())
+    assert out == {"scam-shop.com", "pay.scam-shop.com"}
+
+
+def test_the_new_infrastructure_names_are_guarded():
+    infra = rdd.load_infrastructure_domains()
+    assert {"akadns6.net", "cloudflaressl.com"} <= infra
+    out = rdd.build_blockset(["akadns6.net", "a.akadns6.net", "cloudflaressl.com"], rdd.load_popular_guard(),
+                             shared_suffixes=set(), public_suffixes=PSL_EU, brand_owned=frozenset())
+    assert out == set()
+
+
 def test_a_listed_registrable_is_blocked_whole_on_its_own_evidence():
     out = rdd.build_blockset(["scam-shop.com", "pay.scam-shop.com"], set(), shared_suffixes=set(),
                              public_suffixes=PSL_EU, brand_owned=frozenset())

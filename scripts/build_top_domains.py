@@ -3,7 +3,8 @@
 
 ONE ranked list of registrable domains, built here and nowhere else:
 
-  data/top_100k.json             the first 100,000 names, in rank order — the
+  data/top_100k.json             the first 100,000 names of the allowlist
+                                 order (step 4 applied), in rank order — the
                                  instant-safe allowlist (scoring.TOP_DOMAINS),
                                  the publisher's popular-domain veto and the
                                  ML feature in_top_domains
@@ -12,11 +13,18 @@ ONE ranked list of registrable domains, built here and nowhere else:
   data/public_suffixes_in_top.json  PSL rules whose base is in the 100,000
                                  or in data/infrastructure_domains.txt
                                  (scripts/build_public_suffixes_in_top.py)
+  data/top_domains_reported.json {name: rank} for the names step 4 kept off
+                                 the allowlist that the Redis top 1,000,000
+                                 still ranks — the publisher's guard and the
+                                 phone's veto hold them like any popular name
   data/top_domains_sources.json  where all of it came from: list months,
                                  row counts, licences, attribution, hashes
-  Redis tranco:ranks             the first 1,000,000 with their rank, loaded
+                                 (the CrUX files' too: the daily refresh
+                                 refuses a recorded month that changed)
+  Redis tranco:ranks             the first 1,000,000 of the WHOLE ranking
+                                 (step 4 not applied) with their rank, loaded
                                  daily by scripts/refresh_tranco.py through
-                                 ranked_domains() below — the same function
+                                 popularity_ranking() below — the same rank()
 
 Until 2026-10-23 every one of these was Tranco's (the 2026-04-10 snapshot of
 its top-100k in data/, the daily top-1M in Redis). Tranco states no licence
@@ -41,7 +49,12 @@ How the rank is made (each step is a parameter below):
      kvs.gov.spb.ru → gov.spb.ru), each list keeping a domain's best rank.
      A tenant of a shared suffix (foo.github.io, x.us.org) is dropped: its
      traffic is its own, not the platform's, and the scorer never looks a
-     tenant up by name.
+     tenant up by name. Where the scorer's reading is an ICANN public
+     suffix (srv.hrdc-drhc.gc.ca → gc.ca, x.nhsbsa.nhs.uk → nhs.uk) the host
+     is folded to its PSL registrable instead (hrdc-drhc.gc.ca), and a
+     suffix by itself is never a name: a ranked gc.ca put every ICANN rule
+     under it into public_suffixes_in_top.json and made every Canadian
+     government host a "hosting tenant" to the model.
   2. CrUX rank = the global bucket, or Russia's bucket × RU_FACTOR when
      that is better. Chrome counts few Russians (Yandex Browser is not in
      CrUX): the Russian sites both lists carry sit 20-50 times lower
@@ -54,19 +67,24 @@ How the rank is made (each step is a parameter below):
      + 1/CrUX rank, a list that does not carry the name adding nothing —
      the rule Tranco itself uses. A name both lists carry outranks one only
      a single list knows. Ties: best single rank, then name.
-  4. A name a licensed phishing feed reports (the name or its www. host)
-     stays only when BOTH lists rank it in their top REPORTED_MIN_RANK, the
-     Majestic Million in its top REPORTED_MAJESTIC_RANK, or either list in
-     its top REPORTED_ANY_RANK. Reporters post the platform a page sits on
+  4. For the ALLOWLIST only (top_100k.json, top_10k.json): a name a
+     licensed phishing feed reports (the name or its www. host) stays only
+     when BOTH lists rank it in their top REPORTED_MIN_RANK, the Majestic
+     Million in its top REPORTED_MAJESTIC_RANK, or either list in its top
+     REPORTED_ANY_RANK. Reporters post the platform a page sits on
      (facebook.com, github.com, t.me, discord.gg, docsend.com, sendspace.com):
-     a platform thousands of sites link to stays — the blocklist publisher
-     reads this ranking as "never darken", and a whole platform blocked for
-     every DNS user is the worst false positive there is. A name only
-     visits vouch for does not: on 2026-10-23 the rule dropped
-     roblox.com.bz, sstake.eu, freelitecoin.online, narco24.to and the
-     ushort.* shorteners, ~90 of the ~180 reported names the top 100,000
-     would have held — CrUX's long tail (Russia's especially) carries the
-     scam sites people are sent to, Majestic's the link farms.
+     a platform thousands of sites link to stays instant-safe. A name only
+     visits vouch for does not: on 2026-10-23 the rule kept roblox.com.bz,
+     sstake.eu, freelitecoin.online, narco24.to and the ushort.* shorteners,
+     ~90 of the ~180 reported names the top 100,000 would have held, out of
+     the instant-safe answer — CrUX's long tail (Russia's especially)
+     carries the scam sites people are sent to, Majestic's the link farms.
+     The names stay in the ranking: the Redis rank (the popularity bonus,
+     the publisher's never-block guard) and top_domains_reported.json keep
+     them. Applied to the whole ranking, the rule had taken maya.ph (a bank,
+     CrUX's top 10,000), rezultati.com, dub.sh, filemail.com, eim.ae and
+     ~700 more out of the guard that exists to overrule one feed's report,
+     and the publisher would have blocked them whole for every DNS user.
   5. Top-N by that rank: the thresholds the consumers use (1,000 / 10,000 /
      100,000 / 1,000,000) mean the same positions they meant in Tranco.
 
@@ -128,6 +146,7 @@ TOP_100K = "top_100k.json"
 TOP_10K = "top_10k.json"
 PSL_IN_TOP = "public_suffixes_in_top.json"
 SOURCES = "top_domains_sources.json"
+REPORTED = "top_domains_reported.json"
 RU_PSL = os.path.join(DATA, "ru_public_suffixes.json")
 
 MAJESTIC = feeds.MAJESTIC
@@ -159,21 +178,39 @@ MIN_OVERLAP = 0.85
 LICENCES = {
     "majestic_million": {
         "url": MAJESTIC, "licence": "CC BY 3.0",
+        "licence_url": "https://creativecommons.org/licenses/by/3.0/",
         "attribution": "The Majestic Million, by Majestic-12 Ltd (majestic.com), CC BY 3.0",
     },
     "crux": {
         "url": CRUX, "licence": "CC BY 4.0", "via": "github.com/zakird/crux-top-lists",
+        "licence_url": "https://creativecommons.org/licenses/by/4.0/",
         "attribution": "Chrome UX Report top origins, by Google (developer.chrome.com/docs/crux), CC BY 4.0",
     },
     "public_suffix_list": {"url": PSL_URL, "licence": "MPL 2.0"},
 }
+
+
+def attribution_lines(record: dict) -> list[str]:
+    """The CC BY notice for anything shipped that is adapted from the ranking
+    (the phone's veto and suffix lists, the extensions' tenant suffixes):
+    who made each list, its licence and where to read it, and what was
+    changed — read from data/top_domains_sources.json, so it says what the
+    shipped copy was built from."""
+    out = ["Contains data adapted from:"]
+    for key in ("majestic_million", "crux"):
+        src = record["sources"][key]
+        out.append(f"  {src['attribution']} ({src['licence_url']})")
+    out.append(f"Changes made: {record['method']}")
+    out.append("Details: docs/THIRD_PARTY_FEEDS.md section 5, data/top_domains_sources.json.")
+    return out
 CHANGES = (
-    "Hosts folded to registrable domains (best rank per list), hosting tenants dropped, the CrUX rank "
-    f"taken as the better of the global bucket and Russia's bucket x {RU_FACTOR}, the two lists merged by "
-    "the Dowdall rule, names a licensed phishing feed reports dropped unless both lists rank them in "
+    "Hosts folded to registrable domains (best rank per list; public suffixes left out), hosting tenants "
+    f"dropped, the CrUX rank taken as the better of the global bucket and Russia's bucket x {RU_FACTOR}, "
+    "the two lists merged by the Dowdall rule, cut to the top "
+    f"{TOP_N:,} / {TOP_RANKED_N:,} (and {REDIS_N:,} for the Redis rank); for the allowlist files only, "
+    "names a licensed phishing feed reports dropped unless both lists rank them in "
     f"their top {REPORTED_MIN_RANK:,}, Majestic in its top {REPORTED_MAJESTIC_RANK:,} or either in its top "
-    f"{REPORTED_ANY_RANK:,}, cut to the top "
-    f"{TOP_N:,} / {TOP_RANKED_N:,} (and {REDIS_N:,} for the Redis rank)."
+    f"{REPORTED_ANY_RANK:,}."
 )
 
 
@@ -247,27 +284,72 @@ class PSL(NamedTuple):
     text: str
     private: frozenset[str]  # the PRIVATE section, wildcards stripped
     n_rules: int
+    # The ICANN section, for icann_registrable(): exact rules, the bases of
+    # '*.' rules and the '!' exceptions, all in ASCII.
+    icann: frozenset[str] = frozenset()
+    icann_wildcards: frozenset[str] = frozenset()
+    icann_exceptions: frozenset[str] = frozenset()
+
+
+def _ascii_name(name: str) -> str:
+    return ".".join(_ascii_label(p) for p in name.lower().split("."))
 
 
 def parse_psl(text: str) -> PSL:
-    """The PSL's private-section rules ('*.' stripped, exceptions dropped)
-    and its rule count. A file without both section markers raises."""
+    """The PSL's private-section rules ('*.' stripped, exceptions dropped),
+    its ICANN-section rules and its rule count. A file without both section
+    markers raises."""
     if "===BEGIN ICANN DOMAINS===" not in text or "===BEGIN PRIVATE DOMAINS===" not in text:
         raise ValueError("not the Public Suffix List (section markers missing)")
     private: set[str] = set()
+    icann: set[str] = set()
+    wildcards: set[str] = set()
+    exceptions: set[str] = set()
     n = 0
     in_private = False
     for raw in text.splitlines():
         line = raw.strip()
         if "===BEGIN PRIVATE DOMAINS===" in line:
             in_private = True
-        if not line or line.startswith("//") or line.startswith("!"):
+        if not line or line.startswith("//"):
+            continue
+        if line.startswith("!"):
+            if not in_private:
+                exceptions.add(_ascii_name(line[1:]))
             continue
         n += 1
         rule = line[2:] if line.startswith("*.") else line
-        if in_private and "." in rule:
-            private.add(".".join(_ascii_label(p) for p in rule.lower().split(".")))
-    return PSL(text, frozenset(private), n)
+        if in_private:
+            if "." in rule:
+                private.add(_ascii_name(rule))
+        elif line.startswith("*."):
+            wildcards.add(_ascii_name(rule))
+        else:
+            icann.add(_ascii_name(rule))
+    return PSL(text, frozenset(private), n, frozenset(icann), frozenset(wildcards), frozenset(exceptions))
+
+
+def icann_registrable(host: str, psl: PSL) -> Optional[str]:
+    """The registrable domain of `host` by the PSL's ICANN rules (what Tranco
+    and every PSL library call the pay-level domain: tp.state.mi.us →
+    state.mi.us, a.b.nhs.uk → b.nhs.uk), or None when `host` is itself a
+    public suffix."""
+    labels = host.split(".")
+    for i in range(len(labels)):
+        candidate = ".".join(labels[i:])
+        if candidate in psl.icann_exceptions:
+            return candidate
+        parent = ".".join(labels[i + 1:])
+        if candidate in psl.icann or (parent and parent in psl.icann_wildcards):
+            return ".".join(labels[i - 1:]) if i > 0 else None
+    return ".".join(labels[-2:]) if len(labels) >= 2 else None
+
+
+def is_icann_suffix(name: str, psl: PSL) -> bool:
+    """Is `name` a registry rather than someone's name: an ICANN public
+    suffix (gc.ca, nhs.uk, sp.gov.br, mi.us, blog.br) or the base of a
+    wildcard rule (kawasaki.jp, whose every child is a suffix)?"""
+    return name in psl.icann_wildcards or icann_registrable(name, psl) is None
 
 
 def tenant_suffixes(psl: PSL) -> frozenset[str]:
@@ -305,15 +387,29 @@ def _is_name(host: str) -> bool:
         return True
 
 
-def fold(rows: Iterable[tuple[int, str]], suffixes: frozenset[str]) -> dict[str, int]:
+def fold(rows: Iterable[tuple[int, str]], suffixes: frozenset[str],
+         psl: Optional[PSL] = None) -> dict[str, int]:
     """(rank, host) rows → {registrable domain: best rank}, tenants and
-    anything that is not a host name (IP literals, .arpa) left out."""
+    anything that is not a host name (IP literals, .arpa) left out.
+
+    A host whose scorer registrable is an ICANN public suffix (the scorer
+    reads srv.hrdc-drhc.gc.ca as gc.ca, overseas.nhsbsa.nhs.uk as nhs.uk) is
+    folded to its PSL registrable instead (hrdc-drhc.gc.ca, nhsbsa.nhs.uk),
+    and a public suffix itself is left out: a registry is nobody's site. Had
+    gc.ca been ranked, the suffix rules under it would have joined
+    data/public_suffixes_in_top.json, and every Canadian government host
+    would have read as a hosting tenant (is_hosting_subdomain) — 2,364 ICANN
+    rules on 2026-10-23, against Tranco's 12."""
     best: dict[str, int] = {}
     for rank, host in rows:
         host = host.lower().strip(".")
         if rank <= 0 or not _is_name(host) or is_tenant(host, suffixes):
             continue
         domain = registrable_domain(host)
+        if psl is not None and is_icann_suffix(domain, psl):
+            domain = icann_registrable(host, psl) or ""
+            if not domain or is_icann_suffix(domain, psl):
+                continue
         if rank < best.get(domain, rank + 1):
             best[domain] = rank
     return best
@@ -325,6 +421,7 @@ class Sources(NamedTuple):
     crux_months: dict[str, str]
     psl: PSL
     reported: dict[str, frozenset[str]]  # feed → hosts
+    crux_sha256: dict[str, str] = {}  # scope → sha256 of the month's .csv.gz
 
 
 Fetch = Callable[[str, float], bytes]
@@ -351,8 +448,9 @@ def _cached(fetch: Fetch, cache: Optional[str]) -> Fetch:
     return get
 
 
-def _fetch_crux(scope: str, fetch: Fetch, today: datetime.date) -> tuple[str, list[tuple[int, str]]]:
-    """The newest published month of one CrUX scope (a 404 tries the month before)."""
+def _fetch_crux(scope: str, fetch: Fetch, today: datetime.date) -> tuple[str, list[tuple[int, str]], str]:
+    """The newest published month of one CrUX scope (a 404 tries the month
+    before): (month, rows, sha256 of the downloaded .csv.gz)."""
     import httpx
 
     for month in feeds.crux_months(today):
@@ -362,25 +460,56 @@ def _fetch_crux(scope: str, fetch: Fetch, today: datetime.date) -> tuple[str, li
             if e.response.status_code == 404:
                 continue
             raise
-        return month, feeds.parse_crux(gzip.decompress(body).decode("utf-8", "ignore"))
+        rows = feeds.parse_crux(gzip.decompress(body).decode("utf-8", "ignore"))
+        return month, rows, hashlib.sha256(body).hexdigest()
     raise FileNotFoundError(f"no CrUX {scope} list in the last {feeds.CRUX_MONTHS_BACK} months")
 
 
+def recorded_crux_files(path: str = os.path.join(DATA, SOURCES)) -> dict[str, dict[str, str]]:
+    """{scope: {"month", "sha256"}} of the CrUX files the committed data was
+    built from (data/top_domains_sources.json), or {} when none is recorded."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            files = json.load(f)["sources"]["crux"].get("files") or {}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {}
+    return {scope: entry for scope, entry in files.items()
+            if isinstance(entry, dict) and isinstance(entry.get("month"), str) and isinstance(entry.get("sha256"), str)}
+
+
+def check_crux_pins(months: dict[str, str], hashes: dict[str, str],
+                    pinned: dict[str, dict[str, str]]) -> None:
+    """Raise when a CrUX month the committed data names comes back with other
+    bytes. zakird/crux-top-lists is one person's cache of Google's BigQuery
+    tables, with no integrity statement: a published month that changed
+    under us would move the ranks (and the vouches of step 4) overnight. A
+    NEW month is fine — that is the list moving on."""
+    for scope, month in months.items():
+        pin = pinned.get(scope)
+        if pin and pin["month"] == month and hashes.get(scope) not in (None, pin["sha256"]):
+            raise ValueError(f"CrUX {scope} {month} changed since data/{SOURCES} recorded it "
+                             f"(sha256 {hashes[scope][:12]}, recorded {pin['sha256'][:12]})")
+
+
 def fetch_sources(fetch: Optional[Fetch] = None, cache: Optional[str] = None,
-                  today: Optional[datetime.date] = None) -> Sources:
+                  today: Optional[datetime.date] = None,
+                  pinned: Optional[dict[str, dict[str, str]]] = None) -> Sources:
     """Download and parse every input. Raises on any list that is missing,
-    unreadable or short; a dead phishing feed is skipped (MIN_FEEDS)."""
+    unreadable or short, or on a CrUX month whose bytes differ from `pinned`
+    (check_crux_pins); a dead phishing feed is skipped (MIN_FEEDS)."""
     get = _cached(fetch or feeds._get, cache)
     majestic = feeds.parse_majestic(get(MAJESTIC, 300.0).decode("utf-8", "ignore"))
     if len(majestic) < MIN_MAJESTIC:
         raise ValueError(f"Majestic Million: {len(majestic)} rows, need {MIN_MAJESTIC}")
     crux: dict[str, list[tuple[int, str]]] = {}
     months: dict[str, str] = {}
+    hashes: dict[str, str] = {}
     for scope, minimum in CRUX_SCOPES.items():
-        month, rows = _fetch_crux(scope, get, today or datetime.date.today())
+        month, rows, sha = _fetch_crux(scope, get, today or datetime.date.today())
         if len(rows) < minimum:
             raise ValueError(f"CrUX {scope} {month}: {len(rows)} origins, need {minimum}")
-        crux[scope], months[scope] = rows, month
+        crux[scope], months[scope], hashes[scope] = rows, month, sha
+    check_crux_pins(months, hashes, pinned or {})
     psl = parse_psl(get(PSL_URL, 60.0).decode("utf-8"))
     if psl.n_rules < MIN_PSL_RULES:
         raise ValueError(f"Public Suffix List: {psl.n_rules} rules, need {MIN_PSL_RULES}")
@@ -392,24 +521,25 @@ def fetch_sources(fetch: Optional[Fetch] = None, cache: Optional[str] = None,
             logger.warning("%s fetch failed: %s", spec.name, e)
     if len(reported) < MIN_FEEDS:
         raise ValueError(f"only {len(reported)} phishing feeds readable ({sorted(reported)}), need {MIN_FEEDS}")
-    return Sources(majestic, crux, months, psl, reported)
+    return Sources(majestic, crux, months, psl, reported, hashes)
 
 
 # ── The ranking ──
 
 class Ranking(NamedTuple):
-    names: list[str]  # rank order: names[0] is rank 1
+    names: list[str]  # the allowlist's order (step 4 applied): names[0] is rank 1
     majestic: dict[str, int]
     crux: dict[str, int]
-    removed_reported: list[str]  # reported names dropped (step 4), in rank order
+    removed_reported: list[str]  # reported names step 4 kept off the allowlist, in rank order
+    popular: list[str] = []  # every ranked name, step 4 NOT applied: the Redis rank and the never-block guard
 
 
 def rank(sources: Sources) -> Ranking:
     """Steps 1-4 of the module docstring."""
     suffixes = tenant_suffixes(sources.psl)
-    majestic = fold(sources.majestic, suffixes)
-    crux = fold(sources.crux["global"], suffixes)
-    for domain, bucket in fold(sources.crux["country/ru"], suffixes).items():
+    majestic = fold(sources.majestic, suffixes, sources.psl)
+    crux = fold(sources.crux["global"], suffixes, sources.psl)
+    for domain, bucket in fold(sources.crux["country/ru"], suffixes, sources.psl).items():
         scaled = bucket * RU_FACTOR
         if scaled < crux.get(domain, scaled + 1):
             crux[domain] = scaled
@@ -428,7 +558,7 @@ def rank(sources: Sources) -> Ranking:
             removed.append(domain)
         else:
             kept.append(domain)
-    return Ranking(kept, majestic, crux, removed)
+    return Ranking(kept, majestic, crux, removed, ordered)
 
 
 def _vouched(domain: str, majestic: dict[str, int], crux: dict[str, int]) -> bool:
@@ -441,15 +571,43 @@ def _vouched(domain: str, majestic: dict[str, int], crux: dict[str, int]) -> boo
     return both or linked or min(m or REPORTED_ANY_RANK + 1, c or REPORTED_ANY_RANK + 1) <= REPORTED_ANY_RANK
 
 
+def popularity_meta(sources: Sources, ranking: Ranking, limit: int,
+                    built: Optional[datetime.datetime] = None) -> dict:
+    """What the Redis rank was built from — scripts/refresh_tranco.py stores
+    it next to the ranks (tranco:ranks:meta) and /health/deep shows it, so
+    which list is live is never a guess."""
+    return {
+        "source": "majestic+crux",
+        "built": (built or datetime.datetime.now(datetime.timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "names": min(limit, len(ranking.popular)),
+        "majestic_rows": len(sources.majestic),
+        "crux_months": dict(sources.crux_months),
+        "reported_ranked": len(set(ranking.removed_reported) & set(ranking.popular[:limit])),
+    }
+
+
+def popularity_ranking(fetch: Optional[Fetch] = None, cache: Optional[str] = None, limit: int = REDIS_N,
+                       pinned: Optional[dict[str, dict[str, str]]] = None) -> tuple[list[tuple[str, int]], dict]:
+    """((domain, rank) for the first `limit` names, popularity_meta) — what
+    scripts/refresh_tranco.py loads into Redis. Step 4 is NOT applied: the
+    Redis rank is the popularity bonus and the blocklist publisher's
+    never-block guard, and a feed's report must not take a popular name out
+    of the guard that exists to overrule such reports (maya.ph, a bank in
+    CrUX's top 10,000, reported by one feed, would have been blocked whole
+    for every DNS user). Raises when any input fails (fetch_sources, the
+    CrUX pins of data/top_domains_sources.json) or the ranking is shorter
+    than `limit`."""
+    sources = fetch_sources(fetch, cache, pinned=recorded_crux_files() if pinned is None else pinned)
+    ranking = rank(sources)
+    if len(ranking.popular) < limit:
+        raise ValueError(f"ranking has {len(ranking.popular)} names, need {limit}")
+    return [(d, i + 1) for i, d in enumerate(ranking.popular[:limit])], popularity_meta(sources, ranking, limit)
+
+
 def ranked_domains(fetch: Optional[Fetch] = None, cache: Optional[str] = None,
                    limit: int = REDIS_N) -> list[tuple[str, int]]:
-    """(domain, rank) for the first `limit` names — what scripts/refresh_tranco.py
-    loads into Redis. Raises when any input fails (fetch_sources) or the
-    ranking is shorter than `limit`."""
-    ranking = rank(fetch_sources(fetch, cache))
-    if len(ranking.names) < limit:
-        raise ValueError(f"ranking has {len(ranking.names)} names, need {limit}")
-    return [(d, i + 1) for i, d in enumerate(ranking.names[:limit])]
+    """(domain, rank) for the first `limit` names of popularity_ranking()."""
+    return popularity_ranking(fetch, cache, limit)[0]
 
 
 # ── Files ──
@@ -466,18 +624,30 @@ def _sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def reported_popular(ranking: Ranking, limit: int = REDIS_N) -> dict[str, int]:
+    """{name: rank in the full ranking} for the reported names step 4 kept
+    off the allowlist that the Redis top `limit` still carries, in rank
+    order. They are popular all the same: the blocklist publisher never
+    darkens them and the phone vetoes the first TOP_RANKED_N of them, as for
+    any other name of that rank — only the instant-safe answer is withheld."""
+    position = {d: i + 1 for i, d in enumerate(ranking.popular[:limit])}
+    return {d: position[d] for d in ranking.removed_reported if d in position}
+
+
 def render(ranking: Ranking, sources: Sources, today: datetime.date) -> dict[str, str]:
-    """{file name: content} for the four data files."""
+    """{file name: content} for the five data files."""
     top = ranking.names[:TOP_N]
     if len(top) < TOP_N:
         raise ValueError(f"ranking has {len(ranking.names)} names, need {TOP_N}")
     rules = psl_in_top.rules_in_top(set(top) | psl_in_top.load_infrastructure(), sources.psl.text)
     if len(rules) < MIN_PSL_IN_TOP:
         raise ValueError(f"only {len(rules)} public-suffix rules in the top {TOP_N}, need {MIN_PSL_IN_TOP}")
+    reported = reported_popular(ranking)
     files = {
         TOP_100K: json.dumps(top, indent=0) + "\n",
         TOP_10K: json.dumps({d: i + 1 for i, d in enumerate(top[:TOP_RANKED_N])}, indent=0) + "\n",
         PSL_IN_TOP: json.dumps(rules, indent=0) + "\n",
+        REPORTED: json.dumps(reported, indent=0) + "\n",
     }
     ru = (".ru", ".su", ".xn--p1ai")
     record = {
@@ -493,18 +663,22 @@ def render(ranking: Ranking, sources: Sources, today: datetime.date) -> dict[str
                                  "registrable_domains": len(ranking.majestic)},
             "crux": {**LICENCES["crux"], "months": sources.crux_months,
                      "origins": {scope: len(rows) for scope, rows in sources.crux.items()},
+                     "files": {scope: {"month": sources.crux_months[scope], "sha256": sha}
+                               for scope, sha in sorted(sources.crux_sha256.items())},
                      "registrable_domains": len(ranking.crux)},
             "public_suffix_list": {**LICENCES["public_suffix_list"], "rules": sources.psl.n_rules},
             "phishing_feeds": {name: len(hosts) for name, hosts in sorted(sources.reported.items())},
         },
-        "ranked_names": len(ranking.names),
+        "ranked_names": len(ranking.popular),
         "reported_names_removed": len(ranking.removed_reported),
+        "reported_names_in_redis_rank": len(reported),
         "russian_names": {"top_10k": sum(d.endswith(ru) for d in top[:TOP_RANKED_N]),
                           "top_100k": sum(d.endswith(ru) for d in top)},
         "files": {
             TOP_100K: {"names": len(top), "sha256": _sha(files[TOP_100K])},
             TOP_10K: {"names": min(len(top), TOP_RANKED_N), "sha256": _sha(files[TOP_10K])},
             PSL_IN_TOP: {"rules": len(rules), "sha256": _sha(files[PSL_IN_TOP])},
+            REPORTED: {"names": len(reported), "sha256": _sha(files[REPORTED])},
         },
     }
     files[SOURCES] = json.dumps(record, indent=2) + "\n"
@@ -614,17 +788,25 @@ def build(args: argparse.Namespace, data_dir: str = DATA, meta_path: str = MODEL
     today = today or datetime.date.today()
     try:
         sources = fetch_sources(fetch, args.cache, today)
+        try:
+            check_crux_pins(sources.crux_months, sources.crux_sha256,
+                            recorded_crux_files(os.path.join(data_dir, SOURCES)))
+        except ValueError as e:
+            # A person commits this run's output, new pins included; the daily
+            # Redis refresh refuses the same file (popularity_ranking).
+            logger.warning("%s — the new hash is recorded; review the change before committing", e)
         ranking = rank(sources)
-        if len(ranking.names) < REDIS_N:
-            raise ValueError(f"ranking has {len(ranking.names)} names, need {REDIS_N}")
+        if len(ranking.popular) < REDIS_N:
+            raise ValueError(f"ranking has {len(ranking.popular)} names, need {REDIS_N}")
         files = render(ranking, sources, today)
     except Exception as e:  # noqa: BLE001 — any failure keeps the previous files
         logger.error("Top-domain build failed, keeping the previous files: %s", e)
         return 2
     top = json.loads(files[TOP_100K])
     report = diff_report(top, data_dir)
-    logger.info("Ranked %d names (%d reported names removed); vs the previous list: %s",
-                len(ranking.names), len(ranking.removed_reported), report)
+    logger.info("Ranked %d names (%d reported names kept off the allowlist, %d of them in the Redis rank); "
+                "vs the previous list: %s", len(ranking.popular), len(ranking.removed_reported),
+                len(json.loads(files[REPORTED])), report)
     overlap = overlap_with_previous(top, data_dir)
     churned = overlap is not None and overlap < MIN_OVERLAP and not args.allow_churn
     if args.dry_run:

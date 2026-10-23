@@ -123,8 +123,9 @@ async def check_tranco_popularity(domain: str) -> dict:
     yields {"ranked": False, "weight": 0} via the breaker fallback.
     """
     rank = await get_tranco_rank(domain)
+    registrable_rank = await _registrable_rank(domain, rank)
     if rank is None or rank <= 0:
-        return {"ranked": False, "rank": None, "weight": 0, "label": ""}
+        return {"ranked": False, "rank": None, "weight": 0, "label": "", "registrable_rank": registrable_rank}
     for threshold, delta, label in TRANCO_TIERS:
         if rank <= threshold:
             return {
@@ -132,7 +133,47 @@ async def check_tranco_popularity(domain: str) -> dict:
                 "rank": rank,
                 "weight": delta,
                 "label": label,
+                "registrable_rank": registrable_rank,
             }
     # Rank > 1,000,000 — shouldn't happen because the hash holds the top
     # 1M only, but treat as un-ranked for safety.
-    return {"ranked": False, "rank": rank, "weight": 0, "label": ""}
+    return {"ranked": False, "rank": rank, "weight": 0, "label": "", "registrable_rank": registrable_rank}
+
+
+async def _registrable_rank(domain: str, host_rank: Optional[int]) -> Optional[int]:
+    """The rank of the name's registrable domain (the host's own when it is
+    one). The bonus above stays the HOST's — a subdomain is not its parent —
+    but the scorer reads this one where a popular registrable changes what
+    a signal means: an AlienVault OTX mention of a top-1M site is a victim
+    reference far more often than a verdict, and gitlab.<bank>.ru is the
+    bank's own GitLab (scoring.calculate_score)."""
+    from api.services.scoring import registrable_domain
+
+    registrable = registrable_domain((domain or "").strip().lower())
+    if not registrable or registrable == (domain or "").strip().lower():
+        return host_rank if host_rank and host_rank > 0 else None
+    rank = await get_tranco_rank(registrable)
+    return rank if rank and rank > 0 else None
+
+
+async def popularity_status(r=None) -> dict:
+    """What the live Redis rank was built from (tranco:ranks:meta, written by
+    scripts/refresh_tranco.py) — /health/deep components.popularity. A
+    cache Tranco filled has no meta: `ok` is false until the licensed
+    refresh has run."""
+    import json
+
+    try:
+        r = r or await get_redis()
+        raw = await r.get("tranco:ranks:meta")
+    except Exception as exc:  # noqa: BLE001 — health is informational
+        return {"ok": False, "error": type(exc).__name__}
+    if not raw:
+        return {"ok": False, "source": None, "detail": "no tranco:ranks:meta — the ranks predate the licensed refresh"}
+    try:
+        meta = json.loads(raw)
+    except ValueError:
+        return {"ok": False, "error": "unreadable tranco:ranks:meta"}
+    out = {k: meta.get(k) for k in ("source", "built", "names", "crux_months")}
+    out["ok"] = meta.get("source") == "majestic+crux"
+    return out

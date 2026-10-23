@@ -60,14 +60,61 @@ def test_the_served_model_is_served_its_feature_data():
     assert set(ml_scorer._feature_data.top_domains) == set(data.top_domains)
 
 
-def test_no_archive_lingers_that_no_model_reads():
-    """data/feature_data/ holds only what the committed model reads — a
-    leftover copy of an old list is data the product no longer needs."""
+def test_every_archived_copy_is_named_by_its_hash():
+    """data/feature_data/ may hold a copy no model reads any more: the weekly
+    retrain (retrain-ml.yml) writes a model trained on the live files and
+    commits only the model files, so the copy the previous model read stays
+    until the next list rebuild prunes it (scripts/build_top_domains.py,
+    whose output a person commits). Harmless — resolve_feature_data()
+    selects by hash — but every file there must BE the copy its name says."""
     archive = DATA / "feature_data"
     if not archive.exists():
         return
-    wanted = {os.path.basename(archive_path(str(DATA), e["file"], e["sha256"])) for e in META["feature_data"].values()}
-    assert set(os.listdir(archive)) <= wanted
+    for name in os.listdir(archive):
+        stem, sha12, ext = name.rsplit(".", 2)
+        assert f"{stem}.{ext}" in FEATURE_DATA_FILES.values(), name
+        assert file_sha256(str(archive / name))[:12] == sha12, name
+
+
+def test_a_list_rebuild_then_the_weekly_retrain_keeps_the_checks_green(tmp_path):
+    """The path after a list refresh without a retrain: the rebuild archives
+    what the served model reads, the weekly job trains on the live files and
+    writes a model_meta.json naming them, and nothing prunes the archive
+    (the job commits the three model files only). Every check this file runs
+    on the committed tree must hold at each step."""
+    import sys
+
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import build_top_domains as btd
+
+    data = _copy_world(tmp_path)
+    meta_path = data / "model_meta.json"
+    meta_path.write_text(json.dumps({"feature_data": feature_data_record(str(data))}))
+
+    def check(meta):
+        got, where = resolve_feature_data(meta, str(data))
+        assert got is not None, where
+        for name in (os.listdir(data / "feature_data") if (data / "feature_data").exists() else []):
+            stem, sha12, ext = name.rsplit(".", 2)
+            assert file_sha256(str(data / "feature_data" / name))[:12] == sha12
+        return where
+
+    # 1. The rebuild: a new top_100k.json, the served model's copy archived.
+    new_top = json.loads((data / "top_100k.json").read_text())[:-1] + ["new-name.example"]
+    files = {"top_100k.json": json.dumps(new_top, indent=0) + "\n"}
+    assert btd.archive_model_feature_data(files, str(data), str(meta_path))
+    assert btd.write_all(files, str(data))
+    assert "feature_data/top_100k." in check(json.loads(meta_path.read_text()))
+
+    # 2. The weekly retrain: a model trained on the live files.
+    meta_path.write_text(json.dumps({"feature_data": feature_data_record(str(data))}))
+    where = check(json.loads(meta_path.read_text()))
+    assert where == "public_suffixes_in_top.json, top_100k.json"
+    assert list((data / "feature_data").iterdir())  # the old copy lingers, harmlessly
+
+    # 3. The next rebuild prunes what no model reads.
+    assert btd.prune_feature_archive(str(data), str(meta_path))
+    assert not (data / "feature_data").exists()
 
 
 # ── Selection by hash ──

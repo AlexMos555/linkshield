@@ -49,3 +49,7 @@ packages/*/src
 
 # Local runtime output
 data/feature_log.jsonl
+
+# Offline ML evaluation reports (per-host rows; the 2026-10-04 one samples
+# Tranco's list): the API never reads them.
+docs/benchmarks/*-ml-eval.json

@@ -1031,6 +1031,12 @@ review 34/34 (22). Полы в `MessageHeldOutTest` не менялись.
     --out docs/benchmarks/2026-10-04-ml-eval.json
   ```
 
+  С 23 октября 2026 опции `--tranco` нет: у списка Tranco не указана лицензия, а
+  его список по умолчанию усредняет Cloudflare Radar (CC BY-NC 4.0), поэтому
+  продукт его больше не скачивает и не читает (docs/THIRD_PARTY_FEEDS.md §2a).
+  Вместо неё — `--majestic <majestic_million.csv>` (Majestic Million, CC BY 3.0).
+  Числа ниже получены 4 октября ещё на снимке Tranco.
+
   Ленты скачаны один раз 4 октября ~16:40 UTC (PhishTank отдаёт 404 при повторных
   анонимных запросах — качать один раз). Python 3.9 с onnxruntime 1.19.2; бэкенд
   модели — `onnx`.

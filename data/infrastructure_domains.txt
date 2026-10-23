@@ -48,6 +48,7 @@ azure-dns.info
 googledomains.com
 akam.net
 akadns.net
+akadns6.net  # Akamai's IPv6 name servers
 cloudflare.net
 cloudflare-dns.com
 dnspod.net
@@ -163,6 +164,7 @@ amazon-adsystem.com
 # ── Cloudflare ──
 cloudflare.com
 cloudflareinsights.com
+cloudflaressl.com  # the SNI names of Cloudflare's edge certificates (sni.cloudflaressl.com)
 
 # ── Meta ──
 facebook.com

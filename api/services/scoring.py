@@ -564,6 +564,10 @@ _URL_SHORTENERS = {
     "short.io", "rebrand.ly", "tiny.cc", "surl.li", "shorturl.at",
     "v.gd", "qr.ae", "dub.sh", "link.infini.fr", "t.ly",
     "u.to", "clck.ru", "shrtco.de", "1url.cz",
+    # In the licensed top 100k (2026-10-23) and absent above, so they were
+    # answered instant-safe: a shortener's popularity vouches for no link.
+    "s.gy", "short.gy", "l1nq.com", "bityli.com", "me2.do", "chilp.it",
+    "abrir.link", "encurtador.dev", "beam.to", "jii.li", "buly.kr", "mpago.la",
 }
 
 
@@ -846,6 +850,14 @@ def _has_fake_tld_in_subdomain(domain: str) -> bool:
     return bool(subdomain) and _registered_tld_lookalike(domain) is not None
 
 
+def popularity_rank(signals: dict) -> Optional[int]:
+    """The best top-1M rank (Redis tranco:ranks) of the host or of its
+    registrable domain, from the analyzer's signals, or None."""
+    ranks = [r for r in (signals.get("tranco_rank") if signals.get("tranco_ranked") else None,
+                         signals.get("tranco_registrable_rank")) if isinstance(r, int) and 0 < r <= 1_000_000]
+    return min(ranks) if ranks else None
+
+
 def _is_url_shortener(domain: str) -> bool:
     """Check if domain is a known URL shortener."""
     base = _extract_base_domain(domain)
@@ -1013,12 +1025,24 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     #   - otherwise (obscure domain in threat reports) → full weight.
     # Uses the PSL-aware registrable domain so compound ccTLDs (.com.mx/.co.uk)
     # resolve correctly, not the naive 2-label split.
+    #
+    # The files are the allowlist; the Redis top-1M rank of the host or its
+    # registrable (tranco_rank, tranco_registrable_rank) counts as well:
+    # within the first 100,000 → skip, within the 1,000,000 → skip up to 5
+    # pulses and halve more. Since 2026-10-23 the allowlist holds the licensed
+    # ranking, and ~45,000 names that Tranco's top 100k carried rank 100k-1M:
+    # with full OTX weight rostelecom.ru, rosbank.ru, beget.ru and dream11.com
+    # went from safe to caution 27 and ddos-guard.net to dangerous 67 on
+    # victim-reference pulses (verifier, 2026-10-23).
     alienvault_pulses = signals.get("alienvault_pulse_count", 0)
     if alienvault_pulses > 0:
         from api.services.doh_gateway import _registrable_domain
         _reg = _registrable_domain(domain)
-        if _reg not in TOP_10K_RANKS:
-            _discount = _reg in TOP_100K
+        _rank = popularity_rank(signals)
+        _top_ranked = _rank is not None and _rank <= 100_000
+        _ranked = _rank is not None
+        if _reg not in TOP_10K_RANKS and not _top_ranked and not (_ranked and alienvault_pulses <= 5):
+            _discount = _reg in TOP_100K or _ranked
             if alienvault_pulses > 5:
                 _wt = 30 if _discount else 60
                 score += _wt
@@ -1160,6 +1184,8 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # Or a Russian brand's name bought under an open Russian zone
     # (sberbank.spb.ru, vk.nov.ru): the same deception, one level down.
     brand_sub = _check_brand_in_subdomain(ascii_domain)
+    if brand_sub and _is_self_hosted_product(ascii_domain, brand_sub, signals):
+        brand_sub = None
     zone_brand = None if brand_sub else _check_brand_under_open_zone(ascii_domain)
     tenant_brand = None if (brand_sub or zone_brand) else _check_brand_on_hosting_tenant(ascii_domain)
     if brand_sub or zone_brand or tenant_brand:
@@ -2458,6 +2484,30 @@ def _check_brand_in_subdomain(domain: str) -> Optional[str]:
         if part_clean in GLOBAL_TYPOSQUAT_TARGETS and reg != GLOBAL_TYPOSQUAT_TARGETS[part_clean]:
             return part_clean
     return None
+
+
+# Products companies run on their own servers under the product's name:
+# gitlab.tcsbank.ru, jira.rambler-co.ru, confluence.vk.team. As a whole
+# subdomain label of a registrable domain in the top 1M, the name says which
+# tool the company runs, not whose site it is. Until 2026-10-23 Tranco's top
+# 100k allowlisted most such parents; with the licensed list ~95 of these
+# hosts in CrUX Russia's top 50,000 drew brand_subdomain_abuse (+30) and 19
+# went 'dangerous' (verifier, 2026-10-23).
+_SELF_HOSTED_PRODUCTS = frozenset({"gitlab", "jira", "confluence", "bitbucket"})
+
+
+def _is_self_hosted_product(domain: str, brand: str, signals: dict) -> bool:
+    """`brand` is a self-hosted product, it is a whole subdomain label of
+    `domain` (gitlab.x.ru, not gitlab-login.x.ru) and the registrable domain
+    is in the top 1M (signals: tranco_registrable_rank)."""
+    if brand not in _SELF_HOSTED_PRODUCTS:
+        return False
+    rank = signals.get("tranco_registrable_rank")
+    if not (isinstance(rank, int) and 0 < rank <= 1_000_000):
+        return False
+    reg = registrable_domain(domain)
+    labels = domain[: -(len(reg) + 1)].split(".") if domain.endswith("." + reg) else []
+    return brand in labels
 
 
 # Russian brands for ONE narrow check: the brand's name bought under an open
