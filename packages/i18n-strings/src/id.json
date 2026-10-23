@@ -3812,7 +3812,13 @@
       "err_captcha_update": "Untuk masuk, diperlukan versi Cleanway yang lebih baru. Perbarui aplikasi lalu coba lagi.",
       "captcha_wait": "Menyelesaikan pemeriksaan keamanan…",
       "code_valid_for": "Kode berlaku selama 10 menit.",
-      "code_spam_hint": "Email belum masuk? Tunggu semenit dan periksa folder Spam. Pengirimnya adalah Cleanway."
+      "code_spam_hint": "Email belum masuk? Tunggu semenit dan periksa folder Spam. Pengirimnya adalah Cleanway.",
+      "password_sub": "Akun ini masuk dengan kata sandi.",
+      "password_ph": "Kata sandi",
+      "password_submit": "Masuk",
+      "err_password": "Masukkan kata sandi",
+      "err_password_wrong": "Email atau kata sandi salah.",
+      "err_password_rate_limited": "Terlalu banyak percobaan masuk. Tunggu beberapa menit dan coba lagi."
     },
     "onboarding": {
       "s1_title": "Cek apa saja sebelum Anda mengetuknya",

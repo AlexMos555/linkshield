@@ -3812,7 +3812,13 @@
       "err_captcha_update": "Per accedere serve una versione più recente di Cleanway. Aggiorna l'app e riprova.",
       "captcha_wait": "Completamento del controllo di sicurezza…",
       "code_valid_for": "Il codice è valido per 10 minuti.",
-      "code_spam_hint": "Nessuna e-mail? Attendi un minuto e controlla la cartella Spam. Il mittente è Cleanway."
+      "code_spam_hint": "Nessuna e-mail? Attendi un minuto e controlla la cartella Spam. Il mittente è Cleanway.",
+      "password_sub": "Questo account accede con una password.",
+      "password_ph": "Password",
+      "password_submit": "Accedi",
+      "err_password": "Inserisci la password",
+      "err_password_wrong": "E-mail o password errate.",
+      "err_password_rate_limited": "Troppi tentativi di accesso. Attendi qualche minuto e riprova."
     },
     "onboarding": {
       "s1_title": "Controlla qualsiasi cosa prima di toccarla",
