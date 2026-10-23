@@ -99,7 +99,7 @@ def test_the_archived_copy_is_chosen_after_the_list_moved_on(tmp_path):
 
     got, where = resolve_feature_data(meta, str(data))
     assert "feature_data/top_100k." in where
-    assert "only-the-new-list.example" not in got.top_domains
+    assert {"only-the-new-list.example"}.isdisjoint(got.top_domains)
     assert got.top_domains == frozenset(LIVE_FEATURE_DATA.top_domains)
 
 
@@ -194,8 +194,8 @@ def test_the_scorer_serves_the_archived_copy(fresh_scorer, monkeypatch):
 
     monkeypatch.setattr(mf, "extract_ml_features", spy)
     assert ml_scorer.ml_predict("google.com") is not None
-    assert "only-the-new-list.example" not in seen["data"].top_domains
-    assert "google.com" in seen["data"].top_domains
+    assert {"only-the-new-list.example"}.isdisjoint(seen["data"].top_domains)
+    assert {"google.com"} <= set(seen["data"].top_domains)
 
 
 def test_the_scorer_serves_no_model_without_its_feature_data(fresh_scorer, caplog):

@@ -235,7 +235,7 @@ def _build(data, responses, meta=None, **kw):
 def test_build_writes_the_four_files(small):
     assert _build(small, _world()) == 0
     top = json.loads((small / "top_100k.json").read_text())
-    assert len(top) == 20 and "evil-login.com" not in top  # reported, one list only
+    assert len(top) == 20 and {"evil-login.com"}.isdisjoint(top)  # reported, one list only
     assert json.loads((small / "top_10k.json").read_text()) == {d: i + 1 for i, d in enumerate(top[:5])}
     rules = json.loads((small / "public_suffixes_in_top.json").read_text())
     assert rules == ["github.io", "us.org"]
@@ -304,13 +304,13 @@ def test_a_rebuild_archives_what_the_model_reads_and_prunes_what_none_does(small
     psl_sha = hashlib.sha256(old["public_suffixes_in_top.json"]).hexdigest()
     assert not (archive / btd.archive_name("public_suffixes_in_top.json", psl_sha)).exists()
     assert (small / "public_suffixes_in_top.json").read_bytes() == old["public_suffixes_in_top.json"]
-    assert "new-first.com" in json.loads((small / "top_100k.json").read_text())
+    assert {"new-first.com"} <= set(json.loads((small / "top_100k.json").read_text()))
 
     # ml_scorer finds the model's copies by their hashes.
     from api.services.ml_features import resolve_feature_data
 
     data, where = resolve_feature_data(json.loads(meta.read_text()), str(small))
-    assert data is not None and "new-first.com" not in data.top_domains, where
+    assert data is not None and {"new-first.com"}.isdisjoint(data.top_domains), where
     assert where == ", ".join(sorted([os.path.join("feature_data", btd.archive_name("top_100k.json", top_sha)),
                                       "public_suffixes_in_top.json"]))
 
