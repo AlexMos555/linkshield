@@ -100,10 +100,18 @@ test("/ru/transparency/methodology credits its open data and links the licences"
   await expect(sources.locator('a[href="https://creativecommons.org/licenses/by/3.0/"]')).toHaveText("CC BY 3.0");
   await expect(sources.locator('a[href="https://creativecommons.org/licenses/by/4.0/"]')).toHaveText("CC BY 4.0");
   await expect(sources).toContainText("Majestic-12 Ltd");
-  await expect(sources).toContainText("Мы их изменили");
+  // What we changed, said for the ranking and for the model apart; the apps'
+  // lists only from their next releases (installed builds keep the old ones).
+  await expect(sources).toContainText("Чтобы составить этот рейтинг, мы их изменили");
+  await expect(sources).toContainText("со следующих версий");
+  await expect(sources).toContainText("примеры для обучения");
   for (const feed of ["PhishDestroy", "CERT Polska", "TweetFeed", "Phishunt", "Phishing.Database", "CSIRT Italia"]) {
     await expect(sources).toContainText(feed);
   }
+  // CSIRT Italia's TLP:CLEAR is a sharing label, not a licence: its line links ACN's own terms.
+  const csirt = sources.locator("li", { hasText: "CSIRT Italia" });
+  await expect(csirt.locator('a[href="https://www.acn.gov.it/portale/note-legali"]')).toHaveText("условия использования");
+  await expect(sources).not.toContainText("TLP");
   await expect(sources).not.toContainText("Methodology.");
 });
 

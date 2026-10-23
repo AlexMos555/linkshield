@@ -3,12 +3,13 @@
  * (the "Data sources" section) and the app's Settings → About links to it.
  *
  * Since 2026-10-23 the popularity ranking — the allowlist, the popularity
- * signal of every check, the phone's veto list, the extensions' tenant
- * suffixes — and the model's real-site examples come from the Majestic Million
- * (CC BY 3.0) and the Chrome UX Report (CC BY 4.0), and CC BY asks for credit
- * where the adapted data is used in public: who made it, the licence, a link,
- * and that it was changed. The changes are the section's text; the full table
- * of every source and its terms is docs/THIRD_PARTY_FEEDS.md.
+ * signal of every check, and from their next releases the phone's veto list
+ * and the extensions' tenant suffixes — and the model's real-site examples
+ * come from the Majestic Million (CC BY 3.0) and the Chrome UX Report
+ * (CC BY 4.0), and CC BY asks for credit where the adapted data is used in
+ * public: who made it, the licence, a link, and that it was changed. The
+ * changes are the section's text, the ranking's and the model's apart; the
+ * full table of every source and its terms is docs/THIRD_PARTY_FEEDS.md.
  *
  * Names, makers and licence names are never translated: the credit is to
  * them. `id` is the name the build scripts use (data/top_domains_sources.json,
@@ -100,11 +101,13 @@ export const PHISHING_SOURCES: readonly DataSource[] = [
     licenceUrl: "https://github.com/Phishing-Database/Phishing.Database/blob/master/LICENSE",
   },
   {
+    // Only TLP:CLEAR events are read, but TLP is a sharing label, not a
+    // licence (first.org/tlp): the feed states none, so this links ACN's terms.
     id: "CSIRT Italia",
     name: "CSIRT Italia (ACN)",
     by: null,
     url: "https://www.acn.gov.it/portale/csirt-italia/",
-    licence: "TLP:CLEAR",
-    licenceUrl: "https://www.first.org/tlp/",
+    licence: null,
+    licenceUrl: "https://www.acn.gov.it/portale/note-legali",
   },
 ];

@@ -14,6 +14,10 @@ Pinned here:
     missing key renders as the raw key on the page and in the app);
   * the Settings row names both CC BY datasets and licences in every
     language;
+  * the ranking's sentence does not say the installed apps carry it: the
+    Android app's veto list and the extensions' tenant suffixes ship with
+    their next releases (docs/THIRD_PARTY_FEEDS.md §2a), and only their own
+    sentence names them;
   * every feed the blocklist (with BLOCKLIST_LICENSED_ONLY, as production
     runs it) and the model are built from is listed in
     landing/lib/data-sources.ts, so a new source cannot ship uncredited.
@@ -44,6 +48,8 @@ ATTRIBUTION_KEYS: dict[tuple[str, ...], tuple[str, ...]] = {
         "sources_intro",
         "sources_popularity_heading",
         "sources_popularity_body",
+        "sources_popularity_apps",
+        "sources_popularity_model",
         "sources_phishing_heading",
         "sources_phishing_body",
         "sources_via",
@@ -112,6 +118,17 @@ def test_the_settings_row_names_both_cc_by_datasets(locale):
     desc = _load(locale)["mobile"]["settings"]["data_sources_desc"]
     for name in CREDITED_IN_APP:
         assert name in desc, f"[{locale}] mobile.settings.data_sources_desc does not name {name!r}: {desc!r}"
+
+
+@pytest.mark.parametrize("locale", LOCALES)
+def test_the_ranking_sentence_leaves_the_installed_apps_out(locale):
+    # Installed builds keep Tranco's lists until the next releases, so the
+    # present-tense sentence about the ranking names only what the server
+    # does; the apps get their own sentence, which promises the next releases.
+    # "Android" is spelled in Latin in every locale.
+    methodology = _load(locale)["landing"]["methodology"]
+    assert "Android" not in methodology["sources_popularity_body"], f"[{locale}] {methodology['sources_popularity_body']!r}"
+    assert "Android" in methodology["sources_popularity_apps"], f"[{locale}] {methodology['sources_popularity_apps']!r}"
 
 
 def test_both_cc_by_datasets_are_listed():

@@ -46,7 +46,11 @@ export function DataSources({ t, h2, h3 }: { t: Translate; h2: React.CSSProperti
       <h2 style={h2}>{t("sources_heading")}</h2>
       <p>{t("sources_intro")}</p>
       <h3 style={h3}>{t("sources_popularity_heading")}</h3>
-      <p>{t("sources_popularity_body")}</p>
+      {/* Three sentences: the ranking and what we changed in it, the apps'
+          lists (from their next releases), the model and its own changes. */}
+      <p>
+        {t("sources_popularity_body")} {t("sources_popularity_apps")} {t("sources_popularity_model")}
+      </p>
       <SourceList sources={POPULARITY_SOURCES} t={t} />
       <h3 style={h3}>{t("sources_phishing_heading")}</h3>
       <p>{t("sources_phishing_body")}</p>

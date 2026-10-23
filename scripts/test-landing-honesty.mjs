@@ -37,7 +37,8 @@
  *      every language, and promise no family alerts the app does not send.
  *  18. The "Data sources" section credits each dataset with a link to its
  *      licence text, the CC BY ones with the licence the ranking build
- *      recorded, and the app's Settings link lands on that section.
+ *      recorded, a TLP marking is never shown as a licence, and the app's
+ *      Settings link lands on that section.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -1021,6 +1022,15 @@ console.log("\ndata sources (the credit CC BY asks for)");
       assert.equal(source.licenceUrl, built.licence_url, `${id}: licence URL`);
     }
     assert.equal(byId("Chrome UX Report").via?.url, `https://${ranking.crux.via}`, "CrUX is read through the cache");
+  });
+  check("a TLP marking is a sharing label, not a licence", () => {
+    // FIRST: TLP was not designed for licensing terms, and TLP:CLEAR sharing
+    // is subject to standard copyright. A feed that only carries the label
+    // states no licence, so the line links the publisher's own terms.
+    for (const source of ALL) {
+      assert.doesNotMatch(source.licence ?? "", /\bTLP\b/i, `${source.id}: licence`);
+      assert.notEqual(new URL(source.licenceUrl).hostname, "www.first.org", `${source.id}: licenceUrl is the TLP standard`);
+    }
   });
   check("a CC BY source names who made it (CC BY 3.0 §4(b), 4.0 §3(a)(1)(A)(i))", () => {
     for (const source of ALL.filter((s) => s.licence?.startsWith("CC BY"))) {
