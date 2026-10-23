@@ -154,9 +154,10 @@ const PAGES = {
     "<!doctype html><title>Inbox</title><p>" +
     "<a id=\"l-scam\" href=\"http://scam-linked.example/win\">Prize</a> " +
     // The offline scorer's own verdict: the mock API rate-limits every
-    // "paypa1" host. paypa1-login.tk used to be it, but the server's name
-    // rules (which the extension now runs) do not read a look-alike glued to
-    // a lure word, so that one scores 30/caution offline.
+    // "paypa1" host. paypa1-login.tk used to be it, but until 2026-10-23 the
+    // server's name rules (which the extension runs) did not read a
+    // look-alike glued to a lure word, and it scored 30/caution offline; it
+    // is dangerous now, and login.paypa1.tk stays the link here.
     "<a id=\"l-guess\" href=\"http://login.paypa1.tk/\">Account</a> " +
     "<a id=\"l-wrapped\" href=\"https://www.google.com/url?q=http://scam-wrapped.example/&sa=D\">Search result</a> " +
     "<a id=\"l-hidden\" href=\"https://www.linkedin.com/slink?code=e2e\">Short link</a> " +
@@ -495,7 +496,10 @@ async function runTree(tree) {
       // verdicts, as the popup and the context menu show them. The background
       // used to run its own weaker scorer, which read paypa1-login.tk as
       // PayPal (70, dangerous) while the badge on the same link said caution.
-      const hosts = ["login.paypa1.tk", "paypa1-login.tk"];
+      // Since 2026-10-23 the shared name rules read paypa1-login as PayPal
+      // too (a look-alike spelling of the brand in a combo), so paypa1.tk is
+      // the one that stays caution.
+      const hosts = ["login.paypa1.tk", "paypa1-login.tk", "paypa1.tk"];
       const resp = await sendCheck(page, hosts);
       const scorer = offlineScorer(tree);
       for (const host of hosts) {
@@ -503,7 +507,7 @@ async function runTree(tree) {
         assert.equal(r.source, "local", `${host}: expected the offline verdict`);
         assert.equal(JSON.stringify(r), JSON.stringify(scorer.localScore(host)), host);
       }
-      assert.deepEqual(hosts.map((h) => resp.results.find((x) => x.domain === h).level), ["dangerous", "caution"]);
+      assert.deepEqual(hosts.map((h) => resp.results.find((x) => x.domain === h).level), ["dangerous", "dangerous", "caution"]);
     });
 
     await check("public checks carry the install number; a 429 pauses link lookups for its Retry-After, never the page check", async () => {

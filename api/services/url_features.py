@@ -309,6 +309,14 @@ def char_diversity(s: str) -> float:
 #    transliterated lure word (sberbank-bonus, ozon-priz, госуслуги-лк,
 #    yandex-pay-login): see api/services/ru_lures.py (PR #64, numbered 4
 #    there before this branch's 4 and 5 merged). Retrained.
+# Since 2026-10-23 the definition of is_typosquat is recorded per model
+# instead (model_meta.json feature_data.typosquat_rule,
+# scoring.TYPOSQUAT_RULE_VERSION): a served model is given the answer of the
+# rule it learned, so the scorer's rule can widen without a version here and
+# the replacement guard still compares a candidate with the served model.
+# Rule 2 (look-alike brands and several-word keyword combos for global
+# brands, PR #309) reaches the model at the next retrain. The logged
+# features below have no is_typosquat.
 FEATURES_VERSION = 6
 
 

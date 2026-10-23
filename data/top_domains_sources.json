@@ -74,8 +74,8 @@
       "sha256": "7971e32de61fb6bfe7e79adb61830ea60c2a8ac0e6147cc48a7a8bd67f665d7a"
     },
     "public_suffixes_in_top.json": {
-      "rules": 1187,
-      "sha256": "8a40e6f92329ec95f1047e30512355b0a96569d877f905dadb71a6a7cc60ef72"
+      "rules": 1662,
+      "sha256": "1e06b1b9a23ca9dbffe81b8961e233c1ac851e9670af4e5f3143377eb05988bf"
     },
     "top_domains_reported.json": {
       "names": 701,

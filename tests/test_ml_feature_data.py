@@ -163,11 +163,45 @@ def test_no_matching_file_means_no_model(tmp_path):
 
 def test_the_record_is_what_training_writes():
     record = feature_data_record(str(DATA), "a source")
-    assert set(record) == set(FEATURE_DATA_FILES)
+    assert set(record) == set(FEATURE_DATA_FILES) | {"typosquat_rule"}
     for key, file in FEATURE_DATA_FILES.items():
         assert record[key]["file"] == file
         assert record[key]["sha256"] == file_sha256(str(DATA / file))
         assert record[key]["source"] == "a source"
+    # …and the definition of is_typosquat it learns (scoring.TYPOSQUAT_RULE_VERSION).
+    assert record["typosquat_rule"] == scoring.TYPOSQUAT_RULE_VERSION
+
+
+# ── The typosquat rule a model learned (feature_data.typosquat_rule) ──
+
+def test_a_record_without_a_rule_is_rule_1(tmp_path):
+    """Models trained before 2026-10-23 record no typosquat_rule: they
+    learned is_typosquat from rule 1, and are given rule 1's answer."""
+    data = _copy_world(tmp_path)
+    record = feature_data_record(str(data))
+    del record["typosquat_rule"]
+    got, where = resolve_feature_data({"feature_data": record}, str(data))
+    assert got is not None and got.typosquat_rule == 1
+    assert "is_typosquat rule 1" in where
+    assert got.top_domains == frozenset(LIVE_FEATURE_DATA.top_domains)
+    assert extract_ml_features("micr0soft-login.com", got)["is_typosquat"] == 0.0
+    assert extract_ml_features("micr0soft-login.com")["is_typosquat"] == 1.0
+
+
+def test_a_record_with_the_live_rule_reads_the_live_rule(tmp_path):
+    data = _copy_world(tmp_path)
+    got, where = resolve_feature_data({"feature_data": feature_data_record(str(data))}, str(data))
+    assert got.typosquat_rule == scoring.TYPOSQUAT_RULE_VERSION
+    assert "typosquat" not in where
+
+
+@pytest.mark.parametrize("rule", [0, 99, "2", True, None])
+def test_a_rule_this_code_does_not_have_means_no_model(tmp_path, rule):
+    data = _copy_world(tmp_path)
+    record = feature_data_record(str(data))
+    record["typosquat_rule"] = rule
+    got, why = resolve_feature_data({"feature_data": record}, str(data))
+    assert got is None and "typosquat_rule" in why
 
 
 # ── The features read the data they are given ──

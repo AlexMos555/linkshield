@@ -1002,7 +1002,8 @@ def train(replace_anyway: bool = False, seed: int = SEED):
             # The suffixes the tenant feature knows (ml_features.shared_tenant).
             "shared_suffixes": len(_SCORER_SHARED_SUFFIXES | TENANT_SUFFIXES),
             # The data files read as features, by sha256: ml_scorer serves the
-            # model these exact copies (live, or archived in data/feature_data/).
+            # model these exact copies (live, or archived in data/feature_data/);
+            # and the typosquat rule its is_typosquat learned (typosquat_rule).
             "feature_data": feature_data_record(DATA_DIR, top_domains_provenance()),
         }, f, indent=2)
     print(f"Metadata saved to: {meta_path}")

@@ -231,10 +231,12 @@ def test_names_the_review_left_out_are_still_flagged(domain):
 @pytest.mark.parametrize("host", ["zq7x1random.s3.cloud.ru", "apple-id-verify.s3.cloud.ru"])
 def test_a_bucket_on_cloud_ru_keeps_the_typosquat_rule(no_ml, host):
     # Any label under s3.cloud.ru resolves and is served under Cloud.ru's
-    # certificate, so the bucket's name is its customer's choice. Until
-    # s3.cloud.ru is a hosting-tenant zone (its own rule, its own
-    # false-positive pass) this rule is the only one reading cloud.ru: with
-    # cloud.ru exempt, a random bucket went from caution to safe.
+    # certificate, so the bucket's name is its customer's choice. With
+    # cloud.ru exempt, a random bucket went from caution to safe. Since
+    # 2026-10-23 s3.cloud.ru is a tenant zone (data/tenant_zones.json: the
+    # brand-on-tenant rule reads the bucket's name), but cloud.ru stays
+    # unexempt: *.containers, *.apigw, *.cr and *.notebooks.cloud.ru resolve
+    # any label too (tests/test_tenant_zones_2026_10.py).
     _, level, reasons = calculate_score({"domain": host})
     assert level.value != "safe", (host, [(r.signal, r.weight) for r in reasons])
     assert "typosquatting" in {r.signal for r in reasons}
