@@ -373,7 +373,12 @@ class Settings(BaseSettings):
     # validate_settings() enforces this is set when env=production.
     trusted_proxy_cidrs: str = ""
 
-    # Rate limits — unsubscribe endpoint (per IP, very strict to prevent abuse)
+    # Rate limits — unsubscribe links (rate_limiter.unsubscribe_rate_limit).
+    # A link that verifies is limited per subscription (user + template),
+    # GET and POST apart, never per IP: one-click POSTs and link scanners
+    # arrive from a few shared provider addresses.
+    unsubscribe_link_limit_per_window: int = 20    # per subscription and method
+    # A link that does not verify (forged, expired) is limited per IP.
     unsubscribe_limit_per_window: int = 20         # 20 attempts per hour per IP
     unsubscribe_window_seconds: int = 3600
 

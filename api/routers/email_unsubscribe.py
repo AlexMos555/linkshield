@@ -16,7 +16,13 @@ switch — docs/runbooks/supabase-jwt-signing-keys.md.
 Expire after 90 days. A stolen token only lets the attacker UNSUBSCRIBE the user
 (which they can reverse in settings) — no data exfiltration risk.
 
-Rate limit: 10 POST/min per IP — prevent trivial DoS on email preferences.
+Rate limit (rate_limiter.unsubscribe_rate_limit; defaults in api/config.py):
+a link that verifies gets 20 GETs and 20 POSTs an hour per subscription
+(user + template), whatever address they come from — Gmail/Yahoo one-click
+POSTs leave from shared provider addresses and link scanners (Safe Links,
+Proofpoint) GET from small pools, so a per-IP budget 429'd real one-clicks.
+A link that does not verify gets 20 attempts an hour per IP, GET and POST
+together, against brute force.
 """
 from __future__ import annotations
 
@@ -321,7 +327,7 @@ def _render_unsub_page(template_key: str, token: str) -> str:
 
 @router.get(
     "/unsubscribe/{token}",
-    dependencies=[Depends(unsubscribe_rate_limit())],
+    dependencies=[Depends(unsubscribe_rate_limit(verify_token))],
 )
 async def unsubscribe_landing(token: str) -> HTMLResponse:
     """Render a confirmation page. User must POST to actually unsubscribe."""
@@ -340,7 +346,7 @@ async def unsubscribe_landing(token: str) -> HTMLResponse:
 
 @router.post(
     "/unsubscribe/{token}",
-    dependencies=[Depends(unsubscribe_rate_limit())],
+    dependencies=[Depends(unsubscribe_rate_limit(verify_token))],
 )
 async def unsubscribe_confirm(
     token: str,
