@@ -290,3 +290,16 @@ mozilla.org
 mozilla.net
 firefox.com
 ntp.org
+
+# ── Blockchain node and RPC endpoints that mobile wallets call ──
+# Verified by hand on 2026-10-23 rather than copied from an endpoint list:
+# RDAP, DNS over HTTPS, each endpoint's own response, and (blockrazor.xyz)
+# the operator's and BNB Chain's documentation. No tenants, no pages anyone
+# can publish; wallet apps resolve them all day. Phishing.Database and
+# TweetFeed list their API hosts because drainer kits and malware call these
+# public explorers and RPCs; the kits' own hosts stay blocked on their own
+# entries. Re-verify ownership before the expiry dates given: a dropped and
+# re-registered name would keep this guard.
+twnodes.com     # Trust Wallet's node service (x-tw-naas-* headers, *-blockbook explorer APIs); MarkMonitor/DNStination since 2020, registry lock, no apex site; expires 2028-02-02
+zelcore.io      # Zelcore wallet's Blockbook explorer nodes (blockbook.btc., .dash., … on Flux); product site since 2018; expires 2027-09-05
+blockrazor.xyz  # BlockRazor's BSC/Solana RPC: bsc.blockrazor.xyz is documented at blockrazor.io/rpc/bsc and shipped in AlphaWallet's and Unstoppable Wallet's BSC defaults; expires 2027-10-09

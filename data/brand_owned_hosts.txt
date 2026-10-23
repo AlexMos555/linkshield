@@ -11,6 +11,11 @@
 #   * it is the brand's: WHOIS registrant is the brand or its brand-protection
 #     registrar, and the zone is on the brand's own DNS or a corporate
 #     registrar's (MarkMonitor, CSC, Com Laude);
+#     where the registry shows no registrant organisation for any holder
+#     (.ru WHOIS is blank for sberbank.ru and vtb.ru too), the brand's own
+#     address space stands in for it: the zone's name servers sit in the
+#     brand's RIR netblock AND the brand's main domain is delegated to them.
+#     The entry's comment says that this is the evidence used;
 #   * the feed that lists it is wrong: it redirects to the brand, or serves
 #     the brand's own content.
 # A redirect to the brand is NOT evidence on its own. On 2026-09-19
@@ -37,3 +42,155 @@ www.walmart.com.br
 # Technology".
 americanexpress.io
 www.americanexpress.io
+
+# ── 2026-10-23 review: registrables only Tranco's DNS-traffic ranks protected ──
+# The licensed ranking (Majestic Million + Chrome UX Report) does not carry
+# these, so the publisher would block them whole once production's ranks
+# switch. Each was checked by RDAP/WHOIS, DNS over HTTPS, a plain homepage
+# GET and the feeds the publisher reads, then re-checked independently.
+
+# Microsoft Start (MSN). Verified 2026-10-23: RDAP (MarkMonitor) registrant
+# Microsoft Corporation, One Microsoft Way, domains@microsoft.com, created
+# 2021-05-05, client delete/transfer/update locks; NS ns1-4-204.azure-dns.*
+# (msn.com's Azure DNS set) plus nsone; TLS O=Microsoft Corporation,
+# CN=*.microsoftstart.com. Every host 301s to www.microsoftstart.com and on
+# to www.msn.com. Only Phishing.Database lists creator. and publisher. (bare
+# URLs, no path); two listed subdomains promote the apex, so all four go here.
+microsoftstart.com
+www.microsoftstart.com
+creator.microsoftstart.com
+publisher.microsoftstart.com
+
+# Conect Telecom (Brazilian regional ISP). Verified 2026-10-23: RDAP
+# (registro.br) registrant CONECT TELECOM, CNPJ 07.353.979/0001-20, since
+# 2016-10-23; NS ns1/ns2.conecttelecom.com.br in its own 191.242.176.0/20
+# (IP RDAP: the same CNPJ and contact); title "Conect Telecom - Conectando
+# você ao mundo!" (the footer also names CONECT CONTEÚDOS DIGITAIS LTDA, CNPJ
+# 28.287.292/0001-04, the usual Brazilian ISP content company). Only
+# Phishing.Database lists the bare name, with no URL in its link lists.
+conecttelecom.com.br
+
+# cyber_Folks S.A. (Polish hoster and registrar), the hyphenated twin of
+# cyberfolks.pl. Verified 2026-10-23: RDAP (dns.pl) registrant cyber Folks
+# S.A., Poznań, registered 2019-03-25 within a minute of cyberfolks.pl,
+# registrar cyber_Folks itself; NS ns1-3.cyberfolks.pl (cyberfolks.pl's own);
+# both zones carry the same moje.cert.pl verification TXT; the only
+# certificate is *.cyber-folks.pl from cyber_Folks' own CA. / 301s to
+# https://cyberfolks.pl. Only PhishDestroy lists the bare apex (added
+# 2026-08-14, no URL). www is NXDOMAIN; s1/s2/… are the hoster's server
+# names and stay blockable exactly.
+cyber-folks.pl
+
+# Asurion's phone-insurance claim domain. Verified 2026-10-23: RDAP
+# registrant Asurion, LLC (TN) at CSC Corporate Domains since 2000-01-26,
+# registry lock (server delete/transfer/update prohibited); Route 53, the
+# DNS provider of asurion.com itself. Apex and www 301 to
+# www.asurion.com/phoneclaim ("Mobile insurance claims | Asurion"). Only
+# Phishing.Database lists the apex; its only URLs are /att and
+# /att/program-terms, Asurion's real AT&T claim pages.
+phoneclaim.com
+www.phoneclaim.com
+
+# Russian Standard Bank (rsb.ru). Verified 2026-10-23. .ru WHOIS shows no
+# organisation for any holder, so ownership rests on address space (see the
+# header): NS ns1.rs.ru 194.67.29.194 and ns.rs.ru 212.46.217.200 are in RIPE
+# nets of JSC Russian Standard Bank, and the registry delegates rsb.ru
+# itself to ns.rs.ru and ns1.rs.ru; rsb.ru's MX is edge10-01/02.rs.ru and the
+# two SPF records share their addresses. Created 1999-06-28 (RU-CENTER).
+# / 301s to https://www.rsb.ru/ ("Банк Русский Стандарт"). Only
+# Phishing.Database lists the bare apex, with no URL in any feed.
+rs.ru
+www.rs.ru
+
+# Lillo (Newell Brands' Brazilian baby brand). Verified 2026-10-23: RDAP
+# (registro.br) registrant Newell Brands do Brasil Ltda, CNPJ
+# 60.594.538/0001-01, since 1998, tech contact CSC Corporate Domains; NS
+# udns1.cscdns.net and udns2.cscdns.uk; SPF include:_spf.newellbrands.com.
+# The store's footer carries the same CNPJ. Its pages move visitors after
+# 5 s to www.babybrands.com.br/lillo, registered 2026-04-15 to the same CNPJ
+# with the same admin and CSC NS: the brand's new store. Only
+# Phishing.Database lists the bare apex, no URL. Residual risk: the old store
+# runs an end-of-life Magento (PHP/7.3.33). If a feed ever reports a URL on
+# it, re-check this veto before it hides that URL.
+lillo.com.br
+www.lillo.com.br
+
+# Abnormal AI's end-user and training portal. Verified 2026-10-23: RDAP
+# MarkMonitor, registrant DNStination (MarkMonitor's proxy), created 2000,
+# client locks, Route 53. Its Amazon certificate (issued 2026-07-27) also
+# names training., release.email., enroll. and reset.abnormalplatform.com,
+# and it shares training.abnormalplatform.com's CloudFront addresses: only
+# abnormalplatform.com's holder could get that certificate. Title "Abnormal
+# AI", CSP allows Abnormal's backends only. Only PhishDestroy lists the bare
+# apex, with no URL.
+urlwatch.com
+www.urlwatch.com
+
+# CDK Global's Elead CRM login (a legacy domain). Verified 2026-10-23: RDAP
+# MarkMonitor, registrant redacted (IL), created 2003-04-10, the profile of
+# eleadcrm.com and cdkglobal.com; Azure DNS like eleadcrm.com. Served by
+# CDK's own App Service backends (wa-evo2fml-prod-02/-03 cookies, the same as
+# eleadcrm.com), its DigiCert certificate from the same batch as
+# eleadcrm.com's. / 302s to /evo2/fresh/login.asp, the real Elead CRM login
+# (CDK copyright, help.cdk.com, the form posts to itself). Only
+# Phishing.Database lists the bare apex, with no URL.
+dealerinfo.com
+www.dealerinfo.com
+
+# Microsoft Power Apps in the US Department of Defense cloud. Verified
+# 2026-10-23: MarkMonitor RDAP registrant Microsoft Corporation, One Microsoft
+# Way, domains@microsoft.com, created 2019-03-11, client locks; Azure DNS
+# (SOA azuredns-hostmaster.microsoft.com), DMARC reports to dmarc.microsoft.
+# make.apps. serves "Power Apps" (OV certificate O=Microsoft Corporation, CSP
+# reporting to csp.microsoft.com); play.apps. 302s to make.apps.; both on
+# Microsoft's 20.140.x.x. Phishing.Database lists the two hosts (its URLs are
+# /play/… canvas apps of DoD tenants, behind Entra sign-in) and they promoted
+# the apex. Tenant hosts such as <org>.crm.appsplatform.us stay blockable.
+appsplatform.us
+make.apps.appsplatform.us
+play.apps.appsplatform.us
+
+# mediaBEAM GmbH (German mail and cloud provider). Verified 2026-10-23: RDAP
+# (InterNetX) registrant, admin and tech mediaBEAM GmbH,
+# dnsadmin@mediabeam.com, created 1998-09-02; NS dns1/dns2.mediabeam.com,
+# dns1 in its own RIPE MEDIABEAM-NET. Title "mediaBEAM – Sichere Cloud &
+# E-Mail aus Deutschland", phone as in RDAP. No feed lists the apex:
+# Phishing.Database lists portal-sso.kdg. and portal-dev-sso.kdg.mediabeam.com
+# (a customer SSO portal on mediaBEAM's 31.25.48.0/21, content unverified)
+# and the two promoted it. Those two stay blocked exactly; only the apex and
+# www go here.
+mediabeam.com
+www.mediabeam.com
+
+# Investment Company FINAM (its J2TX crypto app). Verified 2026-10-23: WHOIS
+# (whois.nic.ru) registrant Joint Stock Company Investment Company FINAM,
+# dnsadmin@corp.finam.ru, created 2021-05-01 at RU-CENTER; NS ns/ns1-3.finam.dev
+# on exactly the addresses of ns/ns1-3.finam.ru. The two listed hosts resolve
+# to 78.41.195.145 in RIPE RU-FINAM-A0 (registrant FINAM) and serve the J2TX
+# app shell, with no form. Only PhishDestroy lists them (2026-02-11, VT 0),
+# and the two promoted the apex, so all three names go here.
+finam.dev
+wallet-j2tx-stable.finam.dev
+wallet-j2tx-staging.finam.dev
+
+# Baccarat (Global Retail Brands Australia's kitchenware chain). Verified
+# 2026-10-23: auDA RDAP registrant Baccarat, eligibility Trademark Owner, TM
+# 579264; registrar Instra (it sells brand protection); NS
+# ns1-3.onlydomains.com, the group's DNS for house.com.au,
+# robinskitchen.com.au and globalretailbrands.com.au too; Microsoft 365 mail,
+# DMARC reports to DMARC@globalretailbrands.net. www serves the retailer's own
+# store, whose structured data names Global Retail Brands Australia Pty Ltd.
+# Only PhishDestroy lists the bare apex (since before 2026-07-21, no URL),
+# together with the group's other storefronts.
+baccarat.com.au
+www.baccarat.com.au
+
+# Robins Kitchen (the same group). Verified 2026-10-23: auDA RDAP registrant
+# Global Retail Brands Australia Pty Ltd, ACN 006348205; Instra, NS
+# ns1-3.onlydomains.com as above; Vercel and Microsoft 365 like house.com.au.
+# www serves the store (parentOrganization Global Retail Brands Australia Pty
+# Ltd, ACN 006 348 205). Only PhishDestroy lists the bare apex, added in its
+# 2026-07-20 bulk commit with house.com.au and baccarat.com.au. Re-check RDAP
+# and drop both lines if the registrant ACN or the onlydomains NS change.
+robinskitchen.com.au
+www.robinskitchen.com.au
