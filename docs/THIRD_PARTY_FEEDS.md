@@ -244,6 +244,23 @@ until the next list rebuild prunes it — harmless (copies are chosen by
 hash; `tests/test_ml_feature_data.py` checks each is the file its name
 says and walks rebuild → retrain → suite), and no YAML change is needed.
 
+**Tenant zones whatever their rank** (`data/tenant_zones.json`, read by
+`scripts/build_public_suffixes_in_top.py`). Tranco ranked a tunnel or
+dynamic-DNS zone by its tenants' DNS traffic; the licensed ranking drops
+tenant rows before it ranks a name (step 1), so the zone's own name rarely
+ranks, and the rebuild above took 468 PSL private-section rules under 235
+names out of `data/public_suffixes_in_top.json` (trycloudflare.com,
+cloud.goog, jcloud.kz, playstation-cloud.com, ngrok.io, on.aws, us.kg,
+replit.dev, dynv6.net …). Every private-section rule of a listed operator
+is now kept, rules it adds later included (four more on 2026-10-23), and so
+are the zones the PSL lacks, each with dated evidence (Cloud.ru's bucket
+zones `s3.cloud.ru`, `s3-website.cloud.ru`, `s3-alt.cloud.ru`). The file
+went 1,187 → 1,662 rules in the same offline build (the 2026-10-23
+downloads; the other four files byte for byte as before), so the served
+model reads its archived copy `data/feature_data/public_suffixes_in_top.8a40e6f92329.json`
+until the weekly job trains on the new one. Not `data/hosting_platforms.json`:
+its `tenant_suffixes` reach the served model at once, with no pairing.
+
 **Blocklist.** The DNS-traffic lists Tranco averaged ranked internet
 infrastructure (gtld-servers.net, nflxvideo.net, lencr.org) and free
 dynamic-DNS zones; links and page loads do not. Two first-party lists put

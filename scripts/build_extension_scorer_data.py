@@ -109,6 +109,11 @@ EDGE_CASES = (
     "facebook-supports.blogspot.com", "gmail-support.netlify.app", "facebook-new-security.blogspot.com",
     "facebook-benjamin.blogspot.com", "netflix-lake.vercel.app", "facebook-2024.blogspot.com",
     "mb-way.ns01.info", "gedivan.duckdns.org",
+    # 2026-10-23: tenant zones kept whatever their rank (data/tenant_zones.json)
+    "paypal-login.trycloudflare.com", "debate-modifications-smilies-introduces.trycloudflare.com",
+    "microsoft-verify.cloud.goog", "sberbank-bonus.jcloud.kz", "apple-id-verify.s3.cloud.ru",
+    "zq7x1random.s3.cloud.ru", "gosuslugi.s3-website.cloud.ru", "lk-vtb.s3-alt.cloud.ru", "s3.cloud.ru",
+    "www.s3.cloud.ru", "cloud.ru", "netflix-billing-update.ngrok-free.app", "paypal-verify.us.kg",
     # malformed / degenerate input must not crash either side
     "a", "xn--", "xn---.com", "xn--a.com", "....xn--p1ai", "ru.com", "a.ru.com",
     # astral-plane letters: one character to Python, two UTF-16 units to JS

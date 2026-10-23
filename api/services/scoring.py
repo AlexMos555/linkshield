@@ -107,8 +107,12 @@ logger.info("Loaded %d top domains from %s", len(TOP_DOMAINS), _domains_source)
 # ever reaching the analyzer (found 2026-08-18 through the Android shield).
 # Every PSL rule whose last-two-labels base is in top_100k.json, multi-label
 # ones like s3.amazonaws.com included — rebuilt with the list in the same run
-# (scripts/build_top_domains.py, build_public_suffixes_in_top.rules_in_top).
-# See is_trusted_top_domain().
+# (scripts/build_top_domains.py, build_public_suffixes_in_top.shared_suffix_rules).
+# See is_trusted_top_domain(). Plus the tenant zones of data/tenant_zones.json
+# whatever their rank (trycloudflare.com, cloud.goog, s3.cloud.ru …): every
+# reader of this set — _check_brand_on_hosting_tenant, the ML tenant features,
+# the extension's copy — needs them, and a zone's tenants count nowhere in
+# the licensed ranking, so its own name rarely ranks.
 PUBLIC_SUFFIXES_IN_TOP: set[str] = _load_json_set("public_suffixes_in_top.json")
 if not PUBLIC_SUFFIXES_IN_TOP:
     logger.warning("public_suffixes_in_top.json missing — falling back to the hand list only")

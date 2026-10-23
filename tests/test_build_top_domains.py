@@ -274,6 +274,7 @@ def small(monkeypatch, tmp_path):
                         "MIN_FEEDS": 3, "TOP_N": 20, "TOP_RANKED_N": 5, "REDIS_N": 30, "MIN_PSL_IN_TOP": 1}.items():
         monkeypatch.setattr(btd, name, value)
     monkeypatch.setattr(btd.psl_in_top, "load_infrastructure", lambda: set())
+    monkeypatch.setattr(btd.psl_in_top, "load_tenant_zones", lambda: btd.psl_in_top.TenantZones(frozenset(), {}))
     data = tmp_path / "data"
     data.mkdir()
     return data
@@ -461,6 +462,8 @@ def test_public_suffix_rules_cover_the_infrastructure_names_too():
     looked up for those bases as well as for the top 100k."""
     top = set(json.loads((DATA / "top_100k.json").read_text()))
     infra = btd.psl_in_top.load_infrastructure()
-    bases = {btd.psl_in_top._base(r) for r in json.loads((DATA / "public_suffixes_in_top.json").read_text())}
-    assert bases <= top | infra
+    zones = btd.psl_in_top.load_tenant_zones()  # whatever their rank: tests/test_tenant_zones_2026_10.py
+    rules = set(json.loads((DATA / "public_suffixes_in_top.json").read_text())) - set(zones.not_in_psl)
+    bases = {btd.psl_in_top._base(r) for r in rules}
+    assert bases <= top | infra | zones.psl_operators
     assert bases & (infra - top)
