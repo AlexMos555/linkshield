@@ -21,6 +21,7 @@ import {
   recallIsPublishable,
   type BenchmarkSnapshot,
 } from "@/lib/benchmark";
+import { DATA_SOURCES_ANCHOR } from "@/lib/data-sources";
 import { localePath } from "@/lib/locale-path";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
@@ -140,6 +141,14 @@ export default async function TransparencyPage({
           {t("how_body")}{" "}
           <a href={localePath(safeLocale, "/transparency/methodology")} style={{ color: "#60a5fa", textDecoration: "underline" }}>
             {t("methodology_link")}
+          </a>
+        </p>
+        <p>
+          <a
+            href={`${localePath(safeLocale, "/transparency/methodology")}#${DATA_SOURCES_ANCHOR}`}
+            style={{ color: "#60a5fa", textDecoration: "underline" }}
+          >
+            {t("sources_link")}
           </a>
         </p>
       </section>

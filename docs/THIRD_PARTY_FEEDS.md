@@ -545,12 +545,28 @@ hashes, after the same guards the refresh applies):
 
 ## 5. Attribution
 
+**Where people read it.** The "Data sources" section at the end of
+cleanway.ai/transparency/methodology (`#data-sources`; the list is
+`landing/lib/data-sources.ts`, the text `landing.methodology.sources_*` in
+all ten languages) credits the datasets below with links to their licence
+texts and says what we changed. The transparency report links to it, and so
+does the app's Settings → About → "Data sources" (from the next app build;
+builds made before this change have no such row). CC BY 4.0 §3(a)(2) allows
+the credit as a link to a page that carries it. `tests/test_data_attribution.py`
+fails when a feed the blocklist or the model reads is missing from that list;
+`scripts/test-landing-honesty.mjs` holds the CC BY lines to the licences
+`data/top_domains_sources.json` and `data/model_meta.json` record.
+
 Cleanway's blocklist includes data from Phishunt.io (CC0), TweetFeed.live
 (CC0), CERT Polska's Lista Ostrzeżeń, CSIRT Italia (TLP:CLEAR),
-Phishing.Database (MIT, © Mitchell Krog), PhishDestroy DestroyList
-(phishdestroy.io, CC0 / MIT) and — until the licence cut —
-phishing.army (CC BY-NC 4.0) and OpenPhish; until 2026-10-21 also URLhaus
-(abuse.ch). Public suffixes from the Mozilla Public Suffix List (MPL 2.0).
+Phishing.Database (MIT, © Mitchell Krog, Nissar Chababy, Phishing.Database
+Contributors; the repository moved to
+github.com/Phishing-Database/Phishing.Database), PhishDestroy DestroyList
+(phishdestroy.io, CC0 / MIT); before the licence cut also phishing.army
+(CC BY-NC 4.0) and OpenPhish (`BLOCKLIST_LICENSED_ONLY` is `true` in the
+repository's Actions variables, read 2026-10-23), and until 2026-10-21
+URLhaus (abuse.ch). Public suffixes from the Mozilla Public Suffix List
+(MPL 2.0).
 
 Cleanway's domain popularity ranking — the allowlist, the top-1M in Redis,
 the blocklist's popularity veto, the phone's veto list and the

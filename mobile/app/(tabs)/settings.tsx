@@ -22,7 +22,7 @@ import {
 import { paidPlansVisible } from "../../src/utils/freemium";
 import { PAID_PLANS_OFFERED } from "../../src/services/freemium";
 import { linkGuardSettingShown } from "../../src/utils/platform-features";
-import { PRIVACY_POLICY_URL, TERMS_URL } from "../../src/utils/legal-urls";
+import { DATA_SOURCES_URL, PRIVACY_POLICY_URL, TERMS_URL } from "../../src/utils/legal-urls";
 
 type SkillLevel = "kids" | "regular" | "granny" | "pro";
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -462,6 +462,9 @@ export default function SettingsScreen() {
              onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)} />
         <Row label={t("mobile.settings.terms")} right={chevron}
              onPress={() => void Linking.openURL(TERMS_URL)} />
+        {/* The credit CC BY asks for: Cleanway's popular-site ranking is adapted open data. */}
+        <Row label={t("mobile.settings.data_sources")} desc={t("mobile.settings.data_sources_desc")} right={chevron}
+             onPress={() => void Linking.openURL(DATA_SOURCES_URL)} />
         {/* The version this build really is — from the app config, not a literal. */}
         <Row label={t("mobile.settings.version")}
              right={<Text style={s.value}>{Constants.expoConfig?.version ?? "—"}</Text>} />

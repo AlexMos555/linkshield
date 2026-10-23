@@ -87,6 +87,24 @@ test("/ru/transparency shows no hand-written numbers or raw placeholders", async
     await expect(fp).toContainText("Пока не измеряли");
   }
   await expect(fp).not.toContainText("{");
+  await expect(page.locator('a[href="/ru/transparency/methodology#data-sources"]')).toBeVisible();
+});
+
+test("/ru/transparency/methodology credits its open data and links the licences", async ({ page }) => {
+  await page.goto("/ru/transparency/methodology#data-sources");
+  const sources = page.locator("section#data-sources");
+  await expect(sources.getByRole("heading", { name: "Источники данных" })).toBeVisible();
+  // CC BY 3.0 / 4.0: who made it, the licence text, and that we changed it.
+  await expect(sources.locator('a[href="https://majestic.com/reports/majestic-million"]')).toHaveText("Majestic Million");
+  await expect(sources.locator('a[href="https://developer.chrome.com/docs/crux"]')).toHaveText("Chrome UX Report");
+  await expect(sources.locator('a[href="https://creativecommons.org/licenses/by/3.0/"]')).toHaveText("CC BY 3.0");
+  await expect(sources.locator('a[href="https://creativecommons.org/licenses/by/4.0/"]')).toHaveText("CC BY 4.0");
+  await expect(sources).toContainText("Majestic-12 Ltd");
+  await expect(sources).toContainText("Мы их изменили");
+  for (const feed of ["PhishDestroy", "CERT Polska", "TweetFeed", "Phishunt", "Phishing.Database", "CSIRT Italia"]) {
+    await expect(sources).toContainText(feed);
+  }
+  await expect(sources).not.toContainText("Methodology.");
 });
 
 test("/ru/transparency/methodology is Russian and shows results only for a big enough sample", async ({ page }) => {
