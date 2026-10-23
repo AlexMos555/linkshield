@@ -147,7 +147,7 @@ def parse_alternates(raw: Any, brands: Mapping[str, str]) -> tuple[frozenset[str
       official    registrable domains that owner runs besides the listed
                   one (googlemail.com, yahoo.de)
       unrelated   other owners' sites the rule reads as one of the names
-                  (cloud.ru is Cloud.ru LLC's, not iCloud's)
+                  (hicloud.com is Huawei's, not iCloud's)
 
     each domain mapped to its evidence. Nothing else: a switch (not_typos,
     shared_name …) changes how a name is compared, and those come with a

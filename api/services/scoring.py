@@ -365,7 +365,7 @@ def _load_global_alternates() -> tuple[frozenset[str], frozenset[str]]:
     parsed by ru_brands.parse_alternates.
 
     Until 2026-10-23 the Tranco top-100k answered for googlemail.com,
-    yahoo.de or cloud.ru before this rule ran; the licensed ranking does
+    yahoo.de or hicloud.com before this rule ran; the licensed ranking does
     not carry them. Exact registrable-domain exemptions and nothing else —
     the names keep their rule ('measured' is what changes it). A malformed
     section is logged and exempts nothing, as with 'measured'."""
@@ -394,7 +394,7 @@ MEASURED_GLOBAL_GROUPS, _NOT_IN_MODEL = _load_measured_global_groups()
 # Every group whose exemptions the rules honour, Russian and global.
 _EXEMPTION_GROUPS: tuple[ru_brands.BrandGroup, ...] = RU_BRAND_GROUPS + MEASURED_GLOBAL_GROUPS
 # The flat list's owners' other domains (googlemail.com, yahoo.de) and
-# other owners' sites the rule read as a listed name (cloud.ru), verified
+# other owners' sites the rule read as a listed name (hicloud.com), verified
 # one by one when the licensed ranking took them off the allowlist.
 ALTERNATE_OFFICIAL_DOMAINS, ALTERNATE_UNRELATED_DOMAINS = _load_global_alternates()
 

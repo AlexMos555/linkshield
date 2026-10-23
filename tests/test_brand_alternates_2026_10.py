@@ -17,7 +17,8 @@ are listed with that evidence. These tests pin:
     the brands keep their rule, close look-alikes of the listed names are
     still flagged;
   - what the review left out on purpose: tenant zones (an exemption
-    covers every host under the registrable) and names without proof.
+    covers every host under the registrable: cloud.ru is Cloud.ru's, but
+    *.s3.cloud.ru is its customers' buckets) and names without proof.
 """
 from __future__ import annotations
 
@@ -138,7 +139,7 @@ _WAS = {
     "googlemail.com": "google.com", "googl.com": "google.com", "google.us": "google.com", "google.hk": "google.com",
     "cloud.google": "icloud.com", "youtube.ru": "youtube.com",
     "microsoft.us": "microsoft.com", "office365.us": "office.com", "onedrive.us": "onedrive.live.com",
-    "apple.cn": "apple.com", "cloud.ru": "icloud.com", "hicloud.com": "icloud.com",
+    "apple.cn": "apple.com", "cloud.us": "icloud.com", "hicloud.com": "icloud.com",
     "facebook.net": "facebook.com", "whatsapp.net": "whatsapp.com",
     "yahoo.de": "yahoo.com", "ymail.com": "gmail.com",
     "adobelogin.com": "adobe.com", "hsbcnet.com": "hsbc.com", "nintendo.fr": "nintendo.com",
@@ -211,6 +212,9 @@ def test_the_exemption_is_the_typosquat_rules_only():
     # cover every tunnel, codespace, tenant and Azure resource.
     "trycloudflare.com", "cloudflare.net", "github.dev", "onmicrosoft.com", "azure.net", "azure.cn",
     "signalr.net", "cloud.goog",
+    # Cloud.ru's own, but its S3 storage serves every customer's bucket at
+    # <bucket>.s3.cloud.ru (wildcard DNS, a *.s3.cloud.ru certificate).
+    "cloud.ru",
     # Not proven: privacy-proxied and not Google's (goole.com); no registrant
     # anywhere and shared DNS (outlook.de, myoffice.ru, nintendo.ru); a
     # brand-protection registrar but neither the owner's DNS nor a
@@ -222,3 +226,16 @@ def test_the_exemption_is_the_typosquat_rules_only():
 def test_names_the_review_left_out_are_still_flagged(domain):
     assert domain not in scoring._BRAND_LEGIT_DOMAINS
     assert _check_typosquatting_v2(domain) is not None
+
+
+@pytest.mark.parametrize("host", ["zq7x1random.s3.cloud.ru", "apple-id-verify.s3.cloud.ru"])
+def test_a_bucket_on_cloud_ru_keeps_the_typosquat_rule(no_ml, host):
+    # Any label under s3.cloud.ru resolves and is served under Cloud.ru's
+    # certificate, so the bucket's name is its customer's choice. Until
+    # s3.cloud.ru is a hosting-tenant zone (its own rule, its own
+    # false-positive pass) this rule is the only one reading cloud.ru: with
+    # cloud.ru exempt, a random bucket went from caution to safe.
+    _, level, reasons = calculate_score({"domain": host})
+    assert level.value != "safe", (host, [(r.signal, r.weight) for r in reasons])
+    assert "typosquatting" in {r.signal for r in reasons}
+    assert _check_typosquatting_v2(host)[0] == "icloud.com"
