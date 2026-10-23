@@ -5,9 +5,16 @@ Every transactional email includes a signed URL. Clicking it:
   - GET  /api/v1/email/unsubscribe/{token}  → HTML page with "Confirm unsubscribe" button
   - POST /api/v1/email/unsubscribe/{token}  → processes unsubscribe, returns 200
 
-Also supports RFC 8058 one-click (POST with Content-Type: multipart/form-data
-  and body `List-Unsubscribe=One-Click`). Gmail/Apple fire this automatically
-  when user taps their built-in "unsubscribe" button.
+Two senders POST to that URL, told apart by the `List-Unsubscribe` form field:
+  - a mail client's built-in "unsubscribe" button (RFC 8058 one-click), which
+    sends `List-Unsubscribe=One-Click` as multipart/form-data or
+    application/x-www-form-urlencoded (the List-Unsubscribe-Post header of
+    every email, api/services/email.py, tells it to);
+  - the confirmation page's own form, whose only control is an unnamed submit
+    button, so the browser posts an empty body.
+The valid token alone authorises the unsubscribe: the field only says which
+of the two sent it (see `unsubscribe_confirm`). GET never unsubscribes — link
+scanners and prefetchers fetch every URL in a message.
 
 Tokens are HMAC-signed with UNSUBSCRIBE_HMAC_KEY (falling back to the legacy
 SUPABASE_JWT_SECRET while that is unset) + a per-email purpose string. Links
@@ -35,7 +42,7 @@ import os
 import time
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from api.services.rate_limiter import unsubscribe_rate_limit
@@ -47,6 +54,10 @@ router = APIRouter(prefix="/api/v1/email", tags=["email"])
 
 _TOKEN_TTL_SECONDS = 90 * 24 * 3600  # 90 days
 _PURPOSE = "email_unsubscribe_v1"
+
+# RFC 8058 §3.1: the one key/value pair a mail client POSTs for one-click.
+ONE_CLICK_FIELD = "List-Unsubscribe"
+ONE_CLICK_VALUE = "One-Click"
 
 # The routes below are served by the API only. cleanway.ai is the Next.js
 # site, which has no /api/v1 rewrite: a link built on it answered 404.
@@ -153,8 +164,11 @@ def verify_token(token: str) -> Optional[dict]:
 # ─── Routes ────────────────────────────────────────────────────────
 
 
-async def _process_unsubscribe(payload: dict) -> None:
+async def _process_unsubscribe(payload: dict, source: str = "unknown") -> None:
     """Mark user + template as unsubscribed in Supabase.
+
+    `source` (one_click / page / unexpected, see `post_source`) only goes to
+    the log, so ops can see whether mail clients' one-click POSTs reach us.
 
     Persistence model: we upsert into `user_settings` and merge into the
     existing JSONB `settings` object the path
@@ -173,7 +187,7 @@ async def _process_unsubscribe(payload: dict) -> None:
     template_key = payload["template"]
     logger.info(
         "email.unsubscribe.recorded",
-        extra={"uid": uid, "template": template_key},
+        extra={"uid": uid, "template": template_key, "source": source},
     )
 
     supabase_url = os.environ.get("SUPABASE_URL", "").strip()
@@ -344,24 +358,57 @@ async def unsubscribe_landing(token: str) -> HTMLResponse:
     return HTMLResponse(_render_unsub_page(payload["template"], token))
 
 
+def post_source(list_unsubscribe: Optional[str]) -> str:
+    """Which sender a POST came from, by its `List-Unsubscribe` form field.
+
+    one_click  — `List-Unsubscribe=One-Click`: a mail client (RFC 8058).
+    page       — no field (or an empty one): the confirmation page's form,
+                 which has nothing named in it. Also any body that is not
+                 form-encoded, since only form fields are read.
+    unexpected — the field with any other value.
+    """
+    if list_unsubscribe is None:
+        return "page"
+    if list_unsubscribe == ONE_CLICK_VALUE:
+        return "one_click"
+    return "unexpected"
+
+
 @router.post(
     "/unsubscribe/{token}",
     dependencies=[Depends(unsubscribe_rate_limit(verify_token))],
 )
 async def unsubscribe_confirm(
     token: str,
-    request: Request,
-    List_Unsubscribe: Optional[str] = Form(default=None),
+    # The field is named `List-Unsubscribe`, which is not a Python identifier:
+    # without the alias FastAPI read a `List_Unsubscribe` field that no mail
+    # client sends, so a one-click POST arrived here as None.
+    list_unsubscribe: Optional[str] = Form(default=None, alias=ONE_CLICK_FIELD),
 ) -> PlainTextResponse:
-    """Process unsubscribe. Supports both browser POST and RFC 8058 one-click."""
+    """Process unsubscribe. Supports both browser POST and RFC 8058 one-click.
+
+    The signed token is the whole authorisation:
+      - invalid or expired token → 400, nothing recorded, whatever the body;
+      - valid token → unsubscribed and 200 (never a redirect, RFC 8058 §3.1),
+        whatever the body — with `List-Unsubscribe=One-Click` (mail client),
+        without the field (the confirmation page's form), or with any other
+        value of it (logged).
+    """
     payload = verify_token(token)
     if payload is None:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
 
-    # Validate RFC 8058 header if present — Gmail/Apple send "List-Unsubscribe=One-Click"
-    # We accept any POST that has a valid token — the header validation is belt+suspenders.
-    if List_Unsubscribe is not None and List_Unsubscribe != "One-Click":
-        logger.warning("email.unsubscribe.bad_header", extra={"value": List_Unsubscribe})
+    source = post_source(list_unsubscribe)
+    # A value other than One-Click is not RFC 8058, yet it is honoured: the
+    # URI alone identifies the recipient and the list (RFC 8058 §3.1), the
+    # same token with an empty body unsubscribes anyway, so refusing would
+    # protect nothing — and would keep mailing someone who asked us to stop.
+    # Only its size is logged: the value is whatever the sender typed.
+    if source == "unexpected":
+        logger.warning(
+            "email.unsubscribe.bad_one_click_value",
+            extra={"bytes": len(list_unsubscribe.encode("utf-8"))},
+        )
 
-    await _process_unsubscribe(payload)
+    await _process_unsubscribe(payload, source=source)
     return PlainTextResponse("You've been unsubscribed.", status_code=200)

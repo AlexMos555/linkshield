@@ -1,10 +1,10 @@
 # Google Play graphics — Cleanway Android
 
 Paste order and the listing text: `docs/STORE_SUBMISSION_KIT.md` §1.2–1.3.
-The first Play upload is **1.0.5 (versionCode 106)**,
-`cleanway-1.0.5-106-play.aab` (`docs/RUSTORE_SUBMISSION.md` §2, build C). The
+The first Play upload is **1.0.6 (versionCode 107)**,
+`cleanway-1.0.6-107-play.aab` (`docs/RUSTORE_SUBMISSION.md` §2, build C). The
 frames below are from the unpublished 1.0.4 (104) build: before uploading,
-compare the five screens on the 1.0.5 Play build and recapture any that differ.
+compare the five screens on the 1.0.6 Play build and recapture any that differ.
 Sizes and "no alpha" are checked by `scripts/check_store_submission_kit.py`.
 
 ## Phone screenshots — `en/` (en-US) and `ru/` (ru-RU)

@@ -61,7 +61,7 @@ def recorded(monkeypatch) -> list[tuple[str, str]]:
     """Unsubscribes that reached the persistence step (no Supabase here)."""
     seen: list[tuple[str, str]] = []
 
-    async def _record(payload):
+    async def _record(payload, **_kwargs):
         seen.append((payload["uid"], payload["template"]))
 
     monkeypatch.setattr(eu, "_process_unsubscribe", _record)
