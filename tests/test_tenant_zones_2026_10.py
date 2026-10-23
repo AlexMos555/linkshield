@@ -21,7 +21,14 @@ These tests pin:
   - the served model keeps the copy of the file it was trained on until a
     model trained on the new one replaces it;
   - the blocklist publisher blocks a bucket exactly and never promotes
-    cloud.ru.
+    cloud.ru;
+  - on a domain registry's zone (registries: za.com, us.kg, com.ru …),
+    where one label is one registrant's own domain, the publisher still
+    promotes the registrant's name the way it promotes any registrable
+    (review of PR #309: cs-money.com.ru, awi.za.com, free-account.us.kg
+    were blocked whole on main and would not have been) — while on a
+    hosting zone the label under it can be a shared server (hnd1.zeabur.app)
+    and stays exact-only.
 """
 from __future__ import annotations
 
@@ -44,6 +51,8 @@ import build_public_suffixes_in_top as psl_in_top  # noqa: E402
 _EVIDENCE = re.compile(r"^Verified \d{4}-\d{2}-\d{2}: \S")
 # The four names PR #294 found missing, and one of each kind the diff found.
 RESTORED = ("trycloudflare.com", "cloud.goog", "jcloud.kz", "playstation-cloud.com")
+# Domain registries among them: one label is one registrant's domain.
+REGISTRY_ZONES = ("us.kg", "za.com", "us.ci", "eu.cc", "de5.net", "com.de", "com.ru", "org.ru", "dnsabr.com")
 CLOUD_RU_BUCKET_ZONES = ("s3.cloud.ru", "s3-website.cloud.ru", "s3-alt.cloud.ru")
 # The sha256 of data/public_suffixes_in_top.json the 2026-10-23 model was
 # trained on (before this change).
@@ -80,9 +89,27 @@ def test_the_loader_returns_both_sections():
     assert set(CLOUD_RU_BUCKET_ZONES) <= set(zones.not_in_psl)
 
 
+def test_registries_are_listed_operators_with_dated_evidence():
+    doc = _doc()
+    registries = {k: v for k, v in doc["registries"].items() if not k.startswith("_")}
+    names = set(doc["psl_operators"]["names"])
+    assert set(REGISTRY_ZONES) <= set(registries)
+    for zone, why in registries.items():
+        assert zone in names, zone
+        assert _EVIDENCE.match(why), (zone, why)
+    # Zones only a government body or a school can register in are not
+    # here: a listed host there is a hacked site, never a phisher's own name.
+    assert not {"gov.ru", "edu.ru"} & set(registries)
+    assert psl_in_top.load_tenant_zones().registries == frozenset(registries)
+
+
 @pytest.mark.parametrize("text", ["{", "[]", '{"psl_operators": {"names": "x.com"}}',
                                   '{"not_in_psl": {"x.ru": "no evidence"}}',
-                                  '{"psl_operators": {"names": ["Bad.Com"]}}'])
+                                  '{"psl_operators": {"names": ["Bad.Com"]}}',
+                                  # a registry must be a listed operator, with evidence
+                                  '{"psl_operators": {"names": ["za.com"]}, '
+                                  '"registries": {"us.kg": "Verified 2026-10-23: x"}}',
+                                  '{"psl_operators": {"names": ["za.com"]}, "registries": {"za.com": "trust me"}}'])
 def test_a_malformed_file_is_refused(tmp_path, text):
     path = tmp_path / "tenant_zones.json"
     path.write_text(text)
@@ -92,7 +119,7 @@ def test_a_malformed_file_is_refused(tmp_path, text):
 
 def test_a_missing_file_adds_nothing(tmp_path):
     zones = psl_in_top.load_tenant_zones(tmp_path / "absent.json")
-    assert zones.psl_operators == frozenset() and zones.not_in_psl == {}
+    assert zones.psl_operators == frozenset() and zones.not_in_psl == {} and zones.registries == frozenset()
 
 
 # ── The rule that builds public_suffixes_in_top.json ──
@@ -261,3 +288,55 @@ def test_the_publisher_blocks_a_bucket_exactly_and_never_cloud_ru():
     # buckets were skipped as "a popular organisation's own host".
     out = rdd.build_blockset(hosts, set(), is_popular=lambda reg: reg == "cloud.ru", brand_owned=frozenset())
     assert out == set(hosts)
+
+
+# ── Registries: a registrant's name is promoted, the zone never ──
+
+def _blockset(hosts, psl=None):
+    import refresh_dangerous_domains as rdd
+
+    psl = psl or {"com", "ru", "kg", "app", "de", "net", "com.ru", "com.de", "za.com", "us.kg", "zeabur.app",
+                  "de5.net", "dnsabr.com"}
+    return rdd.build_blockset(hosts, set(), public_suffixes=psl, brand_owned=frozenset())
+
+
+def test_a_registrants_www_host_promotes_its_name():
+    # A feed listing www.cs-money.com.ru: the apex is the phisher's too.
+    out = _blockset(["www.cs-money.com.ru", "www.bitmain.com.de"])
+    assert {"cs-money.com.ru", "bitmain.com.de"} <= out
+    assert not {"com.ru", "com.de"} & out
+
+
+def test_numbered_subdomains_promote_a_registrants_name():
+    hosts = [f"{n}.awi.za.com" for n in range(13869052, 13869066)]  # 14, as the feeds listed them
+    out = _blockset(hosts + ["id1.free-account.us.kg", "id2.free-account.us.kg"])
+    assert {"awi.za.com", "free-account.us.kg"} <= out
+    assert not {"za.com", "us.kg"} & out
+
+
+def test_one_subdomain_does_not_promote_on_a_registry_either():
+    out = _blockset(["login.lindinaks.dnsabr.com"])
+    assert out == {"login.lindinaks.dnsabr.com"}
+
+
+def test_the_zone_itself_is_never_listed_or_promoted():
+    out = _blockset(["za.com", "www.za.com", "us.kg", "a.b.us.kg", "c.b.us.kg"])
+    assert "za.com" not in out and "us.kg" not in out
+    assert "b.us.kg" in out
+
+
+def test_a_hosting_zones_shared_server_is_not_promoted():
+    # hnd1.zeabur.app is one of Zeabur's regional hosts: three customers'
+    # sites under it are three tenants, not one owner's subdomains.
+    hosts = ["onlinprestamo.hnd1.zeabur.app", "prestamoenline.hnd1.zeabur.app", "prestamos-online.hnd1.zeabur.app"]
+    out = _blockset(hosts)
+    assert out == set(hosts)
+    assert "hnd1.zeabur.app" not in out
+
+
+def test_a_popular_registrant_is_not_promoted():
+    import refresh_dangerous_domains as rdd
+
+    out = rdd.build_blockset(["www.shop.com.de", "a.shop.com.de"], set(), is_popular=lambda reg: reg == "shop.com.de",
+                             public_suffixes={"de", "com.de"}, brand_owned=frozenset())
+    assert out == set()

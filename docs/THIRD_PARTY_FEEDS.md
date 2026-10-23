@@ -260,6 +260,12 @@ downloads; the other four files byte for byte as before), so the served
 model reads its archived copy `data/feature_data/public_suffixes_in_top.8a40e6f92329.json`
 until the weekly job trains on the new one. Not `data/hosting_platforms.json`:
 its `tenant_suffixes` reach the served model at once, with no pairing.
+The file's `registries` (za.com, us.kg, com.ru, com.de, eu.cc … — domain
+registries, each with dated evidence) tell the blocklist publisher that one
+label under the zone is a registrant's own domain: `build_blockset` promotes
+it the way it promotes any registrable (cs-money.com.ru on its www. host,
+awi.za.com on 14 listed subdomains), where every other tenant zone stays
+exact-only (hnd1.zeabur.app is a Zeabur region, not one owner).
 
 **Blocklist.** The DNS-traffic lists Tranco averaged ranked internet
 infrastructure (gtld-servers.net, nflxvideo.net, lencr.org) and free

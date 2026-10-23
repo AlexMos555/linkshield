@@ -61,10 +61,13 @@ _EVIDENCE = re.compile(r"^Verified \d{4}-\d{2}-\d{2}: \S")
 
 class TenantZones(NamedTuple):
     """data/tenant_zones.json: the operators whose PSL private-section
-    rules are kept whatever their popularity, and the zones the PSL lacks
-    (zone → dated evidence)."""
+    rules are kept whatever their popularity, the zones the PSL lacks
+    (zone → dated evidence), and which operators are domain registries (the
+    blocklist publisher promotes a registrant's name there: see the file's
+    'registries' section)."""
     psl_operators: frozenset[str]
     not_in_psl: dict[str, str]
+    registries: frozenset[str] = frozenset()
 
 
 def load_infrastructure(path: Path = INFRASTRUCTURE) -> set[str]:
@@ -83,7 +86,7 @@ def load_tenant_zones(path: Path = TENANT_ZONES) -> TenantZones:
     """data/tenant_zones.json, checked. A missing file adds nothing; a
     malformed one raises ValueError (the build keeps the previous files)."""
     if not path.exists():
-        return TenantZones(frozenset(), {})
+        return TenantZones(frozenset(), {}, frozenset())
     doc = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(doc, dict):
         raise ValueError(f"{path.name}: not an object")
@@ -100,7 +103,16 @@ def load_tenant_zones(path: Path = TENANT_ZONES) -> TenantZones:
             raise ValueError(f"{path.name}: not_in_psl: {zone!r} is not a lowercase host name")
         if not isinstance(why, str) or not _EVIDENCE.match(why):
             raise ValueError(f"{path.name}: not_in_psl: {zone!r} needs 'Verified YYYY-MM-DD: <evidence>'")
-    return TenantZones(frozenset(names), zones)
+    registries = doc.get("registries") or {}
+    if not isinstance(registries, dict):
+        raise ValueError(f"{path.name}: registries must map each zone to its evidence")
+    registries = {k: v for k, v in registries.items() if not k.startswith("_")}
+    for zone, why in registries.items():
+        if zone not in names:
+            raise ValueError(f"{path.name}: registries: {zone!r} is not a psl_operators name")
+        if not isinstance(why, str) or not _EVIDENCE.match(why):
+            raise ValueError(f"{path.name}: registries: {zone!r} needs 'Verified YYYY-MM-DD: <evidence>'")
+    return TenantZones(frozenset(names), zones, frozenset(registries))
 
 
 def bases() -> set[str]:

@@ -87,7 +87,10 @@ last confirmation. Switched off, any hosts still stored leave at once.
 
 Promotion: a registrable is blocked whole only when the feeds name it (bare or
 as www.) or several of its subdomains — never on one subdomain, never a
-national zone (see PROMOTE_MIN_SUBDOMAINS and is_zone_like).
+national zone (see PROMOTE_MIN_SUBDOMAINS and is_zone_like). Under a domain
+registry's zone (za.com, us.kg, com.ru — data/tenant_zones.json 'registries')
+the registrant's name is such a registrable; under any other shared suffix a
+tenant is blocked exactly.
 
 Usage:
     python scripts/refresh_dangerous_domains.py            # fetch + write Redis
@@ -990,6 +993,30 @@ def default_shared_suffixes() -> set[str]:
             | UNRANKED_SHARED_DOMAINS) - OPERATOR_SUFFIXES
 
 
+def load_registry_suffixes(path: str = os.path.join(_DATA_DIR, "tenant_zones.json")) -> frozenset[str]:
+    """data/tenant_zones.json 'registries': tenant zones that are domain
+    registries (za.com, us.kg, com.ru …), where one label is one
+    registrant's own domain. build_blockset judges a name there like any
+    registrable — its www. host or PROMOTE_MIN_SUBDOMAINS listed subdomains
+    block it whole — while the zone stays a shared suffix that is never
+    listed. Missing or unreadable: none, and every tenant zone is
+    exact-only (scripts/build_public_suffixes_in_top.py validates the file;
+    tests run it)."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = json.load(f).get("registries") or {}
+        return frozenset(k.lower() for k in raw if not k.startswith("_"))
+    except Exception as e:  # noqa: BLE001
+        logger.warning("tenant_zones.json registries not loaded (%s) — registry zones stay exact-only", e)
+        return frozenset()
+
+
+def _name_under(host: str, suffix: str) -> str:
+    """The name one label under `suffix` that `host` is (or is under):
+    awi.za.com for 13869052.awi.za.com under za.com."""
+    return ".".join(host.split(".")[-(suffix.count(".") + 2):])
+
+
 def _tenant_suffix(host: str, shared_suffixes: set[str]) -> str | None:
     """Longest proper suffix of `host` that is a shared/tenant suffix."""
     parts = host.split(".")
@@ -1078,7 +1105,8 @@ def _apply_veto(names: set[str], veto: frozenset[str]) -> set[str]:
 def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None = None,
                    is_popular=None, public_suffixes: set[str] | None = None,
                    brand_owned: frozenset[str] | None = None,
-                   exact_only: frozenset[str] | set[str] = frozenset()) -> set[str]:
+                   exact_only: frozenset[str] | set[str] = frozenset(),
+                   registry_suffixes: frozenset[str] | set[str] | None = None) -> set[str]:
     """Decide, per feed hostname, what (if anything) to block.
 
     Never darken a shared or popular host — a false positive here breaks a
@@ -1094,7 +1122,12 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
                      host under a tenant suffix but carrying >= SHARED_URL_THRESHOLD
                      feed URLs (a shared file host, not a tenant).
       EXACT ONLY     host is one tenant's site under a shared suffix
-                     (evil.github.io, gwcu.us.org, x.blob.core.windows.net);
+                     (evil.github.io, gwcu.us.org, x.blob.core.windows.net) —
+                     unless the suffix is a domain registry's zone
+                     (`registry_suffixes`, default data/tenant_zones.json
+                     'registries': za.com, us.kg, com.ru …): there the name
+                     one label under it is a registrant's own domain
+                     (awi.za.com) and goes through EXACT + REG below;
                      or host is in `exact_only` — a name from a feed that
                      addresses the precise host (CERT Polska, CSIRT Italia)
                      or a retained name no current feed still backs. Those
@@ -1120,6 +1153,7 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
     (top-1M lookup in Redis tranco:ranks when Redis is available).
     """
     shared = default_shared_suffixes() if shared_suffixes is None else set(shared_suffixes)
+    registries = load_registry_suffixes() if registry_suffixes is None else frozenset(registry_suffixes)
 
     counts: dict[str, int] = {}
     for raw_host in hosts:
@@ -1151,6 +1185,12 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
         suffix = _tenant_suffix(h, shared)
         if h in shared or (public_suffixes and h in public_suffixes):
             continue  # platform apex / a public suffix itself — never
+        if suffix in registries:
+            # A domain registry's zone: the label under it is one
+            # registrant's domain (cs-money.com.ru, awi.za.com), judged like
+            # any registrable below — popular ones never, promoted on its
+            # www. host or several subdomains. The zone was skipped above.
+            reg, suffix = _name_under(h, suffix), None
         if public_suffixes and reg in public_suffixes:
             continue  # cannot even name a registrable — never promote a suffix
         if suffix is not None:

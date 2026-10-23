@@ -105,6 +105,12 @@
   var LURE_WORDS = set(D && D.lureWords);
   var LURE_STEMS = D && D.lureStems ? D.lureStems : [];
   var BRAND_LURE_WORDS = new Map();
+  // _NOT_LURE_NEXT_TO: 'secure' is no lure next to 'booking' in the
+  // several-word and glued combos (booking engines' checkout).
+  var NOT_LURE_NEXT_TO = new Map();
+  if (D && D.notLureNextTo) {
+    Object.keys(D.notLureNextTo).forEach(function (b) { NOT_LURE_NEXT_TO.set(b, new Set(D.notLureNextTo[b])); });
+  }
   if (D && D.brandLureWords) for (var lb in D.brandLureWords) BRAND_LURE_WORDS.set(lb, set(D.brandLureWords[lb]));
   var SKEL_CYRILLIC = new Map(D && D.skeletonCyrillic ? Object.entries(D.skeletonCyrillic) : []);
   var SKEL_FOLDS = D && D.skeletonFolds ? D.skeletonFolds : [];
@@ -258,7 +264,8 @@
   }
 
   // _check_brand_on_hosting_tenant: a brand with a lure word (or a Russian
-  // brand as the whole name) as a customer's site on a hosting platform.
+  // brand as the whole name) as a customer's site on a hosting platform;
+  // the brand may be in look-alike characters (paypa1-login.ngrok-free.app).
   function brandOnHostingTenant(asciiDomain) {
     var d = clean(asciiDomain);
     var suffix = tenantSuffixOf(d);
@@ -278,13 +285,17 @@
       var candidates = words.concat(pairs);
       for (var b = 0; b < TENANT_BRANDS.length; b++) {
         var brand = TENANT_BRANDS[b];
-        if (words.indexOf(brand) !== -1) {
+        var named = [];
+        for (var n = 0; n < words.length; n++) {
+          if (words[n] === brand || spellsBrand(words[n], brand)) named.push(words[n]);
+        }
+        if (named.length) {
           for (var c = 0; c < candidates.length; c++) {
-            if (candidates[c] !== brand && isTenantLure(candidates[c], brand)) return brand;
+            if (named.indexOf(candidates[c]) === -1 && isTenantLure(candidates[c], brand)) return brand;
           }
         } else if (brand.length >= ZONE_BRAND_PART_MIN) {
           for (var w = 0; w < words.length; w++) {
-            var word = words[w];
+            var word = withBrandSpelledOut(words[w], brand) || words[w];
             var glued = startsWith(word, brand) ? word.slice(brand.length)
               : endsWith(word, brand) ? word.slice(0, word.length - brand.length) : "";
             if (glued && glued !== word && isTenantLure(glued, brand)) return brand;
@@ -572,7 +583,11 @@
   // alone otherwise; a hyphenated keyword (sign-in) counts as one word.
   function checkLureCombo(name, brand, rule) {
     var russian = !rule || !!rule.lure_words;
-    function isLure(w) { return russian ? isLureWord(w, brand) : COMBO_KEYWORDS.has(w); }
+    var notLures = NOT_LURE_NEXT_TO.get(brand);
+    function isLure(w) {
+      if (notLures && notLures.has(w)) return false;
+      return russian ? isLureWord(w, brand) : COMBO_KEYWORDS.has(w);
+    }
     var words = name.split("-");
     for (var i = 0; i < words.length; i++) {
       var word = words[i];

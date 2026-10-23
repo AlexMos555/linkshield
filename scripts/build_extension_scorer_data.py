@@ -124,6 +124,16 @@ EDGE_CASES = (
     "microsoft-verify.cloud.goog", "sberbank-bonus.jcloud.kz", "apple-id-verify.s3.cloud.ru",
     "zq7x1random.s3.cloud.ru", "gosuslugi.s3-website.cloud.ru", "lk-vtb.s3-alt.cloud.ru", "s3.cloud.ru",
     "www.s3.cloud.ru", "cloud.ru", "netflix-billing-update.ngrok-free.app", "paypal-verify.us.kg",
+    # 2026-10-23, review of PR #309: 'secure booking' engines and the booking
+    # phishing next to them; a look-alike brand in a hosting tenant's name
+    "secure-direct-hotel-booking.com", "securebooking-belfastairport.com", "secure-booking-engine.com",
+    "hotel-booking-secure.net", "secure-online-booking.com", "secure-booking.com", "securebooking.com",
+    "booking-secure.com", "booking-secure-login.com", "secure-booking-verify.com", "booking-confirm-reservation.com",
+    "booking-account-update.com", "secure-booking.pages.dev",
+    "paypa1-login.ngrok-free.app", "paypa1-login.us.kg", "5berbank-bonus.pages.dev",
+    "micr0soft-login.trycloudflare.com", "faceb00k-login.netlify.app", "app1e-id-verify.vercel.app",
+    "micr0softlogin.pages.dev", "paypa1.pages.dev", "72-bonus.pages.dev", "office365-tips.netlify.app",
+    "netf1ix-clone.vercel.app", "micros0ft-account-verify.com",
     # malformed / degenerate input must not crash either side
     "a", "xn--", "xn---.com", "xn--a.com", "....xn--p1ai", "ru.com", "a.ru.com",
     # astral-plane letters: one character to Python, two UTF-16 units to JS
@@ -288,6 +298,7 @@ def scorer_data() -> dict:
         "fuzzyMinLabel": scoring._FUZZY_MIN_LABEL,
         "twoEditMinLabel": scoring._TWO_EDIT_MIN_LABEL,
         "lookalikeComboMinLabel": scoring._LOOKALIKE_COMBO_MIN,
+        "notLureNextTo": {brand: sorted(words) for brand, words in sorted(scoring._NOT_LURE_NEXT_TO.items())},
     }
 
 

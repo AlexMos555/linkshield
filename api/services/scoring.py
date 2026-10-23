@@ -2239,7 +2239,26 @@ _NAME_RULES_AT_HOME: Mapping[str, _NameRule] = MappingProxyType(
 )
 
 
-def _imitation(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RULE) -> Optional[str]:
+# The definitions of the typosquat rule an ML model may have learned its
+# is_typosquat feature from. model_meta.json records the one a model was
+# trained on (feature_data.typosquat_rule, written by
+# ml_features.feature_data_record; no record = 1), and ml_scorer gives the
+# served model that rule's answer, as it gives it the data files it learned
+# (ml_features.resolve_feature_data). The scorer's own signal is always the
+# live rule.
+#   1  until 2026-10-23: a combo needs the brand's own string, glued or
+#      hyphened to one word (a global brand) or among several hyphenated
+#      words with a Russian or English lure word (a Russian brand,
+#      _check_lure_combo_v1).
+#   2  2026-10-23: a look-alike spelling of the brand counts as the brand in
+#      a combo (g00glemail, micr0soft-login, 5berbank-bonus), and a global
+#      brand as one hyphenated word with an English lure keyword among the
+#      others is a combo (outlook-de-login, apple-id-verify).
+TYPOSQUAT_RULE_VERSION = 2
+
+
+def _imitation(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RULE,
+               rule_version: int = TYPOSQUAT_RULE_VERSION) -> Optional[str]:
     """How `name` imitates `brand` (a different string), or None.
 
     Look-alike characters count as the letter they imitate at any length.
@@ -2248,18 +2267,19 @@ def _imitation(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RULE) -> O
     — from _FUZZY_MIN_LABEL, and not at all when `rule.fuzzy` is False. Two
     edits only when both are _TWO_EDIT_MIN_LABEL long. `rule` (see
     _rule_for) narrows combos and substitutions for some names.
+    `rule_version`: see TYPOSQUAT_RULE_VERSION.
     """
     tail = _generic_tail(name, brand)
     if tail:
         if "-" in name and name.replace("-", "") == brand:
             return "hyphen injection"
-        if _check_combosquat(name, brand, rule):
+        if _check_combosquat(name, brand, rule, rule_version):
             return "combosquatting"
         # `slips_only` is about names under 8 letters; gazprombank's stem is
         # short, the name is not.
         if min(len(name), len(brand)) >= _TWO_EDIT_MIN_LABEL:
             rule = rule._replace(slips_only=False)
-        return _imitation(name[:-tail].rstrip("-"), brand[:-tail], rule)
+        return _imitation(name[:-tail].rstrip("-"), brand[:-tail], rule, rule_version)
 
     # Character substitution
     if _check_char_substitution(name, brand, rule.fuzzy, rule.slips_only):
@@ -2283,7 +2303,7 @@ def _imitation(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RULE) -> O
             return "glyph homoglyph"
         if len(brand) >= 5 and (
             brand in re.split(r"[-.]", skel)
-            or _check_combosquat(skel, brand, rule)
+            or _check_combosquat(skel, brand, rule, rule_version)
             or SequenceMatcher(None, skel, brand).ratio() >= 0.90
         ):
             return "glyph homoglyph"
@@ -2297,13 +2317,13 @@ def _imitation(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RULE) -> O
         return "hyphen injection"
 
     # Combosquatting
-    if _check_combosquat(name, brand, rule):
+    if _check_combosquat(name, brand, rule, rule_version):
         return "combosquatting"
     # ...with the brand in look-alike characters: g00glemail, micr0soft-login,
     # secure-paypa1. The look-alike test above needs the brand's length, the
     # combo test the brand's string; neither read these until 2026-10-23.
-    spelled = _with_brand_spelled_out(name, brand)
-    if spelled and _check_combosquat(spelled, brand, rule):
+    spelled = _with_brand_spelled_out(name, brand) if rule_version >= 2 else None
+    if spelled and _check_combosquat(spelled, brand, rule, rule_version):
         return "combosquatting"
 
     # SequenceMatcher fallback. The ratio alone let two edits through at any
@@ -2347,7 +2367,10 @@ def _lookalike_zone_name(domain: str) -> Optional[str]:
     return None
 
 
-def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
+def _check_typosquatting_v2(domain: str, rule_version: int = TYPOSQUAT_RULE_VERSION) -> Optional[tuple[str, str]]:
+    # `rule_version`: an older definition, for a model trained on it (see
+    # TYPOSQUAT_RULE_VERSION); everything else reads the live rule.
+    #
     # Under a Russian public suffix, the REGISTRABLE label — never the zone
     # label ('spb' of kvs.gov.spb.ru was "ups", 'nov' of adm.nov.ru "n26").
     # Under ru.com / ru.net, the name registered there ('yandex' of
@@ -2396,7 +2419,7 @@ def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
                 return (legit_domain, "TLD confusion")
             continue
 
-        method = _imitation(name, brand, rules.get(brand, _DEFAULT_NAME_RULE))
+        method = _imitation(name, brand, rules.get(brand, _DEFAULT_NAME_RULE), rule_version)
         if method:
             return (legit_domain, method)
 
@@ -2460,7 +2483,8 @@ def _combo_parts(name: str, brand: str) -> list[tuple[str, bool, bool]]:
     return parts
 
 
-def _check_combosquat(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RULE) -> bool:
+def _check_combosquat(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RULE,
+                      rule_version: int = TYPOSQUAT_RULE_VERSION) -> bool:
     for word, hyphenated, after in _combo_parts(name, brand):
         if word in _COMBOSQUAT_KEYWORDS:
             return True
@@ -2470,6 +2494,8 @@ def _check_combosquat(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RUL
             return True
         if rule.country_combos and after and word in _COMBO_COUNTRY_SUFFIXES:
             return True
+    if rule_version < 2:
+        return rule.lure_words and _check_lure_combo_v1(name, brand)
     return _check_lure_combo(name, brand, rule)
 
 
@@ -2527,6 +2553,24 @@ def _is_lure_word(word: str, brand: str) -> bool:
     )
 
 
+# Keywords that are no lure next to one brand in the combos of several words
+# or a word glued to the brand (_check_lure_combo). 'Secure booking' is what
+# hotel and airport booking engines call their checkout: of the six names
+# the 2026-10-23 combos added on the licensed 1M ranking, four were booking
+# engines (secure-direct-hotel-booking.com, rank 216,459, which went to
+# 'dangerous'; securebooking-belfastairport.com, Belfast International
+# Airport's parking and fast-track, run by Rezcomm; secure-booking-engine.com,
+# Djubo's hotel sales platform; secure-hotel-booking.com, allowlisted), and
+# live unranked ones read the same (hotel-booking-secure.net,
+# secure-online-booking.com). The brand and that one word stay a combo, as
+# they were before (securebooking.com, secure-booking.com: _check_combosquat),
+# and any other lure among the words still counts (booking-secure-login,
+# secure-booking-verify).
+_NOT_LURE_NEXT_TO: Mapping[str, frozenset[str]] = MappingProxyType({
+    "booking": frozenset({"secure"}),
+})
+
+
 def _check_lure_combo(name: str, brand: str, rule: Optional[_NameRule] = None) -> bool:
     """`name` is `brand` and a lure word: glued to it (ozonpriz, lkgosuslugi)
     or among the hyphenated words around it (sberbank-bonus, lk-gosuslugi,
@@ -2539,10 +2583,13 @@ def _check_lure_combo(name: str, brand: str, rule: Optional[_NameRule] = None) -
     outlook-de-login, paypal-secure-login, apple-id-verify, which the global
     names' one-word combo test read as 'de-login' and missed until
     2026-10-23. A keyword written with a hyphen (sign-in, log-in) counts as
-    one word."""
+    one word. _NOT_LURE_NEXT_TO takes a word out next to its brand."""
     russian = rule is None or rule.lure_words
+    not_lures = _NOT_LURE_NEXT_TO.get(brand, frozenset())
 
     def is_lure(word: str) -> bool:
+        if word in not_lures:
+            return False
         return _is_lure_word(word, brand) if russian else word in _COMBOSQUAT_KEYWORDS
 
     words = name.split("-")
@@ -2557,6 +2604,24 @@ def _check_lure_combo(name: str, brand: str, rule: Optional[_NameRule] = None) -
             glued = (spelled[len(brand):] if spelled.startswith(brand)
                      else spelled[:-len(brand)] if spelled.endswith(brand) else "")
             if glued and is_lure(glued):
+                return True
+    return False
+
+
+def _check_lure_combo_v1(name: str, brand: str) -> bool:
+    """_check_lure_combo as typosquat rule 1 had it (TYPOSQUAT_RULE_VERSION),
+    for a model that learned is_typosquat from it: the brand's own string as
+    one whole hyphenated word or glued, next to a Russian or English lure
+    word. Delete it with the last model_meta.json that records rule 1 (or
+    none)."""
+    words = name.split("-")
+    for i, word in enumerate(words):
+        if word == brand:
+            if any(_is_lure_word(w, brand) for w in words[:i] + words[i + 1:]):
+                return True
+        elif len(word) > len(brand):
+            glued = word[len(brand):] if word.startswith(brand) else word[:-len(brand)] if word.endswith(brand) else ""
+            if glued and _is_lure_word(glued, brand):
                 return True
     return False
 
@@ -2682,9 +2747,12 @@ def _check_brand_on_hosting_tenant(domain: str) -> Optional[str]:
     sber-hackathon.github.io). So the rule is narrow: a Russian brand of four
     letters or more as the whole name, or any brand next to a lure word — an
     English combo keyword or a Russian lure (ru_lures), hyphenated, or glued
-    for brands of four letters or more. Russian zones (spb.ru) are
-    _check_brand_under_open_zone's; a name directly under a country's zone
-    (paypal-login.com.br) is the typosquat rule's."""
+    for brands of four letters or more. The brand may be written in
+    look-alike characters, as in a registered name (_spells_brand:
+    paypa1-login.ngrok-free.app, 5berbank-bonus.pages.dev; since
+    2026-10-23). Russian zones (spb.ru) are _check_brand_under_open_zone's;
+    a name directly under a country's zone (paypal-login.com.br) is the
+    typosquat rule's."""
     from api.services.hosting_platforms import tenant_suffix_of
 
     d = (domain or "").lower().strip(".")
@@ -2709,11 +2777,13 @@ def _check_brand_on_hosting_tenant(domain: str) -> Optional[str]:
         # Two-word lures written with a hyphen: sign-in, log-in.
         pairs = [a + b for a, b in zip(words, words[1:])]
         for brand in _HOSTING_TENANT_BRANDS:
-            if brand in words:
-                if any(_is_tenant_lure(w, brand) for w in words + pairs if w != brand):
+            named = [w for w in words if w == brand or _spells_brand(w, brand)]
+            if named:
+                if any(_is_tenant_lure(w, brand) for w in words + pairs if w not in named):
                     return brand
             elif len(brand) >= _RU_ZONE_BRAND_PART_MIN:
                 for w in words:
+                    w = _with_brand_spelled_out(w, brand) or w
                     glued = w[len(brand):] if w.startswith(brand) else w[: -len(brand)] if w.endswith(brand) else ""
                     if glued and glued != w and _is_tenant_lure(glued, brand):
                         return brand

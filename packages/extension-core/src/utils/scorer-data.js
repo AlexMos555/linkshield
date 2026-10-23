@@ -73,6 +73,7 @@
     "shapeMinLabel": 4,
     "fuzzyMinLabel": 5,
     "twoEditMinLabel": 8,
-    "lookalikeComboMinLabel": 4
+    "lookalikeComboMinLabel": 4,
+    "notLureNextTo": {"booking":["secure"]}
   };
 })(typeof self !== "undefined" ? self : globalThis);
