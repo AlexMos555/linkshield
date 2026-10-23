@@ -359,6 +359,27 @@ def _load_measured_global_groups() -> tuple[tuple[ru_brands.BrandGroup, ...], fr
         return (), frozenset()
 
 
+def _load_global_alternates() -> tuple[frozenset[str], frozenset[str]]:
+    """The flat list's owners' other domains and other owners' same-shaped
+    sites: data/typosquat_targets.json 'alternates' (official, unrelated),
+    parsed by ru_brands.parse_alternates.
+
+    Until 2026-10-23 the Tranco top-100k answered for googlemail.com,
+    yahoo.de or hicloud.com before this rule ran; the licensed ranking does
+    not carry them. Exact registrable-domain exemptions and nothing else —
+    the names keep their rule ('measured' is what changes it). A malformed
+    section is logged and exempts nothing, as with 'measured'."""
+    path = os.path.join(_DATA_DIR, "typosquat_targets.json")
+    try:
+        with open(path, "r") as f:
+            data = json.load(f)
+        brands = {k.lower(): v.lower() for k, v in data.get("brands", {}).items()}
+        return ru_brands.parse_alternates(data.get("alternates", {}), brands)
+    except (FileNotFoundError, json.JSONDecodeError, ValueError, AttributeError) as e:
+        logger.error("typosquat_targets.json 'alternates' is unusable (%s); its exemptions skipped", e)
+        return frozenset(), frozenset()
+
+
 # Russian brands (data/typosquat_targets_ru.json, see api.services.ru_brands):
 # every official domain of the brand family, same-shaped sites of other
 # owners, words one edit from a name, and per-brand switches for TLD
@@ -372,6 +393,10 @@ RU_BRAND_GROUPS: tuple[ru_brands.BrandGroup, ...] = ru_brands.load()
 MEASURED_GLOBAL_GROUPS, _NOT_IN_MODEL = _load_measured_global_groups()
 # Every group whose exemptions the rules honour, Russian and global.
 _EXEMPTION_GROUPS: tuple[ru_brands.BrandGroup, ...] = RU_BRAND_GROUPS + MEASURED_GLOBAL_GROUPS
+# The flat list's owners' other domains (googlemail.com, yahoo.de) and
+# other owners' sites the rule read as a listed name (hicloud.com), verified
+# one by one when the licensed ranking took them off the allowlist.
+ALTERNATE_OFFICIAL_DOMAINS, ALTERNATE_UNRELATED_DOMAINS = _load_global_alternates()
 
 # The state-service brand whose regions number their portals (gosuslugi26.ru,
 # 51gosuslugi.ru): its names in data/typosquat_targets_ru.json — gosuslugi
@@ -424,12 +449,14 @@ TYPOSQUAT_TARGETS: dict[str, str] = {
 logger.info("Loaded %d typosquat brand targets (%d Russian brand groups)", len(TYPOSQUAT_TARGETS), len(RU_BRAND_GROUPS))
 
 # Every listed brand family's own registrable domains (yandex.kz, втб.рф,
-# olx.ua), both spellings of an IDN.
-_BRAND_OFFICIAL_DOMAINS: frozenset[str] = frozenset(d for g in _EXEMPTION_GROUPS for d in g.official)
+# olx.ua, googlemail.com), both spellings of an IDN.
+_BRAND_OFFICIAL_DOMAINS: frozenset[str] = (
+    frozenset(d for g in _EXEMPTION_GROUPS for d in g.official) | ALTERNATE_OFFICIAL_DOMAINS
+)
 # Registrable domains that are no one's typo: a listed brand's own sites
 # and verified sites of other owners with the same shape (mts.ca —
 # Manitoba's phone company).
-_BRAND_LEGIT_DOMAINS: frozenset[str] = _BRAND_OFFICIAL_DOMAINS | frozenset(
+_BRAND_LEGIT_DOMAINS: frozenset[str] = _BRAND_OFFICIAL_DOMAINS | ALTERNATE_UNRELATED_DOMAINS | frozenset(
     d for g in _EXEMPTION_GROUPS for d in g.unrelated
 )
 # Per name: labels one edit away that are words or other companies (ozone).

@@ -135,6 +135,50 @@ def parse_group(key: str, raw: Any) -> BrandGroup:
     )
 
 
+_ALTERNATE_FIELDS = frozenset({"owner", "names", "official", "unrelated"})
+
+
+def parse_alternates(raw: Any, brands: Mapping[str, str]) -> tuple[frozenset[str], frozenset[str]]:
+    """data/typosquat_targets.json 'alternates': (official, unrelated), both
+    spellings of an IDN. One entry per owner of names in the flat list
+    `brands` (name -> listed domain):
+
+      names       the names in `brands` the entry is about
+      official    registrable domains that owner runs besides the listed
+                  one (googlemail.com, yahoo.de)
+      unrelated   other owners' sites the rule reads as one of the names
+                  (hicloud.com is Huawei's, not iCloud's)
+
+    each domain mapped to its evidence. Nothing else: a switch (not_typos,
+    shared_name …) changes how a name is compared, and those come with a
+    measured pass ('measured'). A listed domain is refused — the rule never
+    calls it a look-alike, and as an 'official' domain it would make a
+    look-alike of it read as a Russian brand's to the lookalike generator.
+    Raises ValueError naming the entry."""
+    _require(isinstance(raw, dict), "alternates", "must be an object")
+    listed = frozenset(brands.values())
+    official: dict[str, str] = {}
+    unrelated: dict[str, str] = {}
+    for key, entry in raw.items():
+        if key.startswith("_"):
+            continue
+        _require(isinstance(entry, dict), key, "must be an object")
+        _require(not set(entry) - _ALTERNATE_FIELDS, key, f"only {sorted(_ALTERNATE_FIELDS)} (switches go in 'measured')")
+        names = entry.get("names")
+        _require(isinstance(names, list) and bool(names) and all(n in brands for n in names), key,
+                 "'names' must list names of 'brands'")
+        own = _evidence_map(entry, "official", key)
+        other = _evidence_map(entry, "unrelated", key)
+        for domain in [*own, *other]:
+            _require("." in domain and "/" not in domain, key, f"{domain!r} is not a registrable domain")
+            _require(domain not in listed, key, f"{domain!r} is a listed brand's own domain")
+            _require(domain not in official and domain not in unrelated, key, f"{domain!r} is listed twice")
+        _require(not set(own) & set(other), key, "a domain is either official or unrelated")
+        official.update(own)
+        unrelated.update(other)
+    return _all_forms(official), _all_forms(unrelated)
+
+
 def parse(data: Any) -> tuple[BrandGroup, ...]:
     """The whole file. Raises ValueError on any malformed entry or on a name
     listed by two groups."""
