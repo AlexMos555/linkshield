@@ -105,8 +105,17 @@ export const gz = (r) => gzipSync(Buffer.from(JSON.stringify(r)));
 // ── world ──
 
 export function world() {
-  const w = { kv: new Map(), gets: 0, puts: [], putFails: 0, sent: [], tries: 0, sendFails: 0, now: T0, rejected: [], forwarded: [] };
+  const w = {
+    kv: new Map(), gets: 0, puts: [], putFails: 0, sent: [], tries: 0, sendFails: 0, now: T0, rejected: [], forwarded: [],
+    waits: [],
+  };
   Date.now = () => w.now;
+  // The Workers runtime's scheduler.wait, recorded instead of waited for.
+  globalThis.scheduler = {
+    wait: async (ms) => {
+      w.waits.push(ms);
+    },
+  };
   w.env = (extra = {}) => ({
     ALERT_TO: "founder@example.com",
     STATE: {
@@ -150,7 +159,11 @@ export function world() {
     w.message = message;
     await worker.email(message, env, { waitUntil() {} });
   };
-  w.day = (d = "2026-10-23") => (JSON.parse(w.kv.get("summary") || '{"days":[]}').days.find((x) => x.day === d) ?? null);
+  // One reporter's entry for a day, as stored: "google.com", "microsoft.com"
+  // or "unverified" (everyone else), each in its own KV key.
+  w.day = (d = "2026-10-23", group = "google.com") =>
+    JSON.parse(w.kv.get(`summary:${group}`) || '{"days":[]}').days.find((x) => x.day === d) ?? null;
+  w.page = async (env = w.env()) => (await get(DASH_URL, env)).json();
   w.subjects = () => w.sent.map((m) => decodeSubject(m.raw));
   return w;
 }

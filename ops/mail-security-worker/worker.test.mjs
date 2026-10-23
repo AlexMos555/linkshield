@@ -1,7 +1,8 @@
 // Tests for the mail-security Worker (MTA-STS policy, reading TLS-RPT
 // reports, the summary page), run in Node with KV, the email binding and the
 // incoming message stubbed (test-world.mjs). Forged and flooding mail:
-// forged.test.mjs. `node --test ops/mail-security-worker/` runs both (as does
+// forged.test.mjs. `node --test ops/mail-security-worker/worker.test.mjs
+// ops/mail-security-worker/forged.test.mjs` runs both (as does
 // tests/test_mail_security_worker.py, so CI's pytest job covers them).
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -86,7 +87,7 @@ test("everything else is a 404", async () => {
 
 // ── TLS reports ──
 
-test("a gzip report from Google is counted per policy, kept 30 days, and no mail when nothing failed", async () => {
+test("a gzip report from Google is counted per policy in Google's own entry, kept 30 days, no mail when nothing failed", async () => {
   const w = world();
   await w.receive(mail(gz(report({ ok: 1200, failed: 0 }))));
   const s = w.day();
@@ -94,15 +95,17 @@ test("a gzip report from Google is counted per policy, kept 30 days, and no mail
   assert.equal(s.successful, 1200);
   assert.equal(s.failed, 0);
   assert.deepEqual(s.policies, { "sts cleanway.ai": { successful: 1200, failed: 0 } });
-  assert.deepEqual(s.reporters, { "google.com": 1 });
+  assert.deepEqual(s.failures, {});
+  assert.equal(s.reporters, undefined, "a known reporter's entry is that reporter alone");
   assert.deepEqual(s.covers, ["2026-10-22"]);
   assert.equal(s.errors, 0);
+  assert.equal(s.alert, null);
   assert.equal(w.sent.length, 0);
-  assert.deepEqual(w.puts.map((p) => [p.k, p.opts]), [["summary", { expirationTtl: 31 * 86_400 }]]);
+  assert.deepEqual(w.puts.map((p) => [p.k, p.opts]), [["summary:google.com", { expirationTtl: 31 * 86_400 }]]);
   assert.deepEqual([w.rejected, w.forwarded], [[], []]);
 });
 
-test("reports of one day add up across reporters and policies", async () => {
+test("each known reporter is counted on its own, never added to another's", async () => {
   const w = world();
   await w.receive(mail(gz(report({ ok: 1200 }))));
   const ms = report({ org: "Microsoft Corporation", id: "133797", ok: 40, failed: 0 });
@@ -110,15 +113,17 @@ test("reports of one day add up across reporters and policies", async () => {
     policy: { "policy-type": "no-policy-found", "policy-domain": "cleanway.ai" },
     summary: { "total-successful-session-count": 7, "total-failure-session-count": 0 },
   });
-  await w.receive(mail(gz(ms), { from: "TLSRPT <tlsrpt@microsoft.com>" }));
-  const s = w.day();
-  assert.equal(s.reports, 2);
-  assert.equal(s.successful, 1247);
-  assert.deepEqual(s.policies, {
-    "sts cleanway.ai": { successful: 1240, failed: 0 },
+  await w.receive(mail(gz(ms), { from: "TLSRPT <tlsrpt-noreply@microsoft.com>" }));
+  assert.deepEqual(w.day().policies, { "sts cleanway.ai": { successful: 1200, failed: 0 } });
+  const m = w.day("2026-10-23", "microsoft.com");
+  assert.equal(m.reports, 1);
+  assert.equal(m.successful, 47);
+  assert.deepEqual(m.policies, {
+    "sts cleanway.ai": { successful: 40, failed: 0 },
     "no-policy-found cleanway.ai": { successful: 7, failed: 0 },
   });
-  assert.deepEqual(s.reporters, { "google.com": 1, "microsoft.com": 1 });
+  assert.equal(w.day("2026-10-23", "unverified"), null);
+  assert.deepEqual(w.puts.map((p) => p.k), ["summary:google.com", "summary:microsoft.com"]);
 });
 
 test("a report with failed sessions mails the founder once, without the raw report", async () => {
@@ -127,7 +132,7 @@ test("a report with failed sessions mails the founder once, without the raw repo
   const s = w.day();
   assert.equal(s.failed, 3);
   assert.deepEqual(s.failures, { "certificate-host-mismatch route2.mx.cloudflare.net": 3 });
-  assert.deepEqual(s.alerts, { "google.com": new Date(T0).toISOString() });
+  assert.equal(s.alert, new Date(T0).toISOString());
   assert.equal(w.sent.length, 1);
   const m = w.sent[0];
   assert.equal(m.from, "alerts@cleanway.ai");
@@ -158,8 +163,9 @@ test("one alert a day per known reporter: its next failing report that day only 
   await w.receive(mail(gz(report({ org: "Microsoft Corporation", id: "m-1", failed: 5 })), { from: "tlsrpt@microsoft.com" }));
   assert.equal(w.sent.length, 2, "Microsoft has an alert of its own");
   assert.match(w.sent[1].raw, /microsoft\.com/);
-  assert.equal(w.day().failed, 10);
-  assert.deepEqual(Object.keys(w.day().alerts), ["google.com", "microsoft.com"]);
+  assert.equal(w.day().failed, 5);
+  assert.equal(w.day("2026-10-23", "microsoft.com").failed, 5);
+  assert.ok(w.day().alert && w.day("2026-10-23", "microsoft.com").alert);
   w.now = T0 + DAY;
   await w.receive(mail(gz(report({ id: "next-day", failed: 1 }))));
   assert.equal(w.sent.length, 3);
@@ -173,18 +179,19 @@ test("in enforce mode the alert says mail is not being delivered", async () => {
   assert.match(w.sent[0].raw, /НЕ доставляют/);
 });
 
-test("a failed alert is recorded and retried with the next failing report", async () => {
+test("an alert whose send and retry both fail is recorded and retried with the next failing report", async () => {
   const w = world();
-  w.sendFails = 1;
+  w.sendFails = 2;
   await w.receive(mail(gz(report({ failed: 2 }))));
   assert.equal(w.sent.length, 0);
-  assert.deepEqual(w.day().alerts, {});
+  assert.equal(w.tries, 2, "the send and one retry");
+  assert.equal(w.day().alert, null);
   assert.equal(w.day().alert_error.error, "destination address not verified");
   await w.receive(mail(gz(report({ id: "second", ok: 10 }))));
-  assert.equal(w.tries, 1, "a clean report owes no alert");
+  assert.equal(w.tries, 2, "a clean report owes no alert");
   await w.receive(mail(gz(report({ id: "third", failed: 1 }))));
   assert.equal(w.sent.length, 1);
-  assert.ok(w.day().alerts["google.com"]);
+  assert.ok(w.day().alert);
   assert.equal(w.day().alert_error.at, new Date(T0).toISOString(), "the failure stays on record");
 });
 
@@ -231,10 +238,12 @@ test("LF line endings, a single-part report and a mislabelled gzip are read", as
   ].join("\r\n");
   await w.receive(single);
   await w.receive(mail(gz(report({ org: "Odd Mailer", id: "odd", ok: 4 })), { type: "application/octet-stream" }));
-  assert.equal(w.day().reports, 3);
-  assert.equal(w.day().successful, 7);
+  assert.equal(w.day().reports, 2);
+  assert.equal(w.day().successful, 5);
   assert.equal(w.day().errors, 0);
-  assert.deepEqual(w.day().reporters, { "google.com": 2, "example.net": 1 });
+  const u = w.day("2026-10-23", "unverified");
+  assert.deepEqual([u.reports, u.successful, u.errors], [1, 2, 0]);
+  assert.deepEqual(u.reporters, { "example.net": 1 });
 });
 
 test("a Java-style boundary and a quoted-printable JSON part are read", async () => {
@@ -249,20 +258,21 @@ test("a Java-style boundary and a quoted-printable JSON part are read", async ()
 
 test("malformed mail is counted as an error, never thrown, never alerted", async () => {
   const w = world();
+  const from = "tlsrpt@example.net";
   const cases = [
     ["From: someone@example.com\r\nSubject: hi\r\n\r\nplain text, no report\r\n", "no report in the mail"],
-    [mail(Buffer.from([0x1f, 0x8b, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8])), "bad gzip"],
-    [mail(gzipSync(Buffer.from("{ not json"))), "bad JSON"],
-    [mail(gz({ hello: "world" })), "not a TLS report"],
-    [mail(gz(report({ ok: -5 }))), "bad session count"],
-    [mail(gz(report({ failed: "many" }))), "bad session count"],
-    [mail(gzipSync(Buffer.alloc(3 * 1024 * 1024, 0x20))), "report too large"],
-    [mail("x", { encoding: "base64" }).replace(/^eA==$/m, "e"), "bad base64"],
+    [mail(Buffer.from([0x1f, 0x8b, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8]), { from }), "bad gzip"],
+    [mail(gzipSync(Buffer.from("{ not json")), { from }), "bad JSON"],
+    [mail(gz({ hello: "world" }), { from }), "not a TLS report"],
+    [mail(gz(report({ ok: -5 })), { from }), "bad session count"],
+    [mail(gz(report({ failed: "many" })), { from }), "bad session count"],
+    [mail(gzipSync(Buffer.alloc(3 * 1024 * 1024, 0x20)), { from }), "report too large"],
+    [mail("x", { encoding: "base64", from }).replace(/^eA==$/m, "e"), "bad base64"],
     [Buffer.from([0, 255, 13, 10, 13, 10, 0x80, 0x9f]), "no report in the mail"],
     ["", "no report in the mail"],
   ];
   for (const [raw] of cases) await w.receive(raw);
-  const s = w.day();
+  const s = w.day("2026-10-23", "unverified");
   assert.equal(s.reports, 0);
   assert.equal(s.errors, cases.length);
   const kinds = {};
@@ -272,11 +282,18 @@ test("malformed mail is counted as an error, never thrown, never alerted", async
   assert.deepEqual([w.rejected, w.forwarded], [[], []]);
 });
 
+test("an unreadable mail From a known reporter is counted in that reporter's own entry", async () => {
+  const w = world();
+  await w.receive(mail(gz({ hello: "world" })));
+  assert.deepEqual(w.day().error_kinds, { "not a TLS report": 1 });
+  assert.equal(w.day("2026-10-23", "unverified"), null);
+});
+
 test("a mail over the size limit is not read at all", async () => {
   const w = world();
   const huge = Buffer.alloc(2 * 1024 * 1024, 0x41);
   await w.receive(huge);
-  assert.deepEqual(w.day().error_kinds, { "mail too large": 1 });
+  assert.deepEqual(w.day("2026-10-23", "unverified").error_kinds, { "mail too large": 1 });
   assert.equal(w.message.raw.locked, false, "the stream was read");
 });
 
@@ -293,10 +310,22 @@ test("a reporter is the domain of the header From; anything ambiguous is unknown
     [[], "unknown"],
   ];
   for (const [i, [from]] of froms.entries()) await w.receive(mail(gz(report({ id: `f${i}`, ok: 1 })), { from }));
-  const s = w.day();
-  assert.equal(s.reports, froms.length);
-  assert.deepEqual(s.reporters, { "google.com": 1, "mail.example.org": 1, unknown: 5, "evil.example": 1 });
+  assert.equal(w.day().reports, 1);
+  const s = w.day("2026-10-23", "unverified");
+  assert.equal(s.reports, froms.length - 1);
+  assert.deepEqual(s.reporters, { "mail.example.org": 1, unknown: 5, "evil.example": 1 });
   assert.equal(Object.getPrototypeOf(s.reporters), Object.prototype);
+});
+
+test("a known reporter is its exact domain: a subdomain is unverified", async () => {
+  const w = world();
+  const froms = ["x@sub.google.com", "tlsrpt@mail.microsoft.com", "x@google.com.evil.example", "x@notgoogle.com"];
+  for (const [i, from] of froms.entries()) await w.receive(mail(gz(report({ id: `s${i}`, ok: 1 })), { from }));
+  assert.equal(w.day(), null);
+  assert.equal(w.day("2026-10-23", "microsoft.com"), null);
+  assert.deepEqual(w.day("2026-10-23", "unverified").reporters, {
+    "sub.google.com": 1, "mail.microsoft.com": 1, "google.com.evil.example": 1, "notgoogle.com": 1,
+  });
 });
 
 test("hostile names never become a summary key or a mail header", async () => {
@@ -324,7 +353,7 @@ test("a summary holds at most 20 names per list", async () => {
   for (let i = 0; i < 25; i++) {
     await w.receive(mail(gz(report({ id: `n${i}`, ok: 1 })), { from: `tlsrpt@reporter${i}.example` }));
   }
-  const s = w.day();
+  const s = w.day("2026-10-23", "unverified");
   assert.equal(Object.keys(s.reporters).length, 21);
   assert.equal(s.reporters.other, 5);
 });
@@ -354,7 +383,7 @@ test("a KV outage is logged, not thrown", async () => {
 
 // ── the summary page ──
 
-test("GET / on workers.dev shows the mode and the last 30 days, newest first, counts only, in one KV read", async () => {
+test("GET / on workers.dev shows the mode and the last 30 days, newest first, counts only, one KV read per reporter", async () => {
   const w = world();
   w.now = T0 - 31 * DAY;
   await w.receive(mail(gz(report({ id: "old", ok: 5 }))));
@@ -362,11 +391,12 @@ test("GET / on workers.dev shows the mode and the last 30 days, newest first, co
   await w.receive(mail(gz(report({ id: "edge", ok: 6 }))));
   w.now = T0;
   await w.receive(mail(gz(report({ ok: 10, failed: 1, details: [MISMATCH] }))));
+  await w.receive(mail(gz(report({ id: "u", ok: 2, failed: 1 })), { from: "tlsrpt@example.net" }));
   w.now = T0 + DAY;
   await w.receive(mail(gz(report({ id: "d2", ok: 20 }))));
   w.gets = 0;
   const r = await get(DASH_URL, w.env({ MTA_STS_MODE: "enforce" }));
-  assert.equal(w.gets, 1);
+  assert.equal(w.gets, 3, "google.com, microsoft.com, unverified");
   assert.equal(r.status, 200);
   assert.equal(r.headers.get("cache-control"), "no-store");
   const j = await r.json();
@@ -376,17 +406,23 @@ test("GET / on workers.dev shows the mode and the last 30 days, newest first, co
     mx: ["route1.mx.cloudflare.net", "route2.mx.cloudflare.net", "route3.mx.cloudflare.net"],
   });
   // The page shows 2026-09-25 .. 2026-10-24: 2026-09-24 is one day past it.
-  assert.deepEqual(j.days.map((d) => [d.day, d.successful, d.failed]), [["2026-10-24", 20, 0], ["2026-10-23", 10, 1]]);
+  const g = (d) => d.verified["google.com"];
+  assert.deepEqual(j.days.map((d) => [d.day, g(d).successful, g(d).failed]), [["2026-10-24", 20, 0], ["2026-10-23", 10, 1]]);
+  // Unverified reports are shown apart, never added to a known reporter's.
+  assert.deepEqual(j.days.map((d) => [d.day, d.unverified.reports, d.unverified.failed]), [["2026-10-24", 0, 0], ["2026-10-23", 1, 1]]);
+  assert.deepEqual(j.days[1].unverified.reporters, { "example.net": 1 });
+  assert.deepEqual(Object.keys(j.days[1].verified), ["google.com"], "a reporter that sent nothing that day is not listed");
+  assert.equal(j.days[1].verified["google.com"].day, undefined);
   const text = JSON.stringify(j);
   for (const leak of ["ids", "209.85.220.41", "104.30.0.1", "smtp-tls-reporting@google.com", "X509_V_ERR"]) {
     assert.ok(!text.includes(leak), leak);
   }
   // Only today's entry keeps its report digests, and nothing older than 30 days is kept.
-  const book = JSON.parse(w.kv.get("summary"));
+  const book = JSON.parse(w.kv.get("summary:google.com"));
   assert.deepEqual(book.days.map((d) => [d.day, Array.isArray(d.ids)]), [["2026-10-24", true], ["2026-10-23", false]]);
   // With no mail since, the window still moves with the clock.
   w.now = T0 + 30 * DAY;
-  const later = await (await get(DASH_URL, w.env())).json();
+  const later = await w.page();
   assert.deepEqual(later.days.map((d) => d.day), ["2026-10-24"]);
 });
 

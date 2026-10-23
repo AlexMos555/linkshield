@@ -6,11 +6,15 @@ The Worker serves cleanway.ai's MTA-STS policy and reads the TLS-RPT reports
 senders mail to tls-reports@cleanway.ai. Pinned there: the exact policy text
 (CRLF, the three Cloudflare MX hosts, testing unless MTA_STS_MODE says
 enforce), 404 for anything else, a gzip report counted per policy into a
-30-day summary read in one KV read, an alert only when sessions failed (once
-a day per known reporter), never the raw report, and malformed mail counted
-instead of thrown. And against forged mail: dedup by content, separate
-budgets for junk and reports, the alert claimed before it is sent, and no
-sender text in the alert.
+30-day summary, an alert only when sessions failed (once a day per group),
+never the raw report, and malformed mail counted instead of thrown. And
+against forged mail: Google's and Microsoft's reports (an exact From domain,
+vouched for by DMARC) kept in KV keys, budgets, dedup lists and alerts of
+their own, apart from every unverified reporter's, so forged mail cannot fill,
+overwrite or outnumber them; the alert claimed before it is sent; a refused
+KV write and a failed send each retried once in the same delivery; no sender
+text in the alert; and parsing bounded (30 MIME parts, 256 KB unzipped per
+mail).
 """
 from __future__ import annotations
 
