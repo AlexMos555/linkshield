@@ -12,6 +12,7 @@ All timestamps use UTC to avoid timezone inconsistencies.
 
 Public API:
 - `check_rate_limit(user, num_domains)` — authenticated per-user (legacy, used by /check)
+- `refund_daily_quota(user, num_domains)` — give back what /check charged but did not analyse
 - `check_ip_rate_limit(ip, category, limit, window_seconds)` — per-IP generic
 - `rate_limit(cost=1, category="default", mode="user")` — FastAPI dependency factory
 
@@ -71,8 +72,7 @@ async def check_rate_limit(user: AuthUser, num_domains: int = 1) -> int:
         )
 
         # ── Check daily limit (UTC-based) ──
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        daily_key = f"rate:daily:{user.id}:{today}"
+        daily_key = _daily_key(user)
 
         # Atomic increment
         current = await r.incrby(daily_key, num_domains)
@@ -118,6 +118,23 @@ async def check_rate_limit(user: AuthUser, num_domains: int = 1) -> int:
                 },
             )
         return daily_limit  # fail-open: assume full quota available
+
+
+def _daily_key(user: AuthUser) -> str:
+    return f"rate:daily:{user.id}:{datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
+
+
+async def refund_daily_quota(user: AuthUser, num_domains: int) -> None:
+    """Give back `num_domains` that check_rate_limit charged but that were
+    not analysed after all (/check: its batch window ran out — routers/check.py).
+    Best effort: on a Redis error the charge stands."""
+    if num_domains <= 0:
+        return
+    try:
+        r = await get_redis()
+        await r.decrby(_daily_key(user), num_domains)
+    except Exception as e:  # noqa: BLE001 — a refund must never fail the response
+        logger.warning("rate_limit_refund_failed", extra={"error": str(e)})
 
 
 #

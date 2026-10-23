@@ -171,9 +171,19 @@ async def gather_competitor_verdicts(
 
     Bounded by TIMEOUT_S per query — if a competitor doesn't answer
     in 3s, we move on with 'unknown' so the user's page renders quickly.
+    With too many lookups already waiting in this worker (a slow
+    Cloudflare under a flood of public checks), none: the comparison is
+    skipped rather than holding every response for up to 3 s.
     """
-    tasks = [check_cloudflare_families(domain, domain_exists)]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    from api.services import load_shedding
+
+    if not load_shedding.COMPETITOR_LOOKUPS.try_acquire():
+        return []
+    try:
+        tasks = [check_cloudflare_families(domain, domain_exists)]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+    finally:
+        load_shedding.COMPETITOR_LOOKUPS.release()
     out: list[dict] = []
     for r in results:
         if isinstance(r, Exception):

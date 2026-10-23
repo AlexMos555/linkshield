@@ -57,6 +57,8 @@ analyzer.validate_domain_resolution = _resolution
 
 # Cloudflare Families comparison (every public-check response): to the stub
 # (scripts/capacity/stub_upstream.py answers application/dns-json too).
+# STUB_UPSTREAM: where the stub listens (https://127.0.0.1:8443 outside Docker).
 from api.services import competitor_verdicts  # noqa: E402
-competitor_verdicts.CLOUDFLARE_FAMILIES_URL = "https://upstream:8443/dns-json"
-competitor_verdicts.CLOUDFLARE_UNFILTERED_URL = "https://upstream:8443/dns-json"
+_UPSTREAM = os.environ.get("STUB_UPSTREAM", "https://upstream:8443")
+competitor_verdicts.CLOUDFLARE_FAMILIES_URL = f"{_UPSTREAM}/dns-json"
+competitor_verdicts.CLOUDFLARE_UNFILTERED_URL = f"{_UPSTREAM}/dns-json"

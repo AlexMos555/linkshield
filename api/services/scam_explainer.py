@@ -551,13 +551,23 @@ async def explain_scam(
     explanation: Optional[str] = None
     budget_spent = False
     if signals_set and _llm_available():
-        if await _llm_budget_granted():
-            try:
-                explanation = await _llm_explanation(category, signals_set, locale)
-            except Exception as exc:
-                logger.warning("LLM explainer crashed, falling back: %s", exc)
-        else:
+        from api.services import load_shedding
+        # At most LOAD_SHED_LLM_MAX_INFLIGHT live calls per worker (the SDK
+        # client here has no short timeout); past it, treated like a spent
+        # budget: what we have, nothing cached.
+        if not load_shedding.LLM_EXPLAINER.try_acquire():
             budget_spent = True
+        else:
+            try:
+                if await _llm_budget_granted():
+                    try:
+                        explanation = await _llm_explanation(category, signals_set, locale)
+                    except Exception as exc:
+                        logger.warning("LLM explainer crashed, falling back: %s", exc)
+                else:
+                    budget_spent = True
+            finally:
+                load_shedding.LLM_EXPLAINER.release()
 
     if budget_spent:
         # Serve what we have, and cache nothing under this signal set: the

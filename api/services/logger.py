@@ -56,6 +56,8 @@ ALLOWED_EXTRAS = frozenset({
     "skipped", "ids", "user_ids", "auth_audit_deleted",
     # data export (api/services/export.py): which part failed, never its content
     "part",
+    # load shedding (api/services/load_shedding.py): per-budget counters
+    "budgets",
     # email (never the address, subject or body)
     "template", "send_id", "provider", "locale", "fallback", "html_len",
     "text_len",

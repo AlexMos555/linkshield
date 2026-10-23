@@ -154,6 +154,9 @@ app.add_middleware(
     # clients send so an unlinked device can be refused.
     allow_methods=["POST", "GET", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Device-Id"],
+    # A 503 (load shedding) and a 429 say when to come back; the page can
+    # read it. The middleware's own 503 sends the same (load_shedding._cors).
+    expose_headers=["Retry-After"],
 )
 
 # Security headers — HSTS, CSP, X-Frame-Options, etc. Defense in depth.
@@ -214,11 +217,22 @@ from api.services.request_guards import BodySizeLimit, DnsHostOnly  # noqa: E402
 app.add_middleware(BodySizeLimit)
 app.add_middleware(DnsHostOnly)
 
-# Outermost: answers /dns-query before any of the middleware above runs
-# (api/services/doh_fastpath.py). Must stay the LAST add_middleware call.
+# Answers /dns-query before any of the middleware above runs
+# (api/services/doh_fastpath.py).
 from api.services.doh_fastpath import DohFastPath  # noqa: E402
 
 app.add_middleware(DohFastPath)
+
+# Outermost: a bounded number of requests in flight per class (DNS, each
+# health probe, the rest) per worker — past it an immediate 503 +
+# Retry-After, before even the DNS fast path. It reads a request body before
+# the request takes a slot (api/services/load_shedding.py). Must stay the
+# LAST add_middleware call.
+from api.services.load_shedding import LoadShedding, Overloaded, overloaded_response  # noqa: E402
+
+app.add_middleware(LoadShedding)
+# The same 503 from inside a route: no fresh-analysis slot (/check, /public/check).
+app.add_exception_handler(Overloaded, overloaded_response)
 
 
 def _scrub_path_for_logs(path: str) -> str:
