@@ -218,8 +218,15 @@ push and update names from the operators' own documentation; never
 blocked, in the phone's veto) and the publisher's
 `UNRANKED_SHARED_DOMAINS` plus the curated `data/hosting_platforms.json`
 suffixes (tenants blocked exactly, the apex never promoted). The phone's
-veto keeps 9,884 names; 4,535 of Tranco's top-10k (385 of its top 1,000)
-leave it.
+veto goes from 9,879 names to 9,884; 4,413 of the old ones leave it (385
+of Tranco's top 1,000 are no longer vetoed), and 217 infrastructure names
+are kept in it by hand. A dry run of the publisher on the 2026-10-23
+licensed feeds (no Redis): 641,087 → 673,882 names, +34,754 / −1,959;
+32,207 of the additions are feed-listed tenants on the curated platforms
+(weeblysite.com, godaddysites.com, xsph.ru, tw1.ru …) that used to be
+skipped because the platform ranked; 111 registrables Tranco's top-100k
+protected are blocked whole with the top-1M guard simulated (the PR
+lists them for review).
 
 **Measured** (2026-10-23; host-only scoring — `calculate_score({"domain":
 host})`: the allowlist, the name rules and the local model, no network
