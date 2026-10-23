@@ -34,7 +34,13 @@ def test_limits_by_route():
     assert rg.body_limit_for("/api/v1/email/analyze") > rg.DEFAULT_BODY_LIMIT
 
 
-def test_declared_oversize_body_is_refused_unread(client, monkeypatch):
+@pytest.mark.parametrize("shedding", [True, False], ids=["load-shedding", "guard-alone"])
+def test_declared_oversize_body_is_refused_unread(client, monkeypatch, shedding):
+    """With load shedding on, LoadShedding (outermost) refuses it before it
+    reads the body for a slot; switched off, BodySizeLimit still does."""
+    from api.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "load_shed_enabled", shedding)
     called = []
     import api.routers.explainer as explainer
 
@@ -97,6 +103,27 @@ def test_middleware_stops_a_stream_midway():
     assert sent[0]["status"] == 413
     assert sum(seen) == 8  # the chunk that crossed the cap never reached the app
     assert len(sent) == 2  # the 413, and nothing of the app's own answer
+
+
+def test_middleware_refuses_a_declared_oversize_body_before_the_app():
+    """Pure ASGI: BodySizeLimit alone, without a byte read."""
+    called = []
+
+    async def app(scope, receive, send):  # pragma: no cover — never reached
+        called.append(1)
+
+    guarded = rg.BodySizeLimit(app, default_limit=10)
+    sent = []
+
+    async def receive():  # pragma: no cover — nothing is read
+        raise AssertionError("the body is never read")
+
+    async def send(msg):
+        sent.append(msg)
+
+    scope = {"type": "http", "path": "/x", "method": "POST", "headers": [(b"content-length", b"11")]}
+    asyncio.run(guarded(scope, receive, send))
+    assert sent[0]["status"] == 413 and called == []
 
 
 # ── Voice upload: who first, then the body ──
