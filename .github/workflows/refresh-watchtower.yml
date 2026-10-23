@@ -14,7 +14,7 @@ name: Refresh Watchtower (Strategy #17)
 
 on:
   schedule:
-    # 03:33 UTC daily — off-peak, distinct from the Tranco cron
+    # 03:33 UTC daily — off-peak, distinct from the popularity-ranks cron
     # at 03:17 so they don't fight for crt.sh / network egress.
     - cron: '33 3 * * *'
   workflow_dispatch:
