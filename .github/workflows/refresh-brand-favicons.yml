@@ -1,4 +1,4 @@
-name: Refresh brand favicon hashes (Strategy #2)
+name: 'Refresh brand favicon hashes (Strategy #2)'
 
 # Weekly re-fetch of every gallery brand's favicon. Brands change
 # favicons rarely (~once a year for the big ones) but when they
