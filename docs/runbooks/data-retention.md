@@ -54,6 +54,25 @@ production-базы (только чтение).
 `select public.delete_auth_audit_log_for_users(array['<id>', '<id>']::uuid[]);`
 Выгрузка данных по запросу — `docs/runbooks/data-requests.md`.
 
+**`auth_audit_log_error: status_500`** (в логе
+`account_purge.auth_audit_delete_failed` — `status: 500`) почти наверняка
+значит, что журнал входов разросся: вызов просматривает его целиком, и
+база отменила его по лимиту времени (код Postgres 57014, «canceling statement
+due to statement timeout»). Миграция 027 даёт обеим функциям по 50 секунд
+(без этого вызов через API получил бы 8 секунд — лимит Supabase для
+`service_role`), а `account_purge.py` и `retention.py` ждут ответа 70 секунд,
+поэтому слишком долгий вызов заканчивается именно этой ошибкой: аккаунты всё
+равно удаляются, а строки журнала о них остаются. Это будет повторяться при
+каждом удалении — прислать в чат, а пока удалить строки вручную: взять
+номера из `user_ids` строки `account_purge.auth_audit_delete_failed` и
+выполнить SQL выше в SQL Editor (у редактора свой лимит, до 60 секунд, а не
+50 секунд функции). Если и там «canceling statement due to statement
+timeout» — тот же запрос через прямое подключение к базе (Supabase →
+Connect → Direct connection, `psql`), первой командой
+`set statement_timeout = '10min';`. Та же причина у
+`auth_audit_log_2y: status_500` в итоге прохода очистки; вручную —
+`select public.purge_auth_audit_log(730, false);` тем же способом.
+
 ## Как работает очистка
 
 `api/services/retention.py` — один проход по правилам: каждое — запрос

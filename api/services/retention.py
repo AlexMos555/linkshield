@@ -211,14 +211,18 @@ def _rpc_count(resp: Any) -> Optional[int]:
 
 
 async def _purge_auth_audit_log(client: Any, base: str, mode: Mode) -> dict:
+    # A scan of the whole log: wait past the function's own statement_timeout
+    # (027), so a call that runs too long is the database's 500, not ours.
+    from api.services.account_purge import AUTH_AUDIT_TIMEOUT_S
+
     url = f"{base}/rest/v1/rpc/{AUTH_AUDIT_PURGE_FN}"
     args = auth_audit_args(mode)
     headers = supabase_keys.server_headers(None)
     try:
         if mode == "dry_run":
-            resp = await client.request("GET", url, params=args, headers=headers)
+            resp = await client.request("GET", url, params=args, headers=headers, timeout=AUTH_AUDIT_TIMEOUT_S)
         else:
-            resp = await client.request("POST", url, json=args, headers=headers)
+            resp = await client.request("POST", url, json=args, headers=headers, timeout=AUTH_AUDIT_TIMEOUT_S)
     except Exception as e:  # noqa: BLE001 — reported like a table
         return {"error": type(e).__name__}
     if resp.status_code == 404:  # PostgREST doesn't know the function

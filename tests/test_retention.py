@@ -28,7 +28,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from api.services import retention
+from api.services import account_purge, retention
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -74,7 +74,7 @@ class _Stub:
                 table = url.rsplit("/", 1)[-1]
                 stub.calls.append(
                     {"method": method, "table": table, "params": dict(params or {}), "headers": dict(headers or {}),
-                     "json": json, "rpc": "/rest/v1/rpc/" in url}
+                     "json": json, "rpc": "/rest/v1/rpc/" in url, "timeout": _kw.get("timeout")}
                 )
                 if table in stub.fail_tables:
                     return _Resp(500)
@@ -469,6 +469,9 @@ async def test_on_mode_purges_the_auth_audit_log_through_the_function(stub, monk
     assert call["json"] == {"p_retention_days": 730, "p_dry_run": False}
     assert call["params"] == {}
     assert call["headers"]["apikey"] == "sb_secret_test_value_123"
+    # Longer than the function's own statement_timeout (027): a scan that
+    # runs too long ends as the database's 500, not as our ReadTimeout.
+    assert call["timeout"] == account_purge.AUTH_AUDIT_TIMEOUT_S
     assert out["tables"]["auth_audit_log_2y"] == {"deleted": 5}
 
 
@@ -482,6 +485,7 @@ async def test_dry_run_counts_the_auth_audit_log_read_only(stub):
     assert (call["method"], call["table"]) == ("GET", "purge_auth_audit_log")
     assert call["params"] == {"p_retention_days": 730, "p_dry_run": True}
     assert call["json"] is None
+    assert call["timeout"] == account_purge.AUTH_AUDIT_TIMEOUT_S
     assert out["tables"]["auth_audit_log_2y"] == {"would_delete": 5}
 
 

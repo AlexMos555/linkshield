@@ -29,6 +29,15 @@
 --       an admin action. One call per purge run — the payload has no index
 --       (the table is GoTrue's, not ours to index), so each call is a scan.
 --
+-- Both scan the whole log, which grows with every token refresh. On
+-- Supabase, service_role has no statement_timeout of its own and a call
+-- through PostgREST inherits authenticator's 8 seconds; past that the
+-- database cancels it (57014, PostgREST answers 500). So each function sets
+-- its own 50 seconds, which PostgREST (12+) applies to the call's
+-- transaction — under the 60 seconds Supabase allows an API call, so the
+-- database ends a call that runs too long, and the API (which waits longer)
+-- sees the 500. Called from the SQL Editor, the session's own limit holds.
+--
 -- SECURITY DEFINER: they run as the role applying this migration (on
 -- Supabase, `postgres`, which may read and delete auth tables). The
 -- preflight below fails the migration if that role can't, rather than
@@ -59,6 +68,7 @@ RETURNS BIGINT
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
+SET statement_timeout = '50s'
 AS $$
 DECLARE
     v_cutoff TIMESTAMPTZ;
@@ -93,6 +103,7 @@ RETURNS BIGINT
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
+SET statement_timeout = '50s'
 AS $$
 DECLARE
     v_ids   TEXT[];

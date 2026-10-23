@@ -44,7 +44,9 @@ auth schema is not exposed through PostgREST). No answer → the batch waits
 for the next run; any other refusal (404: 027 not applied) would come back
 every run, so the erase goes on and the summary carries
 `auth_audit_log_error` — the rows then age out with retention.py's 2-year
-rule.
+rule. A 500 here most likely means the log outgrew the function's
+statement_timeout (57014; docs/runbooks/data-retention.md has the manual
+delete).
 
 A user who restores while a run is under way is never purged. Restore
 (POST /user/account/restore) only clears a deletion that is still inside
@@ -76,8 +78,13 @@ GRACE_DAYS = 30
 
 AUTH_AUDIT_DELETE_FN = "delete_auth_audit_log_for_users"  # migration 027
 # One call scans the whole sign-in log (GoTrue's table, no index on the
-# payload): more than the client's 10 seconds.
-AUTH_AUDIT_TIMEOUT_S = 60.0
+# payload). The database lets it run for the function's own
+# statement_timeout (50 s, migration 027; without it, the 8 s service_role
+# inherits on Supabase) and then cancels it: a 500. Wait longer than that,
+# so a call that runs too long is that refusal — the erase goes on and says
+# so — and never our own timeout, which would hold the batch back every run.
+# retention.py's call to purge_auth_audit_log waits as long.
+AUTH_AUDIT_TIMEOUT_S = 70.0
 # Answers that mean "not reached": the gateway, not the function, spoke.
 _AUTH_AUDIT_RETRY_STATUSES = (502, 503, 504)
 

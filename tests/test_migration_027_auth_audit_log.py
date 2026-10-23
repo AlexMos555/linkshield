@@ -74,6 +74,37 @@ def test_027_functions_are_security_definer_with_a_pinned_search_path(name):
     assert not re.search(r"(?<!auth\.)\baudit_log_entries\b", fn)
 
 
+# Supabase gives service_role no statement_timeout of its own: a PostgREST
+# call inherits authenticator's 8 seconds, too short for a scan of the whole
+# sign-in log (no index on the payload or created_at). PostgREST 12+ applies
+# a function's own SET statement_timeout before calling it; a call through
+# the API is capped at 60 seconds.
+_AUTHENTICATOR_TIMEOUT_S = 8
+_SUPABASE_API_CAP_S = 60
+
+
+def _statement_timeout_s(name: str) -> int:
+    head = _function(_sql(MIGRATION), name).split("$$")[0]
+    m = re.search(r"SET statement_timeout = '(\d+)s'", head)
+    assert m, f"{name} has no statement_timeout of its own"
+    return int(m.group(1))
+
+
+@pytest.mark.parametrize("name", ["purge_auth_audit_log", "delete_auth_audit_log_for_users"])
+def test_027_functions_bring_their_own_statement_timeout(name):
+    assert _AUTHENTICATOR_TIMEOUT_S < _statement_timeout_s(name) < _SUPABASE_API_CAP_S
+
+
+def test_the_api_waits_longer_than_the_database_lets_the_functions_run():
+    """A call that runs too long must end as the database's 500 (57014): the
+    erase goes on and says so. Our own timeout firing first would count as
+    "no answer" and hold the batch back — on every run."""
+    from api.services import account_purge
+
+    longest = max(_statement_timeout_s(n) for n in ("purge_auth_audit_log", "delete_auth_audit_log_for_users"))
+    assert account_purge.AUTH_AUDIT_TIMEOUT_S >= longest + 10
+
+
 def test_027_only_service_role_may_execute():
     sql = _sql(MIGRATION)
     for sig in (PURGE_SIG, DELETE_SIG):
@@ -322,6 +353,30 @@ async def test_027_on_postgres_clients_cannot_call_either_function():
             await _as(conn, "anon", "SELECT public.purge_auth_audit_log(1, false)")
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
             await _as(conn, "authenticated", "SELECT public.delete_auth_audit_log_for_users(ARRAY[gen_random_uuid()])")
+    finally:
+        await conn.close()
+
+
+@pytest.mark.asyncio
+@needs_pg
+async def test_027_on_postgres_the_functions_carry_their_statement_timeout():
+    """PostgREST reads it from pg_proc.proconfig and sets it for the call's
+    transaction; a direct call (SQL Editor) keeps the session's own."""
+    import asyncpg
+
+    conn = await asyncpg.connect(PG_URL)
+    try:
+        await _fresh_auth(conn)
+        await _apply(conn)
+        for sig, name in ((PURGE_SIG, "purge_auth_audit_log"), (DELETE_SIG, "delete_auth_audit_log_for_users")):
+            config = await conn.fetchval("SELECT proconfig FROM pg_proc WHERE oid = to_regprocedure($1)", sig)
+            assert f"statement_timeout={_statement_timeout_s(name)}s" in config
+            assert "search_path=public, pg_temp" in config
+        async with conn.transaction():
+            await conn.execute("SET LOCAL ROLE service_role")
+            await conn.execute("SET LOCAL statement_timeout = '7s'")
+            await conn.fetchval("SELECT public.purge_auth_audit_log(730)")
+            assert await conn.fetchval("SHOW statement_timeout") == "7s"  # restored after the call
     finally:
         await conn.close()
 
