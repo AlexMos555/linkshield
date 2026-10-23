@@ -1,12 +1,22 @@
-name: Refresh Tranco top-1M (Strategy #14)
+name: Refresh top-1M popularity ranks (Majestic Million + CrUX)
 
-# Daily refresh of the Tranco popularity cache against the prod
-# Redis instance. Without this the tranco:ranks Redis hash stays
-# empty and Strategy #14 contributes no signal in production.
+# Daily refresh of the popularity rank cache (Strategy #14) against the prod
+# Redis instance. scripts/refresh_tranco.py builds Cleanway's licensed
+# ranking — the Majestic Million (CC BY 3.0) and the Chrome UX Report top
+# origins (CC BY 4.0), merged by scripts/build_top_domains.py — and loads its
+# first 1,000,000 names into the tranco:ranks Redis hash. Without this the
+# hash stays empty and Strategy #14 contributes no signal in production.
+# Until 2026-10-23 (#284) it loaded the Tranco list; this file, the script
+# and the Redis key keep their old names so links, history and readers keep
+# working.
 #
 # Failure modes (and what we do about them):
-#  * Network: GitHub-runner egress to tranco-list.eu is reliable
-#    (it's been up for the past 5 years). If a single run fails,
+#  * Network: the build downloads from downloads.majestic.com (the Majestic
+#    Million), raw.githubusercontent.com (the CrUX monthly lists, plus the
+#    PhishDestroy and TweetFeed feeds), publicsuffix.org (the Public Suffix
+#    List), hole.cert.pl and phishunt.io (CERT Polska, Phishunt). Three of
+#    the four licensed phishing feeds must answer (MIN_FEEDS); any other
+#    source down, truncated or unparseable fails the run (exit 1), and
 #    yesterday's cache stays live thanks to the two-rename swap.
 #  * Concurrent runs: refresh_tranco.py holds a 30-min SETNX lock
 #    in Redis. The second runner exits 3 and we treat that as a

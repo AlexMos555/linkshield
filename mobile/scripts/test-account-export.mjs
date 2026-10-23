@@ -2,7 +2,7 @@
 /**
  * Table test for "Download my data" on the Account screen —
  * src/services/account-export.ts. Run: `node mobile/scripts/test-account-export.mjs`.
- * CI runs it through test-account-session.mjs, which imports it at the end.
+ * CI runs it as its own step (.github/workflows/ci.yml, mobile job).
  *
  * The service is transpiled with the tree's TypeScript and loaded with a
  * small require (as in test-domain-check-hook.mjs) that hands it stubs for

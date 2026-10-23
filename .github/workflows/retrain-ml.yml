@@ -3,8 +3,10 @@ name: Retrain phishing ML model (weekly)
 # Turns the frozen ML artifact into a living, self-updating model.
 # Before 2026-07-06 nothing retrained it and the training feed was a frozen
 # April snapshot — a retrain just re-learned April's phish. This job pulls FRESH
-# phishing (URLhaus full + OpenPhish) + Tranco benign, retrains, health-gates on
-# AUC, exports ONNX, and commits the new model so prod picks it up on next deploy.
+# phishing (the four licensed feeds: PhishDestroy, CERT Polska, TweetFeed,
+# Phishunt) + Majestic/CrUX benign (scripts/refresh_training_feeds.py),
+# retrains, health-gates on AUC, exports ONNX, and commits the new model so
+# prod picks it up on next deploy.
 #
 # Weekly (Mon 05:00 UTC). Manual runs via workflow_dispatch.
 
@@ -38,7 +40,7 @@ jobs:
           # Training-only deps not shipped to prod
           pip install catboost==1.2.10 scikit-learn
 
-      - name: Refresh training feeds (fresh phishing + Tranco)
+      - name: Refresh training feeds (fresh phishing + Majestic/CrUX)
         run: python scripts/refresh_training_feeds.py
 
       - name: Retrain (exports .cbm + .onnx + meta)

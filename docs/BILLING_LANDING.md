@@ -82,7 +82,8 @@ Numbers never live in the strings: prices and windows are ICU arguments
   hard-coded price; `Billing`/`Cancel` stay out of the client bundle.
 - `landing/e2e/billing.spec.ts` — both flag states; each half skips when the
   other is live. `.github/workflows/e2e-landing.yml` builds and runs the
-  landing twice (`billing: [off, on]`).
+  landing four times (`billing: [off, on]` × `stripe: [off, on]`, the
+  second for `NEXT_PUBLIC_STRIPE_LIVE`).
 
 ## Before the founder flips the flag
 
