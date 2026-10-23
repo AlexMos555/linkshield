@@ -6,7 +6,7 @@ name: DNS canary
 # On 2026-08-18 production NXDOMAIN'd github.com — and every *.github.com —
 # for everyone using our DNS profile, because the blocklist publisher added an
 # exact feed hostname unconditionally. Nothing noticed until a person went
-# looking. This job asks five questions the incident would have failed:
+# looking. This job asks six questions (scripts/dns_canary.py):
 #   1. do names that must never be blocked still resolve — and does the
 #      gateway resolve anything at all?
 #      (publisher guards + the curated list in data/canary_must_resolve.txt)
@@ -22,7 +22,11 @@ name: DNS canary
 #      (fresh = under 13h: twice the publisher's 6h cadence, so ordinary cron
 #      drift no longer trips it; phones tolerate 48h)
 #   4. is the API healthy end to end? (GET /health/deep — /health is always-200)
+#      and is the DoH gateway iPhones resolve through healthy? (GET /health/doh)
 #   5. is the page people install from up? (GET /ru/android on the landing)
+#   6. is the minute-level uptime monitor itself alive? (ops/uptime-worker:
+#      its state's heartbeat_at, written at least every 10 minutes; a Worker
+#      version from before heartbeats is a note, not a failure)
 #
 # A failing run mails the repository owner. No secrets: everything it touches
 # is a public endpoint.
@@ -64,7 +68,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.11'
-      - name: Probe live DNS, blocklist artifact, /health/deep and landing
+      - name: Probe live DNS, blocklist artifact, /health/deep, /health/doh, landing and uptime monitor
         # Inputs reach the shell as env vars, never spliced into the script.
         env:
           CANARY_BASE: ${{ inputs.base || 'https://api.cleanway.ai' }}

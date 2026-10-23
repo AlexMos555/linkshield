@@ -6,7 +6,7 @@ NXDOMAIN'd github.com (and every *.github.com) for everyone using our DNS
 profile. Nothing noticed until a person went looking. It now runs every 15
 minutes and fails loudly.
 
-Five questions, all against the LIVE endpoints:
+Six questions, all against the LIVE endpoints:
   1. Do names that must never be blocked resolve — and does the gateway
      resolve anything at all?  (the publisher's NEVER_BLOCK_GUARDS plus the
      curated list in data/canary_must_resolve.txt; at least half of them
