@@ -13,7 +13,6 @@ developer push                      │
         ├→ GitHub Actions: CI      (pytest + ruff + coverage)
         ├→ GitHub Actions: Security (gitleaks, bandit, pip-audit, trivy, hadolint)
         ├→ GitHub Actions: E2E      (Playwright landing suite)
-        ├→ (deploy-staging / deploy-production workflows: unused, see deploy.md)
         ├→ Vercel auto-deploy       (main branch → production landing)
         └→ Railway auto-deploy      (main branch → production API)
              ├→ builds the root Dockerfile (python:3.11-slim, non-root)

@@ -30,8 +30,9 @@ approval that never existed).
 
 Pull requests get a Vercel preview of the landing; the API has no preview —
 CI (`.github/workflows/ci.yml`, `security.yml`, `e2e-landing.yml`) is the gate.
-`deploy-staging.yml` and `deploy-production.yml` are unused leftovers of the
-planned three-tier setup; do not run them.
+There is no deploy workflow: `deploy-staging.yml` and `deploy-production.yml`,
+leftovers of the planned three-tier setup that never deployed anything, were
+removed on 2026-10-23.
 
 `ENVIRONMENT=staging` is still a valid setting (`api/config.py`), so a staging
 service can be added later: a second Railway environment with its own

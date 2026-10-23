@@ -44,22 +44,12 @@
 - **Проверка:** `gh secret list` показывает все 5
 - **Зачем:** 2 криптикal (Watchtower умирает каждый tick без Supabase keys) + 3 high (credibility benchmark не публикует head-to-head без сравнительных ключей)
 
-### 4. Railway deploy tokens (4 secrets)
-- **Где:** Railway → Account Settings → Tokens → Create New Token
-- **Что добавить в те же GitHub secrets:**
-
-| Secret name | Source |
-|---|---|
-| `RAILWAY_TOKEN_STAGING` | Create token labeled "GitHub Actions — staging" |
-| `RAILWAY_TOKEN_PRODUCTION` | Create token labeled "GitHub Actions — production" |
-| `RAILWAY_SERVICE_STAGING` | Railway → Settings → service ID for staging environment |
-| `RAILWAY_SERVICE_PRODUCTION` | Railway → service ID for production |
-| `STAGING_HEALTH_URL` | `https://<staging-domain>/health` |
-| `PROD_HEALTH_URL` | `https://api.cleanway.ai/health` |
-
-- **Сколько:** 10 минут
-- **Проверка:** Push на main → `.github/workflows/deploy-production.yml` запускается без "secret missing" errors
-- **Зачем:** Без этого каждый push требует manual Railway deploy. До распределения это нормально, но при launch неудобно.
+### 4. Railway deploy tokens — не нужны
+- Railway сам выкатывает каждый коммит в `main` (интеграция Railway с GitHub,
+  `docs/runbooks/deploy.md`). Workflow `deploy-staging.yml` и
+  `deploy-production.yml`, которым были нужны секреты `RAILWAY_TOKEN_*`,
+  `RAILWAY_SERVICE_*`, `STAGING_HEALTH_URL` и `PROD_HEALTH_URL`, удалены
+  2026-10-23. Заводить эти секреты не нужно.
 
 ### 5. Тест DNS на real iPhone
 - **Где:** Real iPhone (не симулятор)
