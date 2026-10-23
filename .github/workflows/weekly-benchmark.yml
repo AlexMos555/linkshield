@@ -1,6 +1,7 @@
 name: Weekly fresh-URL benchmark (recall transparency)
 
-# Once a week, fetch the latest URLhaus + PhishTank phishing feeds,
+# Once a week, fetch the latest PhishTank phishing feed (URLhaus too until
+# it closed anonymous downloads on 2026-10-21),
 # run them through cleanway.ai/api/v1/public/check + Cloudflare
 # 1.1.1.1 for Families + (when keys are configured) Google Safe
 # Browsing + VirusTotal aggregate, and publish the results.
@@ -224,15 +225,14 @@ jobs:
           title: '🚨 Weekly benchmark: recall regression detected'
           body: |
             The weekly fresh-URL benchmark shows the Cleanway public
-            endpoint dropped >5pp in recall against fresh URLhaus +
-            PhishTank URLs.
+            endpoint dropped >5pp in recall against fresh PhishTank URLs.
 
             **Possible causes:**
             - One of the 16 threat-intel sources is failing (check
               circuit breaker status at api.cleanway.ai/health)
             - A paid API key expired or hit quota
             - Cloudflare / upstream proxies started flagging us
-            - URLhaus changed their feed format
+            - PhishTank changed their feed format
 
             **Action:** investigate before publishing this week's
             methodology page snapshot.
