@@ -105,12 +105,15 @@ test("/ru/transparency/methodology credits its open data and links the licences"
   await expect(sources).toContainText("Чтобы составить этот рейтинг, мы их изменили");
   await expect(sources).toContainText("со следующих версий");
   await expect(sources).toContainText("примеры для обучения");
-  for (const feed of ["PhishDestroy", "CERT Polska", "TweetFeed", "Phishunt", "Phishing.Database", "CSIRT Italia"]) {
+  for (const feed of ["PhishDestroy", "CERT Polska", "TweetFeed", "Phishunt", "Phishing.Database"]) {
     await expect(sources).toContainText(feed);
   }
-  // CSIRT Italia's TLP:CLEAR is a sharing label, not a licence: its line links ACN's own terms.
-  const csirt = sources.locator("li", { hasText: "CSIRT Italia" });
-  await expect(csirt.locator('a[href="https://www.acn.gov.it/portale/note-legali"]')).toHaveText("условия использования");
+  // A feed with no standard licence links its publisher's own terms.
+  const certPl = sources.locator("li", { hasText: "CERT Polska" });
+  await expect(certPl.locator('a[href="https://hole.cert.pl/schema/certpl_lista_ostrzezen_api_v2.pdf"]')).toHaveText("условия использования");
+  // Left out of the blocklist since 2026-10-23 (ACN's terms bar commercial use), so not credited as a source.
+  await expect(sources).not.toContainText("CSIRT Italia");
+  await expect(sources.locator('a[href^="https://www.acn.gov.it/"]')).toHaveCount(0);
   await expect(sources).not.toContainText("TLP");
   await expect(sources).not.toContainText("Methodology.");
 });

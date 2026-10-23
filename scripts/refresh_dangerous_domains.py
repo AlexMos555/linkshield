@@ -14,7 +14,9 @@ its URL constant below and in docs/THIRD_PARTY_FEEDS.md:
   * Phishunt.io      — hourly phishing URL feed (CC0 1.0)
   * TweetFeed.live   — 365-day OSINT window from reporting accounts (CC0 1.0)
   * CERT Polska      — Lista Ostrzeżeń, hole.cert.pl (unrestricted processing)
-  * CSIRT Italia/ACN — public MISP feed, TLP:CLEAR events only
+  * CSIRT Italia/ACN — public MISP feed, TLP:CLEAR events only (no licence
+                       stated; ACN's terms bar commercial use — left out
+                       under BLOCKLIST_LICENSED_ONLY since 2026-10-23)
   * PhishDestroy     — DestroyList, DNS-verified active domains (CC0 / MIT)
   * PhishTank        — verified-online dump, ONLY with PHISHTANK_API_KEY
                        (api/services/phishtank_feed.py: one download a day)
@@ -25,8 +27,9 @@ not-for-profit use only — Cleanway sells plans, so it is gone for good
 rather than keyed (see RETIRED_FEEDS). The published names only it backed
 leave on the first publish without it, exactly like a switched-off feed.
 
-Licence switch (docs/THIRD_PARTY_FEEDS.md): the two feeds marked
-non-commercial were fine while the product was free and are not once it
+Licence switch (docs/THIRD_PARTY_FEEDS.md): the feeds whose terms bar
+commercial use (OpenPhish, phishing.army, and since 2026-10-23 CSIRT
+Italia) were fine while the product was free and are not once it
 charges. BLOCKLIST_LICENSED_ONLY=1 leaves them out of the build entirely —
 not downloaded, not consulted, so they are not an outage either: their
 stored health state is forgotten, nothing is carried for them, and the
@@ -36,6 +39,8 @@ byte. BLOCKLIST_EXCLUDE_FEEDS names further feeds to leave out (comma
 separated, by the names above) — for measurements such as
 scripts/eval_day_one_coverage.py, never for production. Flipping either
 changes the set by more than the churn gate allows: publish once with
+--force. CSIRT Italia joining the switch while it was already on moves only
+its own exact hosts (184 distinct on 2026-10-23, ~0.03% of the set): no
 --force.
 
 Exact-host-only sources: CERT Polska and CSIRT Italia name the precise host
@@ -94,7 +99,7 @@ Env:
     REDIS_URL                  — connection string (required unless --dry-run)
     BLOCKLIST_RETAIN_DAYS      — retention window in days, 0 disables (default 14)
     PUBLISH_CONFIRMED_THREATS  — 1/true to publish server-confirmed hosts (default off)
-    BLOCKLIST_LICENSED_ONLY    — 1/true to leave out OpenPhish, phishing.army (default off)
+    BLOCKLIST_LICENSED_ONLY    — 1/true to leave out OpenPhish, phishing.army, CSIRT Italia (default off)
     BLOCKLIST_EXCLUDE_FEEDS    — comma-separated feed names to leave out (measurements only)
     PHISHTANK_API_KEY          — set: PhishTank joins the feeds, one cached download a day
 """
@@ -298,7 +303,9 @@ CERT_PL_DOMAINS = "https://hole.cert.pl/domains/v2/domains.txt"
 # under the Traffic Light Protocol means unlimited disclosure; we read no
 # event that is not marked CLEAR. Malware C2 (AsyncRAT, RedLine, Remcos …),
 # ~44 domains/day — it will not move the phishing benchmark, it blocks
-# infostealer callbacks.
+# infostealer callbacks. TLP:CLEAR is a sharing label, not a licence, and the
+# feed states none; ACN's terms bar commercial use (NON_COMMERCIAL_FEEDS), so
+# since 2026-10-23 it is read only with BLOCKLIST_LICENSED_ONLY off.
 CSIRT_IT_MANIFEST = "https://www.csirt.gov.it/feed-misp/manifest.json"
 
 # ── 2026-10-21: PhishDestroy DestroyList, licence-checked before it was wired ──
@@ -335,9 +342,15 @@ TTL_SECONDS = 60 * 60 * 24 * 3  # 3-day safety TTL: if the cron dies, the set ex
 # Sources whose terms bar shipping their names inside a paid product, read
 # 2026-09-21 and 2026-09-29: OpenPhish (openphish.com/terms.html — no
 # commercial use "including … customer protection", no redistribution),
-# phishing.army (its own file header: CC BY-NC 4.0). BLOCKLIST_LICENSED_ONLY=1
-# leaves both out; unset, they are built in exactly as before.
-NON_COMMERCIAL_FEEDS = frozenset({"OpenPhish", "phishing.army"})
+# phishing.army (its own file header: CC BY-NC 4.0). Added 2026-10-23: CSIRT
+# Italia — ACN's Note legali (acn.gov.it/portale/note-legali, read
+# 2026-10-23; www.csirt.gov.it redirects there) keep the site's contents,
+# data included, ACN's and bar commercial use without ACN's prior written
+# authorisation, and the MISP feed states no licence of its own (TLP:CLEAR is
+# a sharing label, not a licence). Policy: commercially licensed sources
+# only, so it waits for ACN's written permission. BLOCKLIST_LICENSED_ONLY=1
+# leaves all three out; unset, they are built in exactly as before.
+NON_COMMERCIAL_FEEDS = frozenset({"OpenPhish", "phishing.army", "CSIRT Italia"})
 # Former sources, never fetched again. A name one of them backed on its last
 # healthy run (blocklist_feed_backing) leaves with the next publish instead
 # of being carried as an outage or held in retention — the same path as a
@@ -365,8 +378,8 @@ def licensed_only(environ=None) -> bool:
 
 
 def excluded_feeds(environ=None) -> frozenset[str]:
-    """The sources this run leaves out entirely: the non-commercial two
-    under the licence switch, plus any named in BLOCKLIST_EXCLUDE_FEEDS. A
+    """The sources this run leaves out entirely: NON_COMMERCIAL_FEEDS under
+    the licence switch, plus any named in BLOCKLIST_EXCLUDE_FEEDS. A
     name that is not a source is ignored with a warning, never guessed at."""
     env = os.environ if environ is None else environ
     out = set(NON_COMMERCIAL_FEEDS) if licensed_only(env) else set()

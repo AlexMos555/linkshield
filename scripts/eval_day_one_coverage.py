@@ -17,7 +17,8 @@ bytes — feeds move by the minute):
      conditions for every variant):
        all                      every feed, as published today
        licensed                 BLOCKLIST_LICENSED_ONLY: without OpenPhish,
-                                phishing.army (URLhaus is retired for all)
+                                phishing.army and (since 2026-10-23) CSIRT
+                                Italia (URLhaus is retired for all)
        all-minus-tweetfeed      as `all`, without TweetFeed
        licensed-minus-tweetfeed as `licensed`, without TweetFeed
   2. scores each against two held-out samples, in freshness windows

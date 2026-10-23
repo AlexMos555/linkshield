@@ -100,14 +100,8 @@ export const PHISHING_SOURCES: readonly DataSource[] = [
     licence: "MIT",
     licenceUrl: "https://github.com/Phishing-Database/Phishing.Database/blob/master/LICENSE",
   },
-  {
-    // Only TLP:CLEAR events are read, but TLP is a sharing label, not a
-    // licence (first.org/tlp): the feed states none, so this links ACN's terms.
-    id: "CSIRT Italia",
-    name: "CSIRT Italia (ACN)",
-    by: null,
-    url: "https://www.acn.gov.it/portale/csirt-italia/",
-    licence: null,
-    licenceUrl: "https://www.acn.gov.it/portale/note-legali",
-  },
+  // Not listed: CSIRT Italia (ACN). Its MISP feed states no licence (TLP:CLEAR
+  // is a sharing label, not one) and ACN's Note legali bar commercial use, so
+  // since 2026-10-23 production builds without it (BLOCKLIST_LICENSED_ONLY;
+  // docs/THIRD_PARTY_FEEDS.md §1). Back here only with ACN's written permission.
 ];

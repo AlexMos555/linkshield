@@ -1,7 +1,8 @@
 """The blocklist's licence switches (plan §4): prepared, not flipped.
 
-  * BLOCKLIST_LICENSED_ONLY=1 leaves OpenPhish and phishing.army out of the
-    build; unset, every feed is fetched exactly as before.
+  * BLOCKLIST_LICENSED_ONLY=1 leaves OpenPhish, phishing.army and (since
+    2026-10-23) CSIRT Italia out of the build; unset, every feed is fetched
+    exactly as before.
   * URLhaus is retired for good (2026-10-21: abuse.ch answers 410 Gone without
     a personal key, and its terms are not-for-profit only): never fetched,
     and the published names only it backed leave on the next publish.
@@ -17,11 +18,12 @@ test_refresh_dangerous_domains.py builds; it is imported, not copied.
 from __future__ import annotations
 
 import gzip
+import json
 import logging
 
 import pytest
 from test_refresh_dangerous_domains import (
-    BASE, DAY, T0, _FakeRedis, _phone_blocks, _published, _stub_world, rdd,
+    BASE, CSIRT_EVENT, DAY, T0, _FakeRedis, _phone_blocks, _published, _stub_world, rdd,
 )
 
 from api.services import blocklist_feed_backing as feed_backing
@@ -99,7 +101,7 @@ def test_exclude_env_takes_feed_names_and_ignores_typos(caplog):
 
 
 @pytest.mark.asyncio
-async def test_by_default_the_two_feeds_are_fetched_as_before(monkeypatch):
+async def test_by_default_the_three_feeds_are_fetched_as_before(monkeypatch):
     fake = _FakeRedis()
     _world(monkeypatch, fake, extra={rdd.PHISHING_ARMY: "\n".join(ARMY)})
     seen = _requested(monkeypatch)
@@ -109,20 +111,21 @@ async def test_by_default_the_two_feeds_are_fetched_as_before(monkeypatch):
 
     monkeypatch.setattr(rdd, "_fetch_conditional", _never)
     assert await rdd.refresh("redis://fake", dry_run=False, now=T0) == 0
-    assert {rdd.OPENPHISH_FEED, rdd.PHISHING_ARMY} <= set(seen)
+    assert {rdd.OPENPHISH_FEED, rdd.PHISHING_ARMY, rdd.CSIRT_IT_MANIFEST} <= set(seen)
     assert not any("abuse.ch" in url for url in seen), "URLhaus is retired"
     assert set(ARMY) <= _published(fake)
 
 
 @pytest.mark.asyncio
-async def test_licensed_only_leaves_the_two_feeds_out_of_the_build(monkeypatch, caplog):
+async def test_licensed_only_leaves_the_three_feeds_out_of_the_build(monkeypatch, caplog):
     caplog.set_level(logging.INFO)
     fake = _FakeRedis()
     _world(monkeypatch, fake, extra={rdd.PHISHING_ARMY: "\n".join(ARMY)}, env={rdd.LICENSED_ONLY_ENV: "1"})
     seen = _requested(monkeypatch)
     assert await rdd.refresh("redis://fake", dry_run=False, now=T0) == 0
-    assert not {rdd.OPENPHISH_FEED, rdd.PHISHING_ARMY} & set(seen)
-    assert "licence switch: leaving out OpenPhish, phishing.army" in caplog.text
+    assert not {rdd.OPENPHISH_FEED, rdd.PHISHING_ARMY, rdd.CSIRT_IT_MANIFEST} & set(seen)
+    assert not any("csirt.gov.it" in url for url in seen), "no MISP event is fetched either"
+    assert "licence switch: leaving out CSIRT Italia, OpenPhish, phishing.army" in caplog.text
     assert set(BASE) <= _published(fake)
     assert not set(ARMY) & _published(fake)
     assert "FEED DEGRADED" not in caplog.text
@@ -168,7 +171,7 @@ async def test_an_excluded_feed_is_not_an_outage_and_takes_its_names_with_it(mon
                           force=True)
     assert code == 0
     assert "FEED DEGRADED" not in caplog.text
-    assert "OpenPhish, phishing.army not a source this run — forgetting their state" in caplog.text
+    assert "CSIRT Italia, OpenPhish, phishing.army not a source this run — forgetting their state" in caplog.text
     assert "phishing.army" not in fake.data.get(feed_health.FEED_DOWN_SINCE_KEY, {})
     assert "phishing.army" not in fake.data.get(feed_health.FEED_COUNTS_KEY, {})
     assert not set(ARMY) & _published(fake)
@@ -468,7 +471,7 @@ def test_urlhaus_is_no_source_and_no_feed_name():
     assert "URLhaus" not in {spec[0] for spec in rdd._feed_specs()}
     assert "URLhaus" in rdd.RETIRED_FEEDS
     assert not hasattr(rdd, "URLHAUS_CSV")
-    assert rdd.NON_COMMERCIAL_FEEDS == frozenset({"OpenPhish", "phishing.army"})
+    assert "URLhaus" not in rdd.NON_COMMERCIAL_FEEDS
 
 
 def test_urlhaus_in_the_exclude_env_is_ignored_not_an_error():
@@ -518,3 +521,75 @@ async def test_a_name_a_live_feed_still_lists_stays_after_urlhaus_retires(monkey
                           extra={rdd.PHISHUNT_FEED: f"{PHISHUNT_STABLE}\nhttps://{kept}/x"}) == 0
     assert kept in _published(fake)
     assert not set(URLHAUS_ONLY[1:]) & _published(fake)
+
+
+# ── CSIRT Italia, left out under the switch since 2026-10-23 ─────────────────
+#
+# ACN's Note legali (acn.gov.it/portale/note-legali, read 2026-10-23) bar
+# commercial use of the site's contents, data included, without ACN's written
+# authorisation, and the MISP feed states no licence of its own. TLP:CLEAR is a
+# sharing label, not a licence. Under the founder's standing policy
+# (commercially licensed sources only) it goes the way of OpenPhish and
+# phishing.army: out while BLOCKLIST_LICENSED_ONLY is on, still a source with
+# the switch off.
+
+CSIRT_FEED = {
+    rdd.CSIRT_IT_MANIFEST: json.dumps({"aaa": {"date": "2026-09-20", "Tag": [{"name": "tlp:clear"}]}}),
+    "https://www.csirt.gov.it/feed-misp/aaa.json": json.dumps(CSIRT_EVENT),
+}
+# The exact hosts CSIRT_EVENT names. Exact only: duckdns.org, a hosting
+# platform, is never listed for its tenant anarchy10.
+CSIRT_HOSTS = {"anarchy10.duckdns.org", "c2.bioscolombia.com.co", "evil-loader.example"}
+
+
+def test_csirt_italia_is_left_out_under_the_licence_switch_and_only_there():
+    assert rdd.NON_COMMERCIAL_FEEDS == frozenset({"OpenPhish", "phishing.army", "CSIRT Italia"})
+    assert "CSIRT Italia" in rdd.excluded_feeds({rdd.LICENSED_ONLY_ENV: "1"})
+    assert "CSIRT Italia" not in rdd.excluded_feeds({})
+    # Switched, not retired: with the switch off it is a source as before.
+    assert "CSIRT Italia" in rdd.FEED_NAMES and "CSIRT Italia" not in rdd.RETIRED_FEEDS
+    assert "CSIRT Italia" in rdd.run_sources(frozenset(), {})
+    assert "CSIRT Italia" not in rdd.run_sources(rdd.excluded_feeds({rdd.LICENSED_ONLY_ENV: "1"}), {})
+
+
+@pytest.mark.asyncio
+async def test_with_the_switch_off_csirt_italia_still_reaches_the_list(monkeypatch):
+    fake = _FakeRedis()
+    _world(monkeypatch, fake, extra=CSIRT_FEED)
+    seen = _requested(monkeypatch)
+    monkeypatch.setattr(rdd, "MISP_EVENT_PAUSE", 0)
+    assert await rdd.refresh("redis://fake", dry_run=False, now=T0) == 0
+    assert {rdd.CSIRT_IT_MANIFEST, "https://www.csirt.gov.it/feed-misp/aaa.json"} <= set(seen)
+    assert CSIRT_HOSTS <= _published(fake)
+    assert _phone_blocks(fake, "anarchy10.duckdns.org")
+
+
+@pytest.mark.asyncio
+async def test_switching_on_takes_csirt_italias_names_out_without_force_or_an_outage(monkeypatch, caplog):
+    """Production's first run after this change: CSIRT Italia's window held
+    184 distinct exact hosts on 2026-10-23, ~0.03% of a ~560k set, so the run
+    publishes without --force (the churn gate does not trip), is not red,
+    carries nothing for it and holds none of its names in retention."""
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    monkeypatch.setattr(rdd, "MISP_EVENT_PAUSE", 0)
+    assert await _refresh(monkeypatch, fake, T0, extra=CSIRT_FEED) == 0
+    assert CSIRT_HOSTS <= _published(fake)
+    assert "CSIRT Italia" in fake.data[feed_health.FEED_COUNTS_KEY]
+
+    caplog.clear()
+    _world(monkeypatch, fake, extra=CSIRT_FEED, env={rdd.LICENSED_ONLY_ENV: "1"})
+    seen = _requested(monkeypatch)
+    code = await rdd.refresh("redis://fake", dry_run=False, now=T0 + 6 * 3600)
+    assert code == 0, "no --force: a few hundred exact hosts are far under the churn gate"
+    assert not any("csirt.gov.it" in url for url in seen), "not fetched"
+    assert "churn" not in caplog.text
+    assert "FEED DEGRADED" not in caplog.text
+    assert "CSIRT Italia" not in fake.data.get(feed_health.FEED_COUNTS_KEY, {}), "its health state is forgotten"
+    assert "CSIRT Italia" not in fake.data.get(feed_health.FEED_DOWN_SINCE_KEY, {})
+    assert f"{len(CSIRT_HOSTS)} published names only CSIRT Italia backed leave with this publish" in caplog.text
+    assert not CSIRT_HOSTS & _published(fake), "not carried, not retained"
+    assert not CSIRT_HOSTS & set(fake.data.get(retention.LAST_SEEN_KEY, {})), "…and not recorded as departures"
+    assert not _phone_blocks(fake, "anarchy10.duckdns.org")
+    assert set(BASE) <= _published(fake)
+    assert "CSIRT Italia" not in fake.data.get(feed_backing.BACKING_KEY, {}), "its record goes with the publish"

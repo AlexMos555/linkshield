@@ -20,7 +20,10 @@ Pinned here:
     sentence names them;
   * every feed the blocklist (with BLOCKLIST_LICENSED_ONLY, as production
     runs it) and the model are built from is listed in
-    landing/lib/data-sources.ts, so a new source cannot ship uncredited.
+    landing/lib/data-sources.ts, so a new source cannot ship uncredited;
+  * and only those: a feed production leaves out (OpenPhish, phishing.army,
+    since 2026-10-23 CSIRT Italia) or has retired (URLhaus) is not on the
+    page as a source we use.
 
 What each listed source links to, and that the app's link lands on the
 section the page renders, is in scripts/test-landing-honesty.mjs, which can
@@ -83,9 +86,15 @@ def _module(name: str):
     return module
 
 
-def _attributed_ids() -> set[str]:
-    """The `id` of every source the page lists (one `id: "..."` line each)."""
-    return set(re.findall(r'^\s*id: "([^"]+)",$', DATA_SOURCES_TS.read_text(encoding="utf-8"), re.M))
+def _attributed_ids(section: str | None = None) -> set[str]:
+    """The `id` of every source the page lists (one `id: "..."` line each),
+    or only those of one exported list (`PHISHING_SOURCES`, …)."""
+    text = DATA_SOURCES_TS.read_text(encoding="utf-8")
+    if section is not None:
+        start = text.index(f"export const {section}")
+        end = text.find("export const ", start + 1)
+        text = text[start:] if end < 0 else text[start:end]
+    return set(re.findall(r'^\s*id: "([^"]+)",$', text, re.M))
 
 
 @pytest.mark.parametrize("locale", LOCALES)
@@ -138,13 +147,29 @@ def test_both_cc_by_datasets_are_listed():
 def test_every_feed_the_licensed_blocklist_reads_is_listed():
     rdd = _module("refresh_dangerous_domains")
     excluded = rdd.excluded_feeds({rdd.LICENSED_ONLY_ENV: "1"})
-    # CSIRT Italia is a MISP manifest that _fetch_feeds reads itself, not a
-    # single-GET spec. PhishTank joins only with a key nobody has (§1); it
-    # needs a line on the page the day BLOCKLIST_PHISHTANK_SOURCE is set.
-    feeds = {spec[0] for spec in rdd._feed_specs(excluded)} | {"CSIRT Italia"}
+    # run_sources: every source a run with these exclusions has, the MISP
+    # feed fetched outside _feed_specs included. PhishTank joins only with a
+    # key nobody has (§1); it needs a line on the page the day
+    # BLOCKLIST_PHISHTANK_SOURCE is set.
+    feeds = rdd.run_sources(excluded, {})
     assert feeds, "no feeds"
     assert not feeds & rdd.NON_COMMERCIAL_FEEDS
     assert feeds <= _attributed_ids(), f"not credited on the page: {sorted(feeds - _attributed_ids())}"
+
+
+def test_the_page_credits_no_feed_production_leaves_out():
+    # The section says these are the feeds the list and the model "come
+    # from". A feed the licence switch leaves out or one retired is not one
+    # of them — crediting it would claim data we may not ship.
+    rdd = _module("refresh_dangerous_domains")
+    rtf = _module("refresh_training_feeds")
+    licensed = rdd.run_sources(rdd.excluded_feeds({rdd.LICENSED_ONLY_ENV: "1"}), {})
+    trained = {source.name for source in rtf.PHISHING_SOURCES}
+    listed = _attributed_ids("PHISHING_SOURCES")
+    assert listed, "no phishing sources parsed from the page"
+    assert "CSIRT Italia" not in _attributed_ids(), "left out since 2026-10-23 (ACN's terms bar commercial use)"
+    assert not listed & (rdd.NON_COMMERCIAL_FEEDS | rdd.RETIRED_FEEDS)
+    assert listed <= licensed | trained, f"credited but not used: {sorted(listed - licensed - trained)}"
 
 
 def test_every_feed_the_model_learns_from_is_listed():

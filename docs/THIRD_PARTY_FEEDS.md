@@ -10,15 +10,17 @@ earlier reading and should be re-read before it is relied on.
 While the product was free, non-commercial terms were a grey area. With the
 first paid subscription they are not. Where things stand (2026-10-23):
 `BLOCKLIST_LICENSED_ONLY` is `true` in the repository's Actions variables,
-so the published blocklist no longer reads OpenPhish or phishing.army (§1;
-unset, the code still builds the list as before); `LICENSED_INTEL=licensed`
-is the analyzer's default since 2026-10-21, so without an explicit `all`
-the six non-commercial lookups are not asked (§2); URLhaus is retired from
-the blocklist and from training since 2026-10-21 (§1, §3); Tranco left
-training on 2026-10-22 and the popularity ranking on 2026-10-23 (§2a, §3),
-though installed app and extension copies keep its lists until their next
-releases (§2a). Still open: Phishing.Database's provenance and CSIRT
-Italia's terms (both §1). The order of flipping, the numbers it cost and
+so the published blocklist no longer reads OpenPhish, phishing.army or,
+since 2026-10-23, CSIRT Italia (§1; unset, the code still builds the list
+as before); `LICENSED_INTEL=licensed` is the analyzer's default since
+2026-10-21, so without an explicit `all` the six non-commercial lookups are
+not asked (§2); URLhaus is retired from the blocklist and from training
+since 2026-10-21 (§1, §3); Tranco left training on 2026-10-22 and the
+popularity ranking on 2026-10-23 (§2a, §3), though installed app and
+extension copies keep its lists until their next releases (§2a). Still
+open: Phishing.Database's provenance (§1). CSIRT Italia's terms were
+settled on 2026-10-23 by leaving it out under the switch until ACN grants
+written permission (§1). The order of flipping, the numbers it cost and
 what replaced the loss are in the PR that added this file and in
 `docs/benchmarks/day-one-coverage-latest.json`.
 
@@ -38,7 +40,7 @@ names. Redistribution to every phone is the act each licence has to allow.
 | **Phishunt.io** | `https://phishunt.io/feed.txt` | Terms §7 "Data license": feeds and API responses released as CC0 1.0 (read 2026-09-21) | Hourly phishing URL hosts | Keep |
 | **TweetFeed.live** | `https://raw.githubusercontent.com/0xDanielLopez/TweetFeed/master/year.csv` | README: CSV/JSON/RSS/MISP/STIX feeds and public API responses under CC0 1.0, no attribution required. The `/v1/ioc` and `external.json` blocks are abuse.ch-licensed and are never read (read 2026-09-21) | 365-day window of reported domains/URLs | Keep — but it is a *source*, so a TweetFeed sample is not a held-out benchmark for this list |
 | **CERT Polska** Lista Ostrzeżeń | `https://hole.cert.pl/domains/v2/domains.txt` | API spec §1: publicly available, may be processed without restriction, manually or automatically; names that leave the list must be unblocked (we rebuild from scratch every run) (read 2026-09-21) | Exact hosts only (never promoted to a whole domain) | Keep |
-| **CSIRT Italia / ACN** MISP feed | `https://www.csirt.gov.it/feed-misp/manifest.json` | Only events tagged `tlp:clear` / `tlp:white` are read — TLP:CLEAR means unlimited disclosure; anything else is skipped (the TLP marking is read per event, 2026-09-21). TLP is a sharing label, not a licence: FIRST says it "was not designed to handle licensing terms" and TLP:CLEAR sharing is "subject to standard copyright rules" (first.org/tlp, read 2026-10-23). The feed states no licence (manifest and events, 2026-10-23). ACN's Note legali (acn.gov.it/portale/note-legali, read 2026-10-23; www.csirt.gov.it redirects to acn.gov.it) say the site's contents, data included, are ACN's unless stated otherwise, grant no licence beyond personal use, and bar commercial use without ACN's prior written authorisation. Whether that covers the MISP feed is not stated | Malware C2 hostnames, exact only | Keep for now — **open since 2026-10-23**: ask ACN in writing, or leave it out under `BLOCKLIST_LICENSED_ONLY`. The page credits it with ACN's Note legali as its terms, not TLP:CLEAR as a licence |
+| **CSIRT Italia / ACN** MISP feed | `https://www.csirt.gov.it/feed-misp/manifest.json` | Only events tagged `tlp:clear` / `tlp:white` are read — TLP:CLEAR means unlimited disclosure; anything else is skipped (the TLP marking is read per event, 2026-09-21). TLP is a sharing label, not a licence: FIRST says it "was not designed to handle licensing terms" and TLP:CLEAR sharing is "subject to standard copyright rules" (first.org/tlp, read 2026-10-23). The feed states no licence (manifest and events, 2026-10-23). ACN's Note legali (acn.gov.it/portale/note-legali, read 2026-10-23; www.csirt.gov.it redirects to acn.gov.it) say the site's contents, data included, are ACN's unless stated otherwise, grant no licence beyond personal use, and bar commercial use without ACN's prior written authorisation. Whether that covers the MISP feed is not stated | Malware C2 hostnames, exact only | **`BLOCKLIST_LICENSED_ONLY=1` removes it** (`NON_COMMERCIAL_FEEDS`) — left out under `BLOCKLIST_LICENSED_ONLY` since 2026-10-23; revisit if ACN grants permission. Policy: commercially licensed sources only, and nothing here grants a commercial licence. Not fetched, not an outage; the exact hosts only it backed leave with the first publish after the change, like a switched-off feed's — its window read 2026-10-23 held 340 host entries, 184 distinct hosts, none on the popularity guard: ~0.03 % of a ~560k set, far under the 50 % churn gate, so no `--force`. Names it listed before that window and production still holds in retention go when their 14-day window ends, as for any switched-off feed. No longer credited on the methodology page as a source in use; with the switch off it is read exactly as before |
 | **PhishDestroy** DestroyList, DNS-verified active domains | `https://raw.githubusercontent.com/phishdestroy/destroylist/main/dns/active_domains.json` | phishdestroy.io/dataset: data "Released under CC0 1.0 Universal", "no restrictions, no attribution required", fit for "commercial products"; repository MIT; the same page notes the HuggingFace card says MIT and the Live page CC-BY-4.0 — all three allow a paid product, and §5 attributes it anyway. Sources: their own parsers (ads, SEO, social, dnstwist) and Telegram-bot reports; the aggregated "Community" list is a different file and is not read. "Non-commercial volunteer project" describes the operator, not a term (read 2026-10-21) | ~137k crypto-drainer, wallet/exchange-lure and fake-shop domains, re-resolved daily by the maintainer; promotes like Phishing.Database. Measured 2026-10-21: ~114k names new to the list after every guard, 0 on Tranco-1M, 0 on the must-resolve and RU legit lists, ~850 under RU/CIS ccTLDs | Keep |
 | **PhishTank** (Cisco/OpenDNS) online-valid dump | `https://data.phishtank.com/data/<key>/online-valid.csv.gz` | FAQ: commercial use of the API — "Yes, it is OK" (read 2026-09-29). Needs an application key; registration closed at the moment. Terms of Use refer to the Cisco EULA (*likely*) | Verified-online phishing URL hosts, **one cached download a day** (`api/services/phishtank_feed.py`) | **Off without `PHISHTANK_API_KEY`**; on the job through the `BLOCKLIST_PHISHTANK_SOURCE` variable |
 | **Cleanway checks** (server-confirmed hosts) | — | Google Safe Browsing / Web Risk verdicts; both bar passing results on (see §2) | Hosts our own checks confirmed dangerous | **Off** (`PUBLISH_CONFIRMED_THREATS`), stays off |
@@ -60,7 +62,8 @@ Unset (default): every row above except PhishTank, byte for byte the list
 published today (proved in the PR on one feed snapshot: same names, same
 count, the only header difference the build timestamp). Set to `1`:
 
-* OpenPhish and phishing.army are not downloaded and not in
+* OpenPhish, phishing.army and (since 2026-10-23) CSIRT Italia
+  (`NON_COMMERCIAL_FEEDS`) are not downloaded and not in
   `fetched` — so they are **not an outage**: nothing is carried for them,
   their stored health state is forgotten, and the run does not go red.
 * The published names only they backed (per the last healthy run's backing
@@ -74,7 +77,10 @@ count, the only header difference the build timestamp). Set to `1`:
   PhishDestroy and without URLhaus changes the artifact by ~29 % at most —
   +114k / −28.6k hashes, and most of the −28.6k are names production keeps
   in retention, which a Redis-less dry run cannot see — so no allowance was
-  needed.)
+  needed. Nor does CSIRT Italia joining the switch on 2026-10-23, with the
+  switch already on: its window held 184 distinct exact hosts (340 host
+  entries) of ~560k, ~0.03 %; `tests/test_blocklist_licence_switches.py`
+  publishes such a switch-on run without `--force`.)
 * `BLOCKLIST_EXCLUDE_FEEDS=TweetFeed` (comma-separated names) leaves further
   feeds out — used by `scripts/eval_day_one_coverage.py` to build the
   variants it scores, never in production.
@@ -562,19 +568,22 @@ texts and says what we changed. The transparency report links to it, and so
 does the app's Settings → About → "Data sources" (from the next app build;
 builds made before this change have no such row). CC BY 4.0 §3(a)(2) allows
 the credit as a link to a page that carries it. `tests/test_data_attribution.py`
-fails when a feed the blocklist or the model reads is missing from that list;
+fails when a feed the blocklist or the model reads is missing from that list,
+and when the list credits a feed neither reads (one the licence switch
+leaves out, such as CSIRT Italia since 2026-10-23, or a retired one);
 `scripts/test-landing-honesty.mjs` holds the CC BY lines to the licences
 `data/top_domains_sources.json` and `data/model_meta.json` record.
 
 Cleanway's blocklist includes data from Phishunt.io (CC0), TweetFeed.live
-(CC0), CERT Polska's Lista Ostrzeżeń, CSIRT Italia / ACN (TLP:CLEAR events
-only; no licence stated, §1),
+(CC0), CERT Polska's Lista Ostrzeżeń,
 Phishing.Database (MIT, © Mitchell Krog, Nissar Chababy, Phishing.Database
 Contributors; the repository moved to
 github.com/Phishing-Database/Phishing.Database), PhishDestroy DestroyList
 (phishdestroy.io, CC0 / MIT); before the licence cut also phishing.army
 (CC BY-NC 4.0) and OpenPhish (`BLOCKLIST_LICENSED_ONLY` is `true` in the
-repository's Actions variables, read 2026-10-23), and until 2026-10-21
+repository's Actions variables, read 2026-10-23), until 2026-10-23 CSIRT
+Italia / ACN (TLP:CLEAR events; no licence stated and ACN's terms bar
+commercial use, so the switch leaves it out — §1), and until 2026-10-21
 URLhaus (abuse.ch). Public suffixes from the Mozilla Public Suffix List
 (MPL 2.0).
 
