@@ -26,6 +26,8 @@ Production sends from `cleanway.ai` (ours; DNS in Cloudflare): `EMAIL_FROM_ADDR`
 ### 2. DNS records
 Do not copy records from a template: Resend shows the exact SPF / DKIM records for `cleanway.ai` under Domains, and `bash scripts/wire-supabase-smtp.sh --provider resend --step dns --check-dns` prints them and checks they are live. Add or fix them in Cloudflare → DNS (DNS only, grey cloud). DMARC: start with `p=quarantine`; move to `p=reject` after 30 days of clean reports.
 
+Inbound mail (Cloudflare Email Routing) is protected by MTA-STS and watched with TLS-RPT: the policy host `mta-sts.cleanway.ai`, the `_mta-sts` and `_smtp._tls` TXT records and the reports to `tls-reports@cleanway.ai` are all in [`ops/mail-security-worker/README.md`](../../ops/mail-security-worker/README.md).
+
 ### 3. Provider-specific
 
 **Resend:**
