@@ -466,7 +466,8 @@
     "fp_not_yet": "Belum diukur. Kami belum menjalankan pengukuran yang menunjukkan seberapa sering Cleanway keliru menandai situs sah, jadi kami tidak menyebutkan tingkat alarm palsu.",
     "section_how": "Cara kami mengukur",
     "how_body": "Skrip pengukuran, sumber datanya, dan setiap hasil mingguan terbuka untuk umum.",
-    "methodology_link": "Baca metodologinya"
+    "methodology_link": "Baca metodologinya",
+    "sources_link": "Sumber data dan lisensinya"
   },
   "Dns": {
     "page_title": "DNS pemblokir phishing — satu ketuk, tanpa aplikasi",
@@ -568,7 +569,18 @@
     "caveat_nxdomain": "Domain yang sudah tidak ada juga mendapat NXDOMAIN dari Cloudflare dan dihitung sebagai pemblokiran oleh Cloudflare, sehingga hasil Cloudflare terlihat lebih baik untuk domain phishing yang sudah ditutup.",
     "caveat_latency": "Waktu respons diukur dari mesin yang menjalankan skrip (server cloud di AS atau UE); dari wilayah lain hasilnya akan berbeda.",
     "caveat_allowlist": "Server kami menganggap aman situs di 100.000 teratas Tranco tanpa menganalisisnya, dan sampel situs asli di atas diambil dari rentang yang sama. Karena itu, sampel ini tidak bisa menunjukkan seberapa sering Cleanway keliru menyebut situs asli yang kurang terkenal sebagai berbahaya, dan kami tidak menerbitkan tingkat alarm palsu darinya. Kami akan menerbitkannya setelah sampel mencakup situs asli di luar daftar itu.",
-    "caveat_allowlist_curated": "Server kami menganggap aman 100.000 situs terpopuler (menurut Majestic Million dan Chrome UX Report) tanpa menganalisisnya, jadi sampel situs asli di atas diambil dari luar daftar itu: setiap situsnya benar-benar dianalisis. Server kami berada di luar Rusia, dan sebagian situs ini tidak melayani pengunjung dari luar negeri; hasil mingguan di GitHub menampilkan alarm palsu pada situs-situs itu secara terpisah."
+    "caveat_allowlist_curated": "Server kami menganggap aman 100.000 situs terpopuler (menurut Majestic Million dan Chrome UX Report) tanpa menganalisisnya, jadi sampel situs asli di atas diambil dari luar daftar itu: setiap situsnya benar-benar dianalisis. Server kami berada di luar Rusia, dan sebagian situs ini tidak melayani pengunjung dari luar negeri; hasil mingguan di GitHub menampilkan alarm palsu pada situs-situs itu secara terpisah.",
+    "sources_heading": "Sumber data",
+    "sources_intro": "Sebagian Cleanway dibangun dari data terbuka. Inilah sumber-sumber utamanya dan lisensi yang berlaku untuknya.",
+    "sources_popularity_heading": "Situs populer",
+    "sources_popularity_body": "Kedua peringkat ini menentukan situs mana yang dianggap populer: situs yang dianggap aman oleh server kami tanpa dianalisis dan sinyal popularitas di setiap pemeriksaan. Untuk menyusun peringkat itu, kami mengubahnya: setiap alamat dipangkas menjadi nama situsnya, situs milik pelanggan layanan hosting dibuang, kedua peringkat digabung menjadi satu, dan nama yang dilaporkan sumber phishing dikeluarkan dari daftar situs aman kecuali situsnya sangat populer.",
+    "sources_popularity_apps": "Daftar bawaan di aplikasi Android dan ekstensi browser akan diambil dari peringkat ini mulai versi berikutnya; versi yang sudah terpasang masih memakai daftar sebelumnya.",
+    "sources_popularity_model": "Model phishing kami juga belajar dari kedua daftar ini seperti apa situs asli. Untuk model, daftar itu dipangkas menjadi nama host dan nama situs, digabung, lalu diambil sampelnya sebagai contoh pelatihan.",
+    "sources_phishing_heading": "Situs berbahaya",
+    "sources_phishing_body": "Daftar situs berbahaya yang diblokir Cleanway dan contoh phishing tempat model kami belajar berasal dari sumber-sumber publik ini.",
+    "sources_via": "melalui",
+    "sources_terms": "ketentuan penggunaan",
+    "sources_full_list": "Semua sumber yang kami gunakan, beserta ketentuannya dan tanggal kami membacanya:"
   },
   "Support": {
     "title": "Bantuan",

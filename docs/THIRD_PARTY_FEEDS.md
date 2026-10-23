@@ -8,9 +8,18 @@ the dates given; a row marked *likely* rests on a secondary source or an
 earlier reading and should be re-read before it is relied on.
 
 While the product was free, non-commercial terms were a grey area. With the
-first paid subscription they are not. Nothing here is flipped yet: every
-switch defaults to today's behaviour. The order of flipping, the numbers it
-costs and what replaces the loss are in the PR that added this file and in
+first paid subscription they are not. Where things stand (2026-10-23):
+`BLOCKLIST_LICENSED_ONLY` is `true` in the repository's Actions variables,
+so the published blocklist no longer reads OpenPhish or phishing.army (§1;
+unset, the code still builds the list as before); `LICENSED_INTEL=licensed`
+is the analyzer's default since 2026-10-21, so without an explicit `all`
+the six non-commercial lookups are not asked (§2); URLhaus is retired from
+the blocklist and from training since 2026-10-21 (§1, §3); Tranco left
+training on 2026-10-22 and the popularity ranking on 2026-10-23 (§2a, §3),
+though installed app and extension copies keep its lists until their next
+releases (§2a). Still open: Phishing.Database's provenance and CSIRT
+Italia's terms (both §1). The order of flipping, the numbers it cost and
+what replaced the loss are in the PR that added this file and in
 `docs/benchmarks/day-one-coverage-latest.json`.
 
 ## 1. Bulk feeds that build the phone's blocklist
@@ -29,7 +38,7 @@ names. Redistribution to every phone is the act each licence has to allow.
 | **Phishunt.io** | `https://phishunt.io/feed.txt` | Terms §7 "Data license": feeds and API responses released as CC0 1.0 (read 2026-09-21) | Hourly phishing URL hosts | Keep |
 | **TweetFeed.live** | `https://raw.githubusercontent.com/0xDanielLopez/TweetFeed/master/year.csv` | README: CSV/JSON/RSS/MISP/STIX feeds and public API responses under CC0 1.0, no attribution required. The `/v1/ioc` and `external.json` blocks are abuse.ch-licensed and are never read (read 2026-09-21) | 365-day window of reported domains/URLs | Keep — but it is a *source*, so a TweetFeed sample is not a held-out benchmark for this list |
 | **CERT Polska** Lista Ostrzeżeń | `https://hole.cert.pl/domains/v2/domains.txt` | API spec §1: publicly available, may be processed without restriction, manually or automatically; names that leave the list must be unblocked (we rebuild from scratch every run) (read 2026-09-21) | Exact hosts only (never promoted to a whole domain) | Keep |
-| **CSIRT Italia / ACN** MISP feed | `https://www.csirt.gov.it/feed-misp/manifest.json` | Only events tagged `tlp:clear` / `tlp:white` are read — TLP:CLEAR means unlimited disclosure; anything else is skipped (*likely* for the feed as a whole; the TLP marking is read per event, 2026-09-21) | Malware C2 hostnames, exact only | Keep |
+| **CSIRT Italia / ACN** MISP feed | `https://www.csirt.gov.it/feed-misp/manifest.json` | Only events tagged `tlp:clear` / `tlp:white` are read — TLP:CLEAR means unlimited disclosure; anything else is skipped (the TLP marking is read per event, 2026-09-21). TLP is a sharing label, not a licence: FIRST says it "was not designed to handle licensing terms" and TLP:CLEAR sharing is "subject to standard copyright rules" (first.org/tlp, read 2026-10-23). The feed states no licence (manifest and events, 2026-10-23). ACN's Note legali (acn.gov.it/portale/note-legali, read 2026-10-23; www.csirt.gov.it redirects to acn.gov.it) say the site's contents, data included, are ACN's unless stated otherwise, grant no licence beyond personal use, and bar commercial use without ACN's prior written authorisation. Whether that covers the MISP feed is not stated | Malware C2 hostnames, exact only | Keep for now — **open since 2026-10-23**: ask ACN in writing, or leave it out under `BLOCKLIST_LICENSED_ONLY`. The page credits it with ACN's Note legali as its terms, not TLP:CLEAR as a licence |
 | **PhishDestroy** DestroyList, DNS-verified active domains | `https://raw.githubusercontent.com/phishdestroy/destroylist/main/dns/active_domains.json` | phishdestroy.io/dataset: data "Released under CC0 1.0 Universal", "no restrictions, no attribution required", fit for "commercial products"; repository MIT; the same page notes the HuggingFace card says MIT and the Live page CC-BY-4.0 — all three allow a paid product, and §5 attributes it anyway. Sources: their own parsers (ads, SEO, social, dnstwist) and Telegram-bot reports; the aggregated "Community" list is a different file and is not read. "Non-commercial volunteer project" describes the operator, not a term (read 2026-10-21) | ~137k crypto-drainer, wallet/exchange-lure and fake-shop domains, re-resolved daily by the maintainer; promotes like Phishing.Database. Measured 2026-10-21: ~114k names new to the list after every guard, 0 on Tranco-1M, 0 on the must-resolve and RU legit lists, ~850 under RU/CIS ccTLDs | Keep |
 | **PhishTank** (Cisco/OpenDNS) online-valid dump | `https://data.phishtank.com/data/<key>/online-valid.csv.gz` | FAQ: commercial use of the API — "Yes, it is OK" (read 2026-09-29). Needs an application key; registration closed at the moment. Terms of Use refer to the Cisco EULA (*likely*) | Verified-online phishing URL hosts, **one cached download a day** (`api/services/phishtank_feed.py`) | **Off without `PHISHTANK_API_KEY`**; on the job through the `BLOCKLIST_PHISHTANK_SOURCE` variable |
 | **Cleanway checks** (server-confirmed hosts) | — | Google Safe Browsing / Web Risk verdicts; both bar passing results on (see §2) | Hosts our own checks confirmed dangerous | **Off** (`PUBLISH_CONFIRMED_THREATS`), stays off |
@@ -209,7 +218,7 @@ in `data/top_domains_sources.json`):
 | Popularity bonus −25/−15/−8/−3, unreachable-site vouch, LLM judge (`popularity_*`), publisher's top-1M guard, a company's own GitLab / Jira / Confluence | Redis `tranco:ranks` (key name kept) — the whole ranking, step 4 not applied — loaded daily by `scripts/refresh_tranco.py` from the same `rank()`; `tranco:ranks:meta` says what it was built from (`/health/deep` `components.popularity`); a CrUX month recorded in `data/top_domains_sources.json` that comes back with other bytes is refused | |
 | ML features `in_top_domains`, `is_homograph` and the tenant features | `data/top_100k.json`, `data/public_suffixes_in_top.json` — the copies named by hash in `model_meta.json` `feature_data` | see "Sequencing" |
 | Publisher popular / tenant guards, own-source lookalike gate | `data/top_100k.json` + `data/top_domains_reported.json` + `data/infrastructure_domains.txt`, `data/public_suffixes_in_top.json`, Redis top-1M | see "Blocklist" |
-| Android veto (`popular_veto.txt`, `shared_suffixes.txt`) and the extensions' `hostingTenantSuffixes` | `data/top_10k.json` + the reported names of that rank + `data/infrastructure_domains.txt`, `data/public_suffixes_in_top.json` | each file starts with the CC BY attribution of §5; ship with the next app / extension releases; installed copies keep Tranco's until then (so do the committed `dist/store-artifacts/cleanway-0.2.2-*`, rebuilt with the next extension release) |
+| Android veto (`popular_veto.txt`, `shared_suffixes.txt`) and the extensions' `hostingTenantSuffixes` | `data/top_10k.json` + the reported names of that rank + `data/infrastructure_domains.txt`, `data/public_suffixes_in_top.json` | each file starts with the CC BY attribution of §5; ship with the next app / extension releases; installed copies keep Tranco's until then, and the methodology page says so (the committed `dist/store-artifacts/cleanway-0.2.2-*`, not uploaded yet, carry the new files since #286) |
 
 **Sequencing.** The model reads the two data files as features, so a model
 must be served the copies it was trained on. `ml/train_model.py` records
@@ -545,12 +554,29 @@ hashes, after the same guards the refresh applies):
 
 ## 5. Attribution
 
+**Where people read it.** The "Data sources" section at the end of
+cleanway.ai/transparency/methodology (`#data-sources`; the list is
+`landing/lib/data-sources.ts`, the text `landing.methodology.sources_*` in
+all ten languages) credits the datasets below with links to their licence
+texts and says what we changed. The transparency report links to it, and so
+does the app's Settings → About → "Data sources" (from the next app build;
+builds made before this change have no such row). CC BY 4.0 §3(a)(2) allows
+the credit as a link to a page that carries it. `tests/test_data_attribution.py`
+fails when a feed the blocklist or the model reads is missing from that list;
+`scripts/test-landing-honesty.mjs` holds the CC BY lines to the licences
+`data/top_domains_sources.json` and `data/model_meta.json` record.
+
 Cleanway's blocklist includes data from Phishunt.io (CC0), TweetFeed.live
-(CC0), CERT Polska's Lista Ostrzeżeń, CSIRT Italia (TLP:CLEAR),
-Phishing.Database (MIT, © Mitchell Krog), PhishDestroy DestroyList
-(phishdestroy.io, CC0 / MIT) and — until the licence cut —
-phishing.army (CC BY-NC 4.0) and OpenPhish; until 2026-10-21 also URLhaus
-(abuse.ch). Public suffixes from the Mozilla Public Suffix List (MPL 2.0).
+(CC0), CERT Polska's Lista Ostrzeżeń, CSIRT Italia / ACN (TLP:CLEAR events
+only; no licence stated, §1),
+Phishing.Database (MIT, © Mitchell Krog, Nissar Chababy, Phishing.Database
+Contributors; the repository moved to
+github.com/Phishing-Database/Phishing.Database), PhishDestroy DestroyList
+(phishdestroy.io, CC0 / MIT); before the licence cut also phishing.army
+(CC BY-NC 4.0) and OpenPhish (`BLOCKLIST_LICENSED_ONLY` is `true` in the
+repository's Actions variables, read 2026-10-23), and until 2026-10-21
+URLhaus (abuse.ch). Public suffixes from the Mozilla Public Suffix List
+(MPL 2.0).
 
 Cleanway's domain popularity ranking — the allowlist, the top-1M in Redis,
 the blocklist's popularity veto, the phone's veto list and the

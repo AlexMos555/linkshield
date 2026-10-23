@@ -10,6 +10,9 @@
  * everywhere (lib/benchmark.ts). Otherwise the page says how small the last
  * run was and links to every raw weekly result, instead of printing a
  * percentage from 24 links under "Snapshot: $DATE$" (report #12).
+ *
+ * It ends with "Data sources" (DataSources.tsx): the credit the open data the
+ * product is built from asks for, linked from the app's Settings → About.
  */
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
@@ -24,6 +27,8 @@ import {
   type ResolverStats,
 } from "@/lib/benchmark";
 import { localePath } from "@/lib/locale-path";
+
+import { DataSources } from "./DataSources";
 
 const SITE_URL = "https://cleanway.ai";
 const REPO_URL = "https://github.com/AlexMos555/linkshield";
@@ -328,6 +333,9 @@ export default async function MethodologyPage({
           {caveats.map((caveat) => <li key={caveat}>{caveat}</li>)}
         </ul>
       </section>
+
+      {/* Data sources — the credit CC BY asks for; the app's Settings links here */}
+      <DataSources t={t} h2={_h2} h3={_h3} />
 
       <p
         style={{

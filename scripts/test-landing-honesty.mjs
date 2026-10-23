@@ -35,6 +35,10 @@
  *      release, the file store the browser really shows as the source.
  *  17. /success and /family/join name the app's own Family Hub buttons in
  *      every language, and promise no family alerts the app does not send.
+ *  18. The "Data sources" section credits each dataset with a link to its
+ *      licence text, the CC BY ones with the licence the ranking build
+ *      recorded, a TLP marking is never shown as a licence, and the app's
+ *      Settings link lands on that section.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -51,6 +55,13 @@ import {
   MAX_UNKNOWN_RATE,
 } from "../landing/lib/benchmark.ts";
 import { apkReleaseFrom } from "../landing/lib/apk-release.ts";
+import {
+  DATA_SOURCES_ANCHOR,
+  PHISHING_SOURCES,
+  POPULARITY_SOURCES,
+  THIRD_PARTY_FEEDS_URL,
+} from "../landing/lib/data-sources.ts";
+import { DATA_SOURCES_URL } from "../mobile/src/utils/legal-urls.ts";
 import { hostFromSegment, toCheckHost } from "../landing/lib/check-host.ts";
 import { CLIENT_NAMESPACES, pickClientMessages } from "../landing/lib/client-messages.ts";
 import { displayHost } from "../landing/lib/display-host.ts";
@@ -978,6 +989,69 @@ console.log("\napkReleaseFrom (the /android button, its version and its checksum
     assert.equal(release.host, null);
     assert.equal(release.servedFrom, null);
     assert.equal(release.sha256, null);
+  });
+}
+
+console.log("\ndata sources (the credit CC BY asks for)");
+{
+  // Which feeds must be listed is pinned in tests/test_data_attribution.py
+  // (it reads the Python feed lists); this pins what each line links to.
+  const ALL = [...POPULARITY_SOURCES, ...PHISHING_SOURCES];
+  const ranking = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "top_domains_sources.json"), "utf-8")).sources;
+  const trained = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "model_meta.json"), "utf-8")).benign_sources;
+  const byId = (id) => ALL.find((source) => source.id === id);
+  check("every source links to its own page and to its licence text, over https", () => {
+    assert.equal(new Set(ALL.map((source) => source.id)).size, ALL.length, "duplicate id");
+    for (const source of ALL) {
+      assert.equal(new URL(source.url).protocol, "https:", `${source.id}: url`);
+      assert.equal(new URL(source.licenceUrl).protocol, "https:", `${source.id}: licenceUrl`);
+      assert.ok(source.licence === null || source.licence.trim().length > 0, `${source.id}: empty licence`);
+      if (source.via) assert.equal(new URL(source.via.url).protocol, "https:", `${source.id}: via.url`);
+    }
+    assert.equal(new URL(THIRD_PARTY_FEEDS_URL).protocol, "https:");
+  });
+  check("the CC BY datasets carry the licence the ranking build and the model recorded", () => {
+    for (const [id, built, learned] of [
+      ["Majestic Million", ranking.majestic_million, trained.majestic_million],
+      ["Chrome UX Report", ranking.crux, trained.crux],
+    ]) {
+      const source = byId(id);
+      assert.ok(POPULARITY_SOURCES.includes(source), `${id} is not under popular sites`);
+      assert.equal(source.licence, built.licence, `${id}: licence`);
+      assert.equal(source.licence, learned.licence, `${id}: the model's licence`);
+      assert.equal(source.licenceUrl, built.licence_url, `${id}: licence URL`);
+    }
+    assert.equal(byId("Chrome UX Report").via?.url, `https://${ranking.crux.via}`, "CrUX is read through the cache");
+  });
+  check("a TLP marking is a sharing label, not a licence", () => {
+    // FIRST: TLP was not designed for licensing terms, and TLP:CLEAR sharing
+    // is subject to standard copyright. A feed that only carries the label
+    // states no licence, so the line links the publisher's own terms.
+    for (const source of ALL) {
+      assert.doesNotMatch(source.licence ?? "", /\bTLP\b/i, `${source.id}: licence`);
+      assert.notEqual(new URL(source.licenceUrl).hostname, "www.first.org", `${source.id}: licenceUrl is the TLP standard`);
+    }
+  });
+  check("a CC BY source names who made it (CC BY 3.0 §4(b), 4.0 §3(a)(1)(A)(i))", () => {
+    for (const source of ALL.filter((s) => s.licence?.startsWith("CC BY"))) {
+      assert.ok(source.by && source.by.trim().length > 0, `${source.id}: no creator`);
+    }
+  });
+  check("the app's Settings link lands on the section the page renders", () => {
+    const url = new URL(DATA_SOURCES_URL);
+    assert.equal(url.origin, "https://cleanway.ai");
+    assert.equal(url.pathname, "/transparency/methodology");
+    assert.equal(url.hash, `#${DATA_SOURCES_ANCHOR}`);
+    const methodology = path.join(ROOT, "landing", "app", "[locale]", "transparency", "methodology");
+    const section = fs.readFileSync(path.join(methodology, "DataSources.tsx"), "utf-8");
+    assert.match(section, /<section id=\{DATA_SOURCES_ANCHOR\}/);
+    assert.match(fs.readFileSync(path.join(methodology, "page.tsx"), "utf-8"), /<DataSources /);
+    const settings = fs.readFileSync(path.join(ROOT, "mobile", "app", "(tabs)", "settings.tsx"), "utf-8");
+    assert.match(settings, /Linking\.openURL\(DATA_SOURCES_URL\)/);
+  });
+  check("the transparency report links to the section too", () => {
+    const report = fs.readFileSync(path.join(ROOT, "landing", "app", "[locale]", "transparency", "page.tsx"), "utf-8");
+    assert.match(report, /#\$\{DATA_SOURCES_ANCHOR\}/);
   });
 }
 

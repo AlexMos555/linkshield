@@ -466,7 +466,8 @@
     "fp_not_yet": "Noch nicht gemessen. Wir haben noch keine Messung durchgeführt, die zeigt, wie oft Cleanway legitime Seiten fälschlich markiert, deshalb nennen wir keine Fehlalarmrate.",
     "section_how": "Wie wir messen",
     "how_body": "Das Messskript, seine Datenquellen und jedes wöchentliche Ergebnis sind öffentlich.",
-    "methodology_link": "Zur Methodik"
+    "methodology_link": "Zur Methodik",
+    "sources_link": "Datenquellen und ihre Lizenzen"
   },
   "Dns": {
     "page_title": "Phishing-blockierendes DNS — ein Tipp, keine App",
@@ -568,7 +569,18 @@
     "caveat_nxdomain": "Eine Domain, die nicht mehr existiert, bekommt von Cloudflare ebenfalls NXDOMAIN und wird als Blockierung durch Cloudflare gezählt – das schönt das Ergebnis von Cloudflare bei bereits abgeschalteten Phishing-Domains.",
     "caveat_latency": "Antwortzeiten werden von dem Rechner aus gemessen, auf dem das Skript läuft (ein Cloud-Server in den USA oder der EU); aus anderen Regionen sehen sie anders aus.",
     "caveat_allowlist": "Unser Server behandelt Seiten aus den Tranco-Top-100.000 ohne Analyse als sicher, und die Stichprobe echter Seiten oben stammt aus genau diesem Bereich. Sie kann also nicht zeigen, wie oft Cleanway eine weniger bekannte echte Seite fälschlich für gefährlich hält, und wir veröffentlichen daraus keine Fehlalarmrate. Das tun wir, sobald die Stichprobe echte Seiten außerhalb dieser Liste enthält.",
-    "caveat_allowlist_curated": "Unser Server behandelt die 100.000 beliebtesten Seiten (nach Majestic Million und Chrome UX Report) ohne Analyse als sicher, deshalb stammt die Stichprobe echter Seiten oben von außerhalb dieser Liste: Jede davon wird wirklich analysiert. Unser Server steht außerhalb Russlands, und manche dieser Seiten antworten ausländischen Besuchern nicht; die wöchentlichen Ergebnisse auf GitHub weisen die Fehlalarme auf diesen Seiten gesondert aus."
+    "caveat_allowlist_curated": "Unser Server behandelt die 100.000 beliebtesten Seiten (nach Majestic Million und Chrome UX Report) ohne Analyse als sicher, deshalb stammt die Stichprobe echter Seiten oben von außerhalb dieser Liste: Jede davon wird wirklich analysiert. Unser Server steht außerhalb Russlands, und manche dieser Seiten antworten ausländischen Besuchern nicht; die wöchentlichen Ergebnisse auf GitHub weisen die Fehlalarme auf diesen Seiten gesondert aus.",
+    "sources_heading": "Datenquellen",
+    "sources_intro": "Cleanway beruht zum Teil auf offenen Daten. Das sind die wichtigsten Quellen und die Lizenzen, unter denen sie stehen.",
+    "sources_popularity_heading": "Beliebte Seiten",
+    "sources_popularity_body": "Diese beiden Ranglisten entscheiden, welche Seiten als beliebt gelten: die Seiten, die unser Server ohne Analyse als sicher behandelt, und das Beliebtheitssignal in jeder Prüfung. Für diese Rangliste haben wir sie verändert: Jede Adresse wird auf den Namen der Seite gekürzt, Seiten von Hosting-Kunden werden entfernt, die beiden Ranglisten werden zu einer zusammengeführt, und Namen, die Phishing-Quellen melden, kommen von der Liste sicherer Seiten, sofern die Seite nicht sehr beliebt ist.",
+    "sources_popularity_apps": "Die Listen in der Android-App und in den Browser-Erweiterungen stammen ab deren nächsten Versionen ebenfalls aus dieser Rangliste; bereits installierte Versionen haben noch die bisherigen Listen.",
+    "sources_popularity_model": "Außerdem lernt unser Phishing-Modell aus diesen beiden Listen, wie echte Seiten aussehen. Dafür werden die Listen auf Host- und Seitennamen reduziert, zusammengeführt und als Trainingsbeispiele stichprobenartig ausgewählt.",
+    "sources_phishing_heading": "Gefährliche Seiten",
+    "sources_phishing_body": "Die Liste gefährlicher Seiten, die Cleanway blockiert, und die Phishing-Beispiele, aus denen unser Modell lernt, stammen aus diesen öffentlichen Quellen.",
+    "sources_via": "über",
+    "sources_terms": "Nutzungsbedingungen",
+    "sources_full_list": "Alle Quellen, die wir nutzen, mit ihren Bedingungen und dem Datum, an dem wir sie gelesen haben:"
   },
   "Support": {
     "title": "Hilfe",

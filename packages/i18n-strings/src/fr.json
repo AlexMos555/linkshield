@@ -2017,7 +2017,8 @@
       "fp_not_yet": "Pas encore mesuré. Nous n'avons pas encore réalisé de mesure montrant à quelle fréquence Cleanway signale à tort des sites légitimes ; nous n'annonçons donc aucun taux de fausses alertes.",
       "section_how": "Comment nous mesurons",
       "how_body": "Le script de mesure, ses sources de données et chaque résultat hebdomadaire sont publics.",
-      "methodology_link": "Voir la méthodologie"
+      "methodology_link": "Voir la méthodologie",
+      "sources_link": "Sources de données et leurs licences"
     },
     "dns": {
       "page_title": "DNS antiphishing — un seul geste, sans application",
@@ -2119,7 +2120,18 @@
       "caveat_nxdomain": "Un domaine qui n'existe plus reçoit aussi NXDOMAIN de Cloudflare et est compté comme un blocage de Cloudflare, ce qui avantage Cloudflare sur les domaines de phishing déjà fermés.",
       "caveat_latency": "Les temps de réponse sont mesurés depuis la machine qui exécute le script (un serveur cloud aux États-Unis ou dans l'UE) ; depuis d'autres régions, ils seront différents.",
       "caveat_allowlist": "Notre serveur considère comme sûrs, sans les analyser, les sites du top 100 000 de Tranco, et l'échantillon de vrais sites ci-dessus provient de cette même tranche. Il ne peut donc pas montrer à quelle fréquence Cleanway juge à tort dangereux un vrai site moins connu, et nous n'en tirons aucun taux de fausses alertes. Nous le ferons quand l'échantillon comprendra de vrais sites hors de cette liste.",
-      "caveat_allowlist_curated": "Notre serveur considère comme sûrs, sans les analyser, les 100 000 sites les plus populaires (selon Majestic Million et Chrome UX Report) ; l'échantillon de vrais sites ci-dessus est donc pris hors de cette liste : chacun d'eux est réellement analysé. Notre serveur est situé hors de Russie et certains de ces sites ne répondent pas aux visiteurs étrangers ; les résultats hebdomadaires sur GitHub montrent à part les fausses alertes sur ces sites."
+      "caveat_allowlist_curated": "Notre serveur considère comme sûrs, sans les analyser, les 100 000 sites les plus populaires (selon Majestic Million et Chrome UX Report) ; l'échantillon de vrais sites ci-dessus est donc pris hors de cette liste : chacun d'eux est réellement analysé. Notre serveur est situé hors de Russie et certains de ces sites ne répondent pas aux visiteurs étrangers ; les résultats hebdomadaires sur GitHub montrent à part les fausses alertes sur ces sites.",
+      "sources_heading": "Sources de données",
+      "sources_intro": "Cleanway repose en partie sur des données ouvertes. Voici les principales sources et les licences sous lesquelles elles sont publiées.",
+      "sources_popularity_heading": "Sites populaires",
+      "sources_popularity_body": "Ces deux classements déterminent quels sites comptent comme populaires : les sites que notre serveur considère comme sûrs sans les analyser et le signal de popularité de chaque vérification. Pour établir ce classement, nous les avons modifiés : chaque adresse est réduite au nom du site, les sites des clients d'hébergeurs sont retirés, les deux classements sont fusionnés en un seul, et les noms signalés par les sources de phishing quittent la liste des sites sûrs, sauf si le site est très populaire.",
+      "sources_popularity_apps": "Les listes intégrées à l'appli Android et aux extensions de navigateur seront tirées de ce classement à partir de leurs prochaines versions ; les versions déjà installées gardent les listes précédentes.",
+      "sources_popularity_model": "Notre modèle de détection du phishing apprend aussi de ces deux listes à quoi ressemblent les vrais sites. Pour lui, les listes sont réduites aux noms d'hôte et de site, fusionnées et échantillonnées comme exemples d'entraînement.",
+      "sources_phishing_heading": "Sites dangereux",
+      "sources_phishing_body": "La liste des sites dangereux que Cleanway bloque et les exemples de phishing dont notre modèle apprend proviennent de ces sources publiques.",
+      "sources_via": "via",
+      "sources_terms": "conditions d'utilisation",
+      "sources_full_list": "Toutes les sources que nous utilisons, avec leurs conditions et la date à laquelle nous les avons lues :"
     },
     "support": {
       "title": "Assistance",
@@ -3715,6 +3727,8 @@
       "about": "À propos",
       "privacy_policy": "Politique de confidentialité",
       "terms": "Conditions d'utilisation",
+      "data_sources": "Sources de données",
+      "data_sources_desc": "Majestic Million (CC BY 3.0), Chrome UX Report (CC BY 4.0) et listes publiques de sites frauduleux",
       "version": "Version",
       "privacy_note": "Votre historique de vérifications reste sur ce téléphone. Quand vous vérifiez un lien, seuls le nom du site et un numéro d'installation aléatoire partent vers nos serveurs. Ce numéro change chaque jour ; il sert à compter la limite de vérifications par téléphone plutôt que pour tout le réseau de l'opérateur.",
       "sync_failed_title": "Enregistré sur ce téléphone seulement",

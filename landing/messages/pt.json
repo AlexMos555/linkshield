@@ -466,7 +466,8 @@
     "fp_not_yet": "Ainda não medido. Não fizemos uma medição que mostre com que frequência o Cleanway marca sites legítimos por engano, então não divulgamos uma taxa de alarmes falsos.",
     "section_how": "Como medimos",
     "how_body": "O script de medição, as fontes de dados e cada resultado semanal são públicos.",
-    "methodology_link": "Ver a metodologia"
+    "methodology_link": "Ver a metodologia",
+    "sources_link": "Fontes de dados e suas licenças"
   },
   "Dns": {
     "page_title": "DNS antiphishing — um toque, sem app",
@@ -568,7 +569,18 @@
     "caveat_nxdomain": "Um domínio que não existe mais também recebe NXDOMAIN da Cloudflare e é contado como bloqueio da Cloudflare, o que favorece a Cloudflare em domínios de phishing que já foram derrubados.",
     "caveat_latency": "Os tempos de resposta são medidos a partir da máquina que roda o script (um servidor na nuvem nos EUA ou na UE); de outras regiões eles serão diferentes.",
     "caveat_allowlist": "Nosso servidor considera seguros, sem analisá-los, os sites do top 100.000 da Tranco, e a amostra de sites reais acima vem dessa mesma faixa. Por isso ela não mostra com que frequência o Cleanway chama por engano de perigoso um site real menos conhecido, e não publicamos taxa de alarmes falsos com base nela. Vamos publicar quando a amostra incluir sites reais fora dessa lista.",
-    "caveat_allowlist_curated": "Nosso servidor considera seguros, sem analisá-los, os 100.000 sites mais populares (segundo Majestic Million e Chrome UX Report), por isso a amostra de sites reais acima vem de fora dessa lista: cada um deles é realmente analisado. Nosso servidor fica fora da Rússia, e alguns desses sites não respondem a visitantes estrangeiros; os resultados semanais no GitHub mostram à parte os alarmes falsos nesses sites."
+    "caveat_allowlist_curated": "Nosso servidor considera seguros, sem analisá-los, os 100.000 sites mais populares (segundo Majestic Million e Chrome UX Report), por isso a amostra de sites reais acima vem de fora dessa lista: cada um deles é realmente analisado. Nosso servidor fica fora da Rússia, e alguns desses sites não respondem a visitantes estrangeiros; os resultados semanais no GitHub mostram à parte os alarmes falsos nesses sites.",
+    "sources_heading": "Fontes de dados",
+    "sources_intro": "O Cleanway é construído em parte com dados abertos. Estas são as principais fontes e as licenças sob as quais são publicadas.",
+    "sources_popularity_heading": "Sites populares",
+    "sources_popularity_body": "Esses dois rankings decidem quais sites contam como populares: os sites que nosso servidor considera seguros sem analisá-los e o sinal de popularidade em cada verificação. Para montar esse ranking, nós os modificamos: cada endereço é reduzido ao nome do site, os sites de clientes de hospedagem são removidos, os dois rankings são combinados em um só e os nomes que as fontes de phishing denunciam saem da lista de sites seguros, a menos que o site seja muito popular.",
+    "sources_popularity_apps": "As listas embutidas no app para Android e nas extensões de navegador passam a vir desse ranking a partir das próximas versões; as versões já instaladas mantêm as listas anteriores.",
+    "sources_popularity_model": "Nosso modelo de phishing também aprende com essas duas listas como são os sites reais. Para ele, as listas são reduzidas a nomes de host e de site, combinadas e amostradas como exemplos de treinamento.",
+    "sources_phishing_heading": "Sites perigosos",
+    "sources_phishing_body": "A lista de sites perigosos que o Cleanway bloqueia e os exemplos de phishing com que nosso modelo aprende vêm destas fontes públicas.",
+    "sources_via": "via",
+    "sources_terms": "termos de uso",
+    "sources_full_list": "Todas as fontes que usamos, com seus termos e a data em que os lemos:"
   },
   "Support": {
     "title": "Suporte",
