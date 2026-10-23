@@ -21,13 +21,13 @@
     "@tailwindcss/postcss": "^4.2.2",
     "next": "^15.5.28",
     "next-intl": "^4.14.9",
-    "postcss": "^8.5.30",
+    "postcss": "^8.5.31",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.13.0",
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "^1.64.1",
     "@types/node": "26.6.5",
     "@types/react": "^19.0.0",

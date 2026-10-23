@@ -1,4 +1,4 @@
-name: Refresh Watchtower (Strategy #17)
+name: 'Refresh Watchtower (Strategy #17)'
 
 # Daily scan of every brand in any user's watchlist against the
 # crt.sh CT-log mirror. Newly-issued certs whose name matches a
