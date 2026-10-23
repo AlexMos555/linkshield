@@ -183,7 +183,22 @@ Cleanway — защита от мошенников в телефоне. Не д
 https://cleanway.ai/privacy-policy
 ```
 
-**App access** → «All functionality in my app is available without any access restrictions». Вход по почте необязателен: вся защита работает без аккаунта.
+**App access** → «All or some functionality in my app is restricted» → **Add instructions**. Вся защита работает без аккаунта, но экраны аккаунта (устройства, удаление) — только после входа, а код из письма проверяющий получить не может. Поэтому даём ему аккаунт для проверки `review@cleanway.ai` с паролем: для этого адреса — и только для него — приложение показывает поле пароля вместо кода (есть в сборках, собранных с `EXPO_PUBLIC_REVIEW_EMAILS`, — с первой после 2026-10-23; создать аккаунт и сменить пароль — `docs/runbooks/app-review-account.md`).
+
+| Поле | Что вставить |
+|---|---|
+| Name | `Review account` |
+| Username, email address, or phone number | `review@cleanway.ai` |
+| Password | из связки ключей: `security find-generic-password -s 'Cleanway app review account' -a review@cleanway.ai -w \| tr -d '\n' \| pbcopy` — пароль сразу в буфере обмена, на экран не выводится |
+| Any other information required to access your app | текст ниже |
+| Allow Android to use the credentials you provide for performance and app compatibility testing | **не** ставить: робот pre-launch report прошёл бы по всем экранам на десятках устройств и мог бы удалить аккаунт |
+
+<!-- field: play.app_access.instructions max=500 -->
+```text
+Sign-in is optional: every protection feature works without an account. To review the account screens: Settings → Sign in → type review@cleanway.ai. For this address only, a Password field appears instead of the emailed code. Enter the password above and tap Sign in. Any other address signs in with a code sent by email.
+```
+
+Сменили пароль (`python3 scripts/create_review_account.py`) — обновите его здесь, в App Store Connect и в RuStore: старый перестаёт работать сразу.
 
 **Ads** → «No, my app does not contain ads».
 
@@ -673,6 +688,7 @@ addons.opera.com/developer → Add → `dist/store-artifacts/cleanway-0.2.2-oper
 - [ ] Рабочий ящик `support@cleanway.ai`.
 - [ ] Play AAB с `EXPO_PUBLIC_DISTRIBUTION=play` + ключ RevenueCat; проверка `aapt2` на `BILLING` и отсутствие `AD_ID`.
 - [ ] Видео для деклараций VPN и foreground service (§1.6) → YouTube Unlisted.
+- [ ] Аккаунт для проверяющих: `python3 scripts/create_review_account.py`, адрес и пароль — в «App access» (§1.5), App Store Connect и RuStore (`docs/runbooks/app-review-account.md`). Работает в сборках с первой после 2026-10-23 (`EXPO_PUBLIC_REVIEW_EMAILS`).
 - [ ] Нажать «Submit» в каждой консоли; принять условия магазинов.
 - [ ] Строка о цене в описаниях — когда подписки заработают в Play.
 - [ ] После одобрения: ссылки магазинов в `landing/lib/install-urls.ts` и таблица статусов в `docs/STORES.md`.

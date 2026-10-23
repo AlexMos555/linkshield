@@ -45,7 +45,7 @@ TITLE_BANNED = re.compile(r"\b(best|top|#1|no\.? ?1|free|sale|new|hot|download)\
 
 REQUIRED = {
     *(f"play.{lang}.{f}" for lang in ("en", "ru") for f in ("title", "short", "full")),
-    "play.release_notes", "play.vpn.short", "play.vpn.full", "play.fgs.short",
+    "play.release_notes", "play.vpn.short", "play.vpn.full", "play.fgs.short", "play.app_access.instructions",
     "ext.en.description", "ext.ru.description",
     "cws.single_purpose", "cws.host_permissions", "cws.test_instructions",
     "edge.search_terms.en", "edge.search_terms.ru", "edge.cert_notes",

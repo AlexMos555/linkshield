@@ -266,6 +266,12 @@ cw_build() {   # cw_build <site|rustore|play> <gradle task>...
 APK=android/app/build/outputs/apk/release/app-release.apk
 AAB=android/app/build/outputs/bundle/release/app-release.aab
 
+# 6) The store reviewers' sign-in account: for this exact address the sign-in
+#    screen asks for a password instead of an emailed code, which a RuStore or
+#    Play reviewer could never receive (docs/runbooks/app-review-account.md).
+#    Every other address keeps the code. Harmless in the site APK.
+export EXPO_PUBLIC_REVIEW_EMAILS="review@cleanway.ai"
+
 # A) Site APK — cleanway.ai/android and the GitHub release (web checkout,
 #    self-update banner). Do NOT pass -PreactNativeArchitectures: it does NOT
 #    slim the APK (it only feeds splits.abi.include, and splits are off by
@@ -293,7 +299,7 @@ export EXPO_PUBLIC_REVENUECAT_ANDROID_KEY="goog_…"   # the real public key fro
 cw_build play bundleRelease assembleRelease
 cp "$AAB" "$OUT/cleanway-$V-$VC-play.aab"
 cp "$APK" "$OUT/cleanway-$V-$VC-play-check.apk"
-unset EXPO_PUBLIC_DISTRIBUTION EXPO_PUBLIC_REVENUECAT_ANDROID_KEY
+unset EXPO_PUBLIC_DISTRIBUTION EXPO_PUBLIC_REVENUECAT_ANDROID_KEY EXPO_PUBLIC_REVIEW_EMAILS
 
 # The seed is inside every build (≈2.8 MB):
 for f in "$OUT"/cleanway-$V-$VC-*.apk; do unzip -l "$f" | grep -c dns-blocklist-v2.seed.bin; done   # → 1 each
@@ -549,14 +555,17 @@ Everything RuStore asks for is in the repo — upload from these paths:
 
 Captions and the recommended new screenshots are in §7.6.
 
-**Sign-in is tested by moderators — fix SMTP before submitting.** RuStore
-reviewers open every entry point, including "Войти". The app's only sign-in is an
-email one-time code sent by Supabase, whose built-in mailer is capped at 2
-emails/hour and is not meant for production. Connect a transactional SMTP
-provider (e.g. Resend) in the Supabase Auth settings *before* upload, then verify
-a code actually arrives on a fresh address. In the review notes also give the
-reviewer a test address they can receive on (or state explicitly that login is
-optional and every protection feature works without it — both are true).
+**Sign-in is tested by moderators.** RuStore reviewers open every entry point,
+including "Войти". People sign in with an email one-time code (Supabase sends it
+through Resend SMTP — `docs/runbooks/sign-in-email.md`), but a moderator cannot
+receive a code sent to an address we give them. So they get the review account
+`review@cleanway.ai`: for that exact address the app shows a password field
+instead of the code (`EXPO_PUBLIC_REVIEW_EMAILS`, exported in §2 step 6; only in
+builds made with it — the first one after 2026-10-23). Create it and rotate the
+password with `python3 scripts/create_review_account.py` (the password goes to
+the macOS Keychain); put the address and the password in the comment for the
+moderator after the note below — `docs/runbooks/app-review-account.md`. For an
+older APK without the field, say only that login is optional.
 
 - **Review note** (paste): "The VPN permission is used only for a local on-device
   DNS phishing filter — no remote VPN gateway, no IP masking, no traffic proxying;
@@ -565,7 +574,10 @@ optional and every protection feature works without it — both are true).
   no SMS, phone-state or call-log permissions: a message is checked only when the
   user shares or pastes it, and the call warning knows only that a call is in
   progress (from the audio mode). Core protection is free; no login is required —
-  sign-in (email code) is optional and shows the account's linked devices."
+  sign-in (email code) is optional and shows the account's linked devices. To
+  check sign-in: Настройки (Settings) → Войти → type review@cleanway.ai — for
+  this address only, a password field appears instead of the emailed code.
+  Login: review@cleanway.ai, password: <paste from the Keychain>."
 
 ---
 
@@ -597,6 +609,11 @@ the code on 2026-10-08 (`main` @ `9aff8ee`); the evidence is listed in §7.7.
       from our server; the RuStore build does neither). Its `aapt2` check shows no
       `com.android.vending.BILLING`; gradle refuses a release build without
       `EXPO_PUBLIC_DISTRIBUTION` (`plugins/withDistributionGuard.js`).
+- [ ] **Review account for the moderator** — build B made with
+      `EXPO_PUBLIC_REVIEW_EMAILS` (§2 step 6), then
+      `python3 scripts/create_review_account.py` and the address + password in
+      the comment for the moderator (§5, `docs/runbooks/app-review-account.md`).
+      Without it the moderator cannot get past "Войти".
 - [ ] **SMS model switch** (`docs/ACCOUNTS_BILLING_PLAN.md` §7 item 6: "выключатель
       модели SMS" before 1.0.4) is not in `main` yet. The copy below says
       "проверка СМС стала точнее" — true with the on-device text model (#99) and

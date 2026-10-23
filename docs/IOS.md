@@ -67,6 +67,9 @@ EAS manages certificates, provisioning profiles and the build number
 | `EXPO_PUBLIC_REVENUECAT_IOS_KEY` | RevenueCat **public** App Store key, `appl_…` | No paid plans anywhere (no Plan/Upgrade row, no paywall, no prices) and no daily check limit — the build has no in-app purchases; no crash |
 | `EXPO_PUBLIC_SENTRY_DSN` | optional | No crash reports |
 
+`EXPO_PUBLIC_REVIEW_EMAILS` (the App Review sign-in account, §3.6) and
+`EXPO_PUBLIC_CAPTCHA_URL` are not secrets and live in `eas.json` itself.
+
 `EXPO_PUBLIC_DISTRIBUTION` does not matter on iOS: every iOS build is the App
 Store build (`distributionFor()` in `src/utils/freemium.ts`). That is
 deliberate — an EAS profile shared with Android may carry
@@ -357,10 +360,13 @@ weekly report send anything new.
 > Cleanway checks links and text messages for scams. No account is needed:
 > paste a link or a message on the home screen, or share one to Cleanway from
 > Safari or Messages. A message is checked on the device and never sent; only
-> the site names of its links go to our server. Sign-in (optional) is by a
-> one-time code sent to email — use the demo account below. Account deletion:
-> Settings → Delete account. Subscriptions are sold only through In-App
-> Purchase; "Restore purchases" is on the paywall and in Account. The app
+> the site names of its links go to our server. Sign-in is optional and is by
+> a one-time code sent to email. To review it, use the account in Sign-In
+> Information: Settings → Sign in → type review@cleanway.ai — for this address
+> only, a Password field appears instead of the emailed code; enter the
+> password and tap Sign in. Account deletion: Settings → Delete account.
+> Subscriptions are sold only through In-App Purchase; "Restore purchases"
+> is on the paywall and in Account. The app
 > contains no VPN. All three "Protection on iPhone" items (Safari extension,
 > scam-text filter, DNS protection) work in this version; each needs a switch
 > the user turns on in Settings, which the app explains step by step.
@@ -393,9 +399,17 @@ weekly report send anything new.
 > It sends only site names to api.cleanway.ai to check them; it has no
 > purchases or upsell of its own.
 
-Provide a demo account the reviewer can sign in with (an email inbox you can
-read the code from, or a review-only bypass on the server) — email-code
-sign-in fails review if the reviewer cannot receive the code.
+Sign-In Information (App Review Information → **Sign-in required**): user
+name `review@cleanway.ai`, password from the macOS Keychain — create the
+account and rotate the password with `python3 scripts/create_review_account.py`
+(`docs/runbooks/app-review-account.md`). Email-code sign-in fails review when
+the reviewer cannot receive the code, so the build carries
+`EXPO_PUBLIC_REVIEW_EMAILS=review@cleanway.ai` (`mobile/eas.json`, preview and
+production): for that exact address the sign-in screen asks for a password
+instead; every other address keeps the code. Only builds made with the
+variable have the password field (the first one after 2026-10-23) — for an
+older binary say instead that sign-in is optional. If the reviewer deleted the
+account while testing deletion, re-run the script before the next submission.
 
 ### 3.7 Screenshots and listing
 
