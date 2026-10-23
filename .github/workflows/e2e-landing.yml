@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   e2e:
-    name: e2e (billing ${{ matrix.billing }})
+    name: e2e (billing ${{ matrix.billing }}, stripe ${{ matrix.stripe }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -31,8 +31,17 @@ jobs:
         # "off" is today's site, "on" is what the founder's flip would ship —
         # landing/e2e/billing.spec.ts asserts each state and skips the other.
         billing: [off, on]
+        # Stripe's world plans have their own switch, NEXT_PUBLIC_STRIPE_LIVE
+        # (landing/lib/billing-config.ts): off, the world /pricing is the free
+        # page; on, it sells the device plan. It does not depend on the flag
+        # above (the world gets Stripe, Russia the operator subscription), so
+        # all four combinations are builds Vercel could ship; the Stripe specs
+        # skip when it is off (landing/e2e/billing-flag.ts). Wait for a green
+        # "stripe on" run before setting the flag in Vercel (#276).
+        stripe: [off, on]
     env:
       NEXT_PUBLIC_BILLING_ENABLED: ${{ matrix.billing == 'on' && '1' || '' }}
+      NEXT_PUBLIC_STRIPE_LIVE: ${{ matrix.stripe == 'on' && '1' || '' }}
       # A fake Supabase project, so the pages that need sign-in render their
       # signed-in states. Nothing calls it: landing/e2e/extension-connect.spec.ts
       # answers every request to it with page.route. (*.supabase.co is in the
@@ -93,7 +102,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: playwright-report-billing-${{ matrix.billing }}
+          name: playwright-report-billing-${{ matrix.billing }}-stripe-${{ matrix.stripe }}
           path: landing/playwright-report/
           retention-days: 7
 
@@ -101,6 +110,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: playwright-traces-billing-${{ matrix.billing }}
+          name: playwright-traces-billing-${{ matrix.billing }}-stripe-${{ matrix.stripe }}
           path: landing/test-results/
           retention-days: 7
