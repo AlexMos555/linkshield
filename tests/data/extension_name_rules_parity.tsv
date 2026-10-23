@@ -129,7 +129,7 @@ www.shop.co.uk	-	-	-	0	1	shop.co.uk	-
 xn--pypal-4ve.com	paypal.com|character substitution	-	-	0	0	xn--pypal-4ve.com	-
 xn--80ak6aa92e.com	apple.com|character substitution	-	-	0	0	xn--80ak6aa92e.com	-
 paypal.xn--80abap1arsf.xn--p1ai	sberbank.ru|TLD confusion	paypal	-	0	1	xn--80abap1arsf.xn--p1ai	-
-secure-login-paypal-verify.tk	-	-	-	0	0	secure-login-paypal-verify.tk	-
+secure-login-paypal-verify.tk	paypal.com|combosquatting	-	-	0	0	secure-login-paypal-verify.tk	-
 google.ru	google.com|TLD confusion	-	-	0	0	google.ru	-
 amazon.de	amazon.com|TLD confusion	-	-	0	0	amazon.de	-
 yandex.kz	-	-	-	0	0	yandex.kz	-
@@ -185,6 +185,34 @@ netflix-lake.vercel.app	-	-	-	0	1	vercel.app	-
 facebook-2024.blogspot.com	-	-	-	0	1	blogspot.com	-
 mb-way.ns01.info	-	mbway	-	0	1	ns01.info	-
 gedivan.duckdns.org	-	-	-	0	1	duckdns.org	-
+g00glemail.com	google.com|combosquatting	-	-	0	0	g00glemail.com	-
+go0glemail.com	google.com|combosquatting	-	-	0	0	go0glemail.com	-
+faceb00kmail.com	facebook.com|combosquatting	-	-	0	0	faceb00kmail.com	-
+ad0belogin.com	adobe.com|combosquatting	-	-	0	0	ad0belogin.com	-
+micr0soft-login.com	microsoft.com|combosquatting	-	-	0	0	micr0soft-login.com	-
+micr0softlogin.com	microsoft.com|combosquatting	-	-	0	0	micr0softlogin.com	-
+paypa1-login.com	paypal.com|combosquatting	-	-	0	0	paypa1-login.com	-
+secure-paypa1.com	paypal.com|combosquatting	-	-	0	0	secure-paypa1.com	-
+outlook-de-login.com	outlook.com|combosquatting	-	-	0	0	outlook-de-login.com	-
+paypal-secure-login.com	paypal.com|combosquatting	-	-	0	0	paypal-secure-login.com	-
+secure-paypal-login.com	paypal.com|combosquatting	-	-	0	0	secure-paypal-login.com	-
+apple-id-verify.com	apple.com|combosquatting	-	-	0	0	apple-id-verify.com	-
+netflix-billing-update.com	netflix.com|combosquatting	-	-	0	0	netflix-billing-update.com	-
+amazon-de-sign-in.com	amazon.com|combosquatting	-	-	0	0	amazon-de-sign-in.com	-
+micr0soft-account-verify.com	microsoft.com|combosquatting	-	-	0	0	micr0soft-account-verify.com	-
+googlemail-login.com	google.com|combosquatting	-	-	0	0	googlemail-login.com	-
+paypallogin-secure.com	paypal.com|combosquatting	-	-	0	0	paypallogin-secure.com	-
+5berbank-bonus.ru	sberbank.ru|combosquatting	-	-	0	0	5berbank-bonus.ru	-
+0zon-priz.ru	ozon.ru|combosquatting	-	-	0	0	0zon-priz.ru	-
+0zon-priz.spb.ru	ozon.ru|combosquatting	-	ozon	0	0	0zon-priz.spb.ru	-
+ozonapp-priz.spb.ru	ozon.ru|combosquatting	-	ozon	0	0	ozonapp-priz.spb.ru	-
+santander-pl.com	-	-	-	0	0	santander-pl.com	-
+amazon-de-support.com	-	-	-	0	0	amazon-de-support.com	-
+paypalito-login-guide.com	-	-	-	0	0	paypalito-login-guide.com	-
+72-bonus.ru	-	-	-	0	0	72-bonus.ru	-
+up5-help.com	-	-	-	0	0	up5-help.com	-
+office365-tips-and-tricks.com	-	-	-	0	0	office365-tips-and-tricks.com	-
+rnicrosoft-de-login.com	microsoft.com|glyph homoglyph	-	-	0	0	rnicrosoft-de-login.com	-
 paypal-login.trycloudflare.com	cloudflare.com|combosquatting	-	-	0	1	trycloudflare.com	paypal
 debate-modifications-smilies-introduces.trycloudflare.com	cloudflare.com|combosquatting	-	-	0	1	trycloudflare.com	-
 microsoft-verify.cloud.goog	icloud.com|high similarity	-	-	0	1	cloud.goog	microsoft

@@ -2299,6 +2299,12 @@ def _imitation(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RULE) -> O
     # Combosquatting
     if _check_combosquat(name, brand, rule):
         return "combosquatting"
+    # ...with the brand in look-alike characters: g00glemail, micr0soft-login,
+    # secure-paypa1. The look-alike test above needs the brand's length, the
+    # combo test the brand's string; neither read these until 2026-10-23.
+    spelled = _with_brand_spelled_out(name, brand)
+    if spelled and _check_combosquat(spelled, brand, rule):
+        return "combosquatting"
 
     # SequenceMatcher fallback. The ratio alone let two edits through at any
     # length — aviator ~ avito, kontakt ~ vkontakte, rutor ~ rustore — which
@@ -2464,7 +2470,50 @@ def _check_combosquat(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RUL
             return True
         if rule.country_combos and after and word in _COMBO_COUNTRY_SUFFIXES:
             return True
-    return rule.lure_words and _check_lure_combo(name, brand)
+    return _check_lure_combo(name, brand, rule)
+
+
+# A brand spelled in look-alike characters counts as the brand in a combo
+# from this length: g00gle, micr0soft, paypa1, 0zon. Shorter, a digit makes
+# another word — '72' is t2 in digits and '0k' is ok, but 72-bonus and
+# 0k-shop are someone else's names.
+_LOOKALIKE_COMBO_MIN = _SHAPE_MIN_LABEL
+
+
+def _spells_brand(word: str, brand: str) -> bool:
+    """`word` is `brand` written with look-alike characters: as long as it,
+    every character the letter or a look-alike of it (_imitates), at least
+    one of them a look-alike, and the brand _LOOKALIKE_COMBO_MIN long."""
+    return (
+        len(word) == len(brand) >= _LOOKALIKE_COMBO_MIN and word != brand
+        and all(_imitates(a, b) for a, b in zip(word, brand))
+    )
+
+
+def _with_brand_spelled_out(name: str, brand: str) -> Optional[str]:
+    """`name` with a look-alike spelling of `brand` at its start or end
+    written as the brand (g00glemail → googlemail, secure-paypa1 →
+    secure-paypal), or None when it has none."""
+    n = len(brand)
+    if len(name) > n:
+        if _spells_brand(name[:n], brand):
+            return brand + name[n:]
+        if _spells_brand(name[-n:], brand):
+            return name[:-n] + brand
+    return None
+
+
+def _is_brand_word(word: str, brand: str, rule: Optional[_NameRule]) -> bool:
+    """One hyphenated word that stands for the brand: the brand, the brand
+    in look-alike characters (5berbank, micr0soft), or — where `rule` allows
+    glued generic combos — the brand glued to a generic word (googlemail,
+    mypaypal)."""
+    if word == brand or _spells_brand(word, brand):
+        return True
+    if rule is None or not rule.generic_combos or rule.hyphen_combos_only:
+        return False
+    return any(part in (_COMBO_GENERIC_SUFFIXES if after else _COMBO_GENERIC_PREFIXES)
+               for part, _hyphenated, after in _combo_parts(word, brand))
 
 
 def _is_lure_word(word: str, brand: str) -> bool:
@@ -2478,19 +2527,36 @@ def _is_lure_word(word: str, brand: str) -> bool:
     )
 
 
-def _check_lure_combo(name: str, brand: str) -> bool:
+def _check_lure_combo(name: str, brand: str, rule: Optional[_NameRule] = None) -> bool:
     """`name` is `brand` and a lure word: glued to it (ozonpriz, lkgosuslugi)
     or among the hyphenated words around it (sberbank-bonus, lk-gosuslugi,
     yandex-pay-login, vk-login-verify, госуслуги-лк). The brand has to be one
-    whole word: vkusvill-bonus is VkusVill's, not VK's."""
+    whole word (_is_brand_word): vkusvill-bonus is VkusVill's, not VK's.
+
+    The lure words: Russian and English (_is_lure_word) for a name whose rule
+    has lure_words, or with no rule (the Russian names' callers); the
+    English keywords alone (_COMBOSQUAT_KEYWORDS) for every other name —
+    outlook-de-login, paypal-secure-login, apple-id-verify, which the global
+    names' one-word combo test read as 'de-login' and missed until
+    2026-10-23. A keyword written with a hyphen (sign-in, log-in) counts as
+    one word."""
+    russian = rule is None or rule.lure_words
+
+    def is_lure(word: str) -> bool:
+        return _is_lure_word(word, brand) if russian else word in _COMBOSQUAT_KEYWORDS
+
     words = name.split("-")
     for i, word in enumerate(words):
-        if word == brand:
-            if any(_is_lure_word(w, brand) for w in words[:i] + words[i + 1:]):
+        if _is_brand_word(word, brand, rule):
+            others = words[:i] + words[i + 1:]
+            pairs = [f"{a}-{b}" for k, (a, b) in enumerate(zip(words, words[1:])) if i not in (k, k + 1)]
+            if any(is_lure(w) for w in others + pairs):
                 return True
-        elif len(word) > len(brand):
-            glued = word[len(brand):] if word.startswith(brand) else word[:-len(brand)] if word.endswith(brand) else ""
-            if glued and _is_lure_word(glued, brand):
+        if len(word) > len(brand):
+            spelled = _with_brand_spelled_out(word, brand) or word
+            glued = (spelled[len(brand):] if spelled.startswith(brand)
+                     else spelled[:-len(brand)] if spelled.endswith(brand) else "")
+            if glued and is_lure(glued):
                 return True
     return False
 

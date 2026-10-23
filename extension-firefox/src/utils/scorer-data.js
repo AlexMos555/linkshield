@@ -72,6 +72,7 @@
     "typosquatMinLabel": 3,
     "shapeMinLabel": 4,
     "fuzzyMinLabel": 5,
-    "twoEditMinLabel": 8
+    "twoEditMinLabel": 8,
+    "lookalikeComboMinLabel": 4
   };
 })(typeof self !== "undefined" ? self : globalThis);

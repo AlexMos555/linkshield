@@ -190,7 +190,9 @@ const LATIN_UNCHANGED = [
   ["github.io", 30, "caution", "typosquatting"],
   ["my-cool-site.com", 0, "safe", ""],
   ["a-b-c-d.com", 15, "safe", "many_hyphens"],
-  ["secure-login-paypal-verify.tk", 65, "dangerous", "risky_tld|suspicious_keyword|long_domain|many_hyphens|medium_entropy"],
+  // 65 until 2026-10-23: the name rule now reads 'paypal' among hyphenated
+  // words with a lure keyword (the server's _check_lure_combo for global brands).
+  ["secure-login-paypal-verify.tk", 95, "dangerous", "typosquatting|risky_tld|suspicious_keyword|long_domain|many_hyphens|medium_entropy"],
   ["xyzqwkjhdfgkjhsdf.xyz", 20, "safe", "risky_tld"],
   ["paypa1.com", 30, "caution", "typosquatting"],
   ["paypal.evil.com", 30, "caution", "brand_subdomain"],

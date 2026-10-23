@@ -109,6 +109,16 @@ EDGE_CASES = (
     "facebook-supports.blogspot.com", "gmail-support.netlify.app", "facebook-new-security.blogspot.com",
     "facebook-benjamin.blogspot.com", "netflix-lake.vercel.app", "facebook-2024.blogspot.com",
     "mb-way.ns01.info", "gedivan.duckdns.org",
+    # 2026-10-23: look-alike characters inside a brand combo, several
+    # hyphenated words with a lure keyword (global brands), and what must
+    # stay unflagged next to them
+    "g00glemail.com", "go0glemail.com", "faceb00kmail.com", "ad0belogin.com", "micr0soft-login.com",
+    "micr0softlogin.com", "paypa1-login.com", "secure-paypa1.com", "outlook-de-login.com",
+    "paypal-secure-login.com", "secure-paypal-login.com", "apple-id-verify.com", "netflix-billing-update.com",
+    "amazon-de-sign-in.com", "micr0soft-account-verify.com", "googlemail-login.com", "paypallogin-secure.com",
+    "5berbank-bonus.ru", "0zon-priz.ru", "0zon-priz.spb.ru", "ozonapp-priz.spb.ru", "santander-pl.com",
+    "amazon-de-support.com", "paypalito-login-guide.com", "72-bonus.ru", "up5-help.com",
+    "office365-tips-and-tricks.com", "rnicrosoft-de-login.com",
     # 2026-10-23: tenant zones kept whatever their rank (data/tenant_zones.json)
     "paypal-login.trycloudflare.com", "debate-modifications-smilies-introduces.trycloudflare.com",
     "microsoft-verify.cloud.goog", "sberbank-bonus.jcloud.kz", "apple-id-verify.s3.cloud.ru",
@@ -277,6 +287,7 @@ def scorer_data() -> dict:
         "shapeMinLabel": scoring._SHAPE_MIN_LABEL,
         "fuzzyMinLabel": scoring._FUZZY_MIN_LABEL,
         "twoEditMinLabel": scoring._TWO_EDIT_MIN_LABEL,
+        "lookalikeComboMinLabel": scoring._LOOKALIKE_COMBO_MIN,
     }
 
 
