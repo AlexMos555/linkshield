@@ -318,6 +318,124 @@ def test_a_vetoed_host_still_covered_by_a_published_parent_is_reported(caplog):
                and "brandsite.xyz" in r.getMessage() for r in caplog.records)
 
 
+# ─────────────────────────────────────────────────────────────────
+# 2026-10-23 review of the registrables only Tranco protected (PR #284 listed
+# 38 of its top-100k and 529 of its top-1M). The licensed ranking does not
+# carry them, so production would block each whole on the feeds' word once
+# its ranks switch. Each name below was checked by RDAP, DNS over HTTPS, a
+# homepage GET and the feeds, then re-checked independently.
+# ─────────────────────────────────────────────────────────────────
+
+_PSL_REVIEW = {"com", "net", "org", "io", "co", "us", "dev", "xyz", "pl", "ru", "pm", "sh", "bz", "to", "it",
+               "ht", "com.ht", "br", "com.br", "au", "com.au", "id", "go.id", "za", "co.za", "hr", "com.hr",
+               "de", "rs", "uk", "eu", "ae", "vg", "click", "app", "run", "online", "hosting", "biz", "ly"}
+
+# Registrable -> (hosts the feeds list, names that must stay blocked).
+_BRAND_OWNED_REVIEWED = {
+    "microsoftstart.com": (["creator.microsoftstart.com", "publisher.microsoftstart.com"], set()),
+    "conecttelecom.com.br": (["conecttelecom.com.br"], set()),
+    "cyber-folks.pl": (["cyber-folks.pl"], set()),
+    "phoneclaim.com": (["phoneclaim.com"], set()),
+    "rs.ru": (["rs.ru"], set()),
+    "lillo.com.br": (["lillo.com.br"], set()),
+    "urlwatch.com": (["urlwatch.com"], set()),
+    "dealerinfo.com": (["dealerinfo.com"], set()),
+    "appsplatform.us": (["make.apps.appsplatform.us", "play.apps.appsplatform.us"], set()),
+    # Two hosts of a customer SSO portal promoted the company apex; the
+    # portal hosts themselves were not verified, so they stay blocked.
+    "mediabeam.com": (["portal-sso.kdg.mediabeam.com", "portal-dev-sso.kdg.mediabeam.com"],
+                      {"portal-sso.kdg.mediabeam.com", "portal-dev-sso.kdg.mediabeam.com"}),
+    "finam.dev": (["wallet-j2tx-stable.finam.dev", "wallet-j2tx-staging.finam.dev"], set()),
+    "baccarat.com.au": (["baccarat.com.au"], set()),
+    "robinskitchen.com.au": (["robinskitchen.com.au"], set()),
+}
+
+
+@pytest.mark.parametrize("registrable", sorted(_BRAND_OWNED_REVIEWED))
+def test_reviewed_brand_domains_are_not_blocked_whole(registrable):
+    listed, kept = _BRAND_OWNED_REVIEWED[registrable]
+    assert registrable in rdd.load_brand_owned_hosts()
+    # Without the file the feeds' hosts block the registrable whole…
+    before = rdd.build_blockset(listed, set(), shared_suffixes=set(), public_suffixes=_PSL_REVIEW,
+                                brand_owned=frozenset())
+    assert registrable in before
+    # …with it, neither the registrable nor a listed host the file names is.
+    out = rdd.build_blockset(listed, set(), shared_suffixes=set(), public_suffixes=_PSL_REVIEW)
+    assert registrable not in out and f"www.{registrable}" not in out
+    assert out == kept
+
+
+def test_the_brand_veto_stays_exact_after_the_review():
+    # A subdomain no line names and a look-alike are still blocked.
+    hosts = ["login.microsoftstart.com", "evil.finam.dev", "lillo-ofertas.com.br", "rs-bank-login.ru"]
+    out = rdd.build_blockset(hosts, set(), shared_suffixes=set(), public_suffixes=_PSL_REVIEW)
+    assert set(hosts) <= out
+
+
+# Zones whose feeds list tenants only: each tenant stays blocked exactly, the
+# apex is never published (one example tenant pair each).
+_SHARED_REVIEWED = [
+    "canarytokens.com", "madiunkab.go.id", "tabalongkab.go.id", "arubabiz.net", "ppmpro.com", "earcu.com",
+    "govshn.net", "shnpoc.net", "skyfencenet.com", "partoo-store-locator.co", "tithelysetup.com",
+    "corsproxy.io", "webauthor.com", "emktlw.com.br", "ftp.sh", "mine.bz", "qc.to", "soon.it", "undo.it",
+    "zanity.net", "b0tnet.com", "dubya.net", "misecure.com", "ezgateway.net", "flashhub.net",
+    "remotewire.net", "xubi.org", "yyuyy.com", "viewdns.net", "tftpd.net", "eatuo.com", "ipq.co", "fdns.uk",
+    "infy.click", "infy.uk", "aba.ae", "aba.vg", "whf.bz", "tr.ht", "pro-linuxpl.com", "domeny.host",
+    "stronawcal.pl", "domenomania.eu", "fornex.org", "ik-server.com", "dedicated.co.za", "bkns.biz",
+    "yunethosting.rs", "gamingcontrol.de", "gamingweb.de", "s-host.net", "smrtp.ru", "toservers.com",
+    "lankapanel.net", "mojweb.com.hr", "wbsprt.com", "had.pm", "hvvc.us", "as40244.net", "16clouds.com",
+    "startdedicated.com", "secserverpros.com", "servername.online", "getlark.hosting", "conves.io",
+    "hyperlane.co", "bwpsites.com", "webstriple.com", "floot.app", "omnicoder.app", "mimo.run",
+    "ongraphy.com", "simplo7.net", "turbo-gateway.com", "line.pm",
+]
+
+
+@pytest.mark.parametrize("zone", _SHARED_REVIEWED)
+def test_reviewed_tenant_zones_block_tenants_never_the_apex(zone):
+    tenants = [f"tenant-a.{zone}", f"tenant-b.{zone}", f"deep.tenant-c.{zone}"]
+    before = rdd.build_blockset(tenants, set(), shared_suffixes=set(), public_suffixes=_PSL_REVIEW,
+                                brand_owned=frozenset())
+    assert zone in before  # what the licensed ranking alone would publish
+    out = rdd.build_blockset(tenants + [zone, f"www.{zone}"], set(), public_suffixes=_PSL_REVIEW,
+                             brand_owned=frozenset())
+    assert zone not in out
+    assert set(tenants) <= out
+
+
+def test_path_shared_hosts_of_the_review_are_never_blocked():
+    # Canarytokens: every user's web token is a path on www; its DNS tokens
+    # are subdomains (tenants). Websupport: d.rN.wbsprt.com/<customer>/ previews.
+    hosts = ["canarytokens.com", "www.canarytokens.com", "ud6sw4akwv5elhne7fjuhkrii.canarytokens.com",
+             "d.r1.wbsprt.com", "d.r4.wbsprt.com", "d.r5.wbsprt.com", "att.veronsec.com.d.wbsprt.com",
+             "com.tr.ht", "alerts-service-center.com.tr.ht", "nutrilshop.net.tr.ht"]
+    out = rdd.build_blockset(hosts, set(), public_suffixes=_PSL_REVIEW, brand_owned=frozenset())
+    assert out == {"ud6sw4akwv5elhne7fjuhkrii.canarytokens.com", "att.veronsec.com.d.wbsprt.com",
+                   "alerts-service-center.com.tr.ht", "nutrilshop.net.tr.ht"}
+
+
+def test_wallet_node_endpoints_are_infrastructure_and_the_kits_stay_blocked():
+    infra = rdd.load_infrastructure_domains()
+    assert {"twnodes.com", "zelcore.io", "blockrazor.xyz"} <= infra
+    hosts = ["bitcoin-blockbook.twnodes.com", "zcash-blockbook.twnodes.com", "blockbook.btc.zelcore.io",
+             "blockbook.dash.zelcore.io", "blockrazor.xyz", "bsc.blockrazor.xyz",
+             # co-reported with bsc.blockrazor.xyz: the malware chain's own hosts
+             "incidentmanager.cc", "mgo.gstats-api-contact.cc"]
+    out = rdd.build_blockset(hosts, rdd.load_popular_guard(), shared_suffixes=set(),
+                             public_suffixes=_PSL_REVIEW | {"cc"}, brand_owned=frozenset())
+    assert out == {"incidentmanager.cc", "mgo.gstats-api-contact.cc"}
+
+
+@pytest.mark.parametrize("name", ["access.ly", "mercadolibre.com.bo", "cepa.gob.sv", "cogebanque.co.rw",
+                                  "blackhatusa.com", "bmconline.gov.in", "measuresquare.com", "whatruns.com"])
+def test_names_the_review_kept_blocked_have_no_veto(name):
+    """Not vetoed in any list: the evidence did not meet a veto's rule (or,
+    for access.ly, the .ly registrant could not be read), so the default holds."""
+    assert name not in rdd.load_brand_owned_hosts()
+    assert name not in rdd.load_infrastructure_domains()
+    assert name not in rdd.default_shared_suffixes()
+    assert name not in rdd.SHARED_HOSTNAMES
+
+
 def test_ip_literals_are_skipped():
     assert _build(["1.2.3.4", "10.0.0.1"]) == set()
 

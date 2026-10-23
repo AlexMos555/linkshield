@@ -248,6 +248,19 @@ although Tranco protected them: 38 registrables of Tranco's top-100k and
 529 that only its top-1M carried, mostly reported scam apexes its
 DNS-traffic inputs ranked; the PR (#284) lists them, and the legitimate
 ones among them go to `data/brand_owned_hosts.txt` after a WHOIS check.
+Reviewed the same day, each name checked by RDAP, DNS over HTTPS, a
+homepage GET and the feeds, then re-checked independently: 13 brand
+domains the feeds list by mistake went to `data/brand_owned_hosts.txt`
+(the header now says how a .ru-style registry with no registrant
+organisation is handled), 3 wallet node and RPC endpoints to a
+hand-verified section of `data/infrastructure_domains.txt`, and 74 zones
+whose feeds list tenants only (free DNS, hosters' account and reverse
+zones, site builders, CASB proxies, two regency governments) to
+`UNRANKED_SHARED_DOMAINS` — with ipq.co's sibling fdns.uk and tr.ht's
+com. and net. zones — and Canarytokens' and Websupport's path-shared
+hosts in `SHARED_HOSTNAMES`. Every listed tenant stays blocked exactly;
+the rest of the 567 stays blocked whole (access.ly too, until its .ly
+registrant can be read).
 
 **Measured** (2026-10-23; host-only scoring — `calculate_score({"domain":
 host})`: the allowlist, the name rules and the local model; "with

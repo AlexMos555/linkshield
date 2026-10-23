@@ -436,6 +436,13 @@ SHARED_HOSTNAMES = frozenset({
     "s3.eu-west-1.amazonaws.com", "s3.us-west-2.amazonaws.com",
     "bitbucket.org", "gitlab.com", "sourceforge.net", "archive.org",
     "web.archive.org", "ipfs.io", "cloudflare-ipfs.com", "dweb.link",
+    # 2026-10-23: Thinkst Canarytokens' token host (every user's web and
+    # redirect token is a path on it; its DNS tokens are subdomains, see
+    # UNRANKED_SHARED_DOMAINS) and Websupport's path-shared preview hosts
+    # (d.rN.wbsprt.com/<customer-domain>/ — and *.d.r4 is a wildcard, so a
+    # published d.r4 would darken every preview under it on the phone).
+    "canarytokens.com", "www.canarytokens.com",
+    "d.r1.wbsprt.com", "d.r4.wbsprt.com", "d.r5.wbsprt.com",
 })
 
 # A single hostname carrying at least this many distinct feed URLs is a
@@ -845,16 +852,43 @@ UNRANKED_SHARED_DOMAINS = frozenset({
     "trickip.net", "trickip.org", "vizvaz.com", "wikaba.com", "www1.biz", "wwwhost.biz",
     "x24hr.com", "xxuz.com", "xxxy.biz", "xxxy.info", "ygto.com", "youdontcare.com", "yourtrap.com",
     "zyns.com", "zzux.com",
+    # …and three more of ChangeIP's (2026-10-23: RDAP registrant "changeip
+    # operations", ChangeIP's name servers, its default server's 404 page)
+    "b0tnet.com", "dubya.net", "misecure.com",
     # Other free dynamic-DNS zones
     "dvrlists.com", "dyna-ns.net", "easterndns.com", "freeddns.org", "us.to", "crabdance.com",
     "jumpingcrab.com", "chickenkiller.com", "mooo.com", "dns.army", "v6.rocks", "v6.navy",
+    # 2026-10-23: FreeDNS (afraid.org) shared domains — qc.to is shared with
+    # the owner's approval, by us.to's owner; Dynu's own zones (offered in its
+    # "Use Our Domain Name" list, registrant handle 81245932-DYNU); No-IP's
+    # viewdns.net (its Free list, registrar No-IP); Now-DNS's tftpd.net (in
+    # its own domain list); PubYun's eatuo.com (its paid DDNS suffixes);
+    # IPQuick's ipq.co and fdns.uk (free records since ~2014)
+    "ftp.sh", "mine.bz", "qc.to", "soon.it", "undo.it", "zanity.net",
+    "ezgateway.net", "flashhub.net", "remotewire.net", "xubi.org", "yyuyy.com",
+    "viewdns.net", "tftpd.net", "eatuo.com", "ipq.co", "fdns.uk",
     # IPFS gateways, webhook and function hosts: one subdomain (or path) per user
     "ipfs.io", "dweb.link", "w3s.link", "nftstorage.link", "infura-ipfs.io", "eth.limo",
     "twil.io", "pipedream.net", "webhook.site", "koyeb.app", "localto.net", "loclx.io",
     "portmap.host", "test-app.link",
+    # 2026-10-23: an ar.io gateway (ArDrive's node), one subdomain per Arweave
+    # content id — arweave.net itself is in data/hosting_platforms.json
+    "turbo-gateway.com",
     # Hosting providers' reverse-DNS, customer-server and name-server zones
     "softlayer.net", "sl-reverse.com", "bbox.fr", "romtelecom.net", "websiteservername.com",
     "mysecurecloudhost.com", "misitiohostgator.com", "hostwindsdns.com", "dns-parking.com",
+    # 2026-10-23: Aruba Business (arubabiz.net), cyber_Folks (pro-linuxpl.com,
+    # domeny.host), Domenomania, Infomaniak's Jelastic zone, Afrihost
+    # (dedicated.co.za), BKNS, YUnet, MC-HOST24 (gamingcontrol.de,
+    # gamingweb.de), S-HOST, SmartApe (smrtp.ru), ToWebs (toservers.com), Lanka
+    # Communication Services, a server zone on Zomro's DNS (had.pm),
+    # HIVELOCITY (hvvc.us), TurnKey Internet (as40244.net), IT7 (16clouds.com),
+    # velia.net (startdedicated.com), HostPapa (secserverpros.com,
+    # servername.online)
+    "arubabiz.net", "pro-linuxpl.com", "domeny.host", "domenomania.eu", "ik-server.com",
+    "dedicated.co.za", "bkns.biz", "yunethosting.rs", "gamingcontrol.de", "gamingweb.de",
+    "s-host.net", "smrtp.ru", "toservers.com", "lankapanel.net", "had.pm", "hvvc.us",
+    "as40244.net", "16clouds.com", "startdedicated.com", "secserverpros.com", "servername.online",
     # Microsoft's US government cloud: one subdomain per customer tenant
     "sharepoint.us", "sharepoint-mil.us", "mcas-gov.us",
     # Found by the 2026-10-23 dry run against Tranco's top-1M guard (the
@@ -879,12 +913,41 @@ UNRANKED_SHARED_DOMAINS = frozenset({
     "zap-webspace.com", "x10.network", "thehost.com.ua", "gtempurl.com", "justns.ru", "njalla.net",
     "nipa.cloud", "mtxserv.com", "b4a.app", "arvanstorage.com", "cubbit.eu", "ucarecd.net", "ufs.sh",
     "mailersend.net",
+    # 2026-10-23, the feeds listing tenants only: free hosts (InfinityFree's
+    # infy.click and infy.uk, ABA.ae's aba.ae and aba.vg, GoogieHost's whf.bz,
+    # Poyraz Hosting's tr.ht with its com. and net. zones, mojweb.com.hr);
+    # hosters' account and preview zones (fornex.org beside fornex.host,
+    # cal.pl's stronawcal.pl, Websupport's wbsprt.com, GetLark, Convesio,
+    # Hyperlane, bwpsites.com); site and app builders (WebsTriple, Floot, Omni
+    # Coder, Mimo, Graphy's ongraphy.com, HostGator's simplo7.net, Tithely
+    # Sites, Webauthor); one-instance-per-customer SaaS (Partoo store
+    # locators, Earcu careers portals, Planview PPM Pro)
+    "infy.click", "infy.uk", "aba.ae", "aba.vg", "whf.bz", "tr.ht", "com.tr.ht", "net.tr.ht",
+    "mojweb.com.hr", "fornex.org", "stronawcal.pl", "wbsprt.com", "getlark.hosting", "conves.io",
+    "hyperlane.co", "bwpsites.com", "webstriple.com", "floot.app", "omnicoder.app", "mimo.run",
+    "ongraphy.com", "simplo7.net", "tithelysetup.com", "webauthor.com",
+    "partoo-store-locator.co", "earcu.com", "ppmpro.com",
     # services Tranco's top-100k protected, one subdomain (or path) per customer:
     # Microsoft Defender for Cloud Apps (government), Skyhigh / McAfee cloud
     # proxy tenants, SpamExperts filtering, form / link-tracking / chatbot
     # endpoints, a shortener, wildcard DNS and a hoster's reverse zone
     "admin-mcas-df.ms", "admin-mcas-gov.ms", "mcas-gov.ms", "myshn.eu", "myshn.net", "antispamcloud.com", "submit-form.com",
     "emlnk.com", "rdtk.io", "chatbot.page", "sl.pt", "cloud-xip.com", "mschosting.com",
+    # 2026-10-23: a public CORS proxy (corsproxy.io/?url=…, top-100k) and,
+    # top-1M only: Skyhigh's government and proof-of-concept proxy zones,
+    # Forcepoint CASB tenants (skyfencenet.com), Locaweb's e-mail click
+    # tracker (emktlw.com.br) and Thinkst Canarytokens (one DNS token per
+    # subdomain; its web-token host is in SHARED_HOSTNAMES)
+    "corsproxy.io", "govshn.net", "shnpoc.net", "skyfencenet.com", "emktlw.com.br", "canarytokens.com",
+    # 2026-10-23: Indonesian regency governments — each agency runs its own
+    # subdomain site; the feeds list hacked agency hosts, never the portal
+    "madiunkab.go.id", "tabalongkab.go.id",
+    # 2026-10-23: a former free-subdomain zone, re-registered on 2026-02-22 by
+    # Cinematic Apps (Line Budgeter). ~230 old tenant listings, none of which
+    # resolves; the apex was never listed. Shared, the apex can no longer be
+    # blocked: re-review if a listed tenant resolves again or a feed lists
+    # line.pm or www.line.pm.
+    "line.pm",
     # Blogger's country domains (blogspot.com and most are in data/hosting_platforms.json)
     "blogspot.ae", "blogspot.al", "blogspot.am", "blogspot.ba", "blogspot.be", "blogspot.bg", "blogspot.bj",
     "blogspot.ca", "blogspot.cf", "blogspot.ch", "blogspot.cl", "blogspot.co.at", "blogspot.co.id",
