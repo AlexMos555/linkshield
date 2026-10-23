@@ -3595,7 +3595,6 @@
       "flagged_header": "Flagged this week",
       "flagged_note": "These came back dangerous, or worth a second look.",
       "times": "{{count}} check",
-      "times_plural": "{{count}} checks",
       "times_one": "{{count}} check",
       "times_other": "{{count}} checks",
       "clean_title": "Nothing flagged this week",

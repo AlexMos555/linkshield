@@ -3653,7 +3653,6 @@
       "flagged_header": "Ditandai minggu ini",
       "flagged_note": "Yang ini hasilnya berbahaya, atau perlu dilihat lagi lebih teliti.",
       "times": "Dicek {{count}} kali",
-      "times_plural": "Dicek {{count}} kali",
       "times_one": "Dicek {{count}} kali",
       "times_other": "Dicek {{count}} kali",
       "clean_title": "Tidak ada yang ditandai minggu ini",

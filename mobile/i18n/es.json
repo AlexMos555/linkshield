@@ -1630,7 +1630,6 @@
   "mobile.report.flagged_header": "Señalados esta semana",
   "mobile.report.flagged_note": "Estos resultaron peligrosos o merecen una segunda mirada.",
   "mobile.report.times": "{{count}} revisión",
-  "mobile.report.times_plural": "{{count}} revisiones",
   "mobile.report.times_one": "{{count}} revisión",
   "mobile.report.times_other": "{{count}} revisiones",
   "mobile.report.clean_title": "Nada señalado esta semana",
