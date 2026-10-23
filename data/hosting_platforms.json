@@ -4,9 +4,9 @@
     "tenant_suffixes": "Every subdomain is a separate customer's site: <anything>.tw1.ru is whoever rented it. The apex itself (tw1.ru) stays trusted.",
     "user_content_hosts": "One hostname, many users' pages at different PATHS (forms.yandex.ru/u/<id>). The public check only sees the host, so it can vouch for the service, never for the page: the host itself gets the fixed 'real service, cannot vouch for the page' answer, never name/brand/ML scoring (its name is the platform's).",
     "operator_hosts": "Subdomains of a tenant suffix that the platform runs itself (dashboards, webmail, its own site), so they are NOT customer sites. www.<suffix> is always the operator's and need not be listed. Confirmed in the 2026-09-27 review: these lost the instant-safe path and drew 'anyone can publish here' plus ML caution.",
-    "sources": "Confirmed on the live /public/check on 2026-09-25 (tw1.ru x2, weebly, wpcomstaging.com, screenconnect.com all came back 'safe, 99%'), plus the registrables of the 34,193 active feed hosts that sat under a top-100k name with no tenant rule (fullcheck recheck-tenant, PhishTank + OpenPhish + URLhaus, 2026-09-25). Names already covered by data/public_suffixes_in_top.json or the scorer's hand list need not be repeated here, but a duplicate is harmless.",
+    "sources": "Confirmed on the live /public/check on 2026-09-25 (tw1.ru x2, weebly, wpcomstaging.com, screenconnect.com all came back 'safe, 99%'), plus the registrables of the 34,193 active feed hosts that sat under a top-100k name with no tenant rule (fullcheck recheck-tenant, PhishTank + OpenPhish + URLhaus, 2026-09-25). Names already covered by data/public_suffixes_in_top.json or the scorer's hand list need not be repeated here, but a duplicate is harmless. 2026-10-23: the platforms the licensed top 100k (Majestic Million + Chrome UX Report) ranks, most of them through Majestic link counts, whose tenants' phishing would otherwise be answered instant-safe: 994 Phishing.Database ACTIVE hosts and 164 hosts of the four licensed feeds that Tranco's top 100k had not allowlisted (easywp.com 231, preview-domain.com 185, ct.ws 110, blogspot.cl/.sk/.ae 213, byethost7.com 62, univer.se, gt.tc, drv.tw, softr.app, mybluemix.net, 22web.org, blogcu.com, eoldal.hu, page.gd ...), plus the other free-hosting and site-builder suffixes of the same operators in that list.",
     "dynamic_dns_services": "Free dynamic-DNS services: anyone gets <name>.<suffix> pointed at any address in a minute. The scorer weighs a name there (scoring 'dynamic_dns_host') and never trusts one as a top-100k name (mb-way.ns01.info, an MB WAY phish under ChangeIP's ns01.info, was answered 'safe' without analysis, 2026-10-15). The tenant_suffixes 'dynamic_dns' group counts too. Kept OUT of tenant_suffixes on purpose: those feed the ML model's tenant feature, which changes only with a retrain (model_meta shared_suffixes).",
-    "updated": "2026-10-15"
+    "updated": "2026-10-23"
   },
   "dynamic_dns_services": [
     "duckdns.org", "ddns.net", "no-ip.org", "no-ip.biz", "no-ip.info", "hopto.org",
@@ -32,7 +32,8 @@
       "ucoz.ru", "ucoz.net", "ucoz.com", "ucoz.org", "narod.ru", "my1.ru", "moy.su",
       "clan.su", "3dn.ru", "at.ua", "do.am",
       "tilda.ws", "nethouse.ru", "craftum.io", "ukit.me", "bitrix24.site", "myinsales.ru",
-      "blogspot.ru"
+      "blogspot.ru",
+      "ucoz.ua", "usite.pro"
     ],
     "site_builders": [
       "weeblysite.com", "editmysite.com", "godaddysites.com", "wpcomstaging.com",
@@ -42,7 +43,15 @@
       "start.page", "tiiny.site", "neocities.org", "tumblr.com", "joomla.com", "ghost.io",
       "myportfolio.com", "teachable.com", "thinkific.com", "systeme.io", "myclickfunnels.com",
       "mybigcommerce.com", "odoo.com", "hs-sites.com", "hs-sites-eu1.com", "activehosted.com",
-      "sibforms.com", "typeform.com", "multiscreensite.com", "lovestoblog.com", "mixh.jp"
+      "sibforms.com", "typeform.com", "multiscreensite.com", "lovestoblog.com", "mixh.jp",
+      "easywp.com", "preview-domain.com", "univer.se", "softr.app", "myfreesites.net", "bookmark.com",
+      "iwopop.com", "glide.page", "siterubix.com", "aweb.page", "populr.me", "rds.land",
+      "graphy.com", "krtra.com", "hs-sites-na2.com", "manifo.com", "webador.de", "webador.fr",
+      "webador.co.uk", "eklablog.com", "eklablog.fr", "over-blog.com", "over-blog.fr", "e-monsite.com",
+      "webs.com", "bravesites.com", "bloggersdelight.dk", "blogcu.com", "eoldal.hu", "conohawing.com",
+      "nekoweb.org", "toile-libre.org", "pl.tl", "webnode.cz", "webnode.es", "webnode.fr",
+      "webnode.gr", "webnode.hu", "webnode.it", "webnode.jp", "webnode.nl", "webnode.pt",
+      "webnode.ru", "webnode.sk", "webnode.tw"
     ],
     "hosting_and_cloud": [
       "usrfiles.com", "filesusr.com", "appdomain.cloud", "ic0.app", "arweave.net",
@@ -54,7 +63,13 @@
       "16mb.com", "esy.es", "somee.com", "webhostbox.net", "meusitehostgator.com.br",
       "codeanyapp.com", "codesandbox.io", "koyeb.app", "firebaseio.com", "publicvm.com",
       "run.place", "sslip.io", "netlify.com", "surge.sh", "sharepoint.com",
-      "screenconnect.com", "app.link", "page.link"
+      "screenconnect.com", "app.link", "page.link",
+      "ct.ws", "gt.tc", "page.gd", "22web.org", "byethost7.com", "great-site.net",
+      "infinityfree.me", "iblogger.org", "phpnet.us", "eu5.org", "orgfree.com", "freevar.com",
+      "awardspace.biz", "awardspace.info", "awardspace.us", "8m.net", "pe.hu", "890m.com",
+      "xoom.it", "tempsite.ws", "xhost.ro", "vot.pl", "maweb.eu", "mzf.cz",
+      "clanweb.eu", "euweb.cz", "unas.cz", "wz.cz", "ic.cz", "xf.cz",
+      "4fan.cz", "6f.sk", "drv.tw", "mybluemix.net", "cloud.serverless.com"
     ],
     "dynamic_dns": [
       "crabdance.com", "zzux.com", "otzo.com", "zyns.com", "ydns.eu", "dns.army",
@@ -73,7 +88,8 @@
       "blogspot.dk", "blogspot.fi", "blogspot.fr", "blogspot.gr", "blogspot.hk", "blogspot.hu",
       "blogspot.ie", "blogspot.in", "blogspot.it", "blogspot.jp", "blogspot.kr", "blogspot.mx",
       "blogspot.my", "blogspot.nl", "blogspot.no", "blogspot.pt", "blogspot.ro", "blogspot.se",
-      "blogspot.sg", "blogspot.tw"
+      "blogspot.sg", "blogspot.tw",
+      "blogspot.ae", "blogspot.cl", "blogspot.co.za", "blogspot.com.co", "blogspot.es", "blogspot.sk"
     ]
   },
   "user_content_hosts": [

@@ -530,13 +530,14 @@ async def publisher_gate_pass(hosts: list[str], public_suffixes: Optional[set[st
     """The hosts that would survive the blocklist publisher's guards as own-
     source hosts (exact, never promoting a registrable): shared and path-
     shared hosts, hosting-platform apexes, operator suffixes, zones, the
-    bundled top-100k and the brand-owned veto. Tranco-1M needs prod Redis
-    and is not applied here — the publisher applies it on top."""
+    bundled top-100k plus the infrastructure names, and the brand-owned
+    veto. The top-1M rank needs prod Redis and is not applied here — the
+    publisher applies it on top."""
     rdd = publisher or _publisher()
     if public_suffixes is None:
         public_suffixes = await rdd._fetch_psl()
     names = sorted({rdd._norm_host(h) for h in hosts} - {""})
-    kept = rdd.build_blockset(names, rdd._load_top_100k(), public_suffixes=public_suffixes,
+    kept = rdd.build_blockset(names, rdd.load_popular_guard(), public_suffixes=public_suffixes,
                               exact_only=set(names))
     return kept & set(names)
 

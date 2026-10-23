@@ -12,7 +12,7 @@
           "check"
         ],
         "summary": "Check Domains",
-        "description": "Check one or more domains for phishing/safety.\n\nSpeed tiers:\n  - Cached: <1ms (Redis)\n  - Allowlisted: <1ms (Tranco 100K, no API calls)\n  - Full analysis: 2-5s (14 parallel checks)\n\nPrivacy: only domain names processed. Full URLs never logged.",
+        "description": "Check one or more domains for phishing/safety.\n\nSpeed tiers:\n  - Cached: <1ms (Redis)\n  - Allowlisted: <1ms (top 100K popular domains, no API calls)\n  - Full analysis: 2-5s (14 parallel checks)\n\nPrivacy: only domain names processed. Full URLs never logged.",
         "operationId": "check_domains_api_v1_check_post",
         "parameters": [
           {

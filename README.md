@@ -17,7 +17,7 @@ Cleanway automatically checks every link you encounter against 16 threat intelli
 ## Features
 
 - **42+ detection signals** across 6 categories
-- **10 active named blocklist feeds** (Google Safe Browsing, URLhaus, PhishStats, ThreatFox, Spamhaus, SURBL, AlienVault OTX, IPQualityScore, MalwareBazaar, Feodo Tracker) + reputation (Tranco), visual identity (favicon brand hashes, typosquat watchtower), ML model, LLM judge, and heuristics = **16 threat-intelligence signals** total. _(PhishTank integration is present in code but dormant while Cisco keeps new-account registration closed.)_
+- **10 active named blocklist feeds** (Google Safe Browsing, URLhaus, PhishStats, ThreatFox, Spamhaus, SURBL, AlienVault OTX, IPQualityScore, MalwareBazaar, Feodo Tracker) + reputation (top-1M popularity: Majestic Million + Chrome UX Report), visual identity (favicon brand hashes, typosquat watchtower), ML model, LLM judge, and heuristics = **16 threat-intelligence signals** total. _(PhishTank integration is present in code but dormant while Cisco keeps new-account registration closed.)_
 - **CatBoost ML model** — phishing recall published weekly at [cleanway.ai/transparency/methodology](https://cleanway.ai/transparency/methodology); reproducible via [`scripts/eval_fresh_urls.py`](./scripts/eval_fresh_urls.py) and [`docs/benchmarks/latest.json`](./docs/benchmarks/latest.json)
 - **Privacy Audit** — see what trackers, cookies, and data collection any site uses (A-F grade, on-device)
 - **Password leak warning** — a password typed into any form is checked by k-anonymity (only the first 5 hex chars of its SHA-1 are sent) and flagged if it appears in a known leak. There is no email leak lookup yet, and the extension does not offer one.

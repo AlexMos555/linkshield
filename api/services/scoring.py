@@ -3,7 +3,7 @@ Scoring Engine 3.0 — Production-grade phishing detection.
 
 30+ signals across 6 categories:
   1. Blocklist hits (Safe Browsing, PhishTank, URLhaus)
-  2. Allowlist checks (Tranco Top 100K)
+  2. Allowlist checks (top 100K popular domains: Majestic Million + Chrome UX Report)
   3. URL lexical analysis (length, entropy, special chars, encoding)
   4. Brand impersonation (typosquatting, homograph, subdomain abuse, combosquatting)
   5. DNS/WHOIS enrichment (domain age, SSL, security headers)
@@ -27,7 +27,7 @@ import re
 from collections import Counter
 from difflib import SequenceMatcher
 from types import MappingProxyType
-from typing import Mapping, NamedTuple, Optional
+from typing import AbstractSet, Mapping, NamedTuple, Optional
 
 from api.models.schemas import RiskLevel, DomainReason, ConfidenceLevel
 from api.services import ru_brands, ru_lures
@@ -67,10 +67,17 @@ def _load_json_dict(filename: str) -> dict:
         return {}
 
 
-# ── Load Tranco top domains (100K from file, 50 builtin fallback) ──
+# ── Load the top domains (100K from file, 50 builtin fallback) ──
+#
+# data/top_100k.json and data/top_10k.json are the first 100,000 / 10,000
+# names of Cleanway's popularity ranking: the Majestic Million (CC BY 3.0)
+# and the Chrome UX Report top origins (CC BY 4.0), merged by
+# scripts/build_top_domains.py (provenance: data/top_domains_sources.json).
+# They were Tranco's until 2026-10-23 — no licence of its own, and its
+# default list averages Cloudflare Radar, CC BY-NC 4.0.
 
-_TRANCO_TOP_100K: set[str] = _load_json_set("top_100k.json")
-_TRANCO_TOP_10K: dict = _load_json_dict("top_10k.json")
+TOP_100K: set[str] = _load_json_set("top_100k.json")
+TOP_10K_RANKS: dict = _load_json_dict("top_10k.json")
 
 _BUILTIN_TOP_DOMAINS = {
     "google.com", "youtube.com", "facebook.com", "amazon.com", "wikipedia.org",
@@ -85,22 +92,23 @@ _BUILTIN_TOP_DOMAINS = {
     "ups.com", "fedex.com", "dhl.com", "citi.com",
 }
 
-TOP_DOMAINS: set[str] = _TRANCO_TOP_100K if _TRANCO_TOP_100K else _BUILTIN_TOP_DOMAINS
+TOP_DOMAINS: set[str] = TOP_100K if TOP_100K else _BUILTIN_TOP_DOMAINS
 
-_domains_source = "tranco_100k" if _TRANCO_TOP_100K else "builtin_50"
+_domains_source = "top_100k" if TOP_100K else "builtin_50"
 logger.info("Loaded %d top domains from %s", len(TOP_DOMAINS), _domains_source)
 
 # ── Public suffixes that are ALSO top domains ──
 #
-# Tranco ranks `us.org`, `github.io`, `blogspot.com`, `azurewebsites.net`,
-# `bounceme.net` … in its top 100k — and every one of them is a public suffix
-# (Mozilla PSL): anyone can register a name under it. Trusting "base domain in
+# The top 100k ranks `us.org`, `github.io`, `blogspot.com`, `azurewebsites.net`,
+# `bounceme.net` … — and every one of them is a public suffix (Mozilla PSL):
+# anyone can register a name under it. Trusting "base domain in
 # TOP_DOMAINS" for a SUBDOMAIN of these was an instant-safe hole: the live
 # phishing host gwcu.us.org came back "safe, 99%" from /public/check without
 # ever reaching the analyzer (found 2026-08-18 through the Android shield).
-# Built by scripts/build_public_suffixes_in_top.py = every PSL rule whose
-# last-two-labels base is in top_100k.json (1,539 entries, multi-label ones
-# like s3.amazonaws.com included). See is_trusted_top_domain().
+# Every PSL rule whose last-two-labels base is in top_100k.json, multi-label
+# ones like s3.amazonaws.com included — rebuilt with the list in the same run
+# (scripts/build_top_domains.py, build_public_suffixes_in_top.rules_in_top).
+# See is_trusted_top_domain().
 PUBLIC_SUFFIXES_IN_TOP: set[str] = _load_json_set("public_suffixes_in_top.json")
 if not PUBLIC_SUFFIXES_IN_TOP:
     logger.warning("public_suffixes_in_top.json missing — falling back to the hand list only")
@@ -117,7 +125,7 @@ if not PUBLIC_SUFFIXES_IN_TOP:
 # instead compared 'spb' with brand names ("Impersonates ups.com"), read 'gov'
 # as a fake TLD and counted three subdomain levels where there is one:
 # 100/dangerous in production on 2026-09-27. public_suffixes_in_top.json
-# cannot stand in: it only holds rules whose base ranks in Tranco.
+# cannot stand in: it only holds rules whose base is in the top list.
 # Built by scripts/build_ru_public_suffixes.py. See registrable_domain().
 # Wildcard rules ('*.hosting.myjino.ru': every b.hosting.myjino.ru is itself
 # a suffix) are kept apart, by their base.
@@ -261,7 +269,7 @@ def _tenant_label(domain: str) -> Optional[str]:
 def is_trusted_top_domain(domain: str) -> bool:
     """The ONE rule for the instant-safe allowlist short-circuit.
 
-    True only when the domain is a top domain (Tranco 100k) or a subdomain of
+    True only when the domain is a top domain (the top 100k) or a subdomain of
     one that is NOT a shared platform / public suffix / URL shortener /
     abused Google service. Shared platforms include the curated
     data/hosting_platforms.json — Timeweb, Beget, SpaceWeb, Selectel, Weebly,
@@ -556,6 +564,10 @@ _URL_SHORTENERS = {
     "short.io", "rebrand.ly", "tiny.cc", "surl.li", "shorturl.at",
     "v.gd", "qr.ae", "dub.sh", "link.infini.fr", "t.ly",
     "u.to", "clck.ru", "shrtco.de", "1url.cz",
+    # In the licensed top 100k (2026-10-23) and absent above, so they were
+    # answered instant-safe: a shortener's popularity vouches for no link.
+    "s.gy", "short.gy", "l1nq.com", "bityli.com", "me2.do", "chilp.it",
+    "abrir.link", "encurtador.dev", "beam.to", "jii.li", "buly.kr", "mpago.la",
 }
 
 
@@ -838,6 +850,14 @@ def _has_fake_tld_in_subdomain(domain: str) -> bool:
     return bool(subdomain) and _registered_tld_lookalike(domain) is not None
 
 
+def popularity_rank(signals: dict) -> Optional[int]:
+    """The best top-1M rank (Redis tranco:ranks) of the host or of its
+    registrable domain, from the analyzer's signals, or None."""
+    ranks = [r for r in (signals.get("tranco_rank") if signals.get("tranco_ranked") else None,
+                         signals.get("tranco_registrable_rank")) if isinstance(r, int) and 0 < r <= 1_000_000]
+    return min(ranks) if ranks else None
+
+
 def _is_url_shortener(domain: str) -> bool:
     """Check if domain is a known URL shortener."""
     base = _extract_base_domain(domain)
@@ -853,7 +873,7 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     Layered scoring pipeline with 30+ signals.
 
     Layer 1: Blocklist → instant dangerous
-    Layer 2: Allowlist (Tranco 100K) → instant safe
+    Layer 2: Allowlist (top 100K popular domains) → instant safe
     Layer 3: Feature extraction → weighted scoring
     """
     score = 0
@@ -867,7 +887,7 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # questions get asked about it downstream, and they need different forms:
     #
     #   ascii_domain   — the wire form. Everything that LOOKS THE NAME UP
-    #                    speaks punycode: DNS/DoH, the blocklists, the Tranco
+    #                    speaks punycode: DNS/DoH, the blocklists, the popularity
     #                    tables, the PSL helpers, and the ML model (whose
     #                    training features were extracted from ASCII names —
     #                    feeding it Unicode would break feature parity).
@@ -882,7 +902,7 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     ascii_domain = domain
     unicode_domain = _decode_idn(domain)
 
-    # Lookup key: the top-domain / Tranco tables are indexed on the ASCII form.
+    # Lookup key: the top-domain / popularity tables are indexed on the ASCII form.
     base_domain = _extract_base_domain(ascii_domain)
     # Name under judgement: the decoded registrable label.
     unicode_base = _extract_base_domain(unicode_domain)
@@ -1005,12 +1025,24 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     #   - otherwise (obscure domain in threat reports) → full weight.
     # Uses the PSL-aware registrable domain so compound ccTLDs (.com.mx/.co.uk)
     # resolve correctly, not the naive 2-label split.
+    #
+    # The files are the allowlist; the Redis top-1M rank of the host or its
+    # registrable (tranco_rank, tranco_registrable_rank) counts as well:
+    # within the first 100,000 → skip, within the 1,000,000 → skip up to 5
+    # pulses and halve more. Since 2026-10-23 the allowlist holds the licensed
+    # ranking, and ~45,000 names that Tranco's top 100k carried rank 100k-1M:
+    # with full OTX weight rostelecom.ru, rosbank.ru, beget.ru and dream11.com
+    # went from safe to caution 27 and ddos-guard.net to dangerous 67 on
+    # victim-reference pulses (verifier, 2026-10-23).
     alienvault_pulses = signals.get("alienvault_pulse_count", 0)
     if alienvault_pulses > 0:
         from api.services.doh_gateway import _registrable_domain
         _reg = _registrable_domain(domain)
-        if _reg not in _TRANCO_TOP_10K:
-            _discount = _reg in _TRANCO_TOP_100K
+        _rank = popularity_rank(signals)
+        _top_ranked = _rank is not None and _rank <= 100_000
+        _ranked = _rank is not None
+        if _reg not in TOP_10K_RANKS and not _top_ranked and not (_ranked and alienvault_pulses <= 5):
+            _discount = _reg in TOP_100K or _ranked
             if alienvault_pulses > 5:
                 _wt = 30 if _discount else 60
                 score += _wt
@@ -1063,7 +1095,7 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # URL shorteners, or abused Google services. One rule, shared with the
     # public router: is_trusted_top_domain().
     if is_trusted_top_domain(domain):
-        rank = _TRANCO_TOP_10K.get(base_domain)
+        rank = TOP_10K_RANKS.get(base_domain)
         detail = f"Ranked #{rank} globally" if rank else "In global top 100K domains"
         return 0, RiskLevel.safe, [DomainReason(
             signal="known_legitimate", weight=-50,
@@ -1074,10 +1106,11 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # LAYER 3: FEATURE SCORING (30+ signals)
     # ════════════════════════════════════════════
 
-    # ── 3.0 Tranco popularity (Strategy doc #14) ──
-    # Negative weight = trust. A domain that's been in the worldwide
-    # top-1M for the rolling 30 days is statistically unlikely to be a
-    # phishing landing page (kits churn through fresh domains). The
+    # ── 3.0 Popularity (Strategy doc #14; signal names keep "tranco") ──
+    # Negative weight = trust. A domain in the worldwide top-1M (the
+    # Majestic Million and Chrome UX Report ranking, Redis tranco:ranks) is
+    # statistically unlikely to be a phishing landing page (kits churn
+    # through fresh domains). The
     # tier system (top-1k / 10k / 100k / 1M) tapers the bonus — never
     # large enough to single-handedly flip a high-risk verdict, but
     # enough to dampen false positives on legitimate-but-unfamiliar
@@ -1089,7 +1122,7 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
             score += tranco_weight  # negative — pulls score down
             reasons.append(DomainReason(
                 signal="tranco_popularity", weight=tranco_weight,
-                detail=signals.get("tranco_label") or "In the public top-1M domains",
+                detail=signals.get("tranco_label") or "Among the 1,000,000 most popular sites worldwide",
             ))
 
     # ── 3.1 Homograph / IDN attack ──
@@ -1151,6 +1184,8 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # Or a Russian brand's name bought under an open Russian zone
     # (sberbank.spb.ru, vk.nov.ru): the same deception, one level down.
     brand_sub = _check_brand_in_subdomain(ascii_domain)
+    if brand_sub and _is_self_hosted_product(ascii_domain, brand_sub, signals):
+        brand_sub = None
     zone_brand = None if brand_sub else _check_brand_under_open_zone(ascii_domain)
     tenant_brand = None if (brand_sub or zone_brand) else _check_brand_on_hosting_tenant(ascii_domain)
     if brand_sub or zone_brand or tenant_brand:
@@ -1861,7 +1896,7 @@ def _decode_idn(domain: str) -> str:
     sample of the .ru/.рф/.su Tranco tail came back 'caution' this way.)
 
     Callers keep the ASCII form for everything that legitimately speaks
-    punycode — DNS lookups, blocklists, the Tranco tables and the ML model,
+    punycode — DNS lookups, blocklists, the popularity tables and the ML model,
     all of which are keyed on the wire form.
 
     Decoding is per-label and never raises: a label that is not valid
@@ -1917,7 +1952,9 @@ def _decode_idn(domain: str) -> str:
 
 # ── Homograph detection ──
 
-def _check_homograph(domain: str) -> Optional[str]:
+def _check_homograph(domain: str, top_domains: Optional[AbstractSet[str]] = None) -> Optional[str]:
+    # `top_domains`: the brands whose look-alikes count (default TOP_DOMAINS;
+    # the ML feature is_homograph passes the served model's own copy).
     # IDN homograph attacks appear in DNS/URLs as ASCII punycode (xn--…), so a
     # raw ascii check misses them entirely. Decode any xn-- label back to
     # Unicode FIRST, then look for confusable characters on the decoded form.
@@ -1951,7 +1988,7 @@ def _check_homograph(domain: str) -> Optional[str]:
         return None
 
     ascii_base = _extract_base_domain(ascii_version)
-    if ascii_base in TOP_DOMAINS:
+    if ascii_base in (TOP_DOMAINS if top_domains is None else top_domains):
         return ascii_base
 
     # A brand only when the look-alikes are IN the name and turn it into a
@@ -2447,6 +2484,30 @@ def _check_brand_in_subdomain(domain: str) -> Optional[str]:
         if part_clean in GLOBAL_TYPOSQUAT_TARGETS and reg != GLOBAL_TYPOSQUAT_TARGETS[part_clean]:
             return part_clean
     return None
+
+
+# Products companies run on their own servers under the product's name:
+# gitlab.tcsbank.ru, jira.rambler-co.ru, confluence.vk.team. As a whole
+# subdomain label of a registrable domain in the top 1M, the name says which
+# tool the company runs, not whose site it is. Until 2026-10-23 Tranco's top
+# 100k allowlisted most such parents; with the licensed list ~95 of these
+# hosts in CrUX Russia's top 50,000 drew brand_subdomain_abuse (+30) and 19
+# went 'dangerous' (verifier, 2026-10-23).
+_SELF_HOSTED_PRODUCTS = frozenset({"gitlab", "jira", "confluence", "bitbucket"})
+
+
+def _is_self_hosted_product(domain: str, brand: str, signals: dict) -> bool:
+    """`brand` is a self-hosted product, it is a whole subdomain label of
+    `domain` (gitlab.x.ru, not gitlab-login.x.ru) and the registrable domain
+    is in the top 1M (signals: tranco_registrable_rank)."""
+    if brand not in _SELF_HOSTED_PRODUCTS:
+        return False
+    rank = signals.get("tranco_registrable_rank")
+    if not (isinstance(rank, int) and 0 < rank <= 1_000_000):
+        return False
+    reg = registrable_domain(domain)
+    labels = domain[: -(len(reg) + 1)].split(".") if domain.endswith("." + reg) else []
+    return brand in labels
 
 
 # Russian brands for ONE narrow check: the brand's name bought under an open

@@ -214,7 +214,7 @@ async def verify_legit_sample(path: Path = LEGIT_SAMPLE_PATH) -> int:
     if rule is None:
         problems.append("cannot import api.services.scoring — install pydantic to check the allowlist")
     else:
-        problems += [f"{s.host}: auto-trusted by the server (Tranco top 100k)" for s in sites if rule(s.host)]
+        problems += [f"{s.host}: auto-trusted by the server (the top 100k)" for s in sites if rule(s.host)]
     sem = asyncio.Semaphore(16)
     async with httpx.AsyncClient() as client:
         async def check(site: LegitSite) -> Optional[str]:

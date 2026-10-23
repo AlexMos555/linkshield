@@ -132,8 +132,11 @@ def test_onnx_matches_catboost_when_both_present():
         pytest.skip("no .cbm artifact")
     cb = CatBoostClassifier()
     cb.load_model(cbm)
+    assert ml_scorer.is_serving()
     for d in ["google.com", "klar.mx", "track.safeinflow.com", "paypal.account-verify.tk"]:
-        vec = [extract_ml_features(d)[k] for k in FEATURE_NAMES]
+        # The feature data the served model was trained on (live, or archived
+        # while data/ already holds a newer popularity list).
+        vec = [extract_ml_features(d, ml_scorer._feature_data)[k] for k in FEATURE_NAMES]
         cb_p = float(cb.predict_proba([vec])[0][1])
         our_p = ml_predict(d)["phishing_probability"]
         assert abs(cb_p - our_p) < 1e-3, f"{d}: catboost {cb_p} vs served {our_p}"

@@ -113,7 +113,7 @@ Every external dependency is wrapped by `CircuitBreaker(name, failure_threshold,
 | LLM Judge | `api/services/llm_judge.py` |
 | Typosquat Watchtower | `api/services/watchtower.py`, `api/services/watchtower_lookup.py` |
 | Brand favicon gallery | `api/services/favicon_hash.py` |
-| Tranco popularity | `api/services/tranco.py`, `scripts/refresh_tranco.py` |
+| Top-1M popularity (Majestic + CrUX; Tranco until 2026-10-23) | `api/services/tranco.py`, `scripts/refresh_tranco.py`, `scripts/build_top_domains.py` |
 | DoH gateway | `api/services/doh_gateway.py` |
 | SSRF guard | `api/services/domain_validator.py` |
 | Audit log | `api/services/audit_log.py`, migration `014_audit_log.sql` |

@@ -18,6 +18,17 @@ which equals ml_features.FEATURE_NAMES) and are numerically identical
 
 If neither backend is available, ml_predict() returns None and the caller
 gracefully degrades to rule-based-only scoring.
+
+Feature data: two features are read from data files, not from the name —
+in_top_domains / is_homograph from data/top_100k.json and the tenant
+features from data/public_suffixes_in_top.json. model_meta.json records the
+sha256 of the copies the model was trained on (feature_data), and the model
+is served exactly those (ml_features.resolve_feature_data): the live files,
+or the archived ones in data/feature_data/ after the list moved on without a
+new model. When neither is there the model is NOT served — ml_predict()
+returns None (rules only), backend_status() says 'feature_data_mismatch' and
+the error is logged — because a model fed a popularity list it never saw
+scores real sites as phishing without any visible failure.
 """
 
 from __future__ import annotations
@@ -46,16 +57,35 @@ _onnx_input_name: Optional[str] = None
 _cb_model = None
 _feature_names: list[str] = []
 _model_loaded = False
+# The data files the model was trained on (ml_features.FeatureData), or None
+# with the reason in _feature_data_problem; _feature_data_source says where
+# they were found ('live', or the archive path).
+_feature_data = None
+_feature_data_problem: Optional[str] = None
+_feature_data_source: Optional[str] = None
 
 
 def _load_meta() -> None:
-    """Load the canonical feature-name order the model was trained on."""
-    global _feature_names
+    """Load the canonical feature-name order the model was trained on, and
+    the feature data files it was trained on."""
+    global _feature_names, _feature_data, _feature_data_problem, _feature_data_source
     with open(_META_PATH, "r") as f:
         meta = json.load(f)
     _feature_names = meta["feature_names"]
     logger.info("ML model meta: %d features, AUC=%s",
                 len(_feature_names), meta.get("test_auc"))
+    from api.services.ml_features import resolve_feature_data
+
+    data, where = resolve_feature_data(meta, _DATA_DIR)
+    _feature_data = data
+    _feature_data_source = where if data is not None else None
+    _feature_data_problem = None if data is not None else where
+    if data is None:
+        logger.error("ML scoring disabled — %s. Rules-only scoring until the model and data/ agree "
+                     "(train a model on data/, or bring back the archived feature files).", where)
+    elif where != "live":
+        logger.warning("ML model served from archived feature data (%s): data/ has a newer popularity "
+                       "list than the model was trained on; the next model trained on data/ retires it", where)
 
 
 def onnx_session_options(ort):
@@ -179,7 +209,7 @@ def ml_predict(domain: str) -> Optional[dict]:
       }
     Returns None if no backend is available (graceful degradation to rules).
     """
-    if not _load_model():
+    if not _load_model() or _feature_data is None:
         return None
 
     try:
@@ -187,7 +217,7 @@ def ml_predict(domain: str) -> Optional[dict]:
         # inference doesn't drag sklearn (training-only) into the image.
         from api.services.ml_features import extract_ml_features, FEATURE_NAMES
 
-        features = extract_ml_features(domain)
+        features = extract_ml_features(domain, _feature_data)
         feature_vector = [features[k] for k in FEATURE_NAMES]
 
         if _backend == "onnx":
@@ -208,14 +238,23 @@ def ml_predict(domain: str) -> Optional[dict]:
 
 
 def backend_status() -> str:
-    """Which ML backend is actually live right now: 'onnx' | 'catboost' | 'disabled'.
+    """Which ML backend is actually live right now: 'onnx' | 'catboost' |
+    'feature_data_mismatch' (a model loaded, but not the data files it was
+    trained on — so it is not served) | 'disabled'.
 
     Loads lazily and is cheap to call repeatedly — used by the /stats endpoint so
     we can VERIFY from prod whether ML is firing, instead of silently degrading to
     rule-based scoring with no visibility (the fail-soft path returns None quietly).
     """
     _load_model()
+    if _backend and _feature_data is None:
+        return "feature_data_mismatch"
     return _backend or "disabled"
+
+
+def is_serving() -> bool:
+    """Does ml_predict() score anything in this process?"""
+    return backend_status() in ("onnx", "catboost")
 
 
 def model_status() -> dict:
@@ -229,9 +268,13 @@ def model_status() -> dict:
     Triggers the same lazy load as a real prediction (idempotent), so a
     /health/deep hit after a deploy is a genuine end-to-end check.
     """
-    loaded = _load_model()
+    loaded = _load_model() and _feature_data is not None
     return {
         "loaded": loaded,
         "backend": _backend,
         "model_file": os.path.exists(_ONNX_PATH),
+        # 'live', the archived feature files the model is served from, or
+        # None with `feature_data_problem` saying why the model is not served.
+        "feature_data": _feature_data_source,
+        "feature_data_problem": _feature_data_problem,
     }

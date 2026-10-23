@@ -58,7 +58,11 @@ def test_feature_extraction_preserves_safe_signals():
     }
     features = _extract_judge_features(signals, 55)
     assert features["blocklist_hits"] == 0
-    assert features["tranco_ranked"] is True
+    # The judge reads the popularity signals under their own names: the
+    # analyzer's keys are named after the list the rank replaced.
+    assert features["popularity_ranked"] is True
+    assert features["popularity_weight"] == -15
+    assert "tranco_ranked" not in features and "tranco_weight" not in features
     assert features["favicon_cloned"] is True
     assert features["favicon_brand"] == "paypal"
     assert features["domain_age_days"] == 5

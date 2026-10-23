@@ -13,7 +13,7 @@ What it does, from ONE snapshot of every feed (so every build sees the same
 bytes — feeds move by the minute):
 
   1. builds the phone artifact four times with scripts/refresh_dangerous_domains.py
-     in dry-run (no Redis: no retention, no Tranco-1M guard — the same
+     in dry-run (no Redis: no retention, no top-1M guard — the same
      conditions for every variant):
        all                      every feed, as published today
        licensed                 BLOCKLIST_LICENSED_ONLY: without OpenPhish,
@@ -276,7 +276,7 @@ def assemble(builds: dict[str, dict], held_out: dict, days: tuple[int, ...], sna
         "freshness_days": list(days),
         "feed_snapshot": snapshot,
         "build": ("scripts/refresh_dangerous_domains.py --dry-run --artifact-out, no Redis (no retention, no "
-                  "Tranco-1M guard), every variant on one feed snapshot; variants differ only in `excluded`"),
+                  "top-1M guard), every variant on one feed snapshot; variants differ only in `excluded`"),
         "variants": {name: {k: v for k, v in b.items() if k != "hashes"} for name, b in builds.items()},
         "held_out": held_out,
         "headline": headline(held_out),

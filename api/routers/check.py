@@ -3,7 +3,7 @@ Domain check endpoint.
 
 Architecture for speed:
   1. Cache check (<1ms)
-  2. Allowlist check (<1ms) — Tranco 100K, instant safe
+  2. Allowlist check (<1ms) — top 100K popular domains, instant safe
   3. Full analysis (~3-5s) — only for unknown domains
 
 This means 95%+ of requests return in <10ms.
@@ -50,13 +50,13 @@ def _quick_allowlist_check(domain: str) -> DomainResult | None:
     list, so a tenant on a shared platform the public check already refused
     (gwcu.us.org, a tw1.ru page) was still "known legitimate" here.
     """
-    from api.services.scoring import _extract_base_domain, _TRANCO_TOP_10K, is_trusted_top_domain
+    from api.services.scoring import TOP_10K_RANKS, _extract_base_domain, is_trusted_top_domain
 
     if not is_trusted_top_domain(domain):
         return None  # Unknown or shared platform — needs full analysis
 
     base = _extract_base_domain(domain)
-    rank = _TRANCO_TOP_10K.get(base)
+    rank = TOP_10K_RANKS.get(base)
     detail = f"Ranked #{rank} globally" if rank else "In global top 100K"
     return DomainResult(
         domain=domain,
@@ -82,7 +82,7 @@ async def check_domains(
 
     Speed tiers:
       - Cached: <1ms (Redis)
-      - Allowlisted: <1ms (Tranco 100K, no API calls)
+      - Allowlisted: <1ms (top 100K popular domains, no API calls)
       - Full analysis: 2-5s (14 parallel checks)
 
     Privacy: only domain names processed. Full URLs never logged.

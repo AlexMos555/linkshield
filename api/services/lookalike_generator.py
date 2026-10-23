@@ -25,7 +25,7 @@ the list through the publisher's own guards.
 
 A match is a CANDIDATE, never a block. It is published only when (a) the
 publisher's false-positive gates pass (scripts/refresh_dangerous_domains.py:
-top-100k and Tranco veto, brand-owned exclusions, shared suffixes, zones —
+top-100k and top-1M veto, brand-owned exclusions, shared suffixes, zones —
 every own-source host goes through build_blockset like a feed host, so the
 gates are not re-implemented here) and (b) at least one INDEPENDENT signal
 says the site is live phishing, not just a name — evidence we gather

@@ -178,7 +178,7 @@ hundred, is never enough on its own. A third party's listing (Safe Browsing,
 abuse.ch …) is recorded with the evidence but never publishes a host: that
 would derive this list from theirs, the licence problem it exists to avoid.
 The blocklist refresh publishes both sets as exact hosts through every guard
-a feed host meets (top-100k/Tranco veto, brand-owned veto, hosting-platform
+a feed host meets (top-100k/top-1M popularity veto, brand-owned veto, hosting-platform
 apexes, zones), for 14 days after the last confirmation.
 
 It is **off**. Set `LOOKALIKE_GENERATOR_ENABLED=1` in **both** places: the

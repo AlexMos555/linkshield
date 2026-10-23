@@ -325,10 +325,16 @@ def test_a_site_nobody_saw_is_kept_only_for_a_state_body():
 
 def test_the_report_s_false_alarms_are_in_the_sample():
     # bankspb.ru, also named by the report, was dropped 2026-10-13: its name
-    # servers answer SERVFAIL, so no check of it measures anything.
+    # servers answer SERVFAIL, so no check of it measures anything. A named
+    # site the allowlist now trusts (разговорыоважном.рф since the licensed
+    # popularity list of 2026-10-23, which counts Russia's most-opened sites)
+    # is answered on sight and left the sample: it can no longer be a false alarm.
+    from api.services.scoring import is_trusted_top_domain
+
     hosts = {s.host for s in _legit().load_legit_sample()}
     for named in ("президент.рф", "мойбизнес.рф", "разговорыоважном.рф", "rosreestr.gov.ru"):
-        assert named.encode("idna").decode("ascii") in hosts, named
+        ascii_name = named.encode("idna").decode("ascii")
+        assert ascii_name in hosts or is_trusted_top_domain(ascii_name), named
 
 
 @pytest.mark.parametrize(
@@ -662,7 +668,7 @@ def test_report_markdown_says_what_the_legit_sample_is():
     report["cleanway_on_legit"] = _legit().legit_breakdown([], [])
     report["cleanway_window_utc"] = {"start": "2026-10-04T15:16:02Z", "end": "2026-10-04T15:44:10Z"}
     md = eval_module.render_md(report)
-    assert "OUTSIDE the Tranco top-100k" in md
+    assert "OUTSIDE the top 100,000 the server trusts on sight" in md
     assert "Cleanway on the legitimate sample" in md
     assert "The Cleanway checks ran 2026-10-04T15:16:02Z – 2026-10-04T15:44:10Z." in md
     report["sources"]["legit_outside_allowlist"] = False

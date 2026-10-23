@@ -34,12 +34,16 @@ names. Redistribution to every phone is the act each licence has to allow.
 | **PhishTank** (Cisco/OpenDNS) online-valid dump | `https://data.phishtank.com/data/<key>/online-valid.csv.gz` | FAQ: commercial use of the API — "Yes, it is OK" (read 2026-09-29). Needs an application key; registration closed at the moment. Terms of Use refer to the Cisco EULA (*likely*) | Verified-online phishing URL hosts, **one cached download a day** (`api/services/phishtank_feed.py`) | **Off without `PHISHTANK_API_KEY`**; on the job through the `BLOCKLIST_PHISHTANK_SOURCE` variable |
 | **Cleanway checks** (server-confirmed hosts) | — | Google Safe Browsing / Web Risk verdicts; both bar passing results on (see §2) | Hosts our own checks confirmed dangerous | **Off** (`PUBLISH_CONFIRMED_THREATS`), stays off |
 
-Guards on every source, whatever its terms: Tranco top-100k/1M and public
-suffix list vetoes, shared-hosting tenant rules, hand-verified brand-owned
-hosts (`data/brand_owned_hosts.txt`), the churn and post-publish gates.
-Sources: Public Suffix List (`https://publicsuffix.org/list/public_suffix_list.dat`,
-MPL 2.0) and Tranco (`https://tranco-list.eu`, free research list; cite
-*Le Pochat et al., NDSS 2019*).
+Guards on every source, whatever its terms: the top-100k / top-1M
+popularity vetoes (§2a: Majestic Million + Chrome UX Report; Tranco's until
+2026-10-23) with the hand-curated infrastructure names
+(`data/infrastructure_domains.txt`), public suffix list vetoes,
+shared-hosting tenant rules (the curated `data/hosting_platforms.json`
+suffixes and the publisher's `UNRANKED_SHARED_DOMAINS` since 2026-10-23),
+hand-verified brand-owned hosts (`data/brand_owned_hosts.txt`), the churn
+and post-publish gates. Sources: Public Suffix List
+(`https://publicsuffix.org/list/public_suffix_list.dat`, MPL 2.0) and the
+popularity ranking of §2a.
 
 ### What `BLOCKLIST_LICENSED_ONLY` does, exactly
 
@@ -111,7 +115,7 @@ PhishTank can be ingested and the public number stays measurable.
 | **AlienVault / LevelBlue OTX** | `otx.alienvault.com/api/v1/indicators/domain/…` | Free community API; OTX terms of service (*likely*: free use with attribution) | On |
 | **IPQualityScore** | `ipqualityscore.com/api/json/url/…` | Vendor API terms, free tier 5,000/month, paid above; keyed | On with `IPQUALITYSCORE_KEY`, daily budget |
 | **RDAP** | `rdap.org/domain/…` | Public registry protocol (redirector) | On |
-| **Tranco** ranks | Redis copy of `tranco-list.eu` top-1M, refreshed daily | Free research list (cite) | On |
+| **Popularity rank** (§2a) | Redis `tranco:ranks`: the top-1M of the Majestic Million + Chrome UX Report ranking, rebuilt daily by `scripts/refresh_tranco.py` (Tranco's list until 2026-10-23; a Tranco URL is now refused) | CC BY 3.0 / CC BY 4.0 (§2a) | On |
 | **crt.sh** (Watchtower) | `crt.sh/?q=…` | Sectigo's public CT log search, no terms beyond politeness | On |
 | **Anthropic Claude** (LLM judge, explainer) | `api.anthropic.com` | Commercial API terms; only a domain-free feature vector is sent | On with `ANTHROPIC_API_KEY`, daily budget |
 | **Have I Been Pwned** Pwned Passwords | `api.pwnedpasswords.com/range/…` | Free, k-anonymity range API; no key | On |
@@ -145,6 +149,135 @@ rested on our own signals. That is the cost of the default: verdicts SURBL or
 the DBL alone carried. Watch the weekly benchmark after the flip; the way
 back for those two is a paid feed (Spamhaus DQS / SURBL Sponsored Data), not
 the free mirrors. Do not re-weight the scorer blind.
+
+### 2a. Domain popularity: the allowlist, the top-1M and the vetoes (since 2026-10-23)
+
+One ranking of registrable domains, built by `scripts/build_top_domains.py`
+and nowhere else. Until 2026-10-23 every one of these was Tranco's: no
+licence stated for the list, and its default list averages Cloudflare
+Radar, CC BY-NC 4.0 (§3).
+
+| Source | Terms (date read) | Use |
+|---|---|---|
+| **Majestic Million** `https://downloads.majestic.com/majestic_million.csv` | CC BY 3.0 (majestic.com/reports/majestic-million, read 2026-10-22/23; the site-terms question is in §3) | Ranked by linking IP subnets |
+| **Chrome UX Report** top origins, global and Russia, via `github.com/zakird/crux-top-lists` | CC BY 4.0 (developer.chrome.com/docs/crux/methodology, read 2026-10-22) | Ranked by Chrome page loads, in buckets |
+| **Public Suffix List** | MPL 2.0 | Which hosts are tenants; the public-suffix rules under top names |
+| PhishDestroy, CERT Polska, TweetFeed, Phishunt (§3) | CC0 / unrestricted | Names they report leave the instant-safe allowlist unless popularity vouches for them (never the ranking) |
+
+How the rank is made (parameters in the script, provenance of each build
+in `data/top_domains_sources.json`):
+
+1. Every host is folded to its registrable domain the way the scorer reads
+   it (`www.gosuslugi.ru` → `gosuslugi.ru`, `kvs.gov.spb.ru` →
+   `gov.spb.ru`), best rank per list; tenants of shared suffixes (PSL
+   private section, `data/hosting_platforms.json`) are dropped. Where the
+   scorer's reading is an ICANN public suffix (`srv.hrdc-drhc.gc.ca` →
+   `gc.ca`, `x.nhsbsa.nhs.uk` → `nhs.uk`), the host is folded to its PSL
+   registrable instead (`hrdc-drhc.gc.ca`, as Tranco ranked it), and a
+   suffix itself is never a name. The first build of 2026-10-23 ranked 502
+   ICANN suffixes (gc.ca #149, nhs.uk #399), which pulled 2,364 ICANN rules
+   into `public_suffixes_in_top.json` (Tranco's: 12) and made the model
+   read government hosts as hosting tenants; now 0 suffixes, 0 ICANN rules.
+2. CrUX rank = the global bucket, or Russia's bucket × 6 when better.
+   Chrome counts few Russians: the Russian sites both lists carry sit
+   20-50× lower globally than at home. Without Russia's list the top
+   100,000 held 1,842 Russian names (Tranco's: 3,799); × 6 keeps the top
+   10,000 as Russian as it was (389 against 360) and lets Russia's 10,000
+   most-opened origins in (4,986 Russian names in the 100,000).
+3. Dowdall rule, as Tranco itself: score = 1/rank in Majestic + 1/CrUX rank.
+4. For the allowlist files only: a name a feed reports stays only when
+   both lists rank it in their top 100,000, Majestic in its top 10,000, or
+   either in its top 1,000. That keeps facebook.com, t.me, discord.gg,
+   docsend.com instant-safe (reporters post the platform a page sits on)
+   and keeps roblox.com.bz, sstake.eu, narco24.to, the ushort.* shorteners
+   and ~90 more of the ~180 reported names the top 100,000 would have held
+   out of it (1,296 in the whole ranking). The names stay in the ranking:
+   the Redis top-1M and `data/top_domains_reported.json` (the 701 of them
+   in the top 1M, with their rank) feed the popularity bonus, the
+   publisher's never-block guard and the phone's veto. The first version
+   applied the rule to the whole ranking and so took maya.ph (a bank, CrUX
+   top 10,000), rezultati.com, dub.sh, filemail.com, eim.ae and ~690 more
+   out of the guard: one feed's report would have blocked them whole for
+   every DNS user.
+5. Top-N by that rank: 1,000 / 10,000 / 100,000 / 1,000,000 mean the same
+   positions they meant in Tranco, so no threshold moved.
+
+| Consumer | Reads | Note |
+|---|---|---|
+| Instant-safe allowlist (`scoring.is_trusted_top_domain`, `/check`, `/public/check`, scorer Layer 2) | `data/top_100k.json` | 55% of the names are Tranco's; 45,036 enter, 45,036 leave |
+| "Ranked #N", OTX gating | `data/top_10k.json`, `data/top_100k.json` and the Redis rank of the host or its registrable (top 100k: OTX skipped; top 1M: skipped up to 5 pulses, halved above; an OTX mention of a ranked name is not a blocklist hit, so the LLM judge still runs) | |
+| Popularity bonus −25/−15/−8/−3, unreachable-site vouch, LLM judge (`popularity_*`), publisher's top-1M guard, a company's own GitLab / Jira / Confluence | Redis `tranco:ranks` (key name kept) — the whole ranking, step 4 not applied — loaded daily by `scripts/refresh_tranco.py` from the same `rank()`; `tranco:ranks:meta` says what it was built from (`/health/deep` `components.popularity`); a CrUX month recorded in `data/top_domains_sources.json` that comes back with other bytes is refused | |
+| ML features `in_top_domains`, `is_homograph` and the tenant features | `data/top_100k.json`, `data/public_suffixes_in_top.json` — the copies named by hash in `model_meta.json` `feature_data` | see "Sequencing" |
+| Publisher popular / tenant guards, own-source lookalike gate | `data/top_100k.json` + `data/top_domains_reported.json` + `data/infrastructure_domains.txt`, `data/public_suffixes_in_top.json`, Redis top-1M | see "Blocklist" |
+| Android veto (`popular_veto.txt`, `shared_suffixes.txt`) and the extensions' `hostingTenantSuffixes` | `data/top_10k.json` + the reported names of that rank + `data/infrastructure_domains.txt`, `data/public_suffixes_in_top.json` | each file starts with the CC BY attribution of §5; ship with the next app / extension releases; installed copies keep Tranco's until then (so do the committed `dist/store-artifacts/cleanway-0.2.2-*`, rebuilt with the next extension release) |
+
+**Sequencing.** The model reads the two data files as features, so a model
+must be served the copies it was trained on. `ml/train_model.py` records
+their sha256 in `model_meta.json` (`feature_data`); `ml_scorer` serves the
+model those exact copies — the live files, or archived ones in
+`data/feature_data/<name>.<sha12>.json` — and serves no model at all
+(rules only, `/health` `ml.feature_data_problem`, `backend_status()` =
+`feature_data_mismatch`) when neither is there. `scripts/build_top_domains.py`
+archives what the served model reads before it replaces a file and prunes
+archives no model names; the replacement guard in `ml/train_model.py`
+scores the committed model on its own archived inputs. In this change the
+data and a model trained on it land in one commit, so no archive is left;
+a future refresh of the list without a retrain keeps the old model on its
+archive until the weekly job trains on the new files. That job commits the
+three model files only, so the old copy stays in `data/feature_data/`
+until the next list rebuild prunes it — harmless (copies are chosen by
+hash; `tests/test_ml_feature_data.py` checks each is the file its name
+says and walks rebuild → retrain → suite), and no YAML change is needed.
+
+**Blocklist.** The DNS-traffic lists Tranco averaged ranked internet
+infrastructure (gtld-servers.net, nflxvideo.net, lencr.org) and free
+dynamic-DNS zones; links and page loads do not. Two first-party lists put
+the protection back: `data/infrastructure_domains.txt` (DNS, CDN, OCSP,
+push and update names from the operators' own documentation; never
+blocked, in the phone's veto) and the publisher's
+`UNRANKED_SHARED_DOMAINS` plus the curated `data/hosting_platforms.json`
+suffixes (tenants blocked exactly, the apex never promoted) — Blogger's
+country domains, free DNS, tunnel and hosting zones included. The phone's
+veto goes from 9,879 names to 10,026 (the top-10k, the reported names of
+that rank, the infrastructure names). A dry run of the publisher on the
+2026-10-23 licensed feeds (no Redis, the top-1M guard simulated with each
+era's ranking): Tranco era 620,678 names, this change 666,728; the names
+the first version blocked whole on one feed's report (maya.ph,
+rezultati.com, dub.sh …, 696 registrables) are vetoed. Still blocked whole
+although Tranco protected them: 38 registrables of Tranco's top-100k and
+529 that only its top-1M carried, mostly reported scam apexes its
+DNS-traffic inputs ranked; the PR (#284) lists them, and the legitimate
+ones among them go to `data/brand_owned_hosts.txt` after a WHOIS check.
+
+**Measured** (2026-10-23; host-only scoring — `calculate_score({"domain":
+host})`: the allowlist, the name rules and the local model; "with
+popularity" adds the Redis top-1M signals the analyzer passes; the sets are
+fixed files, scored in every column):
+
+| Set | Served today (Tranco list, 2026-10-21 model) | First version of this change | This change, final (licensed list, model retrained on it, seed 42) |
+|---|---:|---:|---:|
+| Held-out real Russian sites (539), not safe | 1 | 2 | 2 |
+| Held-out Russian look-alikes (186), caught | 174 | 173 | 174 |
+| Fresh phishing names (5,000, the four feeds on 2026-10-23, none a training row), caught | 1,567 (31.3%) | 1,989 (39.8%) | 1,969 (39.4%) |
+| — wrongly answered on sight | 21 | 11 | 9 |
+| Long-tail real sites (5,000, ranks 100k-1M), not safe / with popularity | 130 / 108 | 158 / 124 | 154 / 121 |
+| Names leaving the allowlist (45,036), not safe with popularity | 4 | 1,921 | 1,899 |
+| Government hosts in CrUX's top 50k (1,688), not safe / read as hosting tenants | 315 / 0 | 339 / 362 | 316 / 0 |
+| CrUX Russia top-50k hosts under leaving names (1,290), not safe with popularity | 0 | 97 | 63 |
+| Phishing.Database ACTIVE hosts (392,164), answered instant-safe | 3,442 | 2,969 | 1,882 |
+| AlienVault OTX sample (87 names, 28 with pulses), not safe with popularity | — | 31 | 12 |
+
+The final model: test AUC 0.9120 (names only 0.9098, recall at 0.6
+42.5%, benign over 0.6 0.94%). `in_top_domains` is 42% of its importance.
+Every step of `retrain-ml.yml` passes on it (AUC health gate; FP /
+subdomain / tenant / brand-tenant / recall gates — secure-login.wasmer.app
+0.788 against the 0.6 bar; the held-out Russian gate: beeline-online.info
+the one ML-flagged site) and the full suite. The leaving names the final
+model flags are mostly numeric .xyz names and gambling mirrors from
+Tranco's DNS tail (199 "dangerous"); the visible cost is ~190 brand-owned
+alternates (googlemail.com, outlook.de, yahoo.de, santander.pl,
+protonmail.ch, adobelogin.com, office365.us) that the typosquat rule now
+flags "caution" — they were exempt only because Tranco listed them.
 
 ## 3. ML training data (`scripts/refresh_training_feeds.py`, weekly)
 
@@ -333,8 +466,10 @@ against ~1,400 (~500); .ru/.su/.рф registrable domains 32,764; regional-zone
 names 3,574 for the 1,800 the stratum takes. No gap to fill, so the
 hand-verified file is used as #279 used it, no more.
 
-**Still Tranco, not training rows**: two inputs the features read are built
-from Tranco, so nobody can yet say the model carries no Tranco data.
+**Still Tranco, not training rows** (closed 2026-10-23, §2a): two inputs
+the features read were built from Tranco. Both are the licensed ranking's
+now, the model was retrained on them, and `model_meta.json` names them by
+hash. What this paragraph said until then:
 
 * The `in_top_domains` feature reads `data/top_100k.json`, a Tranco
   top-100k snapshot (2026-10-05). The scorer's allowlist, the blocklist's
@@ -402,9 +537,28 @@ Cleanway's blocklist includes data from Phishunt.io (CC0), TweetFeed.live
 Phishing.Database (MIT, © Mitchell Krog), PhishDestroy DestroyList
 (phishdestroy.io, CC0 / MIT) and — until the licence cut —
 phishing.army (CC BY-NC 4.0) and OpenPhish; until 2026-10-21 also URLhaus
-(abuse.ch). Domain
-popularity from Tranco (Le Pochat et al.). Public suffixes from the Mozilla
-Public Suffix List (MPL 2.0).
+(abuse.ch). Public suffixes from the Mozilla Public Suffix List (MPL 2.0).
+
+Cleanway's domain popularity ranking — the allowlist, the top-1M in Redis,
+the blocklist's popularity veto, the phone's veto list and the
+extensions' tenant suffixes — is built from the Majestic Million by
+Majestic (majestic.com/reports/majestic-million), licensed under the
+Creative Commons Attribution 3.0 Unported License
+(https://creativecommons.org/licenses/by/3.0/), and the Chrome UX Report by
+Google (developer.chrome.com/docs/crux), licensed under the Creative
+Commons Attribution 4.0 International License
+(https://creativecommons.org/licenses/by/4.0/), read through
+github.com/zakird/crux-top-lists. Changes made: hosts folded to
+registrable domains (public suffixes left out), hosting tenants dropped,
+the two lists merged by the Dowdall rule with Russia's CrUX list counted at
+six times its bucket, cut to the top 100,000 / 10,000 / 1,000,000, and for
+the allowlist only, names reported by phishing feeds removed unless
+popularity vouches for them (`scripts/build_top_domains.py`,
+`data/top_domains_sources.json`). The adapted copies that ship — the
+phone's `popular_veto.txt` and `shared_suffixes.txt`, the extensions'
+`scorer-data.js` (`hostingTenantSuffixes`) — carry this notice in their
+header, generated from `data/top_domains_sources.json`. Until 2026-10-23
+domain popularity came from Tranco (Le Pochat et al., NDSS 2019).
 
 Cleanway's phishing model learns what real sites look like from the
 Majestic Million by Majestic (majestic.com/reports/majestic-million),

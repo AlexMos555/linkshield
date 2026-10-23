@@ -94,6 +94,13 @@ def _llm_available() -> bool:
     return bool(os.environ.get("ANTHROPIC_API_KEY"))
 
 
+# Signal keys the judge reads under another name. The analyzer's
+# tranco_ranked / tranco_weight are named after the list the popularity rank
+# replaced on 2026-10-23 (api/services/tranco.py); the judge is told what
+# they are now.
+_RENAMED = {"tranco_ranked": "popularity_ranked", "tranco_weight": "popularity_weight"}
+
+
 def _extract_judge_features(signals: dict, score: int) -> dict:
     """Sanitize the signal dict into a domain-free feature vector.
 
@@ -109,7 +116,7 @@ def _extract_judge_features(signals: dict, score: int) -> dict:
         # Threat-intel aggregate (boolean / count form only)
         "blocklist_hits", "alienvault_pulse_count",
         "ipqs_risk_score", "ipqs_phishing",
-        "tranco_ranked", "tranco_weight",
+        "tranco_ranked", "tranco_weight",  # sent as popularity_* (_RENAMED)
         # Brand / favicon (pattern, not host)
         "favicon_cloned", "favicon_brand",
         "typosquat_brand", "typosquat_distance",
@@ -137,6 +144,7 @@ def _extract_judge_features(signals: dict, score: int) -> dict:
     for k, v in (signals or {}).items():
         if k not in SAFE_KEYS:
             continue
+        k = _RENAMED.get(k, k)
         # Coerce to JSON-serialisable primitives.
         if isinstance(v, (str, int, float, bool)) or v is None:
             out[k] = v
@@ -185,8 +193,13 @@ it leans safe / dangerous / inconclusive. Then synthesise:
    `ipqs_risk_score`, `ipqs_phishing`. If any of these are
    non-zero / True → dangerous is the only correct verdict.
 
-2. POPULARITY — `tranco_ranked`, `tranco_weight`. Top-100k
-   domains (`tranco_weight ≤ -10`) are statistically
+2. POPULARITY — `popularity_ranked`, `popularity_weight`: the
+   domain's place in a worldwide top-1M built from links
+   (Majestic Million) and page loads (Chrome UX Report).
+   `popularity_weight` is -25 for the top 1,000, -15 for the
+   top 10,000, -8 for the top 100,000, -3 for the top
+   1,000,000 and 0 when unranked. Top-10k domains
+   (`popularity_weight ≤ -10`) are statistically
    unlikely to be fresh phishing kits. But established
    domains CAN be compromised — popularity is a Bayesian
    prior, not a free pass.
@@ -194,7 +207,7 @@ it leans safe / dangerous / inconclusive. Then synthesise:
 3. BRAND IDENTITY — `favicon_cloned`, `favicon_brand`,
    `typosquat_brand`, `typosquat_distance`, `homograph_detected`.
    These are very-high-confidence phishing signatures.
-   `favicon_cloned=true` + `tranco_weight≥0` is a near-certain
+   `favicon_cloned=true` + `popularity_weight≥0` is a near-certain
    credential-theft attempt.
 
 4. DOMAIN AGE & HOSTING — `domain_age_days`, `registrar`,
@@ -223,7 +236,7 @@ it leans safe / dangerous / inconclusive. Then synthesise:
   - typosquat_distance ≤ 2 AND domain_age_days < 90
 
 * If ALL of these are true, verdict is **safe**:
-  - tranco_ranked = true AND tranco_weight ≤ -10
+  - popularity_ranked = true AND popularity_weight ≤ -10
   - No brand-identity red flags
   - No content red flags
   - Domain age unknown OR > 1 year
@@ -251,7 +264,7 @@ confidence. If it doesn't, you're done.
 # ── EXAMPLES ──
 
 INPUT:
-  blocklist_hits=0, tranco_ranked=true, tranco_weight=-25,
+  blocklist_hits=0, popularity_ranked=true, popularity_weight=-25,
   favicon_cloned=false, typosquat_brand=null,
   domain_age_days=4200, no_https=false, free_ssl=false,
   credential_form_mismatch=false, heuristic_score=35
@@ -268,7 +281,7 @@ OUTPUT (this is what you produce, strict JSON):
  "one_line_reason":"Established top-ranked domain with no brand-clone or credential signals."}
 
 INPUT:
-  blocklist_hits=0, tranco_ranked=false, favicon_cloned=true,
+  blocklist_hits=0, popularity_ranked=false, favicon_cloned=true,
   favicon_brand="paypal", typosquat_brand=null,
   domain_age_days=3, free_ssl=true, no_https=false,
   credential_form_mismatch=true, heuristic_score=58
@@ -286,7 +299,7 @@ OUTPUT:
  "one_line_reason":"Brand-clone favicon + form posts to mismatched host on a 3-day-old free-SSL domain — classic kit signature."}
 
 INPUT:
-  blocklist_hits=0, tranco_ranked=false,
+  blocklist_hits=0, popularity_ranked=false,
   favicon_cloned=false, typosquat_brand=null,
   domain_age_days=180, no_https=false, free_ssl=true,
   redirect_count=2, credential_form_mismatch=false,

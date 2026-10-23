@@ -462,6 +462,16 @@ async def _probe_deep_health() -> tuple[int, dict]:
     except Exception as e:  # noqa: BLE001
         components["ml"] = {"loaded": False, "error": type(e).__name__}
 
+    # Which popularity ranking Redis serves (tranco:ranks:meta, written by
+    # scripts/refresh_tranco.py): `ok` is false while the ranks are still
+    # Tranco's or the refresh never ran. Informational, never paging.
+    try:
+        from api.services.tranco import popularity_status
+
+        components["popularity"] = await asyncio.wait_for(popularity_status(await get_redis()), timeout=2.0)
+    except Exception as e:  # noqa: BLE001 — a timeout included
+        components["popularity"] = {"ok": False, "error": type(e).__name__}
+
     # Grandma's protection, not the API: the list phones sync, and the DoH
     # gateway's own block decision. Visible, never paging — each has a watcher
     # that runs the whole path from outside (the DNS canary, the refresh job).

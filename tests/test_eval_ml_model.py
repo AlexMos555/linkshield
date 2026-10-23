@@ -6,17 +6,17 @@ Two ways the evaluation misreported its own inputs:
   blocklist hashes and the scorer all speak the punycode wire form, so a
   Unicode host was scored on different bytes, never matched the published
   blocklist and could be counted twice next to its xn-- spelling.
-* The downloaded Tranco snapshot is not the shipped data/top_100k.json, so
-  "rank 10k–100k" is not the same as "allowlisted": on 2026-10-04 only 689
-  of 1,000 sampled names were. The sample must be split by the actual
-  allowlist status instead of being labelled allowlisted wholesale.
+* A downloaded ranking is not the shipped data/top_100k.json, so "rank
+  10k–100k" is not the same as "allowlisted": on 2026-10-04 only 689 of
+  1,000 sampled names of the then-used Tranco snapshot were (the Majestic
+  Million, read since 2026-10-23, is one of two lists the allowlist
+  merges). The sample must be split by the actual allowlist status instead
+  of being labelled allowlisted wholesale.
 """
 from __future__ import annotations
 
 import importlib
-import io
 import sys
-import zipfile
 from pathlib import Path
 from types import ModuleType
 
@@ -52,23 +52,21 @@ def test_tweetfeed_dedups_unicode_and_punycode_spellings(tmp_path):
     assert info["unique_hosts"] == 1
 
 
-def _tranco_zip(tmp_path: Path, rows: list[tuple[int, str]]) -> Path:
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w") as zf:
-        zf.writestr("top-1m.csv", "\n".join(f"{r},{d}" for r, d in rows))
-    path = tmp_path / "top-1m.csv.zip"
-    path.write_bytes(buf.getvalue())
+def _majestic_csv(tmp_path: Path, rows: list[tuple[int, str]]) -> Path:
+    head = "GlobalRank,TldRank,Domain,TLD,RefSubNets,RefIPs,IDN_Domain,IDN_TLD,PrevGlobalRank,PrevTldRank,PrevRefSubNets,PrevRefIPs\n"
+    path = tmp_path / "majestic_million.csv"
+    path.write_text(head + "".join(f"{r},{r},{d},x,1,1,{d},x,0,0,0,0\n" for r, d in rows))
     return path
 
 
-def test_tranco_head_is_split_by_actual_allowlist_status(tmp_path):
+def test_ranking_head_is_split_by_actual_allowlist_status(tmp_path):
     m = _load()
     rows = [(10_000 + i, f"head{i}.com") for i in range(1, 21)] + [(200_000, "tail.ru")]
     shipped = {f"head{i}.com" for i in range(1, 21) if i % 2}  # half the head is in the shipped list
-    samples = m.tranco_samples(_tranco_zip(tmp_path, rows), 100, allowlisted=lambda h: h in shipped)
+    samples = m.ranking_samples(_majestic_csv(tmp_path, rows), 100, allowlisted=lambda h: h in shipped)
 
-    listed, listed_info = samples["tranco_10k_100k"]
-    unlisted, unlisted_info = samples["tranco_10k_100k_unlisted"]
+    listed, listed_info = samples["majestic_10k_100k"]
+    unlisted, unlisted_info = samples["majestic_10k_100k_unlisted"]
     assert set(listed) == shipped
     assert set(unlisted) == {f"head{i}.com" for i in range(1, 21)} - shipped
     assert listed_info["pool"] == unlisted_info["pool"] == 10

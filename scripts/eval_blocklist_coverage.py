@@ -13,7 +13,7 @@ held-out sample and reports two numbers we are allowed to say out loud:
     IP-literal URLs) is invisible to DNS-level blocking by design, and a
     coverage number that hides that is dishonest arithmetic.
 
-It also runs the false-positive side: how many Tranco top-10k names the list
+It also runs the false-positive side: how many top-10k names (data/top_10k.json) the list
 matches (must be exactly 0).
 
 Held-out sets (scripts/heldout_sets.py):
@@ -173,7 +173,7 @@ def main() -> int:
                  result["coverage_blockable_pct"], stats["hit_blockable"], stats["blockable_hostnames"])
     log.info("out of scope: %d IP-literal, %d on shared hosting", stats["ip_literal_hostnames"],
              stats["shared_hosting_hostnames"])
-    log.info("false positives in Tranco top-10k: %d %s", len(fp), fp[:5])
+    log.info("false positives in the top-10k: %d %s", len(fp), fp[:5])
     try:
         where = out_path.relative_to(ROOT)
     except ValueError:  # --out outside the repo: report the absolute path

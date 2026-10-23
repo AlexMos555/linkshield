@@ -12,8 +12,9 @@ the host and nothing else — the part of a verdict the name alone produces.
     ru_legit    tests/data/ru_heuristics_legit.txt   must stay safe
     ru_phish    tests/data/ru_heuristics_phish.txt   must stay caught
     bench_ru    data/benchmark_legit_ru.txt          real Russian sites
-    top100k     data/top_100k.json                   Tranco top-100k (the
-                                                     allowlist's snapshot)
+    top100k     data/top_100k.json                   the allowlist's top
+                                                     100k (Majestic + CrUX
+                                                     since 2026-10-23)
     shapes      data/benign-hosts.csv                CrUX top-origin hosts
                                                      with a subdomain
                                                      (optional, from
@@ -122,7 +123,7 @@ def score_set(hosts: list[str], allowlist: bool) -> dict:
 def run(allowlist: bool, top_n: Optional[int]) -> dict:
     from api.services import ml_scorer
 
-    assert ml_scorer.backend_status() != "disabled", "no ML backend — nothing to measure"
+    assert ml_scorer.is_serving(), f"no ML model served ({ml_scorer.backend_status()}) — nothing to measure"
     meta = json.loads((ROOT / "data" / "model_meta.json").read_text())
     result = {"allowlist": allowlist, "model": {k: meta.get(k) for k in (
         "features_version", "test_auc", "test_names_only", "total_samples")}}

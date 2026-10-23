@@ -1,4 +1,4 @@
-"""The model is served the vector it was trained on — features_version 5.
+"""The model is served the vector it was trained on — features_version 6.
 
 Training (ml/train_model.py) and serving (api.services.ml_scorer) both call
 api.services.ml_features.extract_ml_features, but "both call the same
@@ -11,7 +11,7 @@ structural features the model's values.
 They also pin what version 4 changed: dot_count, subdomain_depth,
 name_length, in_top_domains and the name the lexical features read are
 counted from the PSL registrable domain (kvs.gov.spb.ru was three levels
-under 'spb', and borrowed spb.ru's Tranco rank), and max_brand_similarity
+under 'spb', and borrowed spb.ru's rank in the top list), and max_brand_similarity
 reads the Russian brands. And what version 5 changed: a tenant of any shared
 suffix the scorer knows (ledgerlogin-home.wasmer.app, abc.tw1.ru) is read by
 the tenant's own label, where version 4 knew 26 platforms. And they pin the
@@ -32,7 +32,9 @@ from pathlib import Path
 import pytest
 
 import api.services.ml_scorer as ml_scorer
-from api.services.ml_features import FEATURE_NAMES, extract_ml_features, host_shape, shared_tenant
+from api.services.ml_features import (
+    FEATURE_NAMES, LIVE_FEATURE_DATA, FeatureData, extract_ml_features, host_shape, shared_tenant,
+)
 from api.services.scoring import TYPOSQUAT_TARGETS, registrable_domain
 from api.services.url_features import FEATURES_VERSION, _max_brand_similarity, extract_features
 
@@ -75,7 +77,10 @@ def test_training_rows_are_what_the_server_feeds_the_model(train_model, monkeypa
         current[:] = [host]
         assert ml_scorer.ml_predict(host) is not None
 
-    kept, rows = train_model.build_feature_matrix(HOSTS)
+    # Training rows built on the feature data the served model was trained
+    # on: the live files, or their archived copies while data/ already holds
+    # a newer popularity list (tests/test_ml_feature_data.py).
+    kept, rows = train_model.build_feature_matrix(HOSTS, data=ml_scorer._feature_data)
     assert kept == HOSTS
     for host, row in zip(kept, rows):
         assert row == served[host], host
@@ -158,9 +163,12 @@ def test_a_name_under_a_regional_zone_is_read_as_its_own_name():
 
 
 def test_a_name_under_a_zone_does_not_borrow_the_zones_rank():
-    assert "spb.ru" in ml_scorer_top_domains()
-    assert extract_ml_features("kvs.gov.spb.ru")["in_top_domains"] == 0.0
-    assert extract_ml_features("herzen.spb.ru")["in_top_domains"] == 0.0
+    # A top list that ranks the zone itself (Tranco ranked spb.ru #2605) and
+    # none of the names under it.
+    data = FeatureData(frozenset({"spb.ru"}), LIVE_FEATURE_DATA.shared_suffixes)
+    assert extract_ml_features("spb.ru", data)["in_top_domains"] == 1.0
+    assert extract_ml_features("kvs.gov.spb.ru", data)["in_top_domains"] == 0.0
+    assert extract_ml_features("herzen.spb.ru", data)["in_top_domains"] == 0.0
 
 
 def test_a_country_site_on_a_compound_suffix_keeps_its_rank():
@@ -196,7 +204,7 @@ def test_hosting_tenants_still_read_the_tenants_label():
 # ── features_version 5: a tenant of any shared suffix the scorer knows ──
 
 @pytest.mark.parametrize("host, suffix, label", [
-    ("ledgerlogin-home.wasmer.app", "wasmer.app", "ledgerlogin-home"),   # a PSL suffix in the Tranco top-100k
+    ("ledgerlogin-home.wasmer.app", "wasmer.app", "ledgerlogin-home"),   # a PSL suffix in the top-100k
     ("www.robinhoodlogin.webador.com", "webador.com", "robinhoodlogin"),  # the label under the suffix, not 'www'
     ("abc.tw1.ru", "tw1.ru", "abc"),                                    # data/hosting_platforms.json
     ("evil.s3.amazonaws.com", "s3.amazonaws.com", "evil"),              # a three-label platform (version 4 read 'amazonaws')
@@ -233,7 +241,9 @@ def test_the_tenant_feature_knows_every_suffix_the_scorer_does():
 
     assert HOSTING_PLATFORMS <= _SCORER_SHARED_SUFFIXES
     assert set(PUBLIC_SUFFIXES_IN_TOP) <= _SCORER_SHARED_SUFFIXES
-    assert len(_SCORER_SHARED_SUFFIXES | TENANT_SUFFIXES) == META["shared_suffixes"]
+    # The meta counts the suffixes of the feature data the model learned.
+    assert ml_scorer.is_serving()
+    assert len(set(ml_scorer._feature_data.shared_suffixes) | TENANT_SUFFIXES) == META["shared_suffixes"]
     for suffix in sorted(HOSTING_PLATFORMS | TENANT_SUFFIXES):
         if suffix.startswith("www.") or suffix in {"docs.google.com", "forms.google.com", "sites.google.com"}:
             continue  # operator and user-content hosts are not tenant suffixes

@@ -31,7 +31,7 @@ extension-firefox/  Firefox MV2 extension
 extension-safari/   Safari extension (WebKit)
 mobile/           React Native / Expo (iOS + Android)
 ml/               CatBoost training + 27-feature extractor
-data/             Tranco lists, model_meta.json, brand favicons
+data/             top-domain lists (Majestic + CrUX), model_meta.json, brand favicons
 docs/             Architecture, benchmark methodology, open-source plan
 tests/            Unit + integration + feature tests (pytest)
 landing/e2e/      Playwright E2E

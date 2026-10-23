@@ -241,7 +241,6 @@ _UPSTREAM_HOSTS = frozenset(
         "api.anthropic.com",
         "api.resend.com",
         "api.stripe.com",
-        "tranco-list.eu",
     }
 )
 _UPSTREAM_SUFFIXES = (".supabase.co",)

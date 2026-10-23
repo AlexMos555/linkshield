@@ -204,7 +204,9 @@ ipqs_breaker = CircuitBreaker(name="ipqualityscore", failure_threshold=3, cooldo
 malware_bazaar_breaker = CircuitBreaker(name="malware_bazaar", failure_threshold=3, cooldown_seconds=60, fallback=False)
 feodo_breaker = CircuitBreaker(name="feodo_tracker", failure_threshold=3, cooldown_seconds=60, fallback=False)
 
-# Strategy doc Top-20 #14 — Tranco popularity signal. Local-only
+# Strategy doc Top-20 #14 — the top-1M popularity signal (Majestic
+# Million + Chrome UX Report since 2026-10-23; the name is the list it
+# replaced, and /health reports it under that name). Local-only
 # Redis HGET, but wrapped in a breaker for resilience: if Redis is
 # down the lookup returns the breaker fallback (un-ranked dict)
 # and scoring simply omits the popularity bonus.

@@ -108,7 +108,45 @@ async def test_tier_thresholds(fake_redis, rank, expected_weight):
 @pytest.mark.asyncio
 async def test_check_tranco_unknown_domain_returns_neutral(fake_redis):
     out = await check_tranco_popularity("never-seen.example")
-    assert out == {"ranked": False, "rank": None, "weight": 0, "label": ""}
+    assert out == {"ranked": False, "rank": None, "weight": 0, "label": "", "registrable_rank": None}
+
+
+@pytest.mark.asyncio
+async def test_check_tranco_reports_the_registrable_rank_too(fake_redis):
+    """The bonus is the host's own; the registrable's rank rides along for
+    the rules that read it (OTX gating, a company's own GitLab)."""
+    fake_redis._table = {"tcsbank.ru": "40000"}
+    out = await check_tranco_popularity("gitlab.tcsbank.ru")
+    assert out["ranked"] is False and out["weight"] == 0
+    assert out["registrable_rank"] == 40000
+    fake_redis._table = {"rostelecom.ru": "150000"}
+    out = await check_tranco_popularity("rostelecom.ru")
+    assert out["ranked"] is True and out["rank"] == out["registrable_rank"] == 150000
+
+
+@pytest.mark.asyncio
+async def test_popularity_status_says_which_list_is_live(monkeypatch):
+    import json as _json
+
+    import api.services.tranco as mod
+    from api.services.tranco import popularity_status
+
+    class _Meta:
+        def __init__(self, value):
+            self.value = value
+
+        async def get(self, key):
+            return self.value if key == "tranco:ranks:meta" else None
+
+    for value, ok in ((None, False), (_json.dumps({"source": "majestic+crux", "built": "2026-10-24T03:17:00Z",
+                                                    "names": 1_000_000, "crux_months": {"global": "202609"}}), True)):
+        async def _get(v=value):
+            return _Meta(v)
+
+        monkeypatch.setattr(mod, "get_redis", _get)
+        out = await popularity_status()
+        assert out["ok"] is ok
+    assert out["source"] == "majestic+crux" and out["names"] == 1_000_000
 
 
 @pytest.mark.asyncio
@@ -117,7 +155,7 @@ async def test_check_tranco_returns_rank_in_output(fake_redis):
     out = await check_tranco_popularity("wikipedia.org")
     assert out["ranked"] is True
     assert out["rank"] == 27
-    assert "top 1,000" in out["label"]
+    assert "1,000 most popular" in out["label"]
 
 
 def test_tiers_are_in_ascending_order():
@@ -154,7 +192,7 @@ async def test_score_signal_wires_into_calculate_score(fake_redis):
         "tranco_ranked": True,
         "tranco_rank": 250_000,
         "tranco_weight": -8,
-        "tranco_label": "in the worldwide top 100,000 most-visited sites",
+        "tranco_label": "among the 100,000 most popular sites worldwide",
         "checks_succeeded": 18,
         "total_checks": 18,
     }

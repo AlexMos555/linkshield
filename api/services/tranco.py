@@ -1,21 +1,31 @@
-"""Tranco top-1M popularity signal — Strategy doc Top-20 #14.
+"""Top-1M popularity signal — Strategy doc Top-20 #14.
 
-Tranco (https://tranco-list.eu/) publishes a daily ranking of the
-top 1,000,000 most-popular domains, averaged over 30 days from
-the four major lists (Alexa/Umbrella/Majestic/Quantcast). A
-domain that's been in the top 100k for a month is, with very
-high confidence, NOT a phishing landing page — phishing kits
-churn through fresh domains because takedown is fast.
+Cleanway's popularity ranking (scripts/build_top_domains.py): the Majestic
+Million (CC BY 3.0, registrable domains ranked by linking IP subnets) and
+the Chrome UX Report top origins (CC BY 4.0, ranked by Chrome page loads;
+Russia's list counted too), merged by the Dowdall rule into one rank. Its
+first 100,000 names are data/top_100k.json (the allowlist); its first
+1,000,000 are the Redis hash this module reads. A domain that many sites
+link to and many people open is, with very high confidence, NOT a phishing
+landing page — phishing kits churn through fresh domains because takedown
+is fast.
+
+The module, the Redis key and the signal names (tranco_ranked,
+tranco_weight, the reason code tranco_popularity) keep the name of the list
+they replaced: Tranco until 2026-10-23, whose default list averages
+Cloudflare Radar (CC BY-NC 4.0) and so could not stay in a paid product
+(docs/THIRD_PARTY_FEEDS.md §2a). Clients map the reason code to
+'popular_site'; renaming it would break the ones already installed.
 
 Why this matters for Cleanway:
 
-  * We currently have NO popularity signal. A brand-new domain
-    looks the same as `wikipedia.org` to our scoring engine.
-    Combining brand-clone detection with a popularity floor is
-    the single biggest false-positive reducer available.
-  * Other vendors charge for this. Tranco is free, MIT-licensed.
+  * Without a popularity signal a brand-new domain looks the same as
+    `wikipedia.org` to the scoring engine. Combining brand-clone detection
+    with a popularity floor is the single biggest false-positive reducer
+    available.
 
-How we use the rank:
+How we use the rank (positions in the ranking, the same thresholds as with
+Tranco):
 
   * rank ≤ 1,000      → very-trusted, -25 pts
   * rank ≤ 10,000     → trusted, -15 pts
@@ -33,10 +43,10 @@ Storage:
 
   * Redis hash `tranco:ranks` — key=domain (lowercase, idna),
     value=rank (int as string).
-  * Refresh is a separate ops job (see `scripts/refresh_tranco.py`)
-    that downloads the CSV and HMSETs the whole map. We do NOT
-    refresh on every check — that would be a daily network call
-    per pod and a 50 MB download.
+  * Refresh is a separate ops job (`scripts/refresh_tranco.py`, daily)
+    that builds the ranking and HSETs the whole map. We do NOT refresh on
+    every check — that would be a daily network call per pod and a
+    ~100 MB download.
 
 Privacy:
 
@@ -57,16 +67,18 @@ logger = logging.getLogger(__name__)
 
 # Score deltas keyed by the maximum rank that qualifies for the
 # tier. Iterate in ascending order; first match wins.
+# The labels say "popular", not "most-visited": half of the rank is links
+# (Majestic), half page loads (CrUX).
 TRANCO_TIERS: tuple[tuple[int, int, str], ...] = (
-    (1_000, -25, "in the worldwide top 1,000 most-visited sites"),
-    (10_000, -15, "in the worldwide top 10,000 most-visited sites"),
-    (100_000, -8, "in the worldwide top 100,000 most-visited sites"),
-    (1_000_000, -3, "in the public top 1,000,000 domains"),
+    (1_000, -25, "among the 1,000 most popular sites worldwide"),
+    (10_000, -15, "among the 10,000 most popular sites worldwide"),
+    (100_000, -8, "among the 100,000 most popular sites worldwide"),
+    (1_000_000, -3, "among the 1,000,000 most popular sites worldwide"),
 )
 
 
 async def get_tranco_rank(domain: str) -> Optional[int]:
-    """Return the Tranco rank for `domain`, or None if not ranked.
+    """Return the popularity rank for `domain`, or None if not ranked.
 
     The lookup never raises — Redis errors return None so the
     caller treats the domain as un-ranked and the scoring engine
@@ -111,8 +123,9 @@ async def check_tranco_popularity(domain: str) -> dict:
     yields {"ranked": False, "weight": 0} via the breaker fallback.
     """
     rank = await get_tranco_rank(domain)
+    registrable_rank = await _registrable_rank(domain, rank)
     if rank is None or rank <= 0:
-        return {"ranked": False, "rank": None, "weight": 0, "label": ""}
+        return {"ranked": False, "rank": None, "weight": 0, "label": "", "registrable_rank": registrable_rank}
     for threshold, delta, label in TRANCO_TIERS:
         if rank <= threshold:
             return {
@@ -120,7 +133,47 @@ async def check_tranco_popularity(domain: str) -> dict:
                 "rank": rank,
                 "weight": delta,
                 "label": label,
+                "registrable_rank": registrable_rank,
             }
-    # Rank > 1,000,000 — shouldn't happen because the list IS top-1M
-    # but treat as un-ranked for safety.
-    return {"ranked": False, "rank": rank, "weight": 0, "label": ""}
+    # Rank > 1,000,000 — shouldn't happen because the hash holds the top
+    # 1M only, but treat as un-ranked for safety.
+    return {"ranked": False, "rank": rank, "weight": 0, "label": "", "registrable_rank": registrable_rank}
+
+
+async def _registrable_rank(domain: str, host_rank: Optional[int]) -> Optional[int]:
+    """The rank of the name's registrable domain (the host's own when it is
+    one). The bonus above stays the HOST's — a subdomain is not its parent —
+    but the scorer reads this one where a popular registrable changes what
+    a signal means: an AlienVault OTX mention of a top-1M site is a victim
+    reference far more often than a verdict, and gitlab.<bank>.ru is the
+    bank's own GitLab (scoring.calculate_score)."""
+    from api.services.scoring import registrable_domain
+
+    registrable = registrable_domain((domain or "").strip().lower())
+    if not registrable or registrable == (domain or "").strip().lower():
+        return host_rank if host_rank and host_rank > 0 else None
+    rank = await get_tranco_rank(registrable)
+    return rank if rank and rank > 0 else None
+
+
+async def popularity_status(r=None) -> dict:
+    """What the live Redis rank was built from (tranco:ranks:meta, written by
+    scripts/refresh_tranco.py) — /health/deep components.popularity. A
+    cache Tranco filled has no meta: `ok` is false until the licensed
+    refresh has run."""
+    import json
+
+    try:
+        r = r or await get_redis()
+        raw = await r.get("tranco:ranks:meta")
+    except Exception as exc:  # noqa: BLE001 — health is informational
+        return {"ok": False, "error": type(exc).__name__}
+    if not raw:
+        return {"ok": False, "source": None, "detail": "no tranco:ranks:meta — the ranks predate the licensed refresh"}
+    try:
+        meta = json.loads(raw)
+    except ValueError:
+        return {"ok": False, "error": "unreadable tranco:ranks:meta"}
+    out = {k: meta.get(k) for k in ("source", "built", "names", "crux_months")}
+    out["ok"] = meta.get("source") == "majestic+crux"
+    return out
