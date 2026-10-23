@@ -44,7 +44,7 @@ update it, upload `worker.js` as an ES module named `worker.js` with bindings:
 - `STATE` — KV namespace `cleanway-uptime`
 - `ALERT` — `send_email`, destination `amoskotin@gmail.com`
 - `ALERT_TO` — plain text `amoskotin@gmail.com`
-- `BACKUPS` — **optional**, R2 bucket `cleanway-db-backups`. Turns on the
+- `BACKUPS` — **optional** (bound since 2026-10-23), R2 bucket `cleanway-db-backups`. Turns on the
   `backup` check. The Worker only lists object names and upload times.
 
 and keep the cron trigger `* * * * *`. Free-plan limits are far away: 1,440

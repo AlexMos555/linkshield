@@ -251,6 +251,11 @@ curl -sS -X POST "$CF/zones/$CF_ZONE_ID/dns_records" "${auth[@]}" -H "Content-Ty
 
 ## Rollout
 
+**State:** deployed 2026-10-23 in `testing` (KV namespace `cleanway-mail-security`,
+custom domain `mta-sts.cleanway.ai`, Email Routing rule `tls-reports@` → this
+Worker, `_mta-sts` id `2026102301`, `_smtp._tls` published). Review the
+summaries and decide on `enforce` around 2026-11-06.
+
 1. **Testing, about two weeks.** Senders fetch the policy and report on it,
    and nothing is enforced. A sender reports only for days it delivered mail
    to cleanway.ai. The domain receives little mail, so send a message from a
