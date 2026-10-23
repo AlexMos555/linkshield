@@ -2,8 +2,10 @@
 
   * a fresh analysis — the analyzer's full fan-out — needs a slot of the
     worker's fresh-analysis budget: /public/check answers 503 + Retry-After
-    without one (and without spending the caller's fresh-check quota), the
-    authenticated /check analyses what fits and says the rest is partial;
+    without one (and without spending the caller's fresh-check quota); the
+    authenticated /check runs at most a quarter of that budget at once, the
+    rest of its batch waiting its turn, and says what did not fit in its
+    window is partial;
   * a live LLM call (the judge, the explainer) that does not fit is skipped:
     the verdict stands, the explainer serves its template;
   * the Cloudflare comparison is skipped when too many are waiting;
@@ -154,8 +156,10 @@ def check_env(monkeypatch, settings):
     from api.routers import check as check_router
     from api.services.auth import get_current_user_no_disposable
 
-    settings(load_shed_fresh_analysis_max_inflight=2)
-    calls = {"analysed": [], "charged": [], "cached": []}
+    # A quarter of the worker's fresh budget per request: 2 of these 8.
+    settings(load_shed_fresh_analysis_max_inflight=8)
+    calls = {"analysed": [], "budgets": [], "charged": [], "refunded": [], "cached": [],
+             "running": 0, "peak": 0, "hold": None, "delay": 0.0}
 
     async def _none(*a, **k):
         return None
@@ -164,9 +168,21 @@ def check_env(monkeypatch, settings):
         calls["charged"].append(num_domains)
         return 99
 
-    async def _analyze(domain, *a, **k):
+    async def _refund(user, num_domains):
+        calls["refunded"].append(num_domains)
+
+    async def _analyze(domain, *a, budget_s=None, **k):
         calls["analysed"].append(domain)
-        return _verdict(domain)
+        calls["budgets"].append(budget_s)
+        calls["running"] += 1
+        calls["peak"] = max(calls["peak"], calls["running"])
+        try:
+            if calls["hold"] is not None and domain.startswith("obscure-"):  # the big batch
+                await calls["hold"].wait()
+            await asyncio.sleep(calls["delay"])
+            return _verdict(domain)
+        finally:
+            calls["running"] -= 1
 
     async def _cache(result):
         calls["cached"].append(result.domain)
@@ -179,6 +195,7 @@ def check_env(monkeypatch, settings):
     monkeypatch.setattr(check_router, "get_cached_result", _none)
     monkeypatch.setattr(check_router, "cache_result", _cache)
     monkeypatch.setattr(check_router, "check_rate_limit", _charge)
+    monkeypatch.setattr(check_router, "refund_daily_quota", _refund)
     monkeypatch.setattr(check_router, "analyze_domain", _analyze)
     monkeypatch.setattr("api.services.cache.get_redis", _no_redis)
     app.dependency_overrides[get_current_user_no_disposable] = lambda: AuthUser(
@@ -187,26 +204,99 @@ def check_env(monkeypatch, settings):
     app.dependency_overrides.clear()
 
 
-def test_batch_analyses_what_fits_and_says_the_rest_is_partial(check_env):
-    domains = ["obscure-a.ru", "obscure-b.ru", "obscure-c.ru"]
+def _obscure(n: int) -> list[str]:
+    return [f"obscure-{i}.ru" for i in range(n)]
+
+
+def test_a_big_batch_on_an_idle_worker_is_fully_analysed(check_env):
+    """Before: one slot per domain, 16 of a 50-domain batch analysed even on
+    an idle worker and the other 34 counted as shed. Now the batch runs its
+    share at a time and the rest wait their turn."""
+    domains = _obscure(50)
     resp = TestClient(app).post("/api/v1/check", json={"domains": domains})
     assert resp.status_code == 200
     results = resp.json()["results"]
     assert [r["domain"] for r in results] == domains
-    partial = [r for r in results if r["checks_incomplete"] == ["analysis"]]
-    assert len(partial) == 1 and partial[0]["domain"] not in check_env["analysed"]
-    assert partial[0]["verdict_basis"]
-    assert sorted(check_env["analysed"]) == sorted(set(domains) - {partial[0]["domain"]})
-    assert check_env["charged"] == [2]  # the partial one is not counted
-    assert partial[0]["domain"] not in check_env["cached"]  # nor kept
-    assert ls.FRESH_ANALYSES.in_flight == 0
+    assert all(r["checks_incomplete"] != ["analysis"] for r in results)
+    assert sorted(check_env["analysed"]) == sorted(domains)
+    assert check_env["peak"] == 2  # its share of the worker's 8
+    assert check_env["charged"] == [50] and check_env["refunded"] == []
+    assert ls.FRESH_ANALYSES.shed == 0 and ls.FRESH_ANALYSES.in_flight == 0
+
+
+def test_a_big_batch_leaves_fresh_slots_for_everyone_else(check_env, public_env, monkeypatch, settings):
+    settings(load_shed_fresh_analysis_max_inflight=8)
+
+    async def _public_analyze(domain, *a, **k):
+        return _verdict(domain)
+
+    monkeypatch.setattr(analyzer, "analyze_domain", _public_analyze)
+
+    async def main():
+        check_env["hold"] = asyncio.Event()
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+            batch = asyncio.ensure_future(client.post("/api/v1/check", json={"domains": _obscure(50)}))
+            for _ in range(200):
+                if check_env["running"] == 2:
+                    break
+                await asyncio.sleep(0.005)
+            in_flight = ls.FRESH_ANALYSES.in_flight
+            public = await asyncio.wait_for(client.get("/api/v1/public/check/fresh-shop-9.ru"), 5)
+            page = await asyncio.wait_for(client.post("/api/v1/check", json={"domains": ["the-page.ru"]}), 5)
+            check_env["hold"].set()
+            return in_flight, public, page, await batch
+
+    in_flight, public, page, batch = asyncio.run(main())
+    assert in_flight == 2
+    assert public.status_code == 200 and public.json()["domain"] == "fresh-shop-9.ru"
+    assert page.status_code == 200 and page.json()["results"][0]["checks_incomplete"] != ["analysis"]
+    assert batch.status_code == 200
+    assert ls.FRESH_ANALYSES.shed == 0 and ls.FRESH_ANALYSES.in_flight == 0
+
+
+def test_a_batch_past_its_window_says_the_rest_is_partial_and_refunds_them(check_env, settings):
+    # Budget 0.4 s: the batch may start analyses for 0.8 s while 0.2 s is left.
+    # Two at a time, 0.35 s each: rounds at 0, 0.35 (0.45 left), then 0.10 left.
+    settings(analysis_budget_seconds=0.4)
+    check_env["delay"] = 0.35
+    domains = _obscure(10)
+    resp = TestClient(app).post("/api/v1/check", json={"domains": domains})
+    assert resp.status_code == 200
+    body = resp.json()
+    partial = [r["domain"] for r in body["results"] if r["checks_incomplete"] == ["analysis"]]
+    assert len(check_env["analysed"]) == 4 and len(partial) == 6
+    assert set(partial).isdisjoint(check_env["analysed"])
+    assert all(b is not None and b <= 0.4 for b in check_env["budgets"])
+    assert check_env["charged"] == [10] and check_env["refunded"] == [6]  # partial: not counted
+    assert body["api_calls_remaining"] == 99 + 6
+    assert set(partial).isdisjoint(check_env["cached"])  # nor kept
+    assert ls.FRESH_ANALYSES.shed == 0  # no contention: nobody else wanted a slot
+
+
+def test_a_batch_under_contention_counts_only_the_shortfall_as_shed(check_env):
+    ls.FRESH_ANALYSES.try_acquire(7)  # one of the worker's 8 left
+    resp = TestClient(app).post("/api/v1/check", json={"domains": _obscure(5)})
+    assert resp.status_code == 200
+    assert sorted(check_env["analysed"]) == _obscure(5)
+    assert check_env["peak"] == 1
+    assert ls.FRESH_ANALYSES.shed == 1  # it wanted 2, got 1
+    assert ls.FRESH_ANALYSES.in_flight == 7
 
 
 def test_batch_with_no_free_slot_is_503_before_any_quota(check_env):
-    ls.FRESH_ANALYSES.try_acquire(2)
+    ls.FRESH_ANALYSES.try_acquire(8)
     resp = TestClient(app).post("/api/v1/check", json={"domains": ["obscure-a.ru"]})
     assert resp.status_code == 503 and resp.headers["retry-after"]
     assert check_env["charged"] == [] and check_env["analysed"] == []
+
+
+def test_fresh_share_is_a_quarter_of_the_budget(settings):
+    settings(load_shed_fresh_analysis_max_inflight=32)
+    assert [ls.fresh_share(n) for n in (1, 5, 8, 50)] == [1, 5, 8, 8]
+    settings(load_shed_fresh_analysis_max_inflight=2)
+    assert ls.fresh_share(50) == 1
+    settings(load_shed_fresh_analysis_max_inflight=0)
+    assert ls.fresh_share(50) == 50  # no limit: all at once, as before
 
 
 # ── LLM calls ──

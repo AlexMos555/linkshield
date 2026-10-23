@@ -39,6 +39,10 @@ class FakeRedis:
         self._data[key] = int(self._data.get(key, 0)) + amount
         return self._data[key]
 
+    async def decrby(self, key: str, amount: int) -> int:
+        self._data[key] = int(self._data.get(key, 0)) - amount
+        return self._data[key]
+
     async def expire(self, key: str, seconds: int) -> bool:
         self._ttls[key] = seconds
         return True
@@ -167,6 +171,29 @@ async def test_check_rate_limit_over_cap_raises_429(
         await check_rate_limit(authed_user, num_domains=1)
     assert exc_info.value.status_code == 429
     assert "daily_limit" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_refund_gives_back_domains_charged_but_not_analysed(fake_redis, tight_limits, authed_user):
+    """/check charges a batch up front; what its window had no room to
+    analyse (load_shedding) gets a partial verdict and is given back."""
+    from api.services.rate_limiter import check_rate_limit, refund_daily_quota
+
+    assert await check_rate_limit(authed_user, num_domains=3) == 0
+    await refund_daily_quota(authed_user, 2)
+    await refund_daily_quota(authed_user, 0)  # nothing to give back: no call
+    assert await check_rate_limit(authed_user, num_domains=1) == 1
+
+
+@pytest.mark.asyncio
+async def test_refund_never_fails_the_request(monkeypatch, authed_user):
+    from api.services import rate_limiter
+
+    async def _down():
+        raise ConnectionError("redis down")
+
+    monkeypatch.setattr(rate_limiter, "get_redis", _down)
+    await rate_limiter.refund_daily_quota(authed_user, 3)  # no exception: the charge stands
 
 
 @pytest.mark.asyncio

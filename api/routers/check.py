@@ -25,6 +25,8 @@ from api.models.schemas import (
     RiskLevel,
     ConfidenceLevel,
 )
+from api.config import get_settings
+from api.services.analysis_budget import Deadline
 from api.services.analyzer import analyze_domain, rule_only_result
 from api.services import load_shedding
 from api.services import verdict_basis as vb
@@ -36,10 +38,35 @@ from api.services.cleanway_blocklist import listed_as
 # our public anon key) still doesn't burn API budget.
 from api.services.auth import get_current_user_no_disposable as get_current_user
 from api.services.cache import get_cached_result, cache_result
-from api.services.rate_limiter import check_burst_only, check_rate_limit
+from api.services.rate_limiter import check_burst_only, check_rate_limit, refund_daily_quota
 from api.services.domain_validator import validate_domain, normalize_domain, DomainValidationError
 
 router = APIRouter(prefix="/api/v1", tags=["check"])
+
+# A batch may start analyses for this many analysis budgets (6 s at the
+# default 3 s), each while at least half a budget is left.
+_BATCH_WINDOW_BUDGETS = 2
+
+
+async def _analyse_batch(domains: list[str], slots: int) -> list:
+    """Analyse `domains` at most `slots` at a time — the request's share of
+    the worker's fresh-analysis budget (load_shedding.fresh_share), so one
+    big batch cannot take every slot; the rest wait their turn. Each gets
+    what is left of the batch's window, at most one analysis budget. One that
+    could not start in time is None: the caller answers it on the address
+    alone, marked partial. Exceptions are returned, not raised."""
+    budget = get_settings().analysis_budget_seconds
+    window = Deadline(budget * _BATCH_WINDOW_BUDGETS)
+    turn = asyncio.Semaphore(slots)
+
+    async def one(domain: str):
+        async with turn:
+            left = window.remaining()
+            if left < budget / 2:
+                return None
+            return await analyze_domain(domain, budget_s=min(budget, left))
+
+    return await asyncio.gather(*[one(d) for d in domains], return_exceptions=True)
 
 
 def _quick_allowlist_check(domain: str) -> DomainResult | None:
@@ -176,28 +203,31 @@ async def check_domains(
             needs_analysis.append(domain)
 
     # ── Step 3: Full analysis for unknown domains (parallel) ──
-    # One fresh-analysis slot per domain (api/services/load_shedding.py).
-    # None free: 503 before any quota is spent. Some: those are analysed, the
-    # rest get the verdict on the address alone, marked partial — not
-    # counted against the quota, not cached.
+    # Up to the request's share of the worker's fresh-analysis slots
+    # (api/services/load_shedding.py), the rest of the batch waiting its
+    # turn. None free: 503 before any quota is spent. What the batch's window
+    # had no room for gets the verdict on the address alone, marked partial —
+    # given back to the quota, not cached.
     remaining = None  # No API calls used
     if needs_analysis:
-        granted = load_shedding.FRESH_ANALYSES.try_acquire(len(needs_analysis))
+        granted = load_shedding.FRESH_ANALYSES.try_acquire(load_shedding.fresh_share(len(needs_analysis)))
         if not granted:
             raise load_shedding.Overloaded(load_shedding.FRESH_ANALYSES.name)
-        analyse_now, deferred = needs_analysis[:granted], needs_analysis[granted:]
         try:
-            # Rate limit only for domains that get a full analysis
-            remaining = await check_rate_limit(user, num_domains=len(analyse_now))
-            analyses = await asyncio.gather(
-                *[analyze_domain(d) for d in analyse_now],
-                return_exceptions=True,
-            )
+            # Rate limit only for domains that need full analysis
+            remaining = await check_rate_limit(user, num_domains=len(needs_analysis))
+            analyses = await _analyse_batch(needs_analysis, granted)
         finally:
             load_shedding.FRESH_ANALYSES.release(granted)
+        deferred = [d for d, result in zip(needs_analysis, analyses) if result is None]
+        if deferred:
+            await refund_daily_quota(user, len(deferred))
+            remaining += len(deferred)
 
-        for domain, result in zip(analyse_now, analyses):
-            if isinstance(result, Exception):
+        for domain, result in zip(needs_analysis, analyses):
+            if result is None:
+                results[domain] = rule_only_result(domain)
+            elif isinstance(result, Exception):
                 results[domain] = DomainResult(
                     domain=domain, score=25, level=RiskLevel.caution,
                     reasons=[DomainReason(signal="analysis_error", detail="Check failed, proceed with caution", weight=0)],
@@ -206,8 +236,6 @@ async def check_domains(
             else:
                 results[domain] = result
                 await cache_result(result)
-        for domain in deferred:
-            results[domain] = rule_only_result(domain)
 
     # Return in original order
     ordered = []

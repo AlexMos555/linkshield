@@ -18,6 +18,9 @@ server with a keep-alive longer than the test (uvicorn --timeout-keep-alive).
 MODE: doh (k6_doh.js mix, GET) | doh-cached (the top 50 names only: once warm,
 the gateway answers them from its cache, no upstream in the way) | hit | miss |
 allow | health (k6_public.js).
+--hold-bodies N --hold-path P: before the clock starts, N connections send
+`POST P` headers with Content-Length 4000 and never the body (slow clients),
+held open for the whole run; `held_statuses` says what they got back.
 Prints one JSON line: sent, dropped, status counts, p50/p95/p99 of the 200s
 and of every answered request, peak RSS of --rss-pid and its children.
 Standard library only.
@@ -132,8 +135,40 @@ async def _one(host: str, port: int, path: str, idle: list, timeout: float) -> i
         return -1
 
 
+async def _hold(host: str, port: int, path: str, n: int) -> list:
+    """`n` connections that send a POST's headers and never its body."""
+    kind = "application/dns-message" if path == "/dns-query" else "application/json"
+    head = (f"POST {path} HTTP/1.1\r\nHost: {host}\r\nContent-Type: {kind}\r\n"
+            "Content-Length: 4000\r\n\r\n").encode()
+    held = []
+    for i in range(0, n, 100):
+        opened = await asyncio.gather(*(asyncio.open_connection(host, port)
+                                        for _ in range(min(100, n - i))), return_exceptions=True)
+        for conn in opened:
+            if not isinstance(conn, BaseException):
+                conn[1].write(head)
+                held.append(conn)
+    return held
+
+
+async def _held_statuses(held: list) -> Counter:
+    """What each held connection got back by now: a status, or "none"."""
+    out: Counter = Counter()
+    for reader, writer in held:
+        try:
+            first = await asyncio.wait_for(reader.read(12), 0.01)
+            out[first[9:12].decode() if first.startswith(b"HTTP/") else "closed"] += 1
+        except asyncio.TimeoutError:
+            out["none"] += 1
+        except Exception:  # noqa: BLE001
+            out["closed"] += 1
+        writer.close()
+    return out
+
+
 async def _run(url: str, mode: str, rate: float, duration: float, timeout: float,
-               max_conns: int, seed: int, preconnect: int = 0) -> dict:
+               max_conns: int, seed: int, preconnect: int = 0, hold: int = 0,
+               hold_path: str = "/api/v1/feedback/report") -> dict:
     parts = urlsplit(url)
     host, port = parts.hostname or "127.0.0.1", parts.port or 80
     next_path = make_paths(mode, random.Random(seed))
@@ -152,6 +187,7 @@ async def _run(url: str, mode: str, rate: float, duration: float, timeout: float
         opened = await asyncio.gather(*(asyncio.open_connection(host, port)
                                         for _ in range(min(100, preconnect - i))), return_exceptions=True)
         idle.extend(c for c in opened if not isinstance(c, BaseException))
+    held = await _hold(host, port, hold_path, hold) if hold else []
 
     async def fire(scheduled: float, path: str) -> None:
         nonlocal busy
@@ -187,7 +223,8 @@ async def _run(url: str, mode: str, rate: float, duration: float, timeout: float
         await asyncio.wait(tasks, timeout=timeout + 1)
     for _, writer in idle:
         writer.close()
-    return {"sent": sent, "dropped": dropped, "statuses": dict(statuses), "ok_ms": ok_ms, "all_ms": all_ms}
+    return {"sent": sent, "dropped": dropped, "statuses": dict(statuses), "ok_ms": ok_ms, "all_ms": all_ms,
+            "held": dict(await _held_statuses(held))}
 
 
 def _proc(args, index: int, queue) -> None:
@@ -197,7 +234,8 @@ def _proc(args, index: int, queue) -> None:
     except ImportError:
         pass
     queue.put(asyncio.run(_run(args.url, args.mode, args.rate / args.procs, args.duration,
-                               args.timeout, args.max_conns, args.seed + index, args.preconnect // args.procs)))
+                               args.timeout, args.max_conns, args.seed + index, args.preconnect // args.procs,
+                               args.hold_bodies // args.procs, args.hold_path)))
 
 
 def _pct(values: list[float], p: float):
@@ -239,9 +277,12 @@ def main() -> None:
     ap.add_argument("--preconnect", type=int, default=0,
                     help="keep-alive connections to open before the clock starts (all processes)")
     ap.add_argument("--rss-pid", type=int, default=0, help="sample this process + its children")
+    ap.add_argument("--hold-bodies", type=int, default=0,
+                    help="connections that send POST headers and never the body (all processes)")
+    ap.add_argument("--hold-path", default="/api/v1/feedback/report")
     args = ap.parse_args()
     soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
-    want = args.max_conns + 256
+    want = args.max_conns + args.hold_bodies // args.procs + 256
     if soft < want:
         resource.setrlimit(resource.RLIMIT_NOFILE, (want if hard == resource.RLIM_INFINITY else min(want, hard), hard))
 
@@ -261,8 +302,10 @@ def main() -> None:
     ok = [x for part in parts for x in part["ok_ms"]]
     answered = [x for part in parts for x in part["all_ms"]]
     statuses: Counter = Counter()
+    held: Counter = Counter()
     for part in parts:
         statuses.update(part["statuses"])
+        held.update(part["held"])
     print(json.dumps({
         "mode": args.mode, "rate": args.rate, "duration": args.duration,
         "sent": sum(p["sent"] for p in parts), "dropped": sum(p["dropped"] for p in parts),
@@ -272,6 +315,7 @@ def main() -> None:
         "all_p50_ms": _pct(answered, 50), "all_p95_ms": _pct(answered, 95),
         "rss_peak_mb": round(sampler.peak_kb / 1024) if sampler else None,
         "rss_peak_worker_mb": round(sampler.peak_one_kb / 1024) if sampler else None,
+        "held_statuses": dict(held) or None,
     }))
 
 

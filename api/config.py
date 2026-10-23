@@ -222,28 +222,42 @@ class Settings(BaseSettings):
     # replica); 0 = no limit. Past a request-class limit a request gets an
     # immediate 503 with Retry-After instead of queueing in memory — until
     # then an overloaded worker held ~550 MB (once 917 MB of 1 GB) of requests
-    # whose clients had already timed out (measured 2026-10-22).
+    # whose clients had already timed out (measured 2026-10-22). A slot
+    # counts only the time this worker works on a request: not its body
+    # arriving, not its answer leaving, not a DNS wait on the upstream.
     load_shed_enabled: bool = True
     # Requests in flight per class; normal load is far below (~5-20 per
     # worker). A full budget is also the longest queue an admitted request
-    # waits behind. DNS is the largest so queries waiting on a slow upstream
-    # (up to 4 s each) do not crowd out cache hits; lower it for a tighter
-    # worst case (local DoH flood, docs/runbooks/capacity.md: 256 → p95 0.9 s,
-    # 1024 → 2.5-3 s).
+    # waits behind (local DoH flood, docs/runbooks/capacity.md: 256 → p95
+    # 0.9 s, 1024 → 2.5-3 s). /health, /health/doh and /health/deep each have
+    # a health budget of their own.
     load_shed_dns_max_inflight: int = 1024
     load_shed_health_max_inflight: int = 64
     load_shed_api_max_inflight: int = 128
+    # DoH forwards waiting on the upstream (up to 4 s each). Past it a query
+    # is answered as when the upstream fails: serve-stale, else SERVFAIL
+    # (HTTP 200) — a slow Cloudflare or a zone that never answers must not
+    # refuse the names the cache answers at once.
+    load_shed_dns_upstream_max_inflight: int = 1024
     # Fresh analyses running at once (the full fan-out of /check and the fresh
-    # path of /public/check); past it /public/check answers 503 and /check
-    # analyses what fits, the rest marked checks_incomplete=["analysis"].
-    load_shed_fresh_analysis_max_inflight: int = 16
+    # path of /public/check); past it /public/check answers 503. One /check
+    # runs at most a quarter of them; the rest of its batch waits its turn.
+    # 32: a fresh analysis takes up to the 3 s budget (p50 1.4 s in the
+    # 2026-08-17 benchmark), so ~10-20 fresh analyses/s per worker. Not
+    # measured against prod latency yet (the local run used stub sources of
+    # 40-400 ms) — see docs/runbooks/capacity.md before lowering it.
+    load_shed_fresh_analysis_max_inflight: int = 32
     # Live LLM calls at once, for the judge and for the explainer each; past
     # it the call is skipped (the verdict stands; the explainer's template).
     load_shed_llm_max_inflight: int = 4
     # Source calls and site probes of all analyses at once. They WAIT for a
     # slot (inside the analysis budget); sized so that at the default fresh
-    # budget nothing ever waits (16 x 13 licensed checks = 208).
-    load_shed_outbound_max_inflight: int = 256
+    # budget nothing ever waits (32 x 13 licensed checks = 416).
+    load_shed_outbound_max_inflight: int = 512
+    # A request body must arrive within this many seconds, plus its size at
+    # ~0.5 Mbit/s, or the request gets 408. It is read BEFORE the request
+    # takes a slot, so a slow client holds none.
+    load_shed_body_timeout_s: float = 10.0
     load_shed_retry_after_s: int = 2
 
     # Benchmark bypass token. When set (non-empty), a request carrying the

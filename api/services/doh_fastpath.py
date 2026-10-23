@@ -108,7 +108,7 @@ async def _serve(scope, receive) -> tuple[int, bytes, list]:
         logger.warning("doh_fastpath_error", exc_info=True)
         if not wire:
             return _plain(500)
-        upstream = await doh.proxy_to_upstream(wire)
+        upstream = await doh.ask_upstream(wire)
         answer = (doh.DohAnswer(upstream, 200, 0) if upstream is not None
                   else doh.DohAnswer(doh.make_servfail_response(wire), 200, 0))
     if answer.status != 200:

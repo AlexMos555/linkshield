@@ -110,10 +110,12 @@ def test_defaults_are_safe():
 
     s = Settings()
     assert s.load_shed_enabled
-    # DNS has the largest budget: queries waiting on a slow upstream must not
-    # crowd out the ones the cache answers at once.
     assert s.load_shed_dns_max_inflight > s.load_shed_api_max_inflight > s.load_shed_fresh_analysis_max_inflight > 0
+    # A slow upstream (4 s a miss) fills this one; it must hold at least as
+    # many as the DNS budget itself.
+    assert s.load_shed_dns_upstream_max_inflight >= s.load_shed_dns_max_inflight
     assert s.load_shed_health_max_inflight > 0
+    assert 1 <= s.load_shed_body_timeout_s <= 60
     assert 0 < s.load_shed_llm_max_inflight <= s.load_shed_fresh_analysis_max_inflight
     # At the default analysis budget the outbound gate never makes a check wait.
     checks = licensed_intel.total_checks(analyzer.TOTAL_CHECKS)
@@ -123,7 +125,7 @@ def test_defaults_are_safe():
 
 @pytest.mark.parametrize("path,budget", [
     ("/dns-query", "dns"),
-    ("/health", "health"), ("/health/doh", "health"), ("/health/deep", "health"),
+    ("/health", "health"), ("/health/doh", "health_doh"), ("/health/deep", "health_deep"),
     ("/api/v1/public/check/example.ru", "api"), ("/api/v1/check", "api"), ("/", "api"),
     ("/dns-query/", "api"),
 ])
@@ -406,4 +408,5 @@ def test_health_doh_reports_the_counters(monkeypatch):
     ls.API.shed = 4
     body = TestClient(app).get("/health/doh").json()
     assert body["load_shed"]["api"]["shed"] == 4
-    assert set(body["load_shed"]) >= {"dns", "health", "api", "fresh_analysis", "outbound"}
+    assert set(body["load_shed"]) >= {"dns", "dns_upstream", "health", "health_doh", "health_deep", "api",
+                                      "fresh_analysis", "outbound"}

@@ -5,43 +5,61 @@ refused nothing. Requests piled up in memory — ~550 MB, once 917 MB of a
 1 GB container — latency climbed to seconds, and the server kept working on
 requests whose clients had long timed out. Now every request needs a slot of
 its class; with none free it gets an immediate 503 with Retry-After, before
-routing, auth, body parsing or a log line. A flood then costs a fraction of
-what serving it would, and the requests already admitted finish in time.
+routing, auth or a log line. A flood then costs a fraction of what serving
+it would, and the requests already admitted finish in time.
+
+A slot bounds the work THIS worker does, never the time it waits on someone
+else (review of PR #295: each of these let a few hundred idle connections
+or a slow upstream refuse everyone):
+  * a request body is read before the slot is taken — bounded by the route's
+    size cap (request_guards, 413) and a deadline (408), held in memory as
+    FastAPI held it anyway — so a client that sends its body slowly, or
+    never, holds no slot;
+  * the slot is given back when the answer starts going out: a slow reader
+    of a big answer (the 2.6 MB phone blocklist) is the client's time;
+  * a DNS query gives its slot back while it waits on the upstream (its own
+    forward, or another query's for the same name). The forwards have their
+    own budget, dns_upstream; past it a query is answered as when the
+    upstream fails — serve-stale, else SERVFAIL, HTTP 200, never a 503.
 
 Limits are per worker process — each uvicorn worker has its own counters, so
 a replica with WEB_CONCURRENCY=2 admits twice these. 0 = no limit. Settings
 LOAD_SHED_* in api/config.py; LOAD_SHED_ENABLED=false switches all of it off.
 
   request classes (LoadShedding, the outermost middleware)
-    dns      /dns-query                               1024
-    health   /health, /health/doh, /health/deep         64
-    api      every other request                       128
+    dns          /dns-query, the work on our side                    1024
+    health       /health                                               64
+    health_doh   /health/doh (the DNS monitor's probe)                 64
+    health_deep  /health/deep (its probes queue behind each other)     64
+    api          every other request                                  128
 
   inside a request — refused or skipped at once, never queued
+    dns upstream  DoH forwards waiting on Cloudflare/Quad9: answered as a
+                  failed upstream (serve-stale, else SERVFAIL)        1024
     fresh analyses   the analyzer's full fan-out (/check, the fresh path of
-                     /public/check): 503 without a slot             16
+                     /public/check): 503 without a slot.               32
+                     One /check takes at most a quarter of them; the rest
+                     of its batch waits its turn (routers/check.py)
     LLM calls        the judge, the explainer (each its own budget):
                      skipped — the verdict stands, the explainer
-                     answers from its template                       4
+                     answers from its template                          4
     competitor lookups  the Cloudflare comparison on public checks:
-                     skipped (`competitors` empty)                   32
+                     skipped (`competitors` empty)                     32
 
   outbound gate — waits instead
     every source call and site probe of an analysis waits for one of
-    LOAD_SHED_OUTBOUND_MAX_INFLIGHT (256). The wait is bounded by what was
+    LOAD_SHED_OUTBOUND_MAX_INFLIGHT (512). The wait is bounded by what was
     admitted (fresh analyses x checks) and by the analysis deadline, which
     cancels it; a source's own time limit starts once the call may run.
 
 The classes are separate so a flood of one cannot take the slots of another:
 a crawler storm on /public/check gets 503s while phones keep resolving and
-monitors keep getting answers. DNS has the largest count on purpose: queries
-waiting on a slow upstream (up to 4 s each) must not crowd out the ones the
-cache answers at once. All classes share one event loop; what keeps DNS's CPU
-is that the expensive work is capped and everything past a budget is refused
-cheaply — measured: cached names answered in ~15-40 ms (before: 0.5-1.5 s
-and timeouts) while public checks flooded the API. An extra limit on the
-loop's lag was tried on top and changed nothing in those runs, so there is
-none.
+monitors keep getting answers. All classes share one event loop; what keeps
+DNS's CPU is that the expensive work is capped and everything past a budget
+is refused cheaply — measured: cached names answered in ~15-40 ms (before:
+0.5-1.5 s and timeouts) while public checks flooded the API. An extra limit
+on the loop's lag was tried on top and changed nothing in those runs, so
+there is none.
 
 Shedding is logged as ONE aggregate `load_shed` line per worker at most every
 LOG_EVERY_S, never a line per refused request; the counters are in
@@ -54,6 +72,7 @@ import json
 import logging
 import time
 from contextlib import asynccontextmanager, contextmanager
+from contextvars import ContextVar
 from typing import AsyncIterator, Iterator, Optional, Union
 
 from fastapi.responses import JSONResponse
@@ -63,6 +82,12 @@ logger = logging.getLogger("cleanway.load_shed")
 LOG_EVERY_S = 10.0
 BUSY_DETAIL = "The server is busy. Please try again in a moment."
 _DEFAULT_RETRY_AFTER_S = 2
+_DEFAULT_BODY_TIMEOUT_S = 10.0
+# A body must arrive within LOAD_SHED_BODY_TIMEOUT_S plus its size at this
+# rate (~0.5 Mbit/s): 1 KB of JSON ~10 s, the 1 MiB cap ~26 s, a 25 MB voice
+# upload ~7 min. The wait holds no slot; the deadline only bounds how long a
+# silent client keeps its connection.
+_MIN_UPLOAD_BYTES_PER_S = 64 * 1024
 
 
 def _settings():
@@ -91,6 +116,13 @@ def retry_after_s() -> int:
         return max(1, int(_settings().load_shed_retry_after_s))
     except Exception:  # noqa: BLE001
         return _DEFAULT_RETRY_AFTER_S
+
+
+def body_timeout_s() -> float:
+    try:
+        return max(0.0, float(_settings().load_shed_body_timeout_s))
+    except Exception:  # noqa: BLE001
+        return _DEFAULT_BODY_TIMEOUT_S
 
 
 class Overloaded(Exception):
@@ -233,7 +265,12 @@ class Gate:
 
 
 DNS = Budget("dns", "load_shed_dns_max_inflight")
+DNS_UPSTREAM = Budget("dns_upstream", "load_shed_dns_upstream_max_inflight")
 HEALTH = Budget("health", "load_shed_health_max_inflight")
+# The DNS monitor's probe: in-process and cheap, so it must not fail because
+# /health hangs on Redis or /health/deep callers queue behind a slow probe.
+HEALTH_DOH = Budget("health_doh", "load_shed_health_max_inflight")
+HEALTH_DEEP = Budget("health_deep", "load_shed_health_max_inflight")
 API = Budget("api", "load_shed_api_max_inflight")
 FRESH_ANALYSES = Budget("fresh_analysis", "load_shed_fresh_analysis_max_inflight")
 LLM_JUDGE = Budget("llm_judge", "load_shed_llm_max_inflight")
@@ -243,18 +280,25 @@ LLM_EXPLAINER = Budget("llm_explainer", "load_shed_llm_max_inflight")
 COMPETITOR_LOOKUPS = Budget("competitor_lookups", 32)
 OUTBOUND = Gate("outbound", "load_shed_outbound_max_inflight")
 
-_BUDGETS = (DNS, HEALTH, API, FRESH_ANALYSES, LLM_JUDGE, LLM_EXPLAINER, COMPETITOR_LOOKUPS)
+_BUDGETS = (DNS, DNS_UPSTREAM, HEALTH, HEALTH_DOH, HEALTH_DEEP, API, FRESH_ANALYSES, LLM_JUDGE,
+            LLM_EXPLAINER, COMPETITOR_LOOKUPS)
 
 DNS_PATH = "/dns-query"
-HEALTH_PATHS = frozenset({"/health", "/health/doh", "/health/deep"})
+_HEALTH_CLASSES = {"/health": HEALTH, "/health/doh": HEALTH_DOH, "/health/deep": HEALTH_DEEP}
 
 
 def budget_for(path: str) -> Budget:
     if path == DNS_PATH:
         return DNS
-    if path in HEALTH_PATHS:
-        return HEALTH
-    return API
+    return _HEALTH_CLASSES.get(path, API)
+
+
+def fresh_share(n: int) -> int:
+    """How many of a batch's `n` fresh analyses one request may run at once:
+    a quarter of the worker's budget, so one big /check cannot take every
+    slot from /public/check and the extension's page checks. No limit: all."""
+    limit = FRESH_ANALYSES.limit()
+    return n if limit <= 0 else min(n, max(1, limit // 4))
 
 
 def snapshot() -> dict:
@@ -275,39 +319,171 @@ def _note_shed() -> None:
     logger.warning("load_shed", extra={"budgets": snapshot()})
 
 
-def _busy_headers(body: bytes) -> list:
-    from api.services.doh_fastpath import _SECURITY_HEADERS
+class _Slot:
+    """One request's slot of its class, given back as soon as the request
+    stops doing the work it bounds: when its answer starts going out, or
+    when it starts waiting on the DNS upstream (release_request_slot)."""
 
-    headers = [(name.lower().encode(), value.encode()) for name, value in _busy_header_dict().items()]
-    headers.append((b"content-length", str(len(body)).encode()))
-    if body:
-        headers.append((b"content-type", b"application/json"))
-    return headers + _SECURITY_HEADERS
+    __slots__ = ("budget", "held")
+
+    def __init__(self, budget: Budget) -> None:
+        self.budget = budget
+        self.held = False
+
+    def take(self) -> bool:
+        self.held = self.budget.try_acquire() == 1
+        return self.held
+
+    def give_back(self) -> None:
+        if self.held:
+            self.held = False
+            self.budget.release()
+
+
+_REQUEST_SLOT: ContextVar[Optional[_Slot]] = ContextVar("load_shed_request_slot", default=None)
+
+
+def release_request_slot() -> None:
+    """Give the current request's slot back now: it is about to wait on
+    something outside this worker (the DNS upstream) and does none of the
+    work the slot bounds meanwhile. A no-op outside a request."""
+    slot = _REQUEST_SLOT.get()
+    if slot is not None:
+        slot.give_back()
+
+
+def _header(scope, name: bytes) -> Optional[bytes]:
+    for key, value in scope.get("headers", ()):
+        if key == name:
+            return value
+    return None
+
+
+def _has_body(scope) -> bool:
+    if _header(scope, b"transfer-encoding") is not None:
+        return True
+    declared = _header(scope, b"content-length")
+    try:
+        return declared is not None and int(declared) > 0
+    except ValueError:
+        return False  # BodySizeLimit answers it 400 before reading a byte
+
+
+def _replay(messages: list, receive):
+    """`receive` that hands out the body already read, then the real one
+    (a disconnect, for whoever listens)."""
+    pending = list(reversed(messages))
+
+    async def replay():
+        return pending.pop() if pending else await receive()
+    return replay
 
 
 class LoadShedding:
-    """Outermost raw-ASGI middleware: one slot of the request's class for the
-    whole request, or a 503 at once. A DNS client gets no body, as with the
-    gateway's own errors."""
+    """Outermost raw-ASGI middleware: a slot of the request's class while
+    this worker works on it, or a 503 at once. A DNS client gets no body,
+    as with the gateway's own errors; a browser on one of our origins gets
+    the CORS headers, so it reads the 503 and its Retry-After."""
 
     def __init__(self, app) -> None:
         self.app = app
-        self._busy_json = json.dumps({"detail": BUSY_DETAIL}).encode()
+        try:
+            self._origins = frozenset(_settings().get_allowed_origins())
+        except Exception:  # noqa: BLE001
+            self._origins = frozenset()
 
     async def __call__(self, scope, receive, send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
         budget = budget_for(scope.get("path", ""))
-        if not budget.try_acquire():
-            body = b"" if budget is DNS else self._busy_json
-            await send({"type": "http.response.start", "status": 503, "headers": _busy_headers(body)})
-            await send({"type": "http.response.body", "body": body})
-            return
-        try:
+        if budget.limit() <= 0:
             await self.app(scope, receive, send)
+            return
+        if _has_body(scope):
+            body = await self._read_body(scope, receive, send)
+            if body is None:
+                return
+            receive = _replay(body, receive)
+        slot = _Slot(budget)
+        if not slot.take():
+            await self._refuse(scope, send, 503, BUSY_DETAIL)
+            return
+
+        async def send_and_give_back(message) -> None:
+            if message["type"] == "http.response.start":
+                slot.give_back()  # the answer is ready; sending it is the client's time
+            await send(message)
+
+        token = _REQUEST_SLOT.set(slot)
+        try:
+            await self.app(scope, receive, send_and_give_back)
         finally:
-            budget.release()
+            _REQUEST_SLOT.reset(token)
+            slot.give_back()
+
+    async def _read_body(self, scope, receive, send) -> Optional[list]:
+        """The request's body messages, read before a slot is taken; None
+        when it was refused (too big, too slow) or the client went away."""
+        from api.services.request_guards import body_limit_for
+
+        limit = body_limit_for(scope.get("path", ""))
+        try:
+            declared: Optional[int] = int(_header(scope, b"content-length") or b"")
+        except ValueError:
+            declared = None  # chunked
+        if declared is not None and declared > limit:
+            await self._refuse(scope, send, 413, "Request body too large")
+            return None
+
+        async def read() -> Union[list, int, None]:
+            messages, size = [], 0
+            while True:
+                message = await receive()
+                if message["type"] != "http.request":
+                    return None  # gone: nobody to answer
+                size += len(message.get("body", b""))
+                if size > limit:
+                    return 413
+                messages.append(message)
+                if not message.get("more_body"):
+                    return messages
+
+        expected = declared if declared is not None else limit
+        try:
+            outcome = await asyncio.wait_for(read(), body_timeout_s() + expected / _MIN_UPLOAD_BYTES_PER_S)
+        except asyncio.TimeoutError:
+            outcome = 408
+        if outcome == 408:
+            await self._refuse(scope, send, 408, "Request body not received in time")
+        elif outcome == 413:
+            await self._refuse(scope, send, 413, "Request body too large")
+        return outcome if isinstance(outcome, list) else None
+
+    async def _refuse(self, scope, send, status: int, detail: str) -> None:
+        from api.services.doh_fastpath import _SECURITY_HEADERS
+
+        body = b"" if scope.get("path") == DNS_PATH else json.dumps({"detail": detail}).encode()
+        if status == 503:
+            headers = [(name.lower().encode(), value.encode()) for name, value in _busy_header_dict().items()]
+        else:
+            # The body was not read to its end: the connection cannot be reused.
+            headers = [(b"cache-control", b"no-store"), (b"connection", b"close")]
+        headers.append((b"content-length", str(len(body)).encode()))
+        if body:
+            headers.append((b"content-type", b"application/json"))
+        await send({"type": "http.response.start", "status": status,
+                    "headers": headers + self._cors(scope) + _SECURITY_HEADERS})
+        await send({"type": "http.response.body", "body": body})
+
+    def _cors(self, scope) -> list:
+        """What CORSMiddleware (api.main) would add, which a refusal here
+        never reaches."""
+        origin = _header(scope, b"origin")
+        if origin is None or ("*" not in self._origins and origin.decode("latin-1") not in self._origins):
+            return []
+        return [(b"access-control-allow-origin", origin), (b"access-control-allow-credentials", b"true"),
+                (b"access-control-expose-headers", b"Retry-After"), (b"vary", b"Origin")]
 
 
 def _reset_for_tests() -> None:

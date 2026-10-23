@@ -14,7 +14,9 @@ Hot path (docs/runbooks/doh-gateway.md has the measurements):
   LoadShedding (its own in-flight budget) → DohFastPath (raw ASGI) →
   rate limit (in process) →
   resolve(): in-process blocklist filter → response cache → upstreams
-  (Cloudflare, Quad9; HTTP/2, hedged failover) → serve-stale → SERVFAIL.
+  (Cloudflare, Quad9; HTTP/2, hedged failover; at most
+  LOAD_SHED_DNS_UPSTREAM_MAX_INFLIGHT waiting at once) → serve-stale →
+  SERVFAIL.
 The FastAPI routes below stay for the OpenAPI contract and as the path
 taken when DOH_FAST_PATH=false; both call the same resolve().
 
@@ -116,7 +118,7 @@ async def resolve(
         answer = await _resolve(wire, proxy, log_block, m)
     except Exception:  # noqa: BLE001 — last line of defence: forward as-is
         m.inc("internal_error")
-        upstream = await (proxy or proxy_to_upstream)(wire)
+        upstream = await ask_upstream(wire, proxy, m)
         answer = (DohAnswer(upstream, 200, http_max_age(upstream)) if upstream is not None
                   else DohAnswer(make_servfail_response(wire), 200, 0))
     m.observe(time.perf_counter() - started)
@@ -152,6 +154,9 @@ async def _resolve(wire: bytes, proxy, log_block: bool, m) -> DohAnswer:
             leader = _inflight.get(shape.cache_key)
             if leader is not None:
                 m.inc("coalesced")
+                # Waiting on the upstream through another query: no work of
+                # ours, so no DNS slot (load_shedding.release_request_slot).
+                load_shedding.release_request_slot()
                 try:
                     await asyncio.wait_for(asyncio.shield(leader), UPSTREAM_TIMEOUT_S + 0.5)
                 except Exception:  # noqa: BLE001 — then ask upstream ourselves
@@ -170,10 +175,34 @@ async def _resolve(wire: bytes, proxy, log_block: bool, m) -> DohAnswer:
     return await _forward(wire, proxy, cache, shape, m)
 
 
+async def ask_upstream(wire: bytes, proxy=None, m=None) -> Optional[bytes]:
+    """The upstream's answer, or None: no upstream answered in time, or this
+    worker already has LOAD_SHED_DNS_UPSTREAM_MAX_INFLIGHT queries waiting on
+    it — either way the caller answers as for a failed upstream (serve-stale,
+    else SERVFAIL), never with a 503.
+
+    A query waiting here gives back its slot of the worker's DNS budget
+    (load_shedding): that budget bounds the work on our side, and a slow
+    upstream must not crowd out the names the cache answers at once."""
+    m = m or doh_metrics.METRICS
+    if proxy is not None:
+        upstream = await proxy(wire)
+    else:
+        load_shedding.release_request_slot()
+        if not load_shedding.DNS_UPSTREAM.try_acquire():
+            m.inc("upstream_shed")
+            return None
+        try:
+            upstream = await proxy_to_upstream(wire)
+        finally:
+            load_shedding.DNS_UPSTREAM.release()
+    m.inc("upstream_ok" if upstream is not None else "upstream_failed")
+    return upstream
+
+
 async def _forward(wire: bytes, proxy, cache: Optional[ResponseCache], shape, m) -> DohAnswer:
-    upstream = await (proxy or proxy_to_upstream)(wire)
+    upstream = await ask_upstream(wire, proxy, m)
     if upstream is not None:
-        m.inc("upstream_ok")
         ttl = None
         if cache is not None and shape is not None:
             try:
@@ -182,7 +211,6 @@ async def _forward(wire: bytes, proxy, cache: Optional[ResponseCache], shape, m)
                 m.inc("cache_error")
         return DohAnswer(upstream, 200, ttl if ttl is not None else http_max_age(upstream))
 
-    m.inc("upstream_failed")
     if cache is not None and shape is not None:
         stale = cache.get(shape, wire, allow_stale=True)
         if stale is not None:

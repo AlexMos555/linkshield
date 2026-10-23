@@ -232,6 +232,7 @@ service. In order of value per effort:
 | `decision.redis_down` | no list AND no Redis: **not filtering** | any |
 | `cache_hit` / `cache_miss` / `coalesced` | cache effectiveness | hit ratio < 50% → raise `DOH_CACHE_MAX_ENTRIES` |
 | `upstream_failed`, `served_stale`, `servfail` | upstreams unreachable | any sustained `servfail` |
+| `upstream_shed` | not forwarded: this worker already had `LOAD_SHED_DNS_UPSTREAM_MAX_INFLIGHT` queries waiting on the upstream; answered stale or SERVFAIL (docs/runbooks/capacity.md, «Сброс нагрузки») | rising → the upstream is slow; see `load_shed.dns_upstream` |
 | `rate_limited` | 429s sent | rising → a CGNAT address hit the ceiling; raise the limit |
 | `internal_error`, `filter_error`, `cache_error` | a bug, failed open | any |
 
