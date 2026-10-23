@@ -379,5 +379,274 @@
         "trezor": "the Czech, Slovak and Croatian word for a safe or treasury (trezor.cz sells safes): its name under a country's TLD is someone's own"
       }
     }
+  },
+  "alternates": {
+    "_about": "Registrable domains the owners of names in 'brands' run besides the listed one (googlemail.com, yahoo.de), and other owners' sites the rule reads as a listed name (cloud.ru is Cloud.ru LLC's, not iCloud's). Until 2026-10-23 the Tranco top-100k allowlist answered for them before the typosquat rule ran; the licensed ranking (Majestic Million + Chrome UX Report, PR #284) does not carry them. One entry per owner, parsed by api/services/ru_brands.py parse_alternates: 'names' are the names in 'brands' the entry is about, 'official' the owner's own domains, 'unrelated' other owners' same-shaped sites, each with its dated evidence. Exact registrable-domain exemptions (scoring._BRAND_LEGIT_DOMAINS, as in the Russian file) and nothing else: the names keep their rule, which is what 'measured' changes.",
+    "_evidence": "A domain is listed only when BOTH hold: (1) it is the owner's — its registrant (RDAP or the registry's WHOIS) is the owner, or its registrar is a brand-protection registrar (MarkMonitor, CSC, Com Laude, SafeNames, Lexsynergy, Abion, GoDaddy Corporate Domains, Meta's RegistrarSafe / RegistrarSEC), or the TLD is the owner's own (.google, .globo, .bmw); where the registry publishes no registrant for any holder (.de, .ru), the name servers must sit in the owner's netblock and serve its main domain; (2) the owner runs it now — its name servers are the owner's own or the set its main domain is delegated to, or a TLS certificate names the owner (OV/EV), or one certificate covers it with the owner's main sites, or Certificate Transparency logs show certificates for its names from the owner's own CA. A redirect to the brand is not evidence. Privacy-proxied, recently registered or cheap-hosted domains are not listed, nor zones where anyone can get a name of their own (trycloudflare.com, github.dev, azure.net, onmicrosoft.com): an exemption covers every host under the registrable. The 2026-10-23 review of all 190 names the rule flagged among the 44,736 that left the allowlist, with the ones left out and why, is in the pull request that added this section (fix/brand-alternates).",
+    "google": {
+      "owner": "Google LLC",
+      "names": [
+        "google",
+        "gmail",
+        "youtube"
+      ],
+      "official": {
+        "googlemail.com": "Verified 2026-10-23: RDAP registrar MarkMonitor, registered 2001-07-18, client and server locks; NS ns1-4.google.com (google.com's own, Google LLC's netblock 216.239.32.0/19); http:// -> mail.google.com",
+        "googl.com": "Verified 2026-10-23: RDAP registrar MarkMonitor, registered 2001-01-24; NS ns1-4.google.com; http:// -> www.google.com. A typo the brand holds: recheck it first (a lapsed one is a squatter's)",
+        "google.cc": "Verified 2026-10-23: RDAP registrar MarkMonitor, registered 1999-06-07; NS ns1-4.google.com; http:// -> www.google.com",
+        "google.eu": "Verified 2026-10-23: EURid WHOIS registrar MarkMonitor; NS ns1-4.google.com; http:// -> www.google.com",
+        "google.hk": "Verified 2026-10-23: HKIRC WHOIS registrant GOOGLE LLC, registrar MarkMonitor; NS ns1-4.google.com; http:// -> www.google.com.hk",
+        "google.in": "Verified 2026-10-23: RDAP registrant Google LLC, registrar MarkMonitor, registered 2005-02-14; NS ns1-4.google.com; http:// -> www.google.com",
+        "google.net": "Verified 2026-10-23: RDAP registrar MarkMonitor, registered 1999-03-15; NS ns1-4.google.com; http:// -> www.google.com",
+        "google.us": "Verified 2026-10-23: RDAP registrar MarkMonitor, registered 2002-04-19; NS ns1-4.google.com; http:// -> www.google.com",
+        "cloud.google": "Verified 2026-10-23: .google is Google's own TLD; RDAP registrar MarkMonitor, registered 2017-09-06; NS ns1-4.google.com (the rule read it as icloud)",
+        "youtube.ru": "Verified 2026-10-23: .ru WHOIS shows no registrant organisation for any holder; NS ns1-4.google.com, in Google LLC's netblock 216.239.32.0/19, the servers google.com and youtube.com are delegated to; registered 2006-01-19; http:// -> www.youtube.com"
+      }
+    },
+    "microsoft": {
+      "owner": "Microsoft Corporation",
+      "names": [
+        "microsoft",
+        "office",
+        "outlook",
+        "onedrive",
+        "azure"
+      ],
+      "official": {
+        "microsoft.net": "Verified 2026-10-23: RDAP registrant Microsoft Corporation, registrar MarkMonitor, registered 1995-01-13; CT logs (crt.sh): 1,673 unexpired certificates for names under it, nearly all from Microsoft's own CA (Microsoft TLS G2 RSA CA), the latest 2026-10-14; http:// -> www.microsoft.com",
+        "microsoft.us": "Verified 2026-10-23: RDAP registrant Microsoft Corporation, registrar CSC Corporate Domains, registered 2002-04-19; CT logs: 1,870 unexpired certificates for its names (Teams and Fabric for US government), mostly from Microsoft's own CA, the latest 2026-08-08",
+        "microsoftapp.net": "Verified 2026-10-23: RDAP registrant Microsoft Corporation, registrar MarkMonitor, registered 2020-04-12; CT logs: 58 unexpired certificates for its names (bing., *.skype., *.edge.), all but one from Microsoft's own CA",
+        "onedrive.us": "Verified 2026-10-23: RDAP registrant Microsoft Corporation, registrar MarkMonitor, registered 2012-10-16; CT logs: certificates for onedrive.us and www.onedrive.us from Microsoft's own CA (2026-08)",
+        "office365.us": "Verified 2026-10-23: RDAP registrant Microsoft Corporation, registrar CSC Corporate Domains, registered 2010-04-19; CT logs: 2,116 unexpired certificates for its names (Microsoft 365 for US government), most from Microsoft's own CA, the latest 2026-10-18"
+      }
+    },
+    "apple": {
+      "owner": "Apple Inc.",
+      "names": [
+        "apple",
+        "icloud"
+      ],
+      "official": {
+        "apple.cn": "Verified 2026-10-23: CNNIC WHOIS registrant Apple Inc. (domains@apple.com), registered 2003-03-17; NS a-d.ns.apple.com (apple.com's own); TLS O=Apple Inc. from Apple's CA; http:// -> www.apple.com.cn",
+        "apple-cloudkit.com": "Verified 2026-10-23: RDAP registrar Com Laude, registered 2015-01-29; NS a-d.ns.apple.com (apple.com's own); CloudKit's web-services domain"
+      },
+      "unrelated": {
+        "cloud.ru": "Verified 2026-10-23: Cloud.ru (Cloud Technologies LLC, Sber's cloud provider), not iCloud: .ru WHOIS shows no registrant organisation for any holder; NS ns01/ns02.cloud.ru in the company's own RIPE netblocks (SBERCLOUD-NET, RU-CLOUDRU); TLS OV O=Cloud.ru LLC (GlobalSign); registered 2004-08-18",
+        "cloud.globo": "Verified 2026-10-23: Globo's, not iCloud: .globo is Globo's own TLD; RDAP registrant Globo Comunicacao e Participacoes S/A; NS ns01-04.globo.com (globo.com's own, Globo's netblocks); http:// -> www.globo.com",
+        "cloud.bmw": "Verified 2026-10-23: BMW's, not iCloud: .bmw is BMW AG's own TLD; registrar Key-Systems, NS ns1-5.brandshelter.* (its brand-protection DNS); registered 2016-08-01",
+        "cloud.us": "Verified 2026-10-23: Citrix's (Cloud Software Group), not iCloud: RDAP registrar MarkMonitor, registered 2002-04-24; TLS OV O=Cloud Software Group, Inc. (DigiCert); http:// -> www.citrix.com",
+        "hicloud.com": "Verified 2026-10-23: Huawei's, not iCloud: RDAP registrant 华为软件****公司 (Huawei Software, masked by the registrar), registered 2008-03-22; TLS OV O=Huawei Software Technologies Co., Ltd. on www. (GlobalSign); CT logs: 74 unexpired OV certificates for its names"
+      }
+    },
+    "meta": {
+      "owner": "Meta Platforms, Inc. (WhatsApp LLC)",
+      "names": [
+        "facebook",
+        "whatsapp"
+      ],
+      "official": {
+        "facebook.net": "Verified 2026-10-23: RDAP registrant Meta Platforms, Inc., registrar RegistrarSafe (Meta's own), registered 2004-04-01; NS a-d.ns.facebook.com (facebook.com's own); the SDK domain (connect.facebook.net)",
+        "facebookmail.com": "Verified 2026-10-23: RDAP registrant Meta Platforms, Inc., registrar RegistrarSafe, registered 2006-01-23; NS a-d.ns.facebook.com; TLS OV O=Meta Platforms, Inc.; Facebook's mail-sending domain",
+        "thefacebook.com": "Verified 2026-10-23: RDAP registrant Meta Platforms, Inc., registrar RegistrarSEC (Meta's own), registered 2004-01-11; NS a-d.ns.facebook.com",
+        "whatsapp.net": "Verified 2026-10-23: RDAP registrant WhatsApp LLC, registrar RegistrarSafe, registered 2009-02-20; NS a-d.ns.whatsapp.net (whatsapp.com's own); TLS OV O=Meta Platforms, Inc.; http:// -> www.whatsapp.com",
+        "whatsapp.biz": "Verified 2026-10-23: RDAP registrant WhatsApp LLC, registrar RegistrarSEC, registered 2010-02-01; NS a-d.ns.whatsapp.net (whatsapp.com's own)",
+        "whatsapp.cc": "Verified 2026-10-23: RDAP registrar RegistrarSEC (Meta's own), registered 2010-02-01; NS a-d.ns.facebook.com",
+        "whatsapp.tv": "Verified 2026-10-23: RDAP registrar RegistrarSEC (Meta's own), registered 2010-02-01; NS a-d.ns.facebook.com"
+      }
+    },
+    "yahoo": {
+      "owner": "Yahoo Inc.",
+      "names": [
+        "yahoo"
+      ],
+      "official": {
+        "yahoo.cloud": "Verified 2026-10-23: RDAP registrar MarkMonitor, registered 2016-01-27; NS ns1-5.yahoo.com (yahoo.com's own)",
+        "yahoo.de": "Verified 2026-10-23: DENIC publishes no holder or registrar for any .de name; NS ns1/2/3/5.yahoo.com, in Yahoo's netblocks, the servers yahoo.com is delegated to; TLS OV O=Yahoo Holdings Inc. (DigiCert); http:// -> de.yahoo.com",
+        "yahoo.fr": "Verified 2026-10-23: RDAP registrant Yahoo International Limited, registrar MarkMonitor, registered 1996-09-19; NS ns1-5.yahoo.com; TLS OV O=Yahoo Holdings Inc.; http:// -> fr.yahoo.com",
+        "ymail.com": "Verified 2026-10-23: Yahoo's mail domain (the rule read it as gmail): RDAP registrar MarkMonitor, registered 1999-03-03; NS ns1-5.yahoo.com; TLS OV O=Yahoo Holdings Inc.; http:// -> mail.yahoo.com"
+      }
+    },
+    "adobe": {
+      "owner": "Adobe Inc.",
+      "names": [
+        "adobe"
+      ],
+      "official": {
+        "adobe.net": "Verified 2026-10-23: RDAP registrar Com Laude, registered 1997-03-03; NS ns101/ns102.adobe.net in Adobe Inc.'s netblock 66.235.128.0/19; http:// -> www.adobe.com",
+        "adobelogin.com": "Verified 2026-10-23: RDAP registrar Com Laude, registered 2010-07-26; NS the six Akamai servers adobe.com is delegated to (a1-217, a10-64, a13-65, a26-66, a28-67, a7-64.akam.net); http:// -> www.adobe.com"
+      }
+    },
+    "hsbc": {
+      "owner": "HSBC Holdings plc",
+      "names": [
+        "hsbc"
+      ],
+      "official": {
+        "hsbc.net": "Verified 2026-10-23: RDAP registrar MarkMonitor, registered 1995-12-06; NS ns20/ns21.hsbc.net and .hsbc.uk (the servers hsbc.com is delegated to), ns1.hsbc.com.sg, ns11.hsbc.com.hk",
+        "hsbc.uk": "Verified 2026-10-23: Nominet RDAP registrar MarkMonitor, registered 2014-07-21; NS identical to hsbc.com's; TLS OV O=HSBC Group Management Services Limited; http:// -> www.hsbc.co.uk",
+        "hsbcnet.com": "Verified 2026-10-23: HSBC's corporate-banking sign-in: RDAP registrar MarkMonitor, registered 1998-12-04; NS identical to hsbc.com's; TLS OV O=HSBC Group Management Services Limited on www."
+      }
+    },
+    "nintendo": {
+      "owner": "Nintendo Co., Ltd. (Nintendo of Europe SE for these)",
+      "names": [
+        "nintendo"
+      ],
+      "official": {
+        "nintendo.at": "Verified 2026-10-23: nic.at WHOIS registrant Nintendo of Europe SE, registrar CSC Corporate Domains, registered 2000-08-25; one TLS certificate (Amazon, 2025-12-24) covers it with nintendo.de, nintendo.co.uk, nintendo-europe.com and Nintendo's other European sites; http:// -> www.nintendo.com",
+        "nintendo.be": "Verified 2026-10-23: DNS Belgium WHOIS registrar CSC Corporate Domains, registered 2000-03-29; one TLS certificate (Amazon, 2025-12-24) covers it with nintendo.de, nintendo.co.uk, nintendo-europe.com and Nintendo's other European sites; http:// -> www.nintendo.com",
+        "nintendo.ch": "Verified 2026-10-23: SWITCH RDAP registrar CSC Corporate Domains, registered 1998-03-25; one TLS certificate (Amazon, 2025-12-24) covers it with nintendo.de, nintendo.co.uk, nintendo-europe.com and Nintendo's other European sites; http:// -> www.nintendo.com",
+        "nintendo.fr": "Verified 2026-10-23: AFNIC RDAP registrant Nintendo of Europe SE, registrar CSC Corporate Domains, registered 1997-10-13; one TLS certificate (Amazon, 2025-12-24) covers it with nintendo.de, nintendo.co.uk, nintendo-europe.com and Nintendo's other European sites; http:// -> www.nintendo.com",
+        "nintendo.it": "Verified 2026-10-23: .it WHOIS registrant Nintendo of Europe SE, registrar CSC Corporate Domains, registered 2002-03-18, paid to 2026-10-26: recheck after that date; one TLS certificate (Amazon, 2025-12-24) covers it with nintendo.de, nintendo.co.uk, nintendo-europe.com and Nintendo's other European sites; http:// -> www.nintendo.com",
+        "nintendo.nl": "Verified 2026-10-23: SIDN RDAP registrar CSC Corporate Domains, registered 1998-03-10; one TLS certificate (Amazon, 2025-12-24) covers it with nintendo.de, nintendo.co.uk, nintendo-europe.com and Nintendo's other European sites; http:// -> www.nintendo.com"
+      }
+    },
+    "pinterest": {
+      "owner": "Pinterest, Inc.",
+      "names": [
+        "pinterest"
+      ],
+      "official": {
+        "pinterest.net": "Verified 2026-10-23: RDAP registrar MarkMonitor (its DNStination proxy), registered 2018-01-10; NS ns5-8.pinterest.com (pinterest.com's own name servers)",
+        "pinterestmail.com": "Verified 2026-10-23: RDAP registrar MarkMonitor (DNStination), registered 2016-12-09; NS ns5/6/9/10.pinterest.com (pinterest.com's set); TLS OV O=Pinterest, Inc.; http:// -> help.pinterest.com, its page about Pinterest's mail"
+      }
+    },
+    "roblox": {
+      "owner": "Roblox Corporation",
+      "names": [
+        "roblox"
+      ],
+      "official": {
+        "roblox.net": "Verified 2026-10-23: RDAP registrar MarkMonitor, registered 2004-02-13; NS nspx1.roblox.com, nspx2.roblox.net, nspx3.roblox.us, nspx4.roblox.co.uk, roblox.com's own set",
+        "roblox.us": "Verified 2026-10-23: RDAP registrar MarkMonitor, registered 2006-01-17; NS roblox.com's own set (nspx1-4); http:// -> www.roblox.com"
+      }
+    },
+    "spotify": {
+      "owner": "Spotify AB",
+      "names": [
+        "spotify"
+      ],
+      "official": {
+        "spotify.dev": "Verified 2026-10-23: RDAP registrant Spotify AB, registrar Lexsynergy, registered 2019-02-22; TLS OV O=Spotify AB (DigiCert); http:// -> developer.spotify.com",
+        "spotify.net": "Verified 2026-10-23: RDAP registrant Spotify AB, registrar Abion, registered 2006-04-23; TLS OV O=Spotify AB (DigiCert)"
+      }
+    },
+    "booking": {
+      "owner": "Booking.com B.V.",
+      "names": [
+        "booking"
+      ],
+      "official": {
+        "booking.cn": "Verified 2026-10-23: CNNIC WHOIS registrant 博房网客服中心（上海）有限公司, contact booking-cn@booking.com; TLS OV O=Booking.com BV (DigiCert); http:// -> www.booking.com"
+      }
+    },
+    "capitalone": {
+      "owner": "Capital One Financial Corporation",
+      "names": [
+        "capitalone"
+      ],
+      "official": {
+        "capitalone.ca": "Verified 2026-10-23: CIRA RDAP registrant Capital One Inc, registrar GoDaddy Corporate Domains Canada, registered 2000-10-04; NS identical to capitalone.com's (ns1/3/4/5/6.capitalone.com and its Akamai set); TLS OV O=Capital One Financial Corporation"
+      }
+    },
+    "ikea": {
+      "owner": "Inter IKEA Systems B.V.",
+      "names": [
+        "ikea"
+      ],
+      "official": {
+        "ikea.net": "Verified 2026-10-23: RDAP registrant Inter IKEA Systems B.V., registrar CSC Corporate Domains, registered 1997-04-29; NS udns1.cscdns.net, udns2.cscdns.uk (ikea.com's, CSC's corporate DNS); http:// -> IKEA's co-worker sign-in"
+      }
+    },
+    "lloyds": {
+      "owner": "Lloyds Banking Group plc",
+      "names": [
+        "lloyds"
+      ],
+      "official": {
+        "lloydsbanking.com": "Verified 2026-10-23: RDAP registrant LLOYDS BANK PLC, registrar CSC Corporate Domains, registered 2007-07-25; NS identical to lloydsbank.com's (ns2.lloydstsb.co.uk, ns5.lloydstsb.net, ns7.lloydsbanking.com, ns8.lloydsbanking.co.uk)"
+      }
+    },
+    "proton": {
+      "owner": "Proton AG",
+      "names": [
+        "protonmail"
+      ],
+      "official": {
+        "protonmail.ch": "Verified 2026-10-23: SWITCH RDAP registrar MarkMonitor, registered 2013-08-29; NS ns1-3.protonmail.ch on the addresses of protonmail.com's name servers (Proton AG's netblocks); one TLS certificate covers it with protonmail.com and pm.me; http:// -> proton.me"
+      }
+    },
+    "santander": {
+      "owner": "Banco Santander, S.A.",
+      "names": [
+        "santander"
+      ],
+      "official": {
+        "santander.pl": "Verified 2026-10-23: NASK RDAP registrant Banco Santander, S.A., registered 2001-02-16; NS ns11/ns21.centrum24.pl in Erste Bank Polska S.A.'s netblock (Santander Bank Polska until its sale to Erste); TLS OV O=Santander Bank Polska S.A. (Certum); http:// -> www.erste.pl, the bank's new name"
+      }
+    },
+    "schwab": {
+      "owner": "The Charles Schwab Corporation",
+      "names": [
+        "schwab"
+      ],
+      "official": {
+        "schwab.tech": "Verified 2026-10-23: RDAP registrar MarkMonitor, registered 2016-03-09; NS nd1/nd2.schwab.com (hosts under schwab.com) and Verizon's auth20/auth40"
+      }
+    },
+    "steam": {
+      "owner": "Valve Corporation",
+      "names": [
+        "steam"
+      ],
+      "official": {
+        "steam.tv": "Verified 2026-10-23: RDAP registrar SafeNames, registered 2018-07-24; NS the six Akamai servers steampowered.com is delegated to; SteamTV"
+      }
+    },
+    "stripe": {
+      "owner": "Stripe, Inc.",
+      "names": [
+        "stripe"
+      ],
+      "official": {
+        "stripe.network": "Verified 2026-10-23: RDAP registrar SafeNames, registered 2017-03-16; NS identical to stripe.com's Route 53 set; TLS OV O=Stripe, LLC (DigiCert); http:// -> stripe.com"
+      }
+    },
+    "twitter": {
+      "owner": "X Corp. (Twitter)",
+      "names": [
+        "twitter"
+      ],
+      "official": {
+        "twitter.biz": "Verified 2026-10-23: RDAP registrant Twitter, Inc., registrar CSC Corporate Domains, registered 2007-03-11; NS a-d.r09/u09.twtrdns.net (twtrdns.net, MarkMonitor, carries twitter.com's and x.com's name servers)"
+      }
+    },
+    "tiktok": {
+      "owner": "TikTok Ltd. (ByteDance)",
+      "names": [
+        "tiktok"
+      ],
+      "official": {
+        "tiktokv.com": "Verified 2026-10-23: RDAP registrant TIKTOK LTD (Gandi), registered 2017-09-20; NS the six Akamai servers tiktok.com is delegated to (a1-97, a12-66, a13-67, a18-64, a6-65, a9-66.akam.net); TikTok's API domain"
+      }
+    },
+    "signal": {
+      "owner": "Signal Technology Foundation",
+      "names": [
+        "signal"
+      ],
+      "unrelated": {
+        "esignal.com": "Verified 2026-10-23: eSignal, Intercontinental Exchange's trading software, not Signal: RDAP registrant Intercontinental Exchange, registrar MarkMonitor, registered 1999-04-09; TLS OV O=Intercontinental Exchange, Inc. (DigiCert)"
+      }
+    },
+    "lowes": {
+      "owner": "Lowe's Companies, Inc.",
+      "names": [
+        "lowes"
+      ],
+      "unrelated": {
+        "loves.com": "Verified 2026-10-23: Love's Travel Stops, not Lowe's: RDAP registrant Love's Travel Stops and Country Stores, registrar CSC Corporate Domains, registered 1996-10-17; NS dns03/dns04.loves.com in the company's own netblock 204.115.14.0/23"
+      }
+    }
   }
 }
