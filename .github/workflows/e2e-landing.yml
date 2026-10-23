@@ -135,7 +135,10 @@ jobs:
           DPkg::Lock::Timeout "60";
           EOF
           # sudo outside `timeout`: as root, Playwright runs apt-get without
-          # its own sudo, so an expired attempt kills apt itself.
+          # its own sudo, so `timeout` (root too) can kill apt-get. It does not
+          # reach dpkg: apt-get starts dpkg in a session of its own, so an
+          # attempt killed during the install phase leaves dpkg unpacking for
+          # a few more seconds, holding the dpkg lock.
           for attempt in 1 2 3; do
             echo "Attempt $attempt of 3"
             if sudo -H env "PATH=$PATH" DEBIAN_FRONTEND=noninteractive \
@@ -143,8 +146,13 @@ jobs:
               exit 0
             fi
             echo "::warning::Playwright OS dependencies: attempt $attempt failed or ran past 3 minutes"
-            # Let dpkg finish anything an attempt was killed in the middle of.
-            sudo env DEBIAN_FRONTEND=noninteractive dpkg --configure -a || true
+            # Wait for a dpkg left over from the killed attempt, then let dpkg
+            # finish what that attempt was in the middle of. While the old dpkg
+            # still holds the lock, `--configure -a` fails, and the next
+            # attempt stops at once on "dpkg was interrupted".
+            for _ in $(seq 60); do pgrep -x dpkg > /dev/null || break; sleep 1; done
+            sudo env DEBIAN_FRONTEND=noninteractive dpkg --configure -a \
+              || echo "::warning::dpkg --configure -a failed; the next attempt may stop on an interrupted dpkg"
             sleep 10
           done
           echo "::error::Playwright OS dependencies did not install in 3 attempts (slow or unreachable apt mirror)"
@@ -153,10 +161,16 @@ jobs:
       - name: Install Playwright browsers
         timeout-minutes: 12
         env:
-          CACHE_OUTCOME: ${{ steps.playwright-cache.outcome }}
+          CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
         run: |
-          # A restore cut off by its step timeout can leave a partial tree.
-          if [ "$CACHE_OUTCOME" != "success" ]; then rm -rf ~/.cache/ms-playwright; fi
+          # Anything but an exact cache hit starts from an empty directory.
+          # actions/cache reports a failed restore (download error, broken or
+          # half-extracted tar) only as a warning and the step still succeeds,
+          # and a restore cut off by the step timeout stops midway. Either can
+          # leave a partial tree in which a browser's INSTALLATION_COMPLETE
+          # marker came out of the tar before its files, so `playwright
+          # install` would skip that browser.
+          if [ "$CACHE_HIT" != "true" ]; then rm -rf ~/.cache/ms-playwright; fi
           for attempt in 1 2 3; do
             echo "Attempt $attempt of 3"
             if timeout --kill-after=15s 3m npx playwright install chromium webkit; then
