@@ -9,6 +9,7 @@ DNS canary could not fail and ran every ~3.5 h instead of every 15 min.
 | Job | Scheduled | Really runs | Red means |
 |---|---|---|---|
 | Cloudflare Worker `cleanway-uptime` (`ops/uptime-worker/`) | every minute | every minute (Cloudflare cron); writes a heartbeat every 10 min | an email `Cleanway: не работает <check>` after two failed minutes: `api` (`/health/deep` not 200/ok — Redis or Supabase), `blocklist` / `dns_filter` / `server_key` / `warnings_other` (one per `/health/deep` warning), `doh_resolve` (the gateway resolves nothing), `doh_block` (the list canary is not NXDOMAIN'd **by us** on the public path), `landing`, `install_page` (`/ru/android`), `backup` (newest R2 backup over 30 h, only with the `BACKUPS` binding). Table: `ops/uptime-worker/README.md` |
+| Cloudflare Worker `cleanway-mail-security` (`ops/mail-security-worker/`) | on each TLS report mailed to `tls-reports@cleanway.ai` | once a day per sender that delivered mail to cleanway.ai that day (only after it is deployed and the `_smtp._tls` TXT record is published) | an email `Cleanway: сбои TLS при доставке почты на cleanway.ai (<n>)`, at most one a day per known sender (Google, Microsoft) and one for all others: a sender's TLS sessions to our MX hosts failed. Daily counts: `https://cleanway-mail-security.amoskotin.workers.dev/` |
 | `dns-canary.yml` | 4× per hour | ~1 per 3.5 h (46–47 runs in 7 days, measured 2026-09-18..25; 6 on 2026-10-21) | a must-resolve name is dark, the gateway resolves nothing, a listed name is not blocked **by us**, the phone artifact is stale/broken, `/health/deep` is degraded, `/ru/android` is down, or the uptime Worker's heartbeat is older than 30 min / it cannot send mail |
 | `refresh-dangerous-domains.yml` | every 6 h | on time so far (199 of 200 runs green) | exit 2: no feed readable · 4: a gate kept the previous set · 5: post-publish check failed, rolled back · **6: published, but a feed has been down or truncated for 12 h+** |
 | `security.yml` → gitleaks | every push + weekly | on time | a committed secret — or a new false positive (see below) |
@@ -88,6 +89,19 @@ watched yet — `sign-in-email.md` has the checks and the canary design.
 MAIL` — Cloudflare → Workers & Pages → `cleanway-uptime`: на месте ли cron
 `* * * * *`, привязки `STATE`, `ALERT`, `ALERT_TO`, подтверждён ли адрес в
 Email Routing (`ops/uptime-worker/README.md`).
+
+## Когда пришло письмо «Cleanway: сбои TLS при доставке почты…»
+
+Письмо шлёт `cleanway-mail-security`, не чаще раза в день от Google, раза от
+Microsoft и раза от всех остальных вместе: почтовый сервис прислал отчёт
+TLS-RPT, в котором часть сессий к нашим MX (`route1/2/3.mx.cloudflare.net`)
+не прошла проверку TLS. Если в письме сказано, что отправитель не из списка
+известных, это может быть подделка: на адрес может написать кто угодно. В режиме
+`testing` почта всё равно доставляется; в `enforce` такая почта не доходит.
+В письме — тип ошибки (`result-type`); что делать по каждому —
+`ops/mail-security-worker/README.md`, раздел «When the alert arrives».
+Если `enforce` блокирует настоящую почту — вернуть `testing` (Rollout 4
+там же). Счётчики по дням — на странице сводки.
 
 ## When the blocklist refresh exits 6 (a feed is down)
 
