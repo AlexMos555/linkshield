@@ -7,7 +7,7 @@ data/typosquat_targets.json — one class of edit at a time, deterministically
 length. A threshold that clears a false positive also drops every variant of
 that shape, and this is where that shows.
 
-Cost (--top): runs the same rule over the Tranco top-100k names
+Cost (--top): runs the same rule over the top-100k names (data/top_100k.json)
 (data/top_100k.json). Every one is a real site. The allowlist spares these
 very names, but the long tail of real sites — millions of names nobody ranks
 — has the same shapes and nothing to spare it, so the hit count per method
@@ -148,7 +148,7 @@ def score_variants(rows: list[dict]) -> list[dict]:
 
 
 def top_hits() -> dict:
-    """Rule hits on the Tranco top-100k, by method and by the name's length,
+    """Rule hits on the top-100k (data/top_100k.json), by method and by the name's length,
     and which of them a Russian brand made."""
     from api.services.scoring import _check_typosquatting_v2, _extract_base_domain
 
@@ -235,7 +235,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--brands", choices=("all", "global", "ru"), default="all",
                     help="whose variants to generate (default: all)")
-    ap.add_argument("--top", action="store_true", help="also count hits on the Tranco top-100k (slow)")
+    ap.add_argument("--top", action="store_true", help="also count hits on the top-100k (slow)")
     ap.add_argument("--out", help="write the full result as JSON")
     ap.add_argument("--compare", nargs=2, metavar=("BEFORE", "AFTER"), help="print the before/after table")
     args = ap.parse_args(argv)

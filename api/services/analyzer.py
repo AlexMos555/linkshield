@@ -12,7 +12,7 @@ Then 19 checks run in parallel via circuit breakers, inside ONE time budget
   threat intel (11)  Google Safe Browsing (or Web Risk), PhishTank, URLhaus,
                      PhishStats, ThreatFox, Spamhaus DBL, SURBL, AlienVault
                      OTX, IPQualityScore, MalwareBazaar, Feodo Tracker
-  reputation (3)     Tranco popularity, favicon brand clone, typosquat watchtower
+  reputation (3)     top-1M popularity, favicon brand clone, typosquat watchtower
   enrichment (5)     WHOIS/RDAP age, TLS certificate, security headers, DNS,
                      redirect chain (the connection probes live in site_probes)
 
@@ -407,7 +407,8 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
         "feodo_hit": _value(outcomes, "feodo", False),
         "blocklist_hits": sum(bool(h) for h in hard_hits)
         + bool(alienvault_data.get("hit")) + bool(ipqs_data.get("hit")),
-        # Strategy #14 — Tranco popularity (negative weight = trust)
+        # Strategy #14 — top-1M popularity (negative weight = trust). The keys
+        # keep Tranco's name; the ranks are Majestic + CrUX (api/services/tranco.py).
         "tranco_ranked": bool(tranco_result.get("ranked")),
         "tranco_rank": tranco_result.get("rank"),
         "tranco_weight": tranco_result.get("weight", 0),
@@ -490,10 +491,10 @@ async def _llm_judge_within(
 
 
 # Second-level labels of registries only a government can register in, under
-# a country code: gov.ru is for federal bodies. Tranco ranks such a suffix as
-# one name (gov.ru, #10861) and never the sites under it (rosreestr.gov.ru),
-# so without this every federal site that refuses foreign scanners would be
-# "not a widely known site".
+# a country code: gov.ru is for federal bodies. A popularity list ranks such a
+# suffix as one name (gov.ru: #10861 in Tranco, which the ranking replaced)
+# and never the sites under it (rosreestr.gov.ru), so without this every
+# federal site that refuses foreign scanners would be "not a widely known site".
 _GOVERNMENT_LABELS = frozenset({"gov", "gob", "gouv", "govt", "go", "mil"})
 # Under .ru and .su the generic rule is wrong: the only government-only
 # registries there are the cctld.ru reserved zones gov.ru and mil.ru. On
@@ -531,9 +532,11 @@ async def _name_is_vouched_for(domain: str, signals: dict, deadline: Deadline) -
     in a government-only registry.
 
     The registrable domain is PSL-aware: under a regional zone it is
-    x.spb.ru, never spb.ru. Tranco ranks spb.ru (#2605) as one name, and
+    x.spb.ru, never spb.ru. Tranco ranked spb.ru (#2605) as one name, and
     reading that rank as a vouch for every host anyone registers under it
-    let an unreachable gosuslugi-lk.spb.ru through as 'safe'."""
+    let an unreachable gosuslugi-lk.spb.ru through as 'safe'. (The ranking
+    since 2026-10-23 folds every host to its registrable domain the same
+    way, so it carries gov.spb.ru, not spb.ru.)"""
     if signals.get("tranco_ranked") or _government_name(domain):
         return True
     registrable = registrable_domain(domain)
@@ -578,7 +581,7 @@ def _log_features(domain: str, signals: dict, score: int) -> None:
 def _ml_available() -> bool:
     try:
         from api.services import ml_scorer
-        return ml_scorer.backend_status() != "disabled"
+        return ml_scorer.is_serving()
     except Exception:
         return False
 

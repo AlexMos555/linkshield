@@ -148,6 +148,25 @@ def test_several_listed_subdomains_or_the_www_host_still_promote():
     assert out == {"login.one-host.com"}
 
 
+def test_unranked_multi_tenant_zones_are_shared_never_promoted():
+    """No link- or visit-based ranking carries the free dynamic-DNS zones,
+    IPFS gateways or hosting reverse-DNS zones that Tranco's DNS-traffic
+    inputs ranked; without them in the shared set, a few listed tenants
+    promoted the whole zone (25u.com, ipfs.io, softlayer.net in the
+    2026-10-23 dry run). With the default shared set, each tenant is blocked
+    exactly and the zone never is — and so for the curated
+    data/hosting_platforms.json suffixes."""
+    shared = rdd.default_shared_suffixes()
+    assert {"25u.com", "zzux.com", "ipfs.io", "softlayer.net", "sharepoint.us"} <= shared
+    assert {"tw1.ru", "duckdns.org", "ns01.info"} <= shared  # curated, data/hosting_platforms.json
+    hosts = ["a.25u.com", "b.25u.com", "c.25u.com", "c.zzux.com", "d.zzux.com", "e.zzux.com",
+             "x.tw1.ru", "y.tw1.ru", "z.tw1.ru"]
+    out = rdd.build_blockset(hosts, set(), public_suffixes=PSL_EU, brand_owned=frozenset())
+    assert {"25u.com", "zzux.com", "tw1.ru"}.isdisjoint(out)
+    assert {"a.25u.com", "b.25u.com", "c.zzux.com", "x.tw1.ru"} <= out
+    assert rdd.UNRANKED_SHARED_DOMAINS.isdisjoint(rdd.OPERATOR_SUFFIXES)
+
+
 def test_a_listed_registrable_is_blocked_whole_on_its_own_evidence():
     out = rdd.build_blockset(["scam-shop.com", "pay.scam-shop.com"], set(), shared_suffixes=set(),
                              public_suffixes=PSL_EU, brand_owned=frozenset())

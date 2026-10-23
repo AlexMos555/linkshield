@@ -1,8 +1,12 @@
 """
 Bloom Filter Compiler — Server-side.
 
-Generates a bloom filter from Tranco Top 100K domains
-and outputs it as JSON for CDN distribution to extension clients.
+Generates a bloom filter from the top 100K popular domains
+(data/top_100k.json: the Majestic Million and the Chrome UX Report, merged
+by scripts/build_top_domains.py — Tranco's until 2026-10-23) and outputs it
+as JSON for CDN distribution to extension clients. Nothing ships or reads
+the output today; a filter built from it carries the same CC BY
+attribution duty as the list (docs/THIRD_PARTY_FEEDS.md §2a).
 
 Run: python -m ml.bloom_compiler
 Output: data/bloom_top100k.json (~175KB)

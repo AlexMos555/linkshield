@@ -170,7 +170,7 @@ check("too few answered → hidden", () => {
 check("enough answered → publishable, even at 0%", () => {
   assert.equal(falsePositiveRateIsPublishable(snapshot({ safe: { tn: 120, fp: 0, unknown: 5, fpr: 0 } })), true);
 });
-check("legit sample our server auto-trusts (Tranco top 100k) → hidden, however large", () => {
+check("legit sample our server auto-trusts (the top 100k) → hidden, however large", () => {
   const allowlisted = { safe: { tn: 120, fp: 0, unknown: 5, fpr: 0 }, legitOutsideAllowlist: false };
   assert.equal(falsePositiveRateIsPublishable(snapshot(allowlisted)), false);
   const unstated = snapshot({ safe: { tn: 120, fp: 0, unknown: 5, fpr: 0 } });

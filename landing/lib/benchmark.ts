@@ -29,7 +29,7 @@ export interface ResolverStats {
 export interface BenchmarkSources {
   /**
    * True only when the legitimate sample holds real sites OUTSIDE the list
-   * our server trusts without analysis (Tranco top 100k, is_trusted_top_domain).
+   * our server trusts without analysis (the top 100k, is_trusted_top_domain).
    * Written by scripts/eval_fresh_urls.py; absent in older snapshots.
    */
   legit_outside_allowlist?: boolean;
@@ -82,9 +82,9 @@ export function recallIsPublishable(snapshot: BenchmarkSnapshot | null): boolean
 /**
  * True when a false-positive rate from this snapshot would mean something:
  * enough legitimate sites got a verdict AND they were sites our server really
- * analysed. The benchmark draws its legitimate sample from Tranco ranks
- * 100–100,000, and the public check answers every one of those "safe" without
- * looking (is_trusted_top_domain). A rate from that sample is near 0% by
+ * analysed. The benchmark's old legitimate sample came from Tranco ranks
+ * 100–100,000, and the public check answered every one of those "safe" without
+ * looking (is_trusted_top_domain, then on Tranco's top 100k). A rate from that sample is near 0% by
  * construction — the hand-written "0.08%" again, with a real-looking source —
  * while real Russian sites outside the top got "Dangerous" 6 times in 12
  * (report 2026-09-25 #1).

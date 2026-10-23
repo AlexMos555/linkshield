@@ -1,0 +1,68 @@
+{
+  "built": "2026-10-23",
+  "method": "Hosts folded to registrable domains (best rank per list), hosting tenants dropped, the CrUX rank taken as the better of the global bucket and Russia's bucket x 6, the two lists merged by the Dowdall rule, names a licensed phishing feed reports dropped unless both lists rank them in their top 100,000, Majestic in its top 10,000 or either in its top 1,000, cut to the top 100,000 / 10,000 (and 1,000,000 for the Redis rank).",
+  "parameters": {
+    "top_n": 100000,
+    "ranked_n": 10000,
+    "redis_n": 1000000,
+    "ru_factor": 6,
+    "reported_min_rank": 100000,
+    "reported_majestic_rank": 10000,
+    "reported_any_rank": 1000
+  },
+  "sources": {
+    "majestic_million": {
+      "url": "https://downloads.majestic.com/majestic_million.csv",
+      "licence": "CC BY 3.0",
+      "attribution": "The Majestic Million, by Majestic-12 Ltd (majestic.com), CC BY 3.0",
+      "rows": 1000000,
+      "registrable_domains": 997434
+    },
+    "crux": {
+      "url": "https://raw.githubusercontent.com/zakird/crux-top-lists/main/data/{scope}/{month}.csv.gz",
+      "licence": "CC BY 4.0",
+      "via": "github.com/zakird/crux-top-lists",
+      "attribution": "Chrome UX Report top origins, by Google (developer.chrome.com/docs/crux), CC BY 4.0",
+      "months": {
+        "global": "202609",
+        "country/ru": "202609"
+      },
+      "origins": {
+        "global": 1000000,
+        "country/ru": 661624
+      },
+      "registrable_domains": 1153533
+    },
+    "public_suffix_list": {
+      "url": "https://publicsuffix.org/list/public_suffix_list.dat",
+      "licence": "MPL 2.0",
+      "rules": 10389
+    },
+    "phishing_feeds": {
+      "CERT Polska": 125336,
+      "PhishDestroy": 137921,
+      "Phishunt": 1370,
+      "TweetFeed": 41231
+    }
+  },
+  "ranked_names": 1956743,
+  "reported_names_removed": 1293,
+  "russian_names": {
+    "top_10k": 389,
+    "top_100k": 4986
+  },
+  "files": {
+    "top_100k.json": {
+      "names": 100000,
+      "sha256": "4c1b1ebe38cd1736a78da63321d99a4aa8119c415360d650c969cb952f26d32c"
+    },
+    "top_10k.json": {
+      "names": 10000,
+      "sha256": "5946060b2498ed6391bf17ee9db14ff0e48c60ca589c3421523cae5a119f9d20"
+    },
+    "public_suffixes_in_top.json": {
+      "rules": 3606,
+      "sha256": "dbdc0f63483a55a4ad2bf26ead76937fa381b08afaad5860beba5999e8eaa260"
+    }
+  }
+}

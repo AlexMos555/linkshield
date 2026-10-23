@@ -2,7 +2,11 @@
 """Build the Android VPN module's bundled assets from data/.
 
   mobile/modules/cleanway-vpn/android/src/main/assets/popular_veto.txt
-    Tranco top-10k MINUS public suffixes / shared platforms. The phone's
+    The top-10k (data/top_10k.json: Majestic Million + Chrome UX Report,
+    scripts/build_top_domains.py; Tranco's until 2026-10-23) PLUS the
+    hand-curated internet infrastructure (data/infrastructure_domains.txt:
+    DNS, CDN, OCSP, push and update names that no link- or visit-based
+    list ranks) MINUS public suffixes / shared platforms. The phone's
     BlockList refuses to block any listed name whose registrable is here —
     a last line of defence against a bad publish. Public suffixes are removed
     on purpose: `github.io` is top-10k, but `evil.github.io` is one tenant's
@@ -27,6 +31,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TOP10K = ROOT / "data" / "top_10k.json"
+INFRASTRUCTURE = ROOT / "data" / "infrastructure_domains.txt"
 PSL_TOP = ROOT / "data" / "public_suffixes_in_top.json"
 ASSETS = ROOT / "mobile" / "modules" / "cleanway-vpn" / "android" / "src" / "main" / "assets"
 OUT = ASSETS / "popular_veto.txt"
@@ -44,9 +49,18 @@ SHARED_APEXES = {
 }
 
 
+def load_infrastructure() -> set[str]:
+    names = set()
+    for raw in INFRASTRUCTURE.read_text(encoding="utf-8").splitlines():
+        line = raw.split("#", 1)[0].strip().lower()
+        if line:
+            names.add(line)
+    return names
+
+
 def build() -> list[str]:
     raw = json.loads(TOP10K.read_text())
-    names = {d.lower() for d in (raw.keys() if isinstance(raw, dict) else raw)}
+    names = {d.lower() for d in (raw.keys() if isinstance(raw, dict) else raw)} | load_infrastructure()
     psl_top = {d.lower() for d in json.loads(PSL_TOP.read_text())} if PSL_TOP.exists() else set()
     return sorted(names - psl_top - SHARED_APEXES)
 

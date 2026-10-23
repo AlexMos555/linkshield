@@ -381,12 +381,13 @@ async def fetch_phishtank_recent(limit: int) -> list[str]:
 
 
 def fetch_tranco_legit(limit: int) -> list[str]:
-    """Random sample of the Tranco top-100k: the allowlist the server
-    answers without analysis (data/top_100k.json), or a Tranco top-1M CSV
+    """Random sample of the allowlist the server answers without analysis
+    (data/top_100k.json: the Majestic Million + Chrome UX Report top 100k
+    since 2026-10-23, Tranco's before), or a ranked `rank,domain` CSV
     placed at data/top-1m.csv by hand. Nothing writes that file since
-    2026-10-22 (scripts/refresh_training_feeds.py stopped downloading
-    Tranco; ML training reads data/benign-domains.csv), so the JSON is the
-    usual source. Evaluation only — this sample is never a training row.
+    2026-10-22, so the JSON is the usual source. Evaluation only — this
+    sample is never a training row. (The name and the `tranco` legit
+    source are kept for old reports and their readers.)
 
     Skips the top-100 (too easily 'safe' by reputation; we want
     moderately-popular but not famous sites in the control group).
@@ -449,9 +450,9 @@ def pick_legit(
     if source == "tranco":
         urls = fetch_tranco_legit(limit)
         return urls, None, {
-            "legit": "Tranco top-1M rank 100-100000, random sample (seed=42).",
-            # The public check answers every Tranco top-100k domain "safe"
-            # without analysing it (is_trusted_top_domain): no FP measurement.
+            "legit": "The allowlist's top 100,000 (data/top_100k.json), random sample (seed=42).",
+            # The public check answers every top-100k domain "safe" without
+            # analysing it (is_trusted_top_domain): no FP measurement.
             "legit_outside_allowlist": False,
         }
     sites = benchmark_legit.load_legit_sample(path or benchmark_legit.LEGIT_SAMPLE_PATH)
@@ -461,7 +462,8 @@ def pick_legit(
     log.info("curated legit: %d of %d sites (%d unreachable from abroad)", len(picked), len(sites), blocked)
     return [f"https://{s.host}" for s in picked], picked, {
         "legit": (f"data/benchmark_legit_ru.txt: {len(picked)} of {len(sites)} real Russian sites "
-                  "outside the Tranco top-100k (regional and city government, universities, .рф, "
+                  "outside the allowlist's top 100,000 (Majestic Million + Chrome UX Report; "
+                  "regional and city government, universities, .рф, "
                   "small banks and businesses, museums, theatres), random sample "
                   f"(seed={benchmark_legit.SAMPLE_SEED}); {blocked} were unreachable from outside "
                   "Russia when listed."),
@@ -988,13 +990,14 @@ def render_md(report: dict) -> str:
                  "earlier runs are a different mix); "
                  "the Cleanway ML model has NOT been trained on these specific URLs.")
     if report.get("sources", {}).get("legit_outside_allowlist"):
-        lines.append("- Legit samples are real Russian sites OUTSIDE the Tranco top-100k — "
+        lines.append("- Legit samples are real Russian sites OUTSIDE the top 100,000 the server "
+                     "trusts on sight (Majestic Million + Chrome UX Report; Tranco's until 2026-10-23) — "
                      "regional and city government, universities, .рф, small banks and "
                      "businesses, museums, theatres (data/benchmark_legit_ru.txt, each "
                      "with its source). The server analyses every one of them; none gets "
                      "the instant 'safe' popular sites get.")
     else:
-        lines.append("- Legit samples are random Tranco top-100k entries (rank 100-100000). "
+        lines.append("- Legit samples are random entries of the top 100,000 the server trusts on sight. "
                      "The server answers those 'safe' without analysis, so this run's "
                      "false-positive rate is NOT a measurement.")
     lines.append("- We send DOMAIN only to Cleanway (server-blind invariant). "

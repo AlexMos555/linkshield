@@ -19,7 +19,7 @@ export interface paths {
          *
          *     Speed tiers:
          *       - Cached: <1ms (Redis)
-         *       - Allowlisted: <1ms (Tranco 100K, no API calls)
+         *       - Allowlisted: <1ms (top 100K popular domains, no API calls)
          *       - Full analysis: 2-5s (14 parallel checks)
          *
          *     Privacy: only domain names processed. Full URLs never logged.

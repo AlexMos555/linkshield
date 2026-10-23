@@ -30,7 +30,13 @@ Data sources (refreshed by scripts/refresh_training_feeds.py, weekly in
   - Replacement guard: the committed model is overwritten only when the
     candidate flags no more held-out real sites than it does (see
     REPLACE_TOLERANCE); otherwise train() prints a ::warning:: and leaves
-    data/ as it was. `--replace-anyway` overrides.
+    data/ as it was. `--replace-anyway` overrides. The committed model is
+    scored on the feature data IT was trained on (model_meta.json
+    feature_data), the candidate on today's files.
+  - Feature data: data/top_100k.json and data/public_suffixes_in_top.json
+    are model inputs (in_top_domains, is_homograph, the tenant features).
+    model_meta.json records their sha256 (feature_data) and ml_scorer serves
+    the model those exact copies (ml_features.resolve_feature_data).
 
 Features: 27 numeric features extracted from the domain only
   (api/services/ml_features.py, shared with inference — no API calls, the
@@ -65,9 +71,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 # bits; inference never has to import sklearn.
 from api.services.hosting_platforms import TENANT_SUFFIXES, is_user_content_host  # noqa: E402
 from api.services.ml_features import (  # noqa: E402
+    FeatureData,
     extract_ml_features,
+    feature_data_record,
     has_suspicious_keyword,
     host_shape,
+    resolve_feature_data,
     shared_tenant,
     FEATURE_NAMES,
 )
@@ -316,21 +325,43 @@ def replacement_decision(candidate_flagged: int, committed_flagged: Optional[int
                   f"above {LEGIT_FLAG_THRESHOLD}")
 
 
-def _committed_flagged(hosts_matrix: np.ndarray) -> Optional[int]:
-    """How many held-out real sites the committed .cbm scores above the bar,
-    or None when it was trained on another feature schema or is unreadable."""
+def _committed_flagged(hosts: list[str]) -> Optional[int]:
+    """How many of `hosts` (held-out real sites) the committed .cbm scores
+    above the bar — on the feature data it was trained on, which after a
+    popularity-list change is the archived copy, not today's files — or None
+    when it was trained on another feature schema, its feature data is gone,
+    or it is unreadable."""
     from catboost import CatBoostClassifier
     try:
         with open(os.path.join(MODEL_DIR, "model_meta.json")) as f:
             meta = json.load(f)
         if meta.get("features_version") != FEATURES_VERSION or meta.get("n_features") != len(FEATURE_NAMES):
             return None
+        data, where = resolve_feature_data(meta, DATA_DIR)
+        if data is None:
+            print(f"  committed model not comparable: {where}")
+            return None
+        print(f"  committed model scored on its own feature data ({where})")
+        _, rows = build_feature_matrix(hosts, data=data)
         committed = CatBoostClassifier()
         committed.load_model(os.path.join(MODEL_DIR, "phishing_model.cbm"))
-        return int((committed.predict_proba(hosts_matrix)[:, 1] > LEGIT_FLAG_THRESHOLD).sum())
+        return int((committed.predict_proba(np.array(rows))[:, 1] > LEGIT_FLAG_THRESHOLD).sum())
     except Exception as e:  # noqa: BLE001 — no committed model to compare with is not a failure
         print(f"  committed model not comparable ({type(e).__name__}: {e})")
         return None
+
+
+def top_domains_provenance() -> str:
+    """One line on where data/top_100k.json came from
+    (data/top_domains_sources.json, scripts/build_top_domains.py), or ''."""
+    try:
+        with open(os.path.join(DATA_DIR, "top_domains_sources.json"), encoding="utf-8") as f:
+            record = json.load(f)
+        months = record["sources"]["crux"]["months"]
+        return (f"Majestic Million + Chrome UX Report {', '.join(f'{k} {v}' for k, v in sorted(months.items()))}, "
+                f"built {record['built']} (data/top_domains_sources.json)")
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return ""
 
 
 def _read_ranked(path: str) -> list[tuple[int, str]]:
@@ -694,17 +725,19 @@ def load_verified_brand_sites(path: str = os.path.join(DATA_DIR, "typosquat_targ
 
 
 def build_feature_matrix(domains: Iterable[str],
-                         cache: Optional[dict[str, list[float]]] = None) -> tuple[list[str], list[list[float]]]:
+                         cache: Optional[dict[str, list[float]]] = None,
+                         data: Optional[FeatureData] = None) -> tuple[list[str], list[list[float]]]:
     """Rows in FEATURE_NAMES order — the vector ml_scorer.ml_predict() feeds
     the served model for the same domain (tests/test_ml_feature_parity.py).
     `cache` (host → row) spares the ensemble members re-extracting the hosts
-    their benign samples share."""
+    their benign samples share. `data`: the feature data files to read
+    (default today's, which is what a model is trained on)."""
     kept, rows = [], []
     for domain in domains:
         row = cache.get(domain) if cache is not None else None
         if row is None:
             try:
-                features = extract_ml_features(domain)
+                features = extract_ml_features(domain, data)
             except Exception:
                 continue
             row = [features[k] for k in FEATURE_NAMES]
@@ -918,7 +951,7 @@ def train(replace_anyway: bool = False, seed: int = SEED):
     legit_hosts, X_legit = build_feature_matrix(load_held_out_legit())
     X_legit = np.array(X_legit)
     candidate_flagged = int((model.predict_proba(X_legit)[:, 1] > LEGIT_FLAG_THRESHOLD).sum())
-    replace, why = replacement_decision(candidate_flagged, _committed_flagged(X_legit), len(legit_hosts))
+    replace, why = replacement_decision(candidate_flagged, _committed_flagged(legit_hosts), len(legit_hosts))
     print(f"\nReplacement guard: {why}")
     if not replace:
         if replace_anyway:
@@ -968,6 +1001,9 @@ def train(replace_anyway: bool = False, seed: int = SEED):
             "seed": seed,
             # The suffixes the tenant feature knows (ml_features.shared_tenant).
             "shared_suffixes": len(_SCORER_SHARED_SUFFIXES | TENANT_SUFFIXES),
+            # The data files read as features, by sha256: ml_scorer serves the
+            # model these exact copies (live, or archived in data/feature_data/).
+            "feature_data": feature_data_record(DATA_DIR, top_domains_provenance()),
         }, f, indent=2)
     print(f"Metadata saved to: {meta_path}")
 

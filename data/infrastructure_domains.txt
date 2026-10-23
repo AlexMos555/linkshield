@@ -1,0 +1,290 @@
+# Internet infrastructure the DNS blocklist must never darken.
+#
+# One registrable domain per line; '#' starts a comment. First-party and
+# hand-curated (2026-10-23): the DNS root and TLD operators, the big DNS
+# hosts, certificate authorities' OCSP / CRL names, and the CDN, push,
+# update, telemetry and media names that phones and their apps resolve
+# constantly — written down from the operators' own documentation
+# (network-requirements and endpoint lists, nameserver names), not taken
+# from any ranked list.
+#
+# Why it exists: until 2026-10-23 the popularity veto was Tranco's top-10k,
+# and Tranco averages DNS-traffic lists (Cisco Umbrella, Cloudflare Radar)
+# that rank such names high. The licensed ranking that replaced it
+# (scripts/build_top_domains.py) counts links (Majestic) and page loads
+# (Chrome UX Report): nobody links to or opens gtld-servers.net or
+# nflxvideo.net, so they are not in it. A bad publish that listed one would
+# break apps for every DNS user.
+#
+# Read by:
+#   scripts/build_mobile_assets.py      → popular_veto.txt on the phone
+#   scripts/refresh_dangerous_domains.py → the publisher's popular guard
+#                                          (never block or promote these)
+#
+# NOT an allowlist: these names get no 'safe' verdict from it. Never add a
+# host where users publish content (googleusercontent.com, sharepoint.com,
+# s3 buckets): blocking a tenant there must stay possible.
+
+# ── DNS root, TLD registries, DNS hosting ──
+root-servers.net
+gtld-servers.net
+nstld.com
+verisign.com
+afilias-nst.info
+afilias-nst.org
+ultradns.com
+ultradns.net
+ultradns.org
+ultradns.biz
+nsone.net
+dynect.net
+dnsmadeeasy.com
+domaincontrol.com
+registrar-servers.com
+azure-dns.com
+azure-dns.net
+azure-dns.org
+azure-dns.info
+googledomains.com
+akam.net
+akadns.net
+cloudflare.net
+cloudflare-dns.com
+dnspod.net
+hichina.com
+nic.ru
+tcinet.ru
+cctld.ru
+
+# ── Certificate authorities: OCSP, CRL, AIA ──
+letsencrypt.org
+lencr.org
+digicert.com
+sectigo.com
+usertrust.com
+comodoca.com
+globalsign.com
+entrust.net
+identrust.com
+amazontrust.com
+pki.goog
+certum.pl
+
+# ── CDNs and edge networks ──
+akamai.net
+akamai.com
+akamaiedge.net
+akamaihd.net
+akamaized.net
+akamaitechnologies.com
+edgekey.net
+edgesuite.net
+fastly.net
+fastlylb.net
+edgecastcdn.net
+llnwd.net
+jsdelivr.net
+
+# ── Apple ──
+apple.com
+icloud.com
+icloud-content.com
+mzstatic.com
+cdn-apple.com
+apple-cloudkit.com
+aaplimg.com
+me.com
+
+# ── Google ──
+google.com
+googleapis.com
+gstatic.com
+googlevideo.com
+ggpht.com
+gvt1.com
+gvt2.com
+1e100.net
+youtube.com
+ytimg.com
+youtube-nocookie.com
+android.com
+gmail.com
+google-analytics.com
+googletagmanager.com
+doubleclick.net
+googlesyndication.com
+googleadservices.com
+app-measurement.com
+crashlytics.com
+dns.google
+
+# ── Microsoft ──
+microsoft.com
+microsoftonline.com
+live.com
+live.net
+office.com
+office.net
+office365.com
+outlook.com
+windows.com
+windows.net
+windowsupdate.com
+msedge.net
+azureedge.net
+azurefd.net
+azure.com
+azure.net
+msauth.net
+msftauth.net
+msftconnecttest.com
+msftncsi.com
+msn.com
+bing.com
+skype.com
+xbox.com
+xboxlive.com
+visualstudio.com
+gfx.ms
+msecnd.net
+aspnetcdn.com
+
+# ── Amazon ──
+amazon.com
+amazonaws.com
+media-amazon.com
+ssl-images-amazon.com
+amazonvideo.com
+primevideo.com
+aiv-cdn.net
+awsstatic.com
+amazon-adsystem.com
+
+# ── Cloudflare ──
+cloudflare.com
+cloudflareinsights.com
+
+# ── Meta ──
+facebook.com
+facebook.net
+fbcdn.net
+fbsbx.com
+instagram.com
+cdninstagram.com
+whatsapp.com
+whatsapp.net
+messenger.com
+meta.com
+
+# ── Netflix ──
+netflix.com
+nflxvideo.net
+nflximg.net
+nflximg.com
+nflxext.com
+nflxso.net
+
+# ── TikTok / ByteDance ──
+tiktok.com
+tiktokcdn.com
+tiktokcdn-us.com
+tiktokv.com
+byteoversea.com
+ibytedtos.com
+bytedance.com
+
+# ── Russian services the phones in our market resolve all day ──
+vk.com
+vk.ru
+userapi.com
+vkuser.net
+vk-cdn.net
+mycdn.me
+mail.ru
+imgsmail.ru
+ok.ru
+odnoklassniki.ru
+yandex.ru
+yandex.net
+yandex.com
+ya.ru
+yastatic.net
+yandexcloud.net
+dzen.ru
+gosuslugi.ru
+sberbank.ru
+tinkoff.ru
+tbank.ru
+ozon.ru
+wildberries.ru
+wb.ru
+avito.ru
+avito.st
+rutube.ru
+kinopoisk.ru
+mts.ru
+megafon.ru
+beeline.ru
+tele2.ru
+t2.ru
+rt.ru
+mos.ru
+cbr.ru
+
+# ── Messaging, calls ──
+telegram.org
+signal.org
+viber.com
+discordapp.com
+discordapp.net
+zoom.us
+slack.com
+slack-edge.com
+
+# ── Phone makers: accounts, updates, app stores ──
+samsung.com
+samsungapps.com
+xiaomi.com
+mi.com
+miui.com
+huawei.com
+hicloud.com
+
+# ── App SDKs: push, crash reports, analytics ──
+onesignal.com
+appsflyer.com
+adjust.com
+branch.io
+sentry.io
+datadoghq.com
+newrelic.com
+nr-data.net
+segment.io
+segment.com
+mixpanel.com
+amplitude.com
+
+# ── Payments ──
+paypal.com
+paypalobjects.com
+stripe.com
+stripe.network
+braintreegateway.com
+visa.com
+mastercard.com
+adyen.com
+
+# ── Software distribution ──
+githubassets.com
+npmjs.org
+npmjs.com
+pypi.org
+pythonhosted.org
+docker.com
+docker.io
+ubuntu.com
+debian.org
+mozilla.org
+mozilla.net
+firefox.com
+ntp.org

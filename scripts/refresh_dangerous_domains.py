@@ -48,9 +48,13 @@ legitimate sites, and promoting those apexes would darken a whole platform.
 Safety: the DoH gateway checks BOTH the exact QNAME and the registrable base
 (doh_gateway.is_blocked_redis). So we add the FULL phishing hostname always, and
 the REGISTRABLE domain only when it is a dedicated phishing domain — never when
-the registrable is a known hosting platform or a Tranco-popular domain (blocking
-`000webhost.com` or a top-100k site because one subdomain is phishing would be a
-catastrophic false positive).
+the registrable is a known hosting platform, a popular domain (data/top_100k.json
+and the Redis top-1M, both built by scripts/build_top_domains.py from the
+Majestic Million and the Chrome UX Report — Tranco's until 2026-10-23) or
+internet infrastructure (data/infrastructure_domains.txt: DNS, CDN, OCSP, push
+names that a link- or visit-based ranking does not carry). Blocking
+`000webhost.com`, a top-100k site or akamaiedge.net because one subdomain is
+phishing would be a catastrophic false positive.
 
 Atomic swap: SADD into a versioned staging key, then RENAME to `dangerous_domains`
 so concurrent SISMEMBER readers never see a half-loaded set. A SETNX lock guards
@@ -117,6 +121,7 @@ from api.services.blocklist_artifact import (  # noqa: E402
     meta_for_v2, parse_artifact_v2, render_artifact_v2, render_delta,
 )
 from api.services import blocklist_feed_backing as feed_backing  # noqa: E402
+from api.services import hosting_platforms as curated_platforms  # noqa: E402
 from api.services import blocklist_feed_health as feed_health  # noqa: E402
 from api.services import blocklist_retention as retention  # noqa: E402
 from api.services import confirmed_threats  # noqa: E402
@@ -562,6 +567,25 @@ def _load_top_100k() -> set[str]:
         return set()
 
 
+def load_infrastructure_domains(path: str = os.path.join(_DATA_DIR, "infrastructure_domains.txt")) -> set[str]:
+    """data/infrastructure_domains.txt — names the blocklist never darkens
+    although no popularity ranking built from links and page loads carries
+    them (gtld-servers.net, nflxvideo.net, lencr.org). One per line, '#'
+    comments."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            return {line.split("#", 1)[0].strip().lower() for line in f} - {""}
+    except OSError as e:
+        logger.warning("infrastructure_domains.txt not loaded (%s) — popular-domain guard weaker", e)
+        return set()
+
+
+def load_popular_guard() -> set[str]:
+    """The bundled popular-domain guard: the top 100k plus the
+    infrastructure names (the Redis top-1M is consulted on top, _tranco_guard)."""
+    return _load_top_100k() | load_infrastructure_domains()
+
+
 def load_brand_owned_hosts(path: str = BRAND_OWNED_PATH) -> frozenset[str]:
     """Exact hostnames from the brand-owned veto list. A line that is not a
     plain hostname (a wildcard, a URL) is rejected, never widened — a veto
@@ -754,8 +778,9 @@ async def _fetch_misp_feed(manifest_url: str, max_events: int = MISP_MAX_EVENTS)
 
 
 def _load_public_suffixes_in_top() -> set[str]:
-    """PSL rules that are also Tranco top domains (us.org, github.io,
-    blob.core.windows.net …) — built by scripts/build_public_suffixes_in_top.py.
+    """PSL rules whose base is a top domain or an infrastructure name (us.org,
+    github.io, blob.core.windows.net …) — built with the top list by
+    scripts/build_top_domains.py.
     Subdomains of these are tenant sites; the apex is the platform."""
     try:
         with open(os.path.join(_DATA_DIR, "public_suffixes_in_top.json")) as f:
@@ -765,12 +790,69 @@ def _load_public_suffixes_in_top() -> set[str]:
         return set()
 
 
+# Multi-tenant domains no popularity list ranks: free dynamic-DNS zones
+# (ChangeIP's free domains, as the provider lists them), IPFS gateways,
+# webhook / function hosts and hosting providers' reverse-DNS zones. Until
+# 2026-10-23 Tranco's top 100k — DNS-traffic lists averaged in — happened to
+# hold most of them, and the popular-registrable guard kept their apexes
+# from being promoted: a dry run of the licensed ranking against the same
+# feed snapshot blocked 25u.com, zzux.com, ipfs.io, twil.io, softlayer.net
+# and ~200 more whole (docs/THIRD_PARTY_FEEDS.md §2a). Shared, as the
+# curated data/hosting_platforms.json suffixes are below: a tenant is
+# blocked exactly, the apex never.
+UNRANKED_SHARED_DOMAINS = frozenset({
+    # ChangeIP free dynamic-DNS domains
+    "25u.com", "2waky.com", "3-a.net", "4dq.com", "4mydomain.com", "4pu.com", "acmetoy.com",
+    "almostmy.com", "americanunfinished.com", "authorizeddns.net", "authorizeddns.org",
+    "authorizeddns.us", "bigmoney.biz", "changeip.biz", "changeip.co", "changeip.net", "changeip.org",
+    "changeip.us", "cleansite.biz", "cleansite.info", "cleansite.us", "compress.to", "ddns.info",
+    "ddns.me.uk", "ddns.mobi", "ddns.ms", "ddns.name", "ddns.us", "dhcp.biz", "dns-dns.com",
+    "dns-report.com", "dns04.com", "dns05.com", "dns1.us", "dns2.us", "dnset.com", "dnsfailover.net",
+    "dnsrd.com", "dsmtp.biz", "dsmtp.com", "dumb1.com", "dynamic-dns.net", "dynamicdns.biz",
+    "dynns.com", "dynssl.com", "edns.biz", "epac.to", "esmtp.biz", "ezua.com", "faqserv.com",
+    "fartit.com", "freeddns.com", "freetcp.com", "freewww.biz", "freewww.info", "ftp1.biz",
+    "ftpserver.biz", "gettrials.com", "got-game.org", "gr8domain.biz", "gr8name.biz", "https443.net",
+    "https443.org", "ikwb.com", "instanthq.com", "iownyour.biz", "iownyour.org", "isasecret.com",
+    "itemdb.com", "itsaol.com", "jetos.com", "jkub.com", "jungleheart.com", "justdied.com",
+    "lflink.com", "lflinkup.com", "lflinkup.net", "lflinkup.org", "longmusic.com", "mefound.com",
+    "moneyhome.biz", "mrbasic.com", "mrbonus.com", "mrface.com", "mrslove.com", "my03.com",
+    "mydad.info", "myddns.com", "myftp.info", "mylftv.com", "mymom.info", "mynetav.com",
+    "mynetav.net", "mynetav.org", "mynumber.org", "mypicture.info", "mypop3.net", "mypop3.org",
+    "mysecondarydns.com", "mywww.biz", "myz.info", "ninth.biz", "ns01.biz", "ns01.info", "ns01.us",
+    "ns02.biz", "ns02.info", "ns02.us", "ns1.name", "ns2.name", "ns3.name", "ocry.com",
+    "onedumb.com", "onmypc.biz", "onmypc.info", "onmypc.net", "onmypc.org", "onmypc.us", "otzo.com",
+    "ourhobby.com", "pcanywhere.net", "port25.biz", "proxydns.com", "qhigh.com", "qpoe.com",
+    "rebatesrule.net", "sendsmtp.com", "serveuser.com", "serveusers.com", "sexidude.com",
+    "sexxxy.biz", "sixth.biz", "squirly.info", "ssl443.org", "toh.info", "toythieves.com",
+    "trickip.net", "trickip.org", "vizvaz.com", "wikaba.com", "www1.biz", "wwwhost.biz",
+    "x24hr.com", "xxuz.com", "xxxy.biz", "xxxy.info", "ygto.com", "youdontcare.com", "yourtrap.com",
+    "zyns.com", "zzux.com",
+    # Other free dynamic-DNS zones
+    "dvrlists.com", "dyna-ns.net", "easterndns.com", "freeddns.org", "us.to", "crabdance.com",
+    "jumpingcrab.com", "chickenkiller.com", "mooo.com", "dns.army", "v6.rocks", "v6.navy",
+    # IPFS gateways, webhook and function hosts: one subdomain (or path) per user
+    "ipfs.io", "dweb.link", "w3s.link", "nftstorage.link", "infura-ipfs.io", "eth.limo",
+    "twil.io", "pipedream.net", "webhook.site", "koyeb.app", "localto.net", "loclx.io",
+    "portmap.host", "test-app.link",
+    # Hosting providers' reverse-DNS, customer-server and name-server zones
+    "softlayer.net", "sl-reverse.com", "bbox.fr", "romtelecom.net", "websiteservername.com",
+    "mysecurecloudhost.com", "misitiohostgator.com", "hostwindsdns.com", "dns-parking.com",
+    # Microsoft's US government cloud: one subdomain per customer tenant
+    "sharepoint.us", "sharepoint-mil.us", "mcas-gov.us",
+})
+
+
 def default_shared_suffixes() -> set[str]:
     """Suffixes under which a subdomain is ONE tenant's site (safe to block
-    exactly) while the apex is a platform (never blocked). Operator-only
-    suffixes are excluded: a name under those is the operator's, not a
-    tenant's, and blocking it breaks the platform for everyone."""
-    return ((set(HOSTING_PLATFORMS) - BIG_ORGS) | _load_public_suffixes_in_top()) - OPERATOR_SUFFIXES
+    exactly) while the apex is a platform (never blocked): the hand list,
+    the public suffixes in the top list, the curated
+    data/hosting_platforms.json (tenant suffixes and dynamic DNS) and
+    UNRANKED_SHARED_DOMAINS. Operator-only suffixes are excluded: a name
+    under those is the operator's, not a tenant's, and blocking it breaks
+    the platform for everyone."""
+    return ((set(HOSTING_PLATFORMS) - BIG_ORGS) | _load_public_suffixes_in_top()
+            | curated_platforms.TENANT_SUFFIXES | curated_platforms.DYNAMIC_DNS_SUFFIXES
+            | UNRANKED_SHARED_DOMAINS) - OPERATOR_SUFFIXES
 
 
 def _tenant_suffix(host: str, shared_suffixes: set[str]) -> str | None:
@@ -870,8 +952,9 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
 
       SKIP           host in SHARED_HOSTNAMES (path-shared by everyone);
                      host is a shared-platform apex (github.io, us.org);
-                     host's registrable is popular (top-100k, or Tranco-1M via
-                     `is_popular`) and host is NOT under a tenant suffix
+                     host's registrable is popular (`top_100k` — refresh() passes
+                     the top 100k plus data/infrastructure_domains.txt — or the
+                     Redis top-1M via `is_popular`) and host is NOT under a tenant suffix
                      (github.com, attach.mail.daum.net, adclick.g.doubleclick.net);
                      host under a tenant suffix but carrying >= SHARED_URL_THRESHOLD
                      feed URLs (a shared file host, not a tenant).
@@ -899,7 +982,7 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
 
     `hosts` may contain repeats (one per feed URL); repeats feed the
     shared-host threshold. `is_popular(registrable) -> bool` is optional
-    (Tranco-1M lookup when Redis is available).
+    (top-1M lookup in Redis tranco:ranks when Redis is available).
     """
     shared = default_shared_suffixes() if shared_suffixes is None else set(shared_suffixes)
 
@@ -1002,7 +1085,7 @@ def _open_redis(redis_url: str | None):
         import redis.asyncio as redis
         return redis.from_url(redis_url, decode_responses=True)
     except Exception as e:  # noqa: BLE001
-        logger.warning("Redis client unavailable (%s) — Tranco guard, retention and churn gate skipped", e)
+        logger.warning("Redis client unavailable (%s) — top-1M guard, retention and churn gate skipped", e)
         return None
 
 
@@ -1019,8 +1102,9 @@ async def _read_previous(r) -> set[str] | None:
 
 
 async def _tranco_guard(r, hosts, public_suffixes: set[str] | None):
-    """Tranco-1M popularity from prod Redis (tranco:ranks, refreshed daily) —
-    a stronger guard than the bundled top-100k, when we can reach it. `hosts`
+    """Top-1M popularity from prod Redis (tranco:ranks: the Majestic + CrUX
+    ranking scripts/refresh_tranco.py loads daily; the key keeps Tranco's
+    name) — a stronger guard than the bundled top-100k, when we can reach it. `hosts`
     includes retained names: a domain that became popular after it was
     listed is vetoed exactly like a fresh one."""
     if r is None:
@@ -1029,10 +1113,10 @@ async def _tranco_guard(r, hosts, public_suffixes: set[str] | None):
         candidates = sorted({_registrable_domain(h, public_suffixes) for h in hosts if h})
         ranks = await r.hmget("tranco:ranks", candidates) if candidates else []
         popular_set = {d for d, rank in zip(candidates, ranks) if rank}
-        logger.info("Tranco-1M guard: %d of %d registrables are ranked", len(popular_set), len(candidates))
+        logger.info("Top-1M guard: %d of %d registrables are ranked", len(popular_set), len(candidates))
         return popular_set.__contains__
     except Exception as e:  # noqa: BLE001
-        logger.warning("Tranco rank guard unavailable (%s) — top-100k only", e)
+        logger.warning("Top-1M rank guard unavailable (%s) — top-100k only", e)
         return None
 
 
@@ -1375,7 +1459,7 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
     environment (excluded_feeds) — a measurement passes the set itself."""
     now = time.time() if now is None else now
     excluded = excluded_feeds() if excluded is None else frozenset(excluded)
-    top_100k = _load_top_100k()
+    top_100k = load_popular_guard()
     # from_url does not connect, so the client can exist before the feeds
     # are fetched: PhishTank's daily cache lives in Redis.
     r = _open_redis(redis_url)
@@ -1440,7 +1524,7 @@ async def refresh(redis_url: str | None, dry_run: bool, force: bool = False,
     present = present_names(feed_hosts, public_suffixes, exact_only) | active | expired | carry.backed
     retained = await _retained_names(r, previous, present, now, dry_run, carry.blind, leaving)
     # Retained, carried and server-confirmed names join the feed hosts BEFORE
-    # the build, so every guard below (Tranco and top-100k veto, brand-owned
+    # the build, so every guard below (top-1M and top-100k veto, brand-owned
     # veto, tenant rules, zones) judges them afresh. None of them promotes a
     # registrable: nothing in a current feed vouches for it, and a registrable
     # that WAS published comes back through its own entry, not through promotion.

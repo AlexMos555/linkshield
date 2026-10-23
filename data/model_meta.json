@@ -30,21 +30,69 @@
   ],
   "n_features": 27,
   "features_version": 6,
-  "train_samples": 19200,
-  "total_samples": 24000,
-  "test_auc": 0.9703,
+  "train_samples": 53026,
+  "total_samples": 66256,
+  "test_auc": 0.9057,
   "test_names_only": {
-    "n_phishing": 458,
-    "n_benign": 2400,
-    "auc": 0.8441,
-    "recall_at_0.6": 0.2729,
-    "recall_at_0.85": 0.1659,
-    "benign_flagged_at_0.6": 0.01
+    "n_phishing": 3570,
+    "n_benign": 9574,
+    "auc": 0.9034,
+    "recall_at_0.6": 0.3591,
+    "recall_at_0.85": 0.1835,
+    "benign_flagged_at_0.6": 0.0088
   },
-  "phishing_names": 2237,
-  "phishing_ips": 9763,
-  "benign_host_shapes": 3551,
-  "benign_tenants": 522,
-  "held_out_registrable_domains": 685,
-  "shared_suffixes": 1764
+  "phishing_names": 17795,
+  "phishing_ips": 461,
+  "benign_host_shapes": 10621,
+  "benign_tenants": 3287,
+  "held_out_registrable_domains": 665,
+  "phishing_sources": {
+    "CERT Polska": 5955,
+    "PhishDestroy": 5114,
+    "Phishunt": 1323,
+    "TweetFeed": 5864
+  },
+  "benign_sources": {
+    "fetched": "2026-10-23",
+    "majestic_million": {
+      "url": "https://downloads.majestic.com/majestic_million.csv",
+      "licence": "CC BY 3.0",
+      "rows": 1000000
+    },
+    "crux": {
+      "url": "https://raw.githubusercontent.com/zakird/crux-top-lists/main/data/{scope}/{month}.csv.gz",
+      "licence": "CC BY 4.0",
+      "via": "github.com/zakird/crux-top-lists",
+      "months": {
+        "global": "202609",
+        "country/ru": "202609"
+      },
+      "origins": {
+        "global": 1000000,
+        "country/ru": 661624
+      }
+    },
+    "files": {
+      "benign-domains.csv": 1568355,
+      "benign-hosts.csv": 1555774
+    }
+  },
+  "benign_class_weight": 3.0,
+  "ensemble_members": 3,
+  "seed": 42,
+  "shared_suffixes": 3832,
+  "feature_data": {
+    "top_domains": {
+      "file": "top_100k.json",
+      "sha256": "4c1b1ebe38cd1736a78da63321d99a4aa8119c415360d650c969cb952f26d32c",
+      "entries": 100000,
+      "source": "Majestic Million + Chrome UX Report country/ru 202609, global 202609, built 2026-10-23 (data/top_domains_sources.json)"
+    },
+    "public_suffixes_in_top": {
+      "file": "public_suffixes_in_top.json",
+      "sha256": "dbdc0f63483a55a4ad2bf26ead76937fa381b08afaad5860beba5999e8eaa260",
+      "entries": 3606,
+      "source": "Majestic Million + Chrome UX Report country/ru 202609, global 202609, built 2026-10-23 (data/top_domains_sources.json)"
+    }
+  }
 }

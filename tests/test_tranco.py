@@ -117,7 +117,7 @@ async def test_check_tranco_returns_rank_in_output(fake_redis):
     out = await check_tranco_popularity("wikipedia.org")
     assert out["ranked"] is True
     assert out["rank"] == 27
-    assert "top 1,000" in out["label"]
+    assert "1,000 most popular" in out["label"]
 
 
 def test_tiers_are_in_ascending_order():
@@ -154,7 +154,7 @@ async def test_score_signal_wires_into_calculate_score(fake_redis):
         "tranco_ranked": True,
         "tranco_rank": 250_000,
         "tranco_weight": -8,
-        "tranco_label": "in the worldwide top 100,000 most-visited sites",
+        "tranco_label": "among the 100,000 most popular sites worldwide",
         "checks_succeeded": 18,
         "total_checks": 18,
     }

@@ -259,7 +259,7 @@ def score_hosts(hosts: list[str], listed: Optional[Callable[[str], bool]] = None
     from api.services.scoring import is_trusted_top_domain
 
     real_predict = ml_scorer.ml_predict
-    if ml_scorer.backend_status() == "disabled":
+    if not ml_scorer.is_serving():
         raise SystemExit("no ML backend: pip install onnxruntime numpy")
     rows: list[dict] = []
     for host in hosts:
@@ -278,7 +278,7 @@ def score_hosts(hosts: list[str], listed: Optional[Callable[[str], bool]] = None
         if listed is not None:
             row["listed"] = listed(host)
         if prob is not None and prob > ML_SUSPICIOUS:
-            feats = extract_ml_features(host)
+            feats = extract_ml_features(host, ml_scorer._feature_data)
             row["features"] = {k: feats[k] for k in (
                 "dot_count", "subdomain_depth", "has_fake_tld_subdomain", "is_typosquat",
                 "brand_in_subdomain", "max_brand_similarity", "name_length", "tld_high_risk",

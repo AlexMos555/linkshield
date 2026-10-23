@@ -37,7 +37,7 @@ or that could compromise users if its internals were public.
 | `api/services/llm_judge.py` (incl. system prompt) | LLM-as-judge pattern is the headline novelty. Worth showing off. | The system prompt is the secret sauce — but it's also a contributor moat. |
 | `api/services/watchtower.py` | crt.sh-based typosquat detection. | None — fully derivable from public CT logs. |
 | `api/services/favicon_hash.py` | Brand-clone detection via SHA-256 prefix. | None — but the **gallery** stays closed because curated brand-host lists are operationally valuable. |
-| `api/services/tranco.py` + `scripts/refresh_tranco.py` | Tranco popularity wrapper. | None — wraps a public list. |
+| `api/services/tranco.py` + `scripts/refresh_tranco.py` + `scripts/build_top_domains.py` | Top-1M popularity (Majestic Million + Chrome UX Report; Tranco until 2026-10-23). | None — built from public CC BY lists. |
 | `api/services/doh_gateway.py` | DoH gateway with phishing block. | None — same pattern as Cloudflare's families resolver. |
 | `api/services/competitor_verdicts.py` | Cloudflare 1.1.1.1 for Families adapter. | None. |
 | `scripts/eval_fresh_urls.py` | The reproducible benchmark itself. **This is the credibility moat — must be open.** | None. |
