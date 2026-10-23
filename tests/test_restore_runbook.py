@@ -9,7 +9,9 @@ REVOKEs of 017 and 022-025. Pinned here:
 
   * every migration that changes privileges or puts a trigger on `auth.*`
     is re-applied by the runbook's loop, in order, with the lock-down (025)
-    last — a new migration of that kind fails this file until it is added;
+    after everything older and only migrations that grant clients nothing
+    after it (027: functions for service_role) — a new migration of that
+    kind fails this file until it is added;
   * auth data is restored before `public`, with triggers (and so foreign
     keys) off and in one transaction: the nightly dump is schema + data, and
     pg_dump orders TABLE DATA by foreign key only in a data-only dump, so
@@ -58,12 +60,23 @@ def test_every_privilege_or_auth_trigger_migration_is_reapplied():
     assert not missing, f"restore.md step 6 does not re-apply: {missing}"
 
 
-def test_the_reapplied_migrations_exist_and_the_lockdown_runs_last():
+_GRANT_TO_CLIENTS = re.compile(r"\bGRANT\b[^;]*\bTO\b[^;]*\b(anon|authenticated|PUBLIC)\b", re.I)
+
+
+def test_the_reapplied_migrations_exist_and_nothing_after_the_lockdown_reopens_it():
     names = _reapplied()
     for name in names:
         assert (MIGRATIONS / f"{name}.sql").exists(), name
     assert names == sorted(names)
-    assert names[-1] == "025_lock_down_client_access"
+    after = names[names.index("025_lock_down_client_access") + 1:]
+    reopening = [n for n in after if _GRANT_TO_CLIENTS.search(_sql(MIGRATIONS / f"{n}.sql"))]
+    assert not reopening, f"re-applied after the lock-down but grant clients something: {reopening}"
+
+
+def test_the_reopening_detector_sees_a_client_grant():
+    assert _GRANT_TO_CLIENTS.search("GRANT EXECUTE ON FUNCTION public.f() TO service_role, authenticated;")
+    assert not _GRANT_TO_CLIENTS.search("GRANT EXECUTE ON FUNCTION public.f() TO service_role;")
+    assert not _GRANT_TO_CLIENTS.search("REVOKE ALL ON FUNCTION public.f() FROM PUBLIC, anon, authenticated;")
 
 
 def test_the_detector_sees_an_auth_trigger_and_a_grant():
@@ -87,7 +100,8 @@ def test_the_auth_schema_migrations_table_is_left_alone():
 def test_the_checks_cover_grants_functions_and_the_trigger():
     text = _runbook()
     assert "has_table_privilege(r.role, c.oid" in text
-    for fn in ("register_device", "revoke_device", "report_phone", "handle_new_auth_user", "purge_old_audit_log"):
+    for fn in ("register_device", "revoke_device", "report_phone", "handle_new_auth_user", "purge_old_audit_log",
+               "purge_auth_audit_log", "delete_auth_audit_log_for_users"):
         assert f"'{fn}'" in text, fn
     assert "on_auth_user_created" in text
     assert "confrelid = 'auth.users'::regclass" in text

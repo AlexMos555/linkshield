@@ -37,6 +37,9 @@ def sb(monkeypatch) -> FakeSupabase:
     monkeypatch.setattr(s, "supabase_url", "https://fake.supabase.co", raising=False)
     monkeypatch.setattr(s, "supabase_service_key", "fake-key", raising=False)
     stub = FakeSupabase()
+    # Migration 027's functions (Supabase Auth's sign-in log) answer with
+    # their bigint, as PostgREST does.
+    stub.on("GET", "/rest/v1/rpc/", body=0).on("POST", "/rest/v1/rpc/", body=0)
     monkeypatch.setattr(httpx, "AsyncClient", stub.client())
     return stub
 
@@ -61,11 +64,13 @@ async def test_a_rule_without_a_filter_is_refused_not_run(sb, monkeypatch, no_ac
     out = await retention.run_retention(mode, now=NOW)
 
     assert out["tables"]["everything"] == {"error": "no_filter"}
-    # No request went out for it: every call carries a real filter …
-    for call in sb.calls:
+    # No request went out for it: every table call carries a real filter …
+    # (the auth sign-in log's rule is a function call, not a table rule)
+    calls = [c for c in sb.calls if "/rest/v1/rpc/" not in c["url"]]
+    for call in calls:
         assert set(call["params"]) - {"select", "limit"}, call
     # … and the genuine rules still ran.
-    table_calls = [c for c in sb.calls if "/rest/v1/users" not in c["url"]]
+    table_calls = [c for c in calls if "/rest/v1/users" not in c["url"]]
     assert len(table_calls) == len(retention.TABLE_RULES) - 1
     assert out["tables"]["audit_log_2y"].keys() & {"deleted", "would_delete"}
 
@@ -198,6 +203,8 @@ async def test_starting_the_loop_twice_keeps_one_task(monkeypatch):
     ([], {"mode": "on", "tables": {"a": {"deleted": 1}}, "accounts": {"deleted": 0}}, 0, "on"),
     ([], {"mode": "on", "tables": {"a": {"error": "status_500"}}}, 1, "on"),
     ([], {"mode": "on", "tables": {}, "accounts": {"error": "list_exception"}}, 1, "on"),
+    # Accounts erased, but their Supabase Auth sign-in log entries stayed.
+    ([], {"mode": "on", "tables": {}, "accounts": {"deleted": 1, "auth_audit_log_error": "not_installed"}}, 1, "on"),
 ])
 def test_cli_exit_code_reports_failures(monkeypatch, capsys, argv, result, code, mode):
     seen: list = []

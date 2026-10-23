@@ -14,6 +14,11 @@ module on a cron (hourly is fine since grace is 30 days). Tested:
   - a user who restores mid-purge is never purged: each candidate is
     re-read right before anything irreversible, and only the rows the
     conditional DELETE actually removed count as deleted
+  - Supabase Auth's own sign-in log entries about the purged accounts
+    (auth.audit_log_entries: email, IP) go too, after the auth identities
+    (deleting one writes a row with the email), through migration 027's
+    function; a missing or refusing function doesn't hold back the erase,
+    no answer at all keeps the accounts for the next run
 """
 from __future__ import annotations
 
@@ -41,6 +46,11 @@ class _SupabaseStub:
         # subscriptions rows by user_id — the purge cancels live Stripe
         # billing before anything is deleted.
         self.subscription_rows: Dict[str, Dict[str, Any]] = {}
+        # Migration 027's delete_auth_audit_log_for_users (POST /rest/v1/rpc/…)
+        # answers with the number of rows it deleted.
+        self.auth_audit_status = 200
+        self.auth_audit_body: Any = 7
+        self.auth_audit_error: Exception | None = None
         self.requests: List[Dict[str, Any]] = []
         # audit_log writes go through .post(); kept separate so existing
         # assertions on .requests (GET+DELETE only) stay correct after
@@ -56,6 +66,8 @@ class _SupabaseStub:
                 self._body = body if body is not None else []
 
             def json(self):
+                if isinstance(self._body, Exception):
+                    raise self._body
                 return self._body
 
         class _Client:
@@ -85,13 +97,17 @@ class _SupabaseStub:
                     return _Resp(stub.recheck_status, rows)
                 return _Resp(stub.list_status, stub.list_response)
 
-            async def request(self, method, url, params=None, headers=None, **_kw):
+            async def request(self, method, url, params=None, headers=None, json=None, **_kw):
                 stub.requests.append(
                     {"method": method, "url": url, "params": dict(params or {}),
-                     "headers": dict(headers or {})}
+                     "headers": dict(headers or {}), "json": json, "timeout": _kw.get("timeout")}
                 )
                 if "/auth/v1/admin/users/" in url:
                     return _Resp(stub.auth_delete_status, {})
+                if "/rest/v1/rpc/" in url:
+                    if stub.auth_audit_error is not None:
+                        raise stub.auth_audit_error
+                    return _Resp(stub.auth_audit_status, stub.auth_audit_body)
                 if method == "DELETE" and url.endswith("/rest/v1/orgs"):
                     if stub.orgs_delete_status in (200, 204):
                         admins = dict(params or {}).get("admin_user_id", "in.()")[4:-1].split(",")
@@ -142,7 +158,8 @@ async def test_purges_expired_accounts(supabase_ok, supabase_stub):
 
     Sequence: GET (list) → per user: GET subscriptions row (stop Stripe
     billing first), PATCH audit_log (anonymise, GDPR Art. 17), DELETE the
-    Supabase Auth user → DELETE the orgs they administer (no cascade) → one
+    Supabase Auth user → one POST rpc deleting their entries in Supabase
+    Auth's sign-in log → DELETE the orgs they administer (no cascade) → one
     DELETE on public.users (cascade through FKs).
     """
     from api.services.account_purge import purge_expired_accounts
@@ -164,6 +181,7 @@ async def test_purges_expired_accounts(supabase_ok, supabase_stub):
         "GET users",
         "GET users", "GET subscriptions", "PATCH audit_log", "DELETE auth:user-a",
         "GET users", "GET subscriptions", "PATCH audit_log", "DELETE auth:user-b",
+        "POST rpc/delete_auth_audit_log_for_users",
         "DELETE orgs", "DELETE users",
     ]
     listing = supabase_stub.requests[0]
@@ -838,3 +856,171 @@ async def test_a_single_user_blocked_by_a_409_is_kept_not_an_error(supabase_ok, 
 
     assert result == {"deleted": 0, "ids": [], "skipped": ["admin"]}
     assert supabase_stub.audit_posts == []
+
+
+# ─── Supabase Auth's sign-in log (auth.audit_log_entries, migration 027) ───
+#
+# GoTrue logs every sign-in, token refresh and admin action with the account
+# id, its email and the IP address. Deleting the auth identity left all of
+# it behind — and the Admin API's DELETE itself writes a `user_deleted` row
+# with the email in payload.traits. The auth schema isn't exposed through
+# PostgREST: migration 027's function deletes the rows.
+
+
+def _auth_audit_calls(stub):
+    return [r for r in stub.requests if "/rest/v1/rpc/" in r["url"]]
+
+
+@pytest.mark.asyncio
+async def test_purge_deletes_the_auth_audit_entries_after_the_auth_identities(supabase_ok, supabase_stub):
+    from api.services import account_purge
+
+    supabase_stub.list_response = [{"id": "user-a"}, {"id": "user-b"}]
+
+    result = await account_purge.purge_expired_accounts()
+
+    assert result == {"deleted": 2, "ids": ["user-a", "user-b"]}
+    (call,) = _auth_audit_calls(supabase_stub)
+    assert call["method"] == "POST"
+    assert call["url"] == "https://fake.supabase.co/rest/v1/rpc/delete_auth_audit_log_for_users"
+    # One call for the whole batch: the table has no index on the payload.
+    assert call["json"] == {"p_user_ids": ["user-a", "user-b"]}
+    from api.services import supabase_keys
+
+    assert call["headers"] == supabase_keys.server_headers(supabase_ok)
+    # A scan of the whole sign-in log may outlast the 10-second default.
+    assert call["timeout"] == account_purge.AUTH_AUDIT_TIMEOUT_S > 10
+    order = [r["url"] for r in supabase_stub.requests]
+    last_auth_delete = max(i for i, u in enumerate(order) if "/auth/v1/admin/users/" in u)
+    users_delete = next(i for i, r in enumerate(supabase_stub.requests)
+                        if r["method"] == "DELETE" and r["url"].endswith("/rest/v1/users"))
+    assert last_auth_delete < order.index(call["url"]) < users_delete
+
+
+@pytest.mark.asyncio
+async def test_only_accounts_that_cleared_every_step_lose_their_auth_log(supabase_ok, supabase_stub, fake_stripe):
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-ok"}, {"id": "user-back"}, {"id": "user-pay"}]
+    supabase_stub.restored.add("user-back")
+    _paying(supabase_stub)
+    fake_stripe.fail_customer_delete = True
+
+    result = await purge_expired_accounts()
+
+    assert result["ids"] == ["user-ok"]
+    (call,) = _auth_audit_calls(supabase_stub)
+    assert call["json"] == {"p_user_ids": ["user-ok"]}
+
+
+@pytest.mark.asyncio
+async def test_a_retry_after_the_auth_identity_went_still_clears_the_auth_log(supabase_ok, supabase_stub):
+    """A previous run deleted the identity (404 now) and then stopped: the
+    retry deletes the sign-in log entries all the same."""
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-404"}]
+    supabase_stub.auth_delete_status = 404
+
+    await purge_expired_accounts()
+
+    (call,) = _auth_audit_calls(supabase_stub)
+    assert call["json"] == {"p_user_ids": ["user-404"]}
+
+
+@pytest.mark.asyncio
+async def test_no_auth_log_call_when_nobody_is_purged(supabase_ok, supabase_stub):
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "user-stuck"}]
+    supabase_stub.auth_delete_status = 500
+
+    await purge_expired_accounts()
+
+    assert _auth_audit_calls(supabase_stub) == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status", "reported"),
+    [(404, "not_installed"), (403, "status_403"), (400, "status_400"), (500, "status_500")],
+)
+async def test_a_refused_auth_log_delete_does_not_hold_back_the_erase(
+    supabase_ok, supabase_stub, caplog, status, reported
+):
+    """404: migration 027 is not applied. Any other answer the server gave
+    would be given again next run, and holding the accounts back would keep
+    all their other data past the 30 days. The erase goes on; the summary
+    says what stayed (the retention pass counts it as a failure) and the
+    entries age out with the 2-year rule."""
+    import logging
+
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "u1"}, {"id": "u2"}]
+    supabase_stub.auth_audit_status = status
+
+    with caplog.at_level(logging.ERROR, logger="cleanway.account_purge"):
+        result = await purge_expired_accounts()
+
+    assert result == {"deleted": 2, "ids": ["u1", "u2"], "auth_audit_log_error": reported}
+    (rec,) = [r for r in caplog.records if r.getMessage() == "account_purge.auth_audit_delete_failed"]
+    assert (rec.status, rec.user_ids) == (status, ["u1", "u2"])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["timeout", 502, 503, 504])
+async def test_no_answer_from_the_auth_log_delete_keeps_the_accounts_for_the_next_run(
+    supabase_ok, supabase_stub, failure
+):
+    """Nothing was confirmed: keep the users rows so the next run (6 hours
+    later) is a retry — the identities are gone, the Admin API then says
+    404, which counts as done."""
+    import httpx as _httpx
+
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "u1"}, {"id": "u2"}]
+    if failure == "timeout":
+        supabase_stub.auth_audit_error = _httpx.ReadTimeout("slow")
+    else:
+        supabase_stub.auth_audit_status = failure
+
+    result = await purge_expired_accounts()
+
+    assert result == {"deleted": 0, "ids": [], "skipped": ["u1", "u2"]}
+    assert not any(r["method"] == "DELETE" and "/rest/v1/" in r["url"] for r in supabase_stub.requests)
+    assert supabase_stub.audit_posts == []
+
+
+@pytest.mark.asyncio
+async def test_the_count_of_deleted_auth_log_rows_is_logged(supabase_ok, supabase_stub, caplog):
+    import logging
+
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "u1"}]
+    with caplog.at_level(logging.INFO, logger="cleanway.account_purge"):
+        await purge_expired_accounts()
+
+    (done,) = [r for r in caplog.records if r.getMessage() == "account_purge.complete"]
+    assert done.auth_audit_deleted == 7
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", [{"unexpected": True}, True, ValueError("not json")])
+async def test_an_odd_auth_log_answer_still_counts_as_done(supabase_ok, supabase_stub, caplog, body):
+    """200 means the function ran (and committed); only the count is unknown."""
+    import logging
+
+    from api.services.account_purge import purge_expired_accounts
+
+    supabase_stub.list_response = [{"id": "u1"}]
+    supabase_stub.auth_audit_body = body
+
+    with caplog.at_level(logging.INFO, logger="cleanway.account_purge"):
+        result = await purge_expired_accounts()
+
+    assert result == {"deleted": 1, "ids": ["u1"]}
+    (done,) = [r for r in caplog.records if r.getMessage() == "account_purge.complete"]
+    assert done.auth_audit_deleted is None

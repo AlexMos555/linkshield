@@ -30,10 +30,11 @@ def _sql(path: Path) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def test_026_is_the_next_migration_number():
+def test_026_has_its_own_migration_number():
+    # It was the newest when written; 027 came next.
     numbers = sorted(int(p.name[:3]) for p in MIGRATIONS.glob("[0-9][0-9][0-9]_*.sql"))
     assert MIGRATION.exists()
-    assert numbers[-1] == 26 and numbers.count(26) == 1
+    assert numbers.count(26) == 1 and 25 in numbers and 27 in numbers
 
 
 def test_001_really_left_admin_user_id_without_on_delete():

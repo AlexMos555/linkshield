@@ -18,12 +18,21 @@ and what enforces it here:
   feedback_reports    1 year — a reported site's or sender's domain, the
                       kind of report, and the account ID if signed in
                       → feedback_reports_1y
+  Supabase Auth's     2 years, like audit_log: the policy names no period
+  sign-in log         for it (section 9: Supabase "may also record the IP
+  (auth.audit_log_    address a sign-in came from in its own security
+  entries)            log") → auth_audit_log_2y
 
 Redis data carries its own TTLs and the nightly backups age out by the R2
 lifecycle rule (35 days) — nothing to do here for those.
 
-Every rule is a filtered PostgREST DELETE with the server key — idempotent,
-never without a filter. Modes (env RETENTION_PURGE):
+Every table rule is a filtered PostgREST DELETE with the server key —
+idempotent, never without a filter. The auth schema is not exposed through
+PostgREST, so auth_audit_log_2y calls migration 027's service-role-only
+function instead (``purge_auth_audit_log``: POST deletes, the dry run's GET
+only counts — PostgREST runs a GET READ ONLY). Until 027 is applied the rule
+reports ``not_installed`` and the pass counts as failed. Modes (env
+RETENTION_PURGE):
 
   off (default)  nothing runs;
   dry_run        counts what would be deleted and logs it, deletes nothing;
@@ -59,6 +68,7 @@ logger = logging.getLogger("cleanway.retention")
 Mode = Literal["off", "dry_run", "on"]
 
 AUDIT_LOG_DAYS = 730
+AUTH_AUDIT_LOG_DAYS = AUDIT_LOG_DAYS  # no period of its own in the policy
 WEEKLY_AGGREGATES_DAYS = 365
 FEEDBACK_REPORTS_DAYS = 365
 FAMILY_ALERT_LEGACY_DAYS = 30  # == family.ALERT_DEFAULT_TTL_DAYS
@@ -180,6 +190,56 @@ async def _apply_rule(client: Any, base: str, rule: TableRule, mode: Mode, now: 
         return {"error": type(e).__name__}
 
 
+AUTH_AUDIT_RULE = "auth_audit_log_2y"
+AUTH_AUDIT_PURGE_FN = "purge_auth_audit_log"  # migration 027
+
+
+def auth_audit_args(mode: Mode) -> dict[str, Any]:
+    """purge_auth_audit_log's arguments: anything but "on" only counts."""
+    return {"p_retention_days": AUTH_AUDIT_LOG_DAYS, "p_dry_run": mode != "on"}
+
+
+def _rpc_count(resp: Any) -> Optional[int]:
+    """The bigint a function answered with, or None."""
+    try:
+        value = resp.json()
+    except Exception:  # noqa: BLE001 — a non-JSON answer proves nothing
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
+async def _purge_auth_audit_log(client: Any, base: str, mode: Mode) -> dict:
+    # A scan of the whole log: wait past the function's own statement_timeout
+    # (027), so a call that runs too long is the database's 500, not ours.
+    from api.services.account_purge import AUTH_AUDIT_TIMEOUT_S
+
+    url = f"{base}/rest/v1/rpc/{AUTH_AUDIT_PURGE_FN}"
+    args = auth_audit_args(mode)
+    headers = supabase_keys.server_headers(None)
+    try:
+        if mode == "dry_run":
+            resp = await client.request("GET", url, params=args, headers=headers, timeout=AUTH_AUDIT_TIMEOUT_S)
+        else:
+            resp = await client.request("POST", url, json=args, headers=headers, timeout=AUTH_AUDIT_TIMEOUT_S)
+    except Exception as e:  # noqa: BLE001 — reported like a table
+        return {"error": type(e).__name__}
+    if resp.status_code == 404:  # PostgREST doesn't know the function
+        return {"error": "not_installed"}
+    if resp.status_code != 200:
+        return {"error": f"status_{resp.status_code}"}
+    n = _rpc_count(resp)
+    if n is None:
+        return {"error": "bad_response"}
+    return {"would_delete" if mode == "dry_run" else "deleted": n}
+
+
+def _accounts_failed(accounts: dict) -> bool:
+    """The purge failed, or purged accounts kept their auth log entries."""
+    return "error" in accounts or "auth_audit_log_error" in accounts
+
+
 async def _count_account_candidates(client: Any, base: str, now: datetime) -> dict:
     from api.services.account_purge import GRACE_DAYS
 
@@ -228,9 +288,10 @@ async def run_retention(mode: Any, now: Optional[datetime] = None) -> dict:
             summary["accounts"] = await _count_account_candidates(client, base, now)
         for rule in TABLE_RULES:
             summary["tables"][rule.name] = await _apply_rule(client, base, rule, m, now)
+        summary["tables"][AUTH_AUDIT_RULE] = await _purge_auth_audit_log(client, base, m)
 
     failed = [name for name, r in summary["tables"].items() if "error" in r]
-    accounts_failed = "error" in (summary.get("accounts") or {})
+    accounts_failed = _accounts_failed(summary.get("accounts") or {})
     await _remember_pass(m, now, failed + (["accounts"] if accounts_failed else []))
     log = logger.error if failed else logger.info
     log(
@@ -374,7 +435,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     result = asyncio.run(run_retention(mode))
     print(json.dumps(result, default=str, indent=2))
     failed = any("error" in r for r in result.get("tables", {}).values())
-    return 1 if failed or "error" in (result.get("accounts") or {}) else 0
+    return 1 if failed or _accounts_failed(result.get("accounts") or {}) else 0
 
 
 if __name__ == "__main__":

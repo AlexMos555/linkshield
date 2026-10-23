@@ -12,6 +12,7 @@ production-базы (только чтение).
 |---|---|---|
 | Аккаунт удаляется через 30 дней после запроса | `api/services/account_purge.py` (вызывается из `api/services/retention.py`) | **Не работало**: функция была, но её ничто не запускало (нет `api/routers/admin.py`, нет задачи в GitHub, нет pg_cron). Хуже: флаг `deleted:{id}` в Redis живёт 30 дней, после чего «удалённый» пользователь снова получал доступ |
 | Журнал безопасности (`audit_log`) — 2 года | правило `audit_log_2y` | **Не работало**: SQL-функции `purge_old_audit_log` (миграция 017) в production **нет** — миграция 017 не применена; вызова тоже не было |
+| Журнал входов Supabase Auth (`auth.audit_log_entries`: номер аккаунта, почта или телефон, действие, IP **как есть**, время — пишется при каждом входе, обновлении токена, выходе и действии через Admin API). Отдельного срока политика не называет (раздел 9: Supabase «может записывать IP входа в свой журнал безопасности»), поэтому — срок нашего журнала безопасности, 2 года (раздел 16) | правило `auth_audit_log_2y` — функция `purge_auth_audit_log` (миграция 027); при удалении аккаунта строки о нём удаляются сразу — `delete_auth_audit_log_for_users` из `account_purge.py` | **Не работало до PR fix/auth-log-retention**: строки не удалялись ни по сроку, ни при удалении аккаунта (схема `auth` недоступна через PostgREST), а удаление учётной записи через Admin API ещё и добавляло строку `user_deleted` с почтой. До применения миграции 027 — так и остаётся (см. шаги) |
 | Недельные счётчики (`weekly_aggregates`) — 1 год | правило `weekly_aggregates_1y` | **Не работало** — удаления не было нигде |
 | Семейные оповещения — до 30 дней | правила `family_alerts_expired`, `family_alerts_legacy_30d`; список оповещений больше не отдаёт просроченные (`api/routers/family.py`) | **Не работало**: `expires_at` записывался, но строки не удалялись и продолжали выдаваться |
 | Приглашения в семью — до использования или 7 дней | правила `family_invites_expired`, `family_invites_redeemed` | **Не работало**: просроченное приглашение отклонялось, но строка (хэш кода + bcrypt PIN) оставалась навсегда |
@@ -38,7 +39,39 @@ production-базы (только чтение).
 не истечёт токен, выданный до удаления. Организации, где человек —
 администратор, удаляются перед ним: у `orgs.admin_user_id` нет ON DELETE
 (миграция 026 добавляет каскад), и раньше один такой человек срывал удаление
-всей пачки. Выгрузка данных по запросу — `docs/runbooks/data-requests.md`.
+всей пачки. После учётных записей Supabase Auth одним вызовом
+`delete_auth_audit_log_for_users` удаляются строки журнала входов о всей
+пачке — по `payload.actor_id` (действия самого человека) и по
+`payload.traits.user_id` (действия над ним через Admin API, в том числе
+строка `user_deleted` с почтой, которую пишет само удаление). Если на вызов
+нет ответа (таймаут, 502/503/504) — пачка ждёт следующего прохода; любой
+другой отказ (404 — миграция 027 не применена, 403, 500) повторился бы
+каждый проход, поэтому удаление аккаунтов идёт дальше, в логе
+`account_purge.auth_audit_delete_failed` (с номерами аккаунтов), в итоге —
+`auth_audit_log_error`, а проход считается неуспешным (`accounts` в
+`last_pass_failed`). Такие строки потом уйдут по сроку в 2 года; удалить
+сразу — SQL Editor:
+`select public.delete_auth_audit_log_for_users(array['<id>', '<id>']::uuid[]);`
+Выгрузка данных по запросу — `docs/runbooks/data-requests.md`.
+
+**`auth_audit_log_error: status_500`** (в логе
+`account_purge.auth_audit_delete_failed` — `status: 500`) почти наверняка
+значит, что журнал входов разросся: вызов просматривает его целиком, и
+база отменила его по лимиту времени (код Postgres 57014, «canceling statement
+due to statement timeout»). Миграция 027 даёт обеим функциям по 50 секунд
+(без этого вызов через API получил бы 8 секунд — лимит Supabase для
+`service_role`), а `account_purge.py` и `retention.py` ждут ответа 70 секунд,
+поэтому слишком долгий вызов заканчивается именно этой ошибкой: аккаунты всё
+равно удаляются, а строки журнала о них остаются. Это будет повторяться при
+каждом удалении — прислать в чат, а пока удалить строки вручную: взять
+номера из `user_ids` строки `account_purge.auth_audit_delete_failed` и
+выполнить SQL выше в SQL Editor (у редактора свой лимит, до 60 секунд, а не
+50 секунд функции). Если и там «canceling statement due to statement
+timeout» — тот же запрос через прямое подключение к базе (Supabase →
+Connect → Direct connection, `psql`), первой командой
+`set statement_timeout = '10min';`. Та же причина у
+`auth_audit_log_2y: status_500` в итоге прохода очистки; вручную —
+`select public.purge_auth_audit_log(730, false);` тем же способом.
 
 ## Как работает очистка
 
@@ -52,6 +85,15 @@ PostgREST `DELETE` с фильтром (без фильтра не отправ�
   `retention.pass_complete` (поля `tables`, `accounts_would_delete`);
 - `on` — удаляет.
 
+Журнал входов Supabase Auth лежит в схеме `auth`, которую PostgREST не
+отдаёт, поэтому правило `auth_audit_log_2y` вызывает функцию миграции 027
+(`/rest/v1/rpc/purge_auth_audit_log`, только `service_role`): в `on` —
+`POST` с `p_dry_run: false` (удаляет), в `dry_run` — `GET` (PostgREST
+выполняет GET в транзакции «только чтение», так что пробный проход ничего не
+удалит, даже если бы попросил). Пока миграция 027 не применена, PostgREST
+отвечает 404, и в итоге прохода — `auth_audit_log_2y: {"error":
+"not_installed"}`; остальные правила работают как раньше.
+
 Планировщик — сам процесс API (pg_cron в проекте не установлен, а workflow
 GitHub менять в этом PR нельзя). Если режим не `off`, при старте API
 запускается цикл: первый проход через 15 минут после старта, дальше каждые
@@ -63,29 +105,51 @@ GitHub менять в этом PR нельзя). Если режим не `off`
 
 ## Шаги для основателя
 
-1. **Railway → сервис API → Variables**: `RETENTION_PURGE=dry_run`. Railway
+1. **Supabase → SQL Editor** (роль `postgres`, как по умолчанию): выполнить
+   целиком `supabase/migrations/027_auth_audit_log_retention.sql`. Миграция
+   сначала проверяет, что `auth.audit_log_entries` есть и что роль может из
+   неё читать и удалять; если нет — останавливается с понятной ошибкой и
+   ничего не создаёт (прислать её в чат). Повторный запуск безопасен.
+   Проверка — ожидается одно число, сколько строк старше 2 лет (сейчас
+   обычно `0`):
+   `select public.purge_auth_audit_log(730);` (без второго аргумента функция
+   только считает). Затем один раз — строки журнала входов об аккаунтах,
+   удалённых до этой миграции (ответ — сколько строк удалено; `0`, если
+   таких не было):
+   ```sql
+   select public.delete_auth_audit_log_for_users(array(
+     select distinct target_id::uuid from public.audit_log
+     where action = 'account.hard_deleted' and target_kind = 'user'));
+   ```
+2. **Railway → сервис API → Variables**: `RETENTION_PURGE=dry_run`. Railway
    перезапустит сервис.
-2. Через ~20 минут открыть логи Railway и найти `retention.pass_complete`.
-   Посмотреть числа `would_delete` по таблицам и `accounts_would_delete`
-   (сколько аккаунтов ждут удаления дольше 30 дней). Ошибки (`error`) —
-   прислать в чат.
-3. Если числа ожидаемые — `RETENTION_PURGE=on`. Первый проход через 15
+3. Через ~20 минут открыть логи Railway и найти `retention.pass_complete`.
+   Посмотреть числа `would_delete` по таблицам (в том числе
+   `auth_audit_log_2y`) и `accounts_would_delete` (сколько аккаунтов ждут
+   удаления дольше 30 дней). Ошибки (`error`) — прислать в чат;
+   `auth_audit_log_2y: not_installed` — шаг 1 не выполнен.
+4. Если числа ожидаемые — `RETENTION_PURGE=on`. Первый проход через 15
    минут удалит всё накопившееся; в логе будут `retention.pass_complete` с
-   полями `deleted` и `account_purge.complete` — или
+   полями `deleted` и `account_purge.complete` (поле `auth_audit_deleted` —
+   сколько строк журнала входов ушло вместе с аккаунтами) — или
    `account_purge.no_candidates`, если ни один аккаунт не ждёт дольше 30 дней
    (это нормально). Признак успеха — `/health/deep` → `components.retention`:
    `mode: "on"`, `ok: true`.
-4. По желанию — применить миграцию `supabase/migrations/017_audit_log_retention.sql`
+5. По желанию — применить миграцию `supabase/migrations/017_audit_log_retention.sql`
    (индекс по `audit_log.created_at` ускоряет очистку журнала; функция из
    неё больше не нужна). Только версию после 2026-10-22: в прежней функция
    `purge_old_audit_log` оставалась доступной анонимам через `/rest/v1/rpc`
    (любой мог очистить журнал). Если 017 уже применяли раньше — выполнить в
    SQL Editor:
    `REVOKE ALL ON FUNCTION public.purge_old_audit_log(integer) FROM PUBLIC, anon, authenticated;`
-5. Проверить в Cloudflare R2, что у бакета `cleanway-db-backups` есть
+6. Проверить в Cloudflare R2, что у бакета `cleanway-db-backups` есть
    правило «удалять через 35 дней».
 
-Откат: `RETENTION_PURGE=off` — цикл больше не запускается.
+Откат: `RETENTION_PURGE=off` — цикл больше не запускается. Функции миграции
+027 откатывать не нужно (без вызова они ничего не делают); убрать их —
+`drop function public.purge_auth_audit_log(integer, boolean),
+public.delete_auth_audit_log_for_users(uuid[]);` (тогда журнал входов снова
+перестанет очищаться).
 
 ## Проверка без логов
 
@@ -94,7 +158,9 @@ GitHub менять в этом PR нельзя). Если режим не `off`
 - `mode` — что сейчас стоит в `RETENTION_PURGE` (`off` / `dry_run` / `on`);
 - `last_ok_at`, `last_ok_mode` — когда проход последний раз прошёл без ошибок;
 - `last_pass_at`, `last_pass_failed` — последний проход и какие правила в нём
-  упали (`accounts` — удаление аккаунтов).
+  упали (`accounts` — удаление аккаунтов, в том числе когда аккаунты удалены,
+  а их строки журнала входов — нет; `auth_audit_log_2y` — журнал входов
+  Supabase Auth, до применения миграции 027 падает каждый проход).
 
 `ok: true` только в режиме `on`, если успешный проход был не дольше ~13 ч
 назад; иначе `error`: `off`, `dry_run`, `no_recent_pass` или
