@@ -236,47 +236,48 @@ the protection back: `data/infrastructure_domains.txt` (DNS, CDN, OCSP,
 push and update names from the operators' own documentation; never
 blocked, in the phone's veto) and the publisher's
 `UNRANKED_SHARED_DOMAINS` plus the curated `data/hosting_platforms.json`
-suffixes (tenants blocked exactly, the apex never promoted). The phone's
-veto goes from 9,879 names to 9,884; 4,413 of the old ones leave it (385
-of Tranco's top 1,000 are no longer vetoed), and 217 infrastructure names
-are kept in it by hand. A dry run of the publisher on the 2026-10-23
-licensed feeds (no Redis): 641,087 → 673,882 names, +34,754 / −1,959;
-32,207 of the additions are feed-listed tenants on the curated platforms
-(weeblysite.com, godaddysites.com, xsph.ru, tw1.ru …) that used to be
-skipped because the platform ranked; 111 registrables Tranco's top-100k
-protected are blocked whole with the top-1M guard simulated (the PR
-lists them for review).
+suffixes (tenants blocked exactly, the apex never promoted) — Blogger's
+country domains, free DNS, tunnel and hosting zones included. The phone's
+veto goes from 9,879 names to 10,026 (the top-10k, the reported names of
+that rank, the infrastructure names). A dry run of the publisher on the
+2026-10-23 licensed feeds (no Redis, the top-1M guard simulated with each
+era's ranking): Tranco era 620,678 names, this change 666,728; the names
+the first version blocked whole on one feed's report (maya.ph,
+rezultati.com, dub.sh …, 696 registrables) are vetoed. Still blocked whole
+although Tranco protected them: 38 registrables of Tranco's top-100k and
+529 that only its top-1M carried, mostly reported scam apexes its
+DNS-traffic inputs ranked; the PR (#284) lists them, and the legitimate
+ones among them go to `data/brand_owned_hosts.txt` after a WHOIS check.
 
 **Measured** (2026-10-23; host-only scoring — `calculate_score({"domain":
-host})`: the allowlist, the name rules and the local model, no network
-signals; the sets are fixed files, scored in every column):
+host})`: the allowlist, the name rules and the local model; "with
+popularity" adds the Redis top-1M signals the analyzer passes; the sets are
+fixed files, scored in every column):
 
-| Set | Served today (Tranco list, 2026-10-21 model) | Monday retrain on main, counterfactual (Tranco list, licensed benign corpus, seed 42) | This change, served model (licensed list, model on archived Tranco inputs) | This change, final (licensed list, model retrained on it, seed 42) |
-|---|---:|---:|---:|---:|
-| Held-out real Russian sites (539), not safe | 1 | 2 | 1 | 2 |
-| — answered on sight (allowlist) | 56 | 56 | 88 | 88 |
-| Held-out Russian look-alikes (186), caught | 174 | 174 | 174 | 173 |
-| Fresh phishing names (5,000, the four feeds on 2026-10-23, none a training row), caught | 1,567 (31.3%) | 1,905 (38.1%) | 1,573 (31.5%) | 1,989 (39.8%) |
-| — wrongly answered on sight | 21 | 21 | 11 | 11 |
-| Long-tail real sites (5,000, ranks 100k-1M of the new ranking; training rows possible), not safe | 130 (2.60%) | 144 (2.88%) | 133 (2.66%) | 158 (3.16%) |
-| — with the production top-1M bonus | — | — | — | 124 (2.48%) |
-| Names entering the allowlist (45,036), not safe before / now | 1,836 | 2,140 | 0 | 0 |
-| Names leaving it (45,036), not safe | 4 | 4 | 1,577 | 2,002 |
-| — of those Chrome users open (CrUX carries 13,797) | 0 | 0 | 245 | 331 |
-| Tranco top-10k names leaving the new top-100k (3,101), not safe | 0 | 0 | 121 | 143 |
+| Set | Served today (Tranco list, 2026-10-21 model) | First version of this change | This change, final (licensed list, model retrained on it, seed 42) |
+|---|---:|---:|---:|
+| Held-out real Russian sites (539), not safe | 1 | 2 | 2 |
+| Held-out Russian look-alikes (186), caught | 174 | 173 | 174 |
+| Fresh phishing names (5,000, the four feeds on 2026-10-23, none a training row), caught | 1,567 (31.3%) | 1,989 (39.8%) | 1,969 (39.4%) |
+| — wrongly answered on sight | 21 | 11 | 9 |
+| Long-tail real sites (5,000, ranks 100k-1M), not safe / with popularity | 130 / 108 | 158 / 124 | 154 / 121 |
+| Names leaving the allowlist (45,036), not safe with popularity | 4 | 1,921 | 1,899 |
+| Government hosts in CrUX's top 50k (1,688), not safe / read as hosting tenants | 315 / 0 | 339 / 362 | 316 / 0 |
+| CrUX Russia top-50k hosts under leaving names (1,290), not safe with popularity | 0 | 97 | 63 |
+| Phishing.Database ACTIVE hosts (392,164), answered instant-safe | 3,442 | 2,969 | 1,882 |
+| AlienVault OTX sample (87 names, 28 with pulses), not safe with popularity | — | 31 | 12 |
 
-The final model: test AUC 0.9057 (names only 0.9034, recall at 0.6
-35.9%, benign over 0.6 0.88%); the counterfactual Monday model 0.9038
-(0.9015, 36.8%, 0.83%). `in_top_domains` is 41% of its importance. Every
-step of `retrain-ml.yml` passes on it (AUC health gate; FP / subdomain /
-tenant / brand-tenant / recall gates — secure-login.wasmer.app 0.664
-against the 0.6 bar; the held-out Russian gate: beeline-online.info the one
-ML-flagged site) and the full suite. The leaving names the final model
-flags are mostly numeric .xyz names and gambling mirrors from Tranco's DNS
-tail (241 "dangerous"); the visible cost is ~190 brand-owned alternates
-(googlemail.com, outlook.de, yahoo.de, santander.pl, protonmail.ch) that
-the typosquat rule now flags "caution" — they were exempt only because
-Tranco listed them.
+The final model: test AUC 0.9120 (names only 0.9098, recall at 0.6
+42.5%, benign over 0.6 0.94%). `in_top_domains` is 42% of its importance.
+Every step of `retrain-ml.yml` passes on it (AUC health gate; FP /
+subdomain / tenant / brand-tenant / recall gates — secure-login.wasmer.app
+0.788 against the 0.6 bar; the held-out Russian gate: beeline-online.info
+the one ML-flagged site) and the full suite. The leaving names the final
+model flags are mostly numeric .xyz names and gambling mirrors from
+Tranco's DNS tail (199 "dangerous"); the visible cost is ~190 brand-owned
+alternates (googlemail.com, outlook.de, yahoo.de, santander.pl,
+protonmail.ch, adobelogin.com, office365.us) that the typosquat rule now
+flags "caution" — they were exempt only because Tranco listed them.
 
 ## 3. ML training data (`scripts/refresh_training_feeds.py`, weekly)
 
