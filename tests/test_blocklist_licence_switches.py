@@ -567,7 +567,7 @@ async def test_with_the_switch_off_csirt_italia_still_reaches_the_list(monkeypat
 @pytest.mark.asyncio
 async def test_switching_on_takes_csirt_italias_names_out_without_force_or_an_outage(monkeypatch, caplog):
     """Production's first run after this change: CSIRT Italia's window held
-    184 distinct exact hosts on 2026-10-23, ~0.03% of a ~560k set, so the run
+    184 distinct exact hosts on 2026-10-23, ~0.03% of the ~700k live set, so the run
     publishes without --force (the churn gate does not trip), is not red,
     carries nothing for it and holds none of its names in retention."""
     caplog.set_level(logging.INFO)
