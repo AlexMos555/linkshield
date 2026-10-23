@@ -241,6 +241,14 @@ jobs:
         # platform the API sends has a label.
         run: node --experimental-strip-types mobile/scripts/test-account-session.mjs
 
+      - name: Account data export table test
+        # "Download my data" on the Account screen (GDPR Art. 15 / 152-FZ
+        # art. 14): an unlinked phone gets no alert, the hourly limit has its
+        # own sentence, the export reaches the share sheet as a dated JSON
+        # file, and with no file sharing the text itself is shared — never a
+        # crash, never nothing.
+        run: node mobile/scripts/test-account-export.mjs
+
       - name: Free plan daily-limit table test
         # EXPO_PUBLIC_FREEMIUM_ENABLED (off by default): 3 detailed checks a
         # day reset at local midnight, 7 unlimited days after install, a paid
