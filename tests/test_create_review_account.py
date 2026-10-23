@@ -4,7 +4,9 @@ The founder runs the script against production himself; nothing here touches
 a network or the real Keychain. What is pinned: the generated password passes
 the project's GoTrue password rules, the admin API payloads have the right
 shape (confirmed address, rotation lifts a ban), an existing account is found
-and rotated instead of duplicated, a dry run writes nothing, the password
+and rotated instead of duplicated, an address that is not a review account
+(not on @cleanway.ai, or not in the build's EXPO_PUBLIC_REVIEW_EMAILS) is
+refused before any request, a dry run writes nothing, the password
 reaches only the HTTPS body and the Keychain's stdin — never argv, stdout or
 an error message — and the server key comes from the same variables the
 backend reads.
@@ -203,8 +205,12 @@ def test_email_flag_is_normalised():
 
 
 def test_the_shipped_build_allowlists_the_review_address():
-    assert cra.allowlisted_in_build(cra.REVIEW_EMAIL) is True
-    assert cra.allowlisted_in_build("someone-else@cleanway.ai") is False
+    assert cra.REVIEW_EMAIL in cra.build_allowlist()
+    assert cra.require_review_email(" Review@Cleanway.AI ") == cra.REVIEW_EMAIL
+    for other in ("someone-else@cleanway.ai", "customer@gmail.com"):
+        with pytest.raises(cra.ConfigError) as exc:
+            cra.require_review_email(other)
+        assert "nothing was sent" in str(exc.value)
 
 
 # ─── fakes ────────────────────────────────────────────────────────
@@ -419,11 +425,62 @@ def test_missing_key_stops_before_any_request(tmp_path, monkeypatch, capsys):
     assert gotrue.requests == []
 
 
-def test_an_address_the_build_does_not_allowlist_gets_a_warning(env_file, capsys):
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_an_address_the_build_does_not_allowlist_is_refused_before_any_request(env_file, capsys, dry_run):
+    """Ours, but not in the build: the app would show it no password field, so
+    there is nothing to create — and nothing is sent, not even the lookup."""
+    gotrue, security = FakeGoTrue(), FakeSecurity()
+    flags = ["--email", "apple-review@cleanway.ai"] + (["--dry-run"] if dry_run else [])
+    assert _run(env_file, *flags, gotrue=gotrue, security=security) == 1
+    assert gotrue.requests == []
+    assert security.calls == []
+    err = capsys.readouterr().err
+    assert "EXPO_PUBLIC_REVIEW_EMAILS" in err and "apple-review@cleanway.ai" in err
+
+
+@pytest.mark.parametrize("dry_run", [False, True])
+@pytest.mark.parametrize(
+    "email",
+    ["customer@gmail.com", "Customer@Gmail.com", "review@cleanway.ai.evil.com", "review@mail.cleanway.ai", "review@сleanway.ai"],
+)
+def test_someone_elses_account_is_never_touched(env_file, capsys, email, dry_run):
+    """A real person's account (banned, say, for abuse) must never get a
+    password only the founder's Keychain holds, a forced confirmation, a lifted
+    ban or a sign-out everywhere: refused before any request, dry run too."""
+    customer = {"id": "real-customer-uuid", "email": email.lower(), "banned_until": "2999-01-01T00:00:00Z"}
+    gotrue, security = FakeGoTrue(users=[customer]), FakeSecurity()
+    flags = ["--email", email] + (["--dry-run"] if dry_run else [])
+    assert _run(env_file, *flags, gotrue=gotrue, security=security) == 1
+    assert gotrue.requests == []
+    assert security.calls == []
+    assert gotrue.users == [customer]
+    out = capsys.readouterr()
+    assert "real-customer-uuid" not in out.out + out.err
+
+
+def test_an_allowlisted_address_off_our_domain_is_still_refused(env_file, monkeypatch):
+    """Belt and braces: even if the build's list ever named a personal address,
+    the script writes only to @cleanway.ai."""
+    monkeypatch.setattr(cra, "build_allowlist", lambda path=cra.EAS_JSON: ["me@gmail.com", cra.REVIEW_EMAIL])
+    gotrue = FakeGoTrue(users=[{"id": "u-me", "email": "me@gmail.com"}])
+    assert _run(env_file, "--email", "me@gmail.com", gotrue=gotrue, security=FakeSecurity()) == 1
+    assert gotrue.requests == []
+
+
+def test_build_allowlist_reads_the_list_as_the_app_does(tmp_path):
+    """Same rule as parseReviewEmails (mobile/src/utils/review-login.ts): only
+    @cleanway.ai addresses, no "$…" references, no duplicates."""
+    eas = tmp_path / "eas.json"
+    raw = " Review@Cleanway.AI , me@gmail.com, $EXPO_PUBLIC_X, ops@mail.cleanway.ai, review@cleanway.ai, x@notcleanway.ai, bad"
+    eas.write_text(json.dumps({"build": {"production": {"env": {cra.REVIEW_EMAILS_VAR: raw}}}}), encoding="utf-8")
+    assert cra.build_allowlist(eas) == ["review@cleanway.ai"]
+    assert cra.build_allowlist(tmp_path / "missing.json") == []
+
+
+def test_the_review_address_itself_still_runs(env_file):
     gotrue = FakeGoTrue()
-    assert _run(env_file, "--email", "apple-review@cleanway.ai", gotrue=gotrue, security=FakeSecurity()) == 0
-    assert gotrue.writes()[0][3]["email"] == "apple-review@cleanway.ai"
-    assert "EXPO_PUBLIC_REVIEW_EMAILS" in capsys.readouterr().out
+    assert _run(env_file, "--email", " Review@Cleanway.AI ", gotrue=gotrue, security=FakeSecurity()) == 0
+    assert gotrue.writes()[0][3]["email"] == "review@cleanway.ai"
 
 
 def test_copy_hint_reads_the_keychain_without_printing():

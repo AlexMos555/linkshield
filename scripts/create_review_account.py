@@ -21,6 +21,13 @@ What it does, against the Supabase project in SUPABASE_URL:
 Every run generates a new password: re-running IS the rotation.
 --dry-run looks the account up and says what it would do; nothing is written.
 
+It only ever touches a review account: an address that is not on
+@cleanway.ai AND in EXPO_PUBLIC_REVIEW_EMAILS of mobile/eas.json (production)
+is refused before any request, dry run included. Otherwise a typo in --email
+would give a real person's account a password only the founder's Keychain
+holds, confirm their address, lift their ban and sign them out everywhere
+(GoTrue ends all sessions on an admin password change).
+
 The password is 32 letters and digits from the `secrets` module, always with
 lower case, upper case and digits — which covers the project's GoTrue rules
 (password_required_characters and password_min_length in
@@ -66,6 +73,7 @@ ENV_FILE = ROOT / ".env"
 EAS_JSON = ROOT / "mobile" / "eas.json"
 
 REVIEW_EMAIL = "review@cleanway.ai"
+REVIEW_DOMAIN = "@cleanway.ai"  # the app's rule too (mobile/src/utils/review-login.ts)
 KEYCHAIN_SERVICE = "Cleanway app review account"
 REVIEW_EMAILS_VAR = "EXPO_PUBLIC_REVIEW_EMAILS"
 
@@ -196,18 +204,34 @@ def check_email(email: str) -> str:
 
 
 def build_allowlist(path: Path = EAS_JSON) -> list[str]:
-    """EXPO_PUBLIC_REVIEW_EMAILS of the production EAS profile, parsed like the app does."""
+    """EXPO_PUBLIC_REVIEW_EMAILS of the production EAS profile, parsed like the
+    app does (parseReviewEmails): addresses on @cleanway.ai only, no "$…"
+    references, no duplicates."""
     try:
         profiles = json.loads(path.read_text(encoding="utf-8"))["build"]
         raw = str(((profiles.get("production") or {}).get("env") or {}).get(REVIEW_EMAILS_VAR, ""))
     except (OSError, ValueError, KeyError, AttributeError):
         return []
-    parts = (p.strip().lower() for p in raw.split(","))
-    return [p for p in parts if p and not p.startswith("$")]
+    out: list[str] = []
+    for part in raw.split(","):
+        email = part.strip().lower()
+        if email.startswith("$") or not EMAIL_RE.match(email) or not email.endswith(REVIEW_DOMAIN):
+            continue
+        if email not in out:
+            out.append(email)
+    return out
 
 
-def allowlisted_in_build(email: str) -> bool:
-    return check_email(email) in build_allowlist()
+def require_review_email(email: str) -> str:
+    """The only addresses this script may write to: ours AND in the build's list.
+    Anything else is someone else's account (or one the app cannot sign in)."""
+    address = check_email(email)
+    if not address.endswith(REVIEW_DOMAIN) or address not in build_allowlist():
+        raise ConfigError(
+            f"{address} is not a review account: only {REVIEW_DOMAIN} addresses listed in "
+            f"{REVIEW_EMAILS_VAR} (mobile/eas.json, production) — nothing was sent"
+        )
+    return address
 
 
 # ─── GoTrue admin API ─────────────────────────────────────────────
@@ -343,7 +367,12 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    p.add_argument("--email", default=REVIEW_EMAIL, help=f"the review account (default {REVIEW_EMAIL}); must be in {REVIEW_EMAILS_VAR}")
+    p.add_argument(
+        "--email",
+        default=REVIEW_EMAIL,
+        help=f"the review account (default {REVIEW_EMAIL}); refused unless it is on {REVIEW_DOMAIN} "
+        f"and in {REVIEW_EMAILS_VAR} of mobile/eas.json",
+    )
     p.add_argument("--dry-run", action="store_true", help="look the account up and say what would happen; write nothing")
     p.add_argument("--env-file", type=Path, default=ENV_FILE, help=argparse.SUPPRESS)
     return p
@@ -361,7 +390,7 @@ def main(
     run = run or subprocess.run
     platform = platform or sys.platform
     try:
-        email = check_email(args.email)
+        email = require_review_email(args.email)  # before any request, dry run included
         cfg = resolve_config(merged_env(os.environ, args.env_file))
         if not args.dry_run and platform != "darwin":
             raise ConfigError("the password goes into the macOS Keychain — run this on the founder's Mac (macOS)")
@@ -371,11 +400,6 @@ def main(
 
         api = AdminApi(cfg.url, cfg.key, transport=transport)
         print(f"→ Supabase {cfg.url} ({supabase_keys.key_kind(cfg.key)} key), аккаунт {email}")
-        if not allowlisted_in_build(email):
-            print(
-                f"! {email} нет в {REVIEW_EMAILS_VAR} (mobile/eas.json, production): "
-                "приложение не покажет для него поле пароля — добавьте адрес до следующей сборки"
-            )
         user = api.find_user(email)
         user_id = str(user.get("id") or "") if user else ""
         if user and not user_id:

@@ -43,8 +43,10 @@
  *   • the allowlisted address signs in with the password (captcha on demand,
  *     like the code request), and its errors get their own sentences
  *     (wrong password, too many attempts, offline);
- *   • only cleanway.ai addresses are allowlisted in the EAS profiles, and the
- *     screen never logs anything.
+ *   • only @cleanway.ai addresses are ever allowlisted: the app drops any
+ *     other, whichever build path set the variable (EAS profile, mobile/.env,
+ *     the RuStore export), and the EAS profiles carry no entry it would drop;
+ *   • the screen never logs anything.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -274,6 +276,17 @@ for (const [raw, want] of [
   [`${REVIEW}, apple-review@cleanway.ai`, [REVIEW, "apple-review@cleanway.ai"]],
   [`${REVIEW},,REVIEW@cleanway.ai, `, [REVIEW]],
   [`not-an-address, ${REVIEW}, $OTHER_VAR`, [REVIEW]],
+  // Only @cleanway.ai survives, whichever build path set the variable (EAS
+  // profile, mobile/.env, the RuStore export): a typo or a pasted personal
+  // address must not show a real person a password field.
+  ["grandma@mail.ru", []],
+  [`${REVIEW}, me@gmail.com`, [REVIEW]],
+  ["me@gmail.com, Grandma@Mail.ru", []],
+  ["review@cleanway.ai.evil.com", []],
+  ["review@mail.cleanway.ai", []],
+  ["review@notcleanway.ai", []],
+  ["review@сleanway.ai", []], // Cyrillic с
+  ["@cleanway.ai", []],
 ]) {
   check(`parseReviewEmails(${JSON.stringify(raw)}) → ${JSON.stringify(want)}`, () => {
     assert.deepEqual(parseReviewEmails(raw), want);
@@ -456,8 +469,13 @@ console.log("review sign-in: the screen and the build profiles");
   check("EAS store profiles allowlist only cleanway.ai addresses, the review one included", () => {
     const eas = JSON.parse(readFileSync(new URL("../eas.json", import.meta.url), "utf8")).build;
     for (const name of ["preview", "production"]) {
-      const list = parseReviewEmails(eas[name].env[REVIEW_ENV]);
+      const raw = eas[name].env[REVIEW_ENV];
+      const list = parseReviewEmails(raw);
       assert.ok(list.includes(REVIEW), `${name}: ${REVIEW} missing`);
+      // Every entry must survive the app's parse: an entry the app drops (not
+      // on cleanway.ai, a typo) is a mistake to fix here, not to ship.
+      const entries = raw.split(",").map((s) => s.trim()).filter(Boolean);
+      assert.equal(list.length, entries.length, `${name}: an entry the app ignores in ${JSON.stringify(raw)}`);
       for (const email of list) assert.ok(email.endsWith("@cleanway.ai"), `${name}: ${email} is not ours`);
     }
   });

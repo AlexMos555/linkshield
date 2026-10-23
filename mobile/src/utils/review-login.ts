@@ -9,8 +9,11 @@
  * random password, and the sign-in screen asks for a password only when the
  * typed address is EXACTLY one on the build's allowlist,
  * EXPO_PUBLIC_REVIEW_EMAILS (comma-separated, case-insensitive, trimmed;
- * unset = off). Every other address keeps the code flow: no field, no new
- * request, the same bytes as before.
+ * unset = off). Only @cleanway.ai addresses count: the variable reaches a
+ * build through eas.json, mobile/.env or a shell export, and a typo or a
+ * pasted personal address must not show a real person a password field.
+ * Every other address keeps the code flow: no field, no new request, the
+ * same bytes as before.
  *
  * NOT A SECURITY BOUNDARY
  * Hiding the field is presentation. GoTrue's password grant is open to any
@@ -25,6 +28,8 @@
  */
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** The only domain the allowlist accepts (exact: no subdomains, no lookalikes). */
+const REVIEW_DOMAIN = "@cleanway.ai";
 
 /** The form addresses are compared in: trimmed, lower case. */
 export function canonicalEmail(email: string): string {
@@ -33,15 +38,17 @@ export function canonicalEmail(email: string): string {
 
 /**
  * EXPO_PUBLIC_REVIEW_EMAILS → the allowlist. Unset, blank, an unexpanded
- * "$…" reference (a build profile naming a variable that was never defined)
- * or anything that is not an address contributes nothing.
+ * "$…" reference (a build profile naming a variable that was never defined),
+ * anything that is not an address and any address not on @cleanway.ai
+ * contribute nothing.
  */
 export function parseReviewEmails(raw: string | undefined | null): readonly string[] {
   const out: string[] = [];
   for (const part of (raw ?? "").split(",")) {
     if (part.trim().startsWith("$")) continue;
     const email = canonicalEmail(part);
-    if (EMAIL_RE.test(email) && !out.includes(email)) out.push(email);
+    if (!EMAIL_RE.test(email) || !email.endsWith(REVIEW_DOMAIN)) continue;
+    if (!out.includes(email)) out.push(email);
   }
   return out;
 }
