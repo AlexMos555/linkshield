@@ -10,13 +10,24 @@ Order of attempts for one query (proxy_to_upstream):
   2. if it fails outright (refused, reset, TLS, non-200, garbage) → the next
      one immediately;
   3. if it is merely slow → after HEDGE_AFTER_S the next one is asked in
-     parallel and whichever answers first wins (the loser is cancelled);
+     parallel and whichever answers first wins;
   4. all of it inside one UPSTREAM_TIMEOUT_S budget. Nothing answered → None,
      and the caller serves a stale cached answer or SERVFAIL.
+A request the query no longer waits for (the hedge loser, or one still out at
+the deadline) is not cancelled: it runs on until the upstream answers it, and
+keeps its slot until then (see MAX_IN_FLIGHT).
 
 A per-upstream breaker (3 consecutive failures or lost hedges → skipped for
 10 s, then retried) means a dead upstream costs the hedge delay a handful of
 times, not on every query. A skipped upstream is still tried last.
+
+Requests at the upstreams are limited per worker (MAX_IN_FLIGHT) and per zone
+(ZONE_MAX_IN_FLIGHT, the name's registrable domain): random subdomains of a
+zone whose servers never answer each wait the whole budget, and without the
+zone limit a few of them a second took every slot while every other cache
+miss queued behind them (docs/runbooks/doh-gateway.md, 2026-10-23). A query
+over its zone's limit waits without being sent; a freed slot goes to the
+newest waiting query.
 
 Responses are validated before they are believed: HTTP 200, 12..65535 bytes,
 the query's transaction ID. Query bytes are forwarded exactly as received —
@@ -25,11 +36,14 @@ EDNS0 options and padding pass through, and no ECS option is ever added.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import time
 from typing import Optional
 
 import httpx
+
+from api.services import doh_metrics
 
 logger = logging.getLogger("api.services.doh_gateway")
 
@@ -42,6 +56,11 @@ CLOUDFLARE_IP_DOH_URL = "https://1.1.1.1/dns-query"  # same resolver, no DNS loo
 DEFAULT_UPSTREAMS = (CLOUDFLARE_DOH_URL, CLOUDFLARE_IP_DOH_URL)
 DOH_CONTENT_TYPE = "application/dns-message"
 UPSTREAM_TIMEOUT_S = 4.0
+# How long one HTTP request may stay open — longer than a query waits: a
+# request the query gave up on runs on until the upstream answers (see
+# proxy_to_upstream). Cloudflare answers a zone whose servers never respond
+# with SERVFAIL after up to ~5.4 s (measured 2026-10-23).
+REQUEST_TIMEOUT_S = 10.0
 HEDGE_AFTER_S = 0.4
 MAX_RESPONSE_BYTES = 65535
 BREAKER_THRESHOLD = 3
@@ -59,10 +78,24 @@ except ImportError:  # pragma: no cover - depends on the environment
 # counts all of them, not the idle ones), so keepalive < max meant a fresh
 # TCP+TLS handshake to Cloudflare for a share of queries under load. The
 # in-flight cap keeps the pool's O(queued x connections) bookkeeping from
-# growing with load: excess queries wait on a cheap asyncio semaphore instead.
+# growing with load: excess queries wait on a cheap asyncio queue instead.
+# Over HTTP/2 every request to one upstream shares one connection (httpcore
+# opens no second one), which carries at most 100 open streams (what
+# Cloudflare and Quad9 announce, and httpcore's own ceiling). At 100, every
+# new request on it fails at once ("Max outbound streams is 100") — and a
+# cancelled request's stream stays open until the upstream answers it
+# (httpcore sends no RST_STREAM). So no request is cancelled once sent, and
+# the cap counts every open stream: 100 less a margin for the streams
+# httpcore drops on its own (REQUEST_TIMEOUT_S, a connection error).
+# Names nobody answers each hold a slot until Cloudflare gives up (≤ ~5.4 s;
+# with the hedge, two): 32 slots were gone at ~4 such names a second.
 _UPSTREAM_MAX_CONNECTIONS = 32
 _UPSTREAM_KEEPALIVE = 32
-MAX_IN_FLIGHT = 32
+MAX_IN_FLIGHT = 96
+# One zone (registrable domain), hedges included. A zone answering in 20 ms
+# reaches it only at ~400 queries/s from one worker; a zone that never
+# answers holds it, and nothing more.
+ZONE_MAX_IN_FLIGHT = 8
 _HEADERS = {"Content-Type": DOH_CONTENT_TYPE, "Accept": DOH_CONTENT_TYPE}
 
 
@@ -95,10 +128,61 @@ class Upstream:
                 "ok": self.ok_count, "failed": self.fail_count}
 
 
+class _Slots:
+    """At most `size` holders; the rest wait, and a freed slot goes to the
+    NEWEST waiter. When there are waiters, the oldest is the closest to giving
+    up (UPSTREAM_TIMEOUT_S): sending its request would put one nobody waits
+    for on the upstream connection, where it stays open until answered."""
+
+    __slots__ = ("free", "waiters")
+
+    def __init__(self, size: int) -> None:
+        self.free = size
+        self.waiters: list[asyncio.Future] = []
+
+    async def acquire(self) -> None:
+        if self.free > 0:
+            self.free -= 1
+            return
+        fut = asyncio.get_running_loop().create_future()
+        self.waiters.append(fut)
+        try:
+            await fut
+        except asyncio.CancelledError:
+            if fut.done() and not fut.cancelled():
+                self.release()  # handed a slot just as we gave up: pass it on
+            elif fut in self.waiters:
+                self.waiters.remove(fut)
+            raise
+
+    def release(self) -> None:
+        while self.waiters:
+            fut = self.waiters.pop()
+            if not fut.done():
+                fut.set_result(None)
+                return
+        self.free += 1
+
+
+class _Attempt:
+    """One query's request to one upstream."""
+
+    __slots__ = ("up", "sent", "abandoned")
+
+    def __init__(self, up: Upstream) -> None:
+        self.up = up
+        self.sent = False  # at the upstream (it holds a stream there)
+        self.abandoned = False  # the query has its outcome without this answer
+
+
 _upstreams: list[Upstream] = []
 _upstream_client: Optional[httpx.AsyncClient] = None
 _upstream_client_loop: object = None
-_in_flight: Optional[asyncio.Semaphore] = None
+_in_flight: Optional[_Slots] = None
+_zones: dict[str, _Slots] = {}
+# Requests no query waits for any more, running on until the upstream answers.
+# Referenced here because the event loop keeps only weak references to tasks.
+_abandoned: set[asyncio.Task] = set()
 
 
 def configured_urls() -> list[str]:
@@ -120,14 +204,15 @@ def upstreams() -> list[Upstream]:
 
 
 def _get_upstream_client() -> httpx.AsyncClient:
-    global _upstream_client, _upstream_client_loop, _in_flight
+    global _upstream_client, _upstream_client_loop, _in_flight, _zones
     loop = asyncio.get_running_loop()
     client = _upstream_client
     if client is None or _upstream_client_loop is not loop or getattr(client, "is_closed", False):
-        _in_flight = asyncio.Semaphore(MAX_IN_FLIGHT)
+        _in_flight = _Slots(MAX_IN_FLIGHT)
+        _zones = {}
         client = httpx.AsyncClient(
             http2=HTTP2_AVAILABLE,
-            timeout=httpx.Timeout(UPSTREAM_TIMEOUT_S, connect=1.5),
+            timeout=httpx.Timeout(REQUEST_TIMEOUT_S, connect=1.5),
             limits=httpx.Limits(
                 max_connections=_UPSTREAM_MAX_CONNECTIONS,
                 max_keepalive_connections=_UPSTREAM_KEEPALIVE,
@@ -141,11 +226,13 @@ def _get_upstream_client() -> httpx.AsyncClient:
 
 
 def _reset_upstream_client_for_tests() -> None:
-    global _upstream_client, _upstream_client_loop, _upstreams, _in_flight
+    global _upstream_client, _upstream_client_loop, _upstreams, _in_flight, _zones
     _upstream_client = None
     _upstream_client_loop = None
     _upstreams = []
     _in_flight = None
+    _zones = {}
+    _abandoned.clear()
 
 
 async def close_upstream_client() -> None:
@@ -170,36 +257,63 @@ def valid_answer(wire: bytes, status: int, body: bytes) -> bool:
 _RETRY_ONCE = (httpx.RemoteProtocolError, httpx.ReadError, httpx.WriteError)
 
 
-async def _post(client: httpx.AsyncClient, url: str, wire: bytes, timeout: float) -> httpx.Response:
+async def _post(client: httpx.AsyncClient, url: str, wire: bytes) -> httpx.Response:
     try:
-        return await client.post(url, content=wire, headers=_HEADERS, timeout=timeout)
+        return await client.post(url, content=wire, headers=_HEADERS)
     except _RETRY_ONCE:
-        return await client.post(url, content=wire, headers=_HEADERS, timeout=timeout)
+        return await client.post(url, content=wire, headers=_HEADERS)
 
 
-async def _ask(client: httpx.AsyncClient, up: Upstream, wire: bytes, timeout: float) -> Optional[bytes]:
+def _zone_of(wire: bytes) -> str:
+    """The query's registrable domain (doh_gateway's eTLD+1 heuristic)."""
+    # doh_gateway imports this module at the end of its own body.
+    from api.services.doh_gateway import _registrable_domain, parse_qname
+    return _registrable_domain(parse_qname(wire) or "")
+
+
+@contextlib.asynccontextmanager
+async def _turn(zone: str):
+    """A slot of the zone, then a worker slot: held while the request is at the
+    upstream. A query waiting for its zone holds no worker slot."""
+    worker = _in_flight
+    slots = _zones.get(zone)
+    if slots is None:
+        slots = _zones[zone] = _Slots(ZONE_MAX_IN_FLIGHT)
     try:
-        sem = _in_flight
-        if sem is None:
-            resp = await _post(client, up.url, wire, timeout)
+        if slots.free == 0:
+            doh_metrics.METRICS.inc("upstream_zone_wait")
+        await slots.acquire()
+        try:
+            if worker.free == 0:
+                doh_metrics.METRICS.inc("upstream_slot_wait")
+            await worker.acquire()
+            try:
+                yield
+            finally:
+                worker.release()
+        finally:
+            slots.release()
+    finally:
+        if slots.free == ZONE_MAX_IN_FLIGHT and _zones.get(zone) is slots:
+            del _zones[zone]
+
+
+async def _ask(client: httpx.AsyncClient, attempt: _Attempt, wire: bytes, zone: str) -> Optional[bytes]:
+    up = attempt.up
+    body: Optional[bytes] = None
+    try:
+        async with _turn(zone):
+            attempt.sent = True
+            resp = await _post(client, up.url, wire)
+        if valid_answer(wire, resp.status_code, resp.content):
+            body = resp.content
         else:
-            async with sem:
-                resp = await _post(client, up.url, wire, timeout)
-        body = resp.content
-        if not valid_answer(wire, resp.status_code, body):
             logger.warning("DoH upstream returned an unusable answer (HTTP %d)", resp.status_code)
-            up.record(False)
-            return None
-    except asyncio.CancelledError:
-        # Lost a hedge race: counts toward the breaker, so a black-holed
-        # upstream stops costing every query the hedge delay.
-        up.record(False)
-        raise
     except Exception as exc:  # noqa: BLE001
         logger.warning("DoH upstream call failed: %s", type(exc).__name__)
-        up.record(False)
-        return None
-    up.record(True)
+    if attempt.abandoned:
+        return None  # the query has counted this upstream's outcome already
+    up.record(body is not None)
     return body
 
 
@@ -213,13 +327,17 @@ async def proxy_to_upstream(wire: bytes) -> Optional[bytes]:
         order = [u for u in ups if u.healthy(now)] + [u for u in ups if not u.healthy(now)]
         loop = asyncio.get_running_loop()
         deadline = loop.time() + UPSTREAM_TIMEOUT_S
+        zone = _zone_of(wire)
         pending: set[asyncio.Task] = set()
+        attempts: dict[asyncio.Task, _Attempt] = {}
         nxt = 0
 
         def launch() -> None:
             nonlocal nxt
-            remaining = max(0.05, deadline - loop.time())
-            pending.add(loop.create_task(_ask(client, order[nxt], wire, remaining)))
+            attempt = _Attempt(order[nxt])
+            task = loop.create_task(_ask(client, attempt, wire, zone))
+            attempts[task] = attempt
+            pending.add(task)
             nxt += 1
 
         launch()
@@ -240,7 +358,19 @@ async def proxy_to_upstream(wire: bytes) -> Optional[bytes]:
             return None
         finally:
             for task in pending:
-                task.cancel()
+                attempt = attempts[task]
+                if not attempt.sent:
+                    task.cancel()  # still waiting for its turn: nothing at the upstream yet
+                    continue
+                # Lost a hedge race or ran out of time: counts toward the
+                # breaker, so a black-holed upstream stops costing every query
+                # the hedge delay. The request itself runs on, holding its slot:
+                # cancelled, its stream would stay open at the upstream anyway.
+                attempt.abandoned = True
+                attempt.up.record(False)
+                doh_metrics.METRICS.inc("upstream_abandoned")
+                _abandoned.add(task)
+                task.add_done_callback(_abandoned.discard)
     except Exception as exc:  # noqa: BLE001 — the caller decides what to answer
         logger.warning("DoH upstream dispatch failed: %s", type(exc).__name__)
         return None

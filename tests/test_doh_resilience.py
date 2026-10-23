@@ -296,6 +296,171 @@ async def test_every_upstream_down_is_none_never_an_exception(two_upstreams):
     assert await doh_upstream.proxy_to_upstream(query("example.org")) is None
 
 
+# ── a zone that never answers ───────────────────────────────────────
+
+class _HoldingClient:
+    """httpx.AsyncClient stand-in for an upstream whose `dead*.example` zones
+    never answer on their own: each such request waits until the test releases
+    it (oldest first). Every other name is answered at once."""
+    held: list = []
+    posted: list = []
+
+    def __init__(self, *a, **kw):
+        self.is_closed = False
+
+    async def post(self, url, content=b"", **_kw):
+        from api.services.doh_gateway import parse_qname
+        name = parse_qname(content)
+        type(self).posted.append(name)
+        if name.split(".")[-2].startswith("dead"):
+            fut = asyncio.get_running_loop().create_future()
+            type(self).held.append(fut)
+            await fut
+        return _Resp(200, answer(content))
+
+    @classmethod
+    def release_one(cls) -> None:
+        while cls.held:
+            fut = cls.held.pop(0)
+            if not fut.done():
+                fut.set_result(None)
+                return
+
+    async def aclose(self):
+        self.is_closed = True
+
+
+@pytest.fixture
+def holding_upstream(monkeypatch):
+    from api import config
+    monkeypatch.setattr(config.get_settings(), "doh_upstreams", "https://a.test/dns-query")
+    monkeypatch.setattr(doh_upstream.httpx, "AsyncClient", _HoldingClient)
+    _HoldingClient.held, _HoldingClient.posted = [], []
+    doh_upstream._reset_upstream_client_for_tests()
+    return _HoldingClient
+
+
+async def _ask_many(names: list[str]) -> list[asyncio.Task]:
+    tasks = [asyncio.create_task(doh_upstream.proxy_to_upstream(query(n))) for n in names]
+    await asyncio.sleep(0.05)  # every one of them has reached the upstream or a queue
+    return tasks
+
+
+@pytest.mark.asyncio
+async def test_queries_held_by_a_dead_zone_do_not_hold_up_other_names(holding_upstream, monkeypatch):
+    """Random subdomains of a zone whose servers never answer: each one waits
+    the whole budget. A name in another zone must not queue behind them."""
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 1.0)
+    held = await _ask_many([f"r{i}.dead.example" for i in range(40)])
+    started = time.monotonic()
+    out = await doh_upstream.proxy_to_upstream(query("example.org"))
+    assert out is not None
+    assert time.monotonic() - started < 0.1
+    assert await asyncio.gather(*held) == [None] * 40  # still nothing from the dead zone
+
+
+@pytest.mark.asyncio
+async def test_dead_names_spread_over_many_zones_still_leave_room_for_the_rest(holding_upstream, monkeypatch):
+    """No zone limit helps when every dead name is a zone of its own — only
+    room does. Stand, 2026-10-23: 2 % of the queries dead, over 200 zones,
+    took the old 32 slots and 35 % of the healthy cache misses got SERVFAIL."""
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 1.0)
+    held = await _ask_many([f"r{i}.dead{i}.example" for i in range(48)])
+    started = time.monotonic()
+    assert await doh_upstream.proxy_to_upstream(query("example.org")) is not None
+    assert time.monotonic() - started < 0.1
+    assert await asyncio.gather(*held) == [None] * 48
+
+
+@pytest.mark.asyncio
+async def test_a_slow_zone_answers_every_query_once_it_answers(holding_upstream, monkeypatch):
+    """The queries over a zone's share wait without being sent, and are sent
+    as soon as the zone answers — none of them is dropped."""
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 2.0)
+    tasks = await _ask_many([f"r{i}.dead.example" for i in range(40)])
+    while not all(t.done() for t in tasks):
+        holding_upstream.release_one()
+        await asyncio.sleep(0.001)
+    assert all(t.result() is not None for t in tasks)
+    assert sorted(holding_upstream.posted) == sorted(f"r{i}.dead.example" for i in range(40))
+
+
+@pytest.mark.asyncio
+async def test_a_query_that_gave_up_waiting_for_its_turn_does_not_count_against_the_upstream(
+        holding_upstream, monkeypatch):
+    """It never reached the upstream, so it says nothing about the upstream's
+    health — counted, a few of them in a row would open the breaker."""
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 2.0)
+    held = await _ask_many([f"r{i}.dead.example" for i in range(40)])
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 0.1)
+    impatient = await _ask_many([f"s{i}.dead.example" for i in range(10)])
+    assert await asyncio.gather(*impatient) == [None] * 10
+    assert not any(n.startswith("s") for n in holding_upstream.posted)
+    assert doh_upstream.status()[0]["failed"] == 0
+    while not all(t.done() for t in held):
+        holding_upstream.release_one()
+        await asyncio.sleep(0.001)
+
+
+@pytest.mark.asyncio
+async def test_a_request_nobody_waits_for_stays_open_until_the_upstream_answers(holding_upstream, monkeypatch):
+    """Cancelled, its HTTP/2 stream would stay open at the upstream all the
+    same (httpcore sends no RST_STREAM), outside our count."""
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 0.1)
+    assert await doh_upstream.proxy_to_upstream(query("r1.dead.example")) is None
+    assert len(holding_upstream.held) == 1 and not holding_upstream.held[0].done()
+    holding_upstream.release_one()
+    await asyncio.sleep(0.01)
+    # counted once, as a failure, when the query gave up — not again as a success
+    assert doh_upstream.status()[0]["ok"] == 0 and doh_upstream.status()[0]["failed"] == 1
+
+
+@pytest.mark.asyncio
+async def test_requests_left_open_never_exceed_the_connections_100_streams(holding_upstream, monkeypatch):
+    """Cloudflare and Quad9 allow 100 open streams per HTTP/2 connection; at
+    100, every new request on it fails at once (measured 2026-10-23: 63 % of
+    the healthy cache misses SERVFAIL while one zone was not answering)."""
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 0.05)
+    for wave in range(5):
+        await asyncio.gather(*[doh_upstream.proxy_to_upstream(query(f"w{wave}.dead{i}.example"))
+                               for i in range(60)])
+    assert len(holding_upstream.held) <= 100  # sent and not answered, whatever the client gave up on
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("zone,counter", [("dead.example", "upstream_zone_wait"),
+                                          ("dead{i}.example", "upstream_slot_wait")],
+                         ids=["one zone", "many zones"])
+async def test_waits_and_abandoned_requests_show_in_the_counters(holding_upstream, monkeypatch, zone, counter):
+    """/health/doh and the doh_stats line say how often a query had to wait for
+    its turn, and how many requests were left to finish with nobody waiting."""
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 0.2)
+    n = doh_upstream.MAX_IN_FLIGHT + 16
+    held = await _ask_many([f"r{i}.{zone.format(i=i)}" for i in range(n)])
+    sent = len(holding_upstream.posted)
+    assert await asyncio.gather(*held) == [None] * n
+    counts = doh_metrics.METRICS.counts
+    assert counts[counter] == n - sent
+    assert counts["upstream_abandoned"] == sent
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("zone", ["dead.example", "dead{i}.example"], ids=["one zone", "many zones"])
+async def test_a_freed_slot_goes_to_the_query_with_the_most_time_left(holding_upstream, monkeypatch, zone):
+    """When a slot frees, the newest waiting query is sent: the oldest is the
+    closest to its deadline, and a request nobody waits for still occupies the
+    upstream connection until the upstream answers it."""
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 1.0)
+    names = [f"r{i}.{zone.format(i=i)}" for i in range(doh_upstream.MAX_IN_FLIGHT + 16)]
+    held = await _ask_many(names)
+    waiting = [n for n in names if n not in holding_upstream.posted]
+    assert waiting  # the slots are full
+    holding_upstream.release_one()
+    await asyncio.sleep(0.01)
+    assert holding_upstream.posted[-1] == waiting[-1]
+    await asyncio.gather(*held)
+
+
 def test_default_upstreams_are_cloudflare_only_as_the_privacy_policy_says():
     """§11 of the public privacy policy names Cloudflare for names we don't
     block; Quad9 is added through DOH_UPSTREAMS once the policy says so."""
