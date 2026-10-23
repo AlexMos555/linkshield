@@ -11,18 +11,20 @@
 //   * email: senders mail their daily TLS reports to tls-reports@cleanway.ai
 //     and an Email Routing rule hands them to this Worker. It adds up
 //     successful and failed sessions per policy into one summary per UTC day
-//     (the day the mail arrived), all 30 days in one KV key, and when a report
-//     counts failed sessions it mails the founder. Anyone can mail that
-//     address, so: a report is deduplicated by its bytes, not by labels a
-//     forger can copy; junk and reports have separate daily budgets; the
-//     alert goes once a day per known reporter (Google, Microsoft), plus once
-//     for everyone else together; and it repeats only values from closed sets,
-//     never the sender's words. The report itself is never forwarded or
-//     stored (no IPs, no contact addresses). A mail it cannot read is counted
-//     as an error and dropped, never thrown — a thrown error would make the
-//     sender retry.
-//   * GET / on workers.dev: the policy in force and the last 30 summaries, in
-//     one KV read.
+//     (the day the mail arrived), and when a report counts failed sessions it
+//     mails the founder. Anyone can mail that address, so everything is kept
+//     apart by trust: Google and Microsoft (vouched for by DMARC, see
+//     KNOWN_REPORTERS) each have a KV key, counts, budgets, dedup list and
+//     daily alert of their own, and everyone else shares an "unverified" one.
+//     Forged mail can skew only the unverified counts. A report is
+//     deduplicated by its bytes, not by labels a forger can copy; junk and
+//     reports have separate daily budgets; and the alert repeats only values
+//     from closed sets, never the sender's words. The report itself is never
+//     forwarded or stored (no IPs, no contact addresses). A mail it cannot
+//     read is counted as an error and dropped, never thrown — a thrown error
+//     would make the sender retry.
+//   * GET / on workers.dev: the policy in force and the last 30 summaries,
+//     verified and unverified apart, in one KV read per key.
 //
 // Deploy: see ops/mail-security-worker/README.md.
 
@@ -38,27 +40,40 @@ const MAX_AGE_S = { testing: 86_400, enforce: 604_800, none: 86_400 };
 const DOMAIN = "cleanway.ai";
 const FROM = "alerts@cleanway.ai";
 const SUMMARY_URL = "https://cleanway-mail-security.amoskotin.workers.dev/";
-// Every day's summary sits in this one key, so the public page costs one KV
-// read: the free plan's 100,000 reads a day are the whole account's, and the
-// uptime monitor reads every minute.
-const KEY = "summary";
+// Reporters by the exact domain of the header From. These publish DMARC
+// p=reject, and Email Routing rejects mail that fails the From domain's DMARC
+// policy, so a report From them is theirs. Not their subdomains: one can
+// publish a weaker _dmarc record of its own. Real reports come From
+// noreply-smtp-tls-reporting@google.com and tlsrpt-noreply@microsoft.com.
+const KNOWN_REPORTERS = ["google.com", "microsoft.com"];
+const UNVERIFIED = "unverified"; // everyone else, forged or not
+const GROUPS = [...KNOWN_REPORTERS, UNVERIFIED];
+// One KV key per group, so forged mail never writes where Google's counts are
+// (KV allows one write a second to a key and has no atomic update). The
+// public page costs one read per key: the free plan's 100,000 reads a day are
+// the whole account's, and the uptime monitor reads every minute.
+const KEY_PREFIX = "summary:";
 const SHOW_DAYS = 30;
 const DAY_MS = 86_400_000;
 // KV writes are 1,000 a day for the whole account on the free plan, shared
-// with the uptime monitor (~150). Real senders mail a handful of reports a
-// day; these caps hold forged mail to about 130 writes a day.
-const MAX_REPORTS_PER_DAY = 100;
-const MAX_ERRORS_PER_DAY = 20; // junk mail has its own budget and cannot use up the reports'
-const MAX_ALERT_TRIES = 5; // sends attempted a day, failed ones included
-// Reporters by the domain of the header From. These publish DMARC p=reject,
-// and Email Routing rejects mail that fails the From domain's DMARC policy,
-// so a report From them is theirs. Each has an alert a day of its own; all
-// other reporters share one, so forgers cannot silence these.
-const KNOWN_REPORTERS = ["google.com", "microsoft.com"];
-// A report mail is a few KB. Both limits keep one mail well inside the free
-// plan's 10 ms of CPU: gunzip stops at MAX_JSON_BYTES (a gzip bomb).
+// with the uptime monitor (~150). A known reporter mails one or two reports a
+// day; anyone can mail as an unverified one. These caps hold all of it to
+// about 190 writes a day, and forged mail cannot use up a known reporter's.
+const BUDGET = {
+  known: { reports: 20, errors: 5 },
+  unverified: { reports: 100, errors: 20 }, // junk has its own budget and cannot use up the reports'
+};
+const MAX_ALERT_TRIES = 5; // sends a day per group, retries and failed ones included
+const SENDS_PER_CLAIM = 2; // a send, and one retry in the same delivery
+const RETRY_MS = 1_100; // past KV's one write a second to a key
+// A report mail is a few KB. These limits keep one mail well inside the free
+// plan's 10 ms of CPU: at most MAX_PARTS MIME parts are looked at, multipart
+// ones included, and all of a mail's gzip parts together inflate to at most
+// MAX_JSON_BYTES (a gzip bomb stops there, and so does the reading).
 const MAX_RAW_BYTES = 256 * 1024;
 const MAX_JSON_BYTES = 256 * 1024;
+const MAX_PARTS = 30;
+const MAX_LEAVES = 10;
 const MAX_NAMES = 20; // per list in a day summary; the rest is counted as "other"
 const REPORT_TYPES = ["application/tlsrpt+gzip", "application/tlsrpt+json"];
 // RFC 8460 §4.3 and §4.4: the only values a summary or an alert repeats.
@@ -98,21 +113,20 @@ function text(body, status, method) {
 
 class Unreadable extends Error {} // its message is the error kind counted in the summary
 
-// atob and quoted-printable give one char per byte.
-function bytesOf(binary) {
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-  return out;
-}
+// Only the headers the reading uses, each the first of its name: a regex
+// over the whole block, not a loop over every line of a huge one.
+const PART_HEADERS = {
+  "content-type": /^[ \t]*content-type[ \t]*:(.*)$/im,
+  "content-transfer-encoding": /^[ \t]*content-transfer-encoding[ \t]*:(.*)$/im,
+};
 
 function entity(s) {
   const m = /^\r?\n|\r?\n\r?\n/.exec(s);
+  const head = (m ? s.slice(0, m.index) : s).replace(/\r?\n[ \t]+/g, " ");
   const headers = new Map();
-  const head = m ? s.slice(0, m.index) : s;
-  for (const line of head.replace(/\r?\n[ \t]+/g, " ").split(/\r?\n/)) {
-    const i = line.indexOf(":");
-    const name = line.slice(0, i).trim().toLowerCase();
-    if (i > 0 && !headers.has(name)) headers.set(name, line.slice(i + 1).trim());
+  for (const [name, re] of Object.entries(PART_HEADERS)) {
+    const h = re.exec(head);
+    if (h) headers.set(name, h[1].trim());
   }
   return { headers, body: m ? s.slice(m.index + m[0].length) : "" };
 }
@@ -122,7 +136,11 @@ function boundaryOf(contentType) {
   return m ? m[1] || m[2] : "";
 }
 
-function leaves(e, depth = 0, out = []) {
+// The non-multipart parts, depth first. `budget.parts` counts every part
+// looked at, so empty multipart parts cannot make the work unbounded.
+function leaves(e, budget, depth = 0, out = []) {
+  if (budget.parts <= 0) return out;
+  budget.parts--;
   const ct = e.headers.get("content-type") || "text/plain";
   const type = ct.split(";")[0].trim().toLowerCase();
   if (!type.startsWith("multipart/")) {
@@ -132,30 +150,77 @@ function leaves(e, depth = 0, out = []) {
   const boundary = boundaryOf(ct);
   if (!boundary || depth >= 4) return out;
   const delimiter = new RegExp(`(?:^|\\r?\\n)--${boundary.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
-  for (const piece of e.body.split(delimiter).slice(1)) {
-    if (piece.startsWith("--") || out.length >= 10) break; // the close delimiter
-    leaves(entity(piece.replace(/^[ \t]*\r?\n/, "")), depth + 1, out);
+  for (const piece of e.body.split(delimiter, budget.parts + 1).slice(1)) {
+    if (piece.startsWith("--") || out.length >= MAX_LEAVES || budget.parts <= 0) break; // the close delimiter
+    leaves(entity(piece.replace(/^[ \t]*\r?\n/, "")), budget, depth + 1, out);
   }
   return out;
 }
 
-function decode(e) {
-  const cte = (e.headers.get("content-transfer-encoding") || "").trim().toLowerCase();
-  if (cte === "base64") {
-    try {
-      return bytesOf(atob(e.body.replace(/[^A-Za-z0-9+/]/g, "")));
-    } catch {
-      throw new Unreadable("bad base64");
+const B64 = new Int8Array(128).fill(-1);
+for (const [i, ch] of [..."ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"].entries()) B64[ch.charCodeAt(0)] = i;
+
+// Base64 straight to bytes in one pass, skipping anything outside the
+// alphabet (line breaks, padding) as atob does once those are stripped; a
+// regex strip of a junk-filled body costs ~4 ms of CPU.
+function base64Bytes(s) {
+  const out = new Uint8Array(Math.ceil((s.length * 3) / 4));
+  let n = 0;
+  let acc = 0;
+  let bits = 0;
+  let count = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    const v = c < 128 ? B64[c] : -1;
+    if (v < 0) continue;
+    count++;
+    acc = ((acc << 6) | v) & 0xfff;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out[n++] = (acc >> bits) & 0xff;
     }
   }
-  if (cte === "quoted-printable") {
-    const s = e.body.replace(/=\r?\n/g, "").replace(/=([0-9A-Fa-f]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
-    return bytesOf(s);
+  if (count % 4 === 1) throw new Unreadable("bad base64");
+  return out.subarray(0, n);
+}
+
+const hexValue = (c) => (c >= 48 && c <= 57 ? c - 48 : (c | 32) >= 97 && (c | 32) <= 102 ? (c | 32) - 87 : -1);
+
+// Quoted-printable straight to bytes, without a callback per "=XX" (that
+// costs ~20 ms of CPU on a 256 KB mail). Soft line breaks go first, so an
+// "=XX" split by one still decodes; anything not "=" + two hex digits is kept.
+function qpBytes(body) {
+  const s = body.replace(/=\r?\n/g, "");
+  const out = new Uint8Array(s.length);
+  let n = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c === 61) {
+      const hi = hexValue(s.charCodeAt(i + 1));
+      const lo = hexValue(s.charCodeAt(i + 2));
+      if (hi >= 0 && lo >= 0) {
+        out[n++] = hi * 16 + lo;
+        i += 2;
+        continue;
+      }
+    }
+    out[n++] = c;
   }
+  return out.subarray(0, n);
+}
+
+function decode(e) {
+  const cte = (e.headers.get("content-transfer-encoding") || "").trim().toLowerCase();
+  if (cte === "base64") return base64Bytes(e.body);
+  if (cte === "quoted-printable") return qpBytes(e.body);
   return new TextEncoder().encode(e.body); // 7bit / 8bit: the JSON as text
 }
 
-async function gunzip(bytes) {
+class TooLarge extends Unreadable {}
+
+// `budget.inflated` is what is left of MAX_JSON_BYTES for the whole mail.
+async function gunzip(bytes, budget) {
   const reader = new Response(bytes).body.pipeThrough(new DecompressionStream("gzip")).getReader();
   const chunks = [];
   let size = 0;
@@ -164,7 +229,8 @@ async function gunzip(bytes) {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.length;
-      if (size > MAX_JSON_BYTES) throw new Unreadable("report too large");
+      budget.inflated -= value.length;
+      if (budget.inflated < 0) throw new TooLarge("report too large");
       chunks.push(value);
     }
   } catch (err) {
@@ -249,11 +315,11 @@ function parseReport(j) {
   };
 }
 
-async function readPart(leaf) {
+async function readPart(leaf, budget) {
   let bytes = decode(leaf.e);
   // By content, not label: some senders call it octet-stream. Not zipped, it
   // is at most MAX_RAW_BYTES.
-  if (bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = await gunzip(bytes);
+  if (bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = await gunzip(bytes, budget);
   let json;
   try {
     json = JSON.parse(new TextDecoder().decode(bytes));
@@ -271,7 +337,8 @@ async function readReport(message) {
   if (raw.length > MAX_RAW_BYTES) throw new Unreadable("mail too large");
   // Mail on the wire is text (SMTP has no binary parts without BINARYMIME):
   // the report is base64 (gzip) or the JSON as 7bit / 8bit UTF-8.
-  const all = leaves(entity(new TextDecoder().decode(raw)));
+  const budget = { parts: MAX_PARTS, inflated: MAX_JSON_BYTES };
+  const all = leaves(entity(new TextDecoder().decode(raw)), budget);
   const candidates = [
     ...all.filter((l) => REPORT_TYPES.includes(l.type)),
     ...all.filter((l) => !REPORT_TYPES.includes(l.type) && !l.type.startsWith("text/")),
@@ -279,9 +346,10 @@ async function readReport(message) {
   let first = null;
   for (const leaf of candidates) {
     try {
-      return await readPart(leaf);
+      return await readPart(leaf, budget);
     } catch (err) {
       first = first || err;
+      if (err instanceof TooLarge) break; // the mail's inflate budget is spent
     }
   }
   throw first || new Unreadable("no report in the mail");
@@ -299,16 +367,20 @@ function reporterOf(message) {
   return m && m[1].length <= 100 ? m[1].toLowerCase() : "unknown";
 }
 
-// Whose daily alert a report would use: a known reporter's own, or "other".
-const alertKeyOf = (reporter) => KNOWN_REPORTERS.find((k) => reporter === k || reporter.endsWith(`.${k}`)) || "other";
+// Whose counts, budgets and daily alert a mail uses: a known reporter's own
+// (an exact match), or the unverified group's.
+const groupOf = (reporter) => (KNOWN_REPORTERS.includes(reporter) ? reporter : UNVERIFIED);
 
 // ── the daily summary ──
 
-function emptyDay(day) {
+// One group's day. `reporters` only for the unverified group: a known
+// reporter's entry is that reporter alone.
+function emptyDay(day, group) {
   return {
-    day, reports: 0, successful: 0, failed: 0, policies: {}, failures: {}, reporters: {}, covers: [],
-    errors: 0, error_kinds: {}, errors_capped: false, capped: false,
-    alerts: {}, alert_tries: 0, alert_error: null, ids: [],
+    day, reports: 0, successful: 0, failed: 0, policies: {}, failures: {},
+    ...(group === UNVERIFIED && { reporters: {} }),
+    covers: [], capped: false, errors: 0, error_kinds: {}, errors_capped: false,
+    alert: null, alert_tries: 0, alert_error: null, ids: [],
   };
 }
 
@@ -326,10 +398,10 @@ function readBook(raw) {
   return { days: [] };
 }
 
-function dayIn(book, day) {
+function dayIn(book, day, group) {
   const i = book.days.findIndex((d) => d.day === day);
-  if (i < 0) book.days.unshift(emptyDay(day));
-  else book.days[i] = { ...emptyDay(day), ...book.days[i] };
+  if (i < 0) book.days.unshift(emptyDay(day, group));
+  else book.days[i] = { ...emptyDay(day, group), ...book.days[i] };
   return book.days[Math.max(i, 0)];
 }
 
@@ -347,7 +419,7 @@ function bump(map, name, n) {
 
 function addReport(s, r, reporter) {
   s.reports++;
-  bump(s.reporters, reporter, 1);
+  if (s.reporters) bump(s.reporters, reporter, 1);
   const covered = r.from.slice(0, 10);
   if (/^\d{4}-\d{2}-\d{2}$/.test(covered) && !s.covers.includes(covered) && s.covers.length < 10) s.covers.push(covered);
   for (const p of r.policies) {
@@ -398,7 +470,8 @@ function alertBody(r, reporter, known, mode, stamp) {
     ? [`Отчёт TLS-RPT от ${reporter}${r.org ? ` (в отчёте назван «${r.org}»)` : ""}${range}, получен ${stamp}.`, ""]
     : [
         `Отчёт TLS-RPT от отправителя не из списка известных (KNOWN_REPORTERS в worker.js)${range}, получен ${stamp}.`,
-        "На tls-reports@cleanway.ai может написать кто угодно: это может быть подделка. Его адрес — в сводке, поле reporters.",
+        "На tls-reports@cleanway.ai может написать кто угодно: это может быть подделка. Его адрес — в сводке: unverified → reporters.",
+        "Такие отчёты считаются отдельно от Google и Microsoft и сами по себе не повод откатывать MTA-STS.",
         "",
       ];
   for (const p of r.policies.slice(0, ALERT_POLICIES)) {
@@ -426,8 +499,14 @@ function alertBody(r, reporter, known, mode, stamp) {
 
 // ── handlers ──
 
+// The Workers runtime has scheduler.wait; setTimeout elsewhere.
+const pause = (ms) =>
+  globalThis.scheduler && typeof globalThis.scheduler.wait === "function"
+    ? globalThis.scheduler.wait(ms)
+    : new Promise((done) => setTimeout(done, ms));
+
 // Keeps the last SHOW_DAYS days; only today's needs its report digests.
-async function save(env, book, now) {
+async function save(env, group, book, now) {
   const today = new Date(now).toISOString().slice(0, 10);
   const oldest = oldestShown(now);
   const days = book.days
@@ -435,69 +514,121 @@ async function save(env, book, now) {
     .sort((a, b) => (a.day < b.day ? 1 : -1))
     .slice(0, SHOW_DAYS)
     .map((d) => (d.day === today ? d : withoutIds(d)));
-  await env.STATE.put(KEY, JSON.stringify({ days }), { expirationTtl: (SHOW_DAYS + 1) * 86_400 });
+  await env.STATE.put(KEY_PREFIX + group, JSON.stringify({ days }), { expirationTtl: (SHOW_DAYS + 1) * 86_400 });
+}
+
+// Reads one group's book, lets `change` edit today's entry (false: nothing to
+// write) and writes it back. A write that fails (KV allows one a second to a
+// key) is redone once, RETRY_MS later, on a fresh read: this mail is not lost
+// and the mail that got in first is not overwritten. A second failure throws.
+async function update(env, group, now, change) {
+  for (let attempt = 1; ; attempt++) {
+    const book = readBook(await env.STATE.get(KEY_PREFIX + group));
+    if (!change(dayIn(book, new Date(now).toISOString().slice(0, 10), group))) return false;
+    try {
+      await save(env, group, book, now);
+      return true;
+    } catch (err) {
+      if (attempt >= 2) throw err;
+      await pause(RETRY_MS);
+    }
+  }
 }
 
 // KV has no atomic update and its reads can be up to 60 s stale elsewhere, so
-// under concurrent delivery the daily caps are best effort.
+// under concurrent delivery within one group the daily caps are best effort.
 async function receive(message, env, now) {
   const stamp = new Date(now).toISOString();
-  const book = readBook(await env.STATE.get(KEY));
-  const s = dayIn(book, stamp.slice(0, 10));
+  const reporter = reporterOf(message);
+  const group = groupOf(reporter);
+  const budget = BUDGET[group === UNVERIFIED ? "unverified" : "known"];
   let got;
   try {
     got = await readReport(message);
   } catch (err) {
-    if (s.errors >= MAX_ERRORS_PER_DAY) {
-      if (s.errors_capped) return;
+    const kind = err instanceof Unreadable ? err.message : "unreadable";
+    await update(env, group, now, (s) => {
+      if (s.errors < budget.errors) {
+        s.errors++;
+        bump(s.error_kinds, kind, 1);
+        return true;
+      }
+      if (s.errors_capped) return false;
       s.errors_capped = true;
-    } else {
-      s.errors++;
-      bump(s.error_kinds, err instanceof Unreadable ? err.message : "unreadable", 1);
-    }
-    return save(env, book, now);
+      return true;
+    });
+    return;
   }
   const { report: r, digest } = got;
-  if (s.ids.includes(digest)) return; // the same report again: counted once
-  const reporter = reporterOf(message);
-  let changed = true;
-  if (s.reports < MAX_REPORTS_PER_DAY) {
-    s.ids.push(digest);
-    addReport(s, r, reporter);
-  } else if (!s.capped) {
-    s.capped = true;
-  } else {
-    changed = false; // capped: no longer counted, but it may still owe an alert
-  }
   const failed = r.policies.reduce((n, p) => n + p.failed, 0);
-  const alertKey = alertKeyOf(reporter);
-  const owed = failed > 0 && !Object.hasOwn(s.alerts, alertKey) && s.alert_tries < MAX_ALERT_TRIES;
-  if (!changed && !owed) return;
-  if (owed) {
-    s.alerts[alertKey] = stamp;
-    s.alert_tries++;
+  let sends = 0;
+  const written = await update(env, group, now, (s) => {
+    if (s.ids.includes(digest)) return false; // the same report again: counted once
+    let changed = true;
+    if (s.reports < budget.reports) {
+      s.ids.push(digest);
+      addReport(s, r, reporter);
+    } else if (!s.capped) {
+      s.capped = true;
+    } else {
+      changed = false; // capped: no longer counted, but it may still owe an alert
+    }
+    // Claimed before it is sent, with the sends it may use: if this write
+    // fails, nothing is sent (the error is logged).
+    sends = failed > 0 && !s.alert ? Math.min(SENDS_PER_CLAIM, MAX_ALERT_TRIES - s.alert_tries) : 0;
+    if (sends > 0) {
+      s.alert = stamp;
+      s.alert_tries += sends;
+    }
+    return changed || sends > 0;
+  });
+  if (!written || sends <= 0) return;
+  const known = group !== UNVERIFIED;
+  const subject = `Cleanway: сбои TLS при доставке почты на cleanway.ai (${failed}${known ? "" : ", отправитель не проверен"})`;
+  const body = alertBody(r, reporter, known, stsMode(env), stamp);
+  let error;
+  for (let i = 0; i < sends; i++) {
+    if (i > 0) await pause(RETRY_MS);
+    try {
+      await notify(env, subject, body);
+      return;
+    } catch (err) {
+      error = err;
+    }
   }
-  // Claimed before it is sent: if this write fails, nothing is sent (the
-  // error is logged) and the next failing report tries again.
-  await save(env, book, now);
-  if (!owed) return;
-  try {
-    const body = alertBody(r, reporter, alertKey !== "other", stsMode(env), stamp);
-    await notify(env, `Cleanway: сбои TLS при доставке почты на cleanway.ai (${failed})`, body);
-  } catch (err) {
-    delete s.alerts[alertKey]; // the next failing report under that key retries
-    s.alert_error = { at: stamp, error: String((err && err.message) || err).slice(0, 300) };
-    await save(env, book, now);
-  }
+  // None went out: the claim is undone, and the next failing report of that
+  // group tries again while the day's sends last.
+  await update(env, group, now, (s) => {
+    if (s.alert === stamp) s.alert = null;
+    s.alert_error = { at: stamp, error: String((error && error.message) || error).slice(0, 300) };
+    return true;
+  });
 }
 
+// Each day: the known reporters that mailed that day under `verified`, and
+// everyone else under `unverified` (zeros when nobody did). Never added up.
 async function summaries(env, now) {
   const mode = stsMode(env);
   const oldest = oldestShown(now);
-  const { days } = readBook(await env.STATE.get(KEY));
+  const books = await Promise.all(GROUPS.map(async (g) => [g, readBook(await env.STATE.get(KEY_PREFIX + g))]));
+  const byDay = new Map();
+  const entry = (day) => byDay.get(day) || byDay.set(day, { day, verified: {}, unverified: null }).get(day);
+  for (const [group, { days }] of books) {
+    for (const d of days.filter((x) => x.day >= oldest)) {
+      const { day: _day, ...counts } = withoutIds({ ...emptyDay(d.day, group), ...d });
+      if (group === UNVERIFIED) entry(d.day).unverified = counts;
+      else entry(d.day).verified[group] = counts;
+    }
+  }
+  const none = (day) => {
+    const { day: _day, ...counts } = withoutIds(emptyDay(day, UNVERIFIED));
+    return counts;
+  };
   return {
     policy: { mode, max_age: MAX_AGE_S[mode], mx: MX_HOSTS },
-    days: days.filter((d) => d.day >= oldest).map(withoutIds),
+    days: [...byDay.values()]
+      .sort((a, b) => (a.day < b.day ? 1 : -1))
+      .map((e) => ({ ...e, unverified: e.unverified || none(e.day) })),
   };
 }
 
