@@ -99,13 +99,17 @@ takes an optional captcha token, the sign-in screen fetches one when
 variable unset — today — the flow is byte-identical to before: no captcha, no
 browser hop, no extra request, the same OTP body on the wire.
 
-**Status (2026-10, app 1.0.5):** the challenge page (`landing/app/auth/captcha`)
+**Status (2026-10, app 1.0.6):** the challenge page (`landing/app/auth/captcha`)
 and the web token (`SignupForm.tsx` → `options.captchaToken`) are done; from
 1.0.5 store builds carry `EXPO_PUBLIC_CAPTCHA_URL` and solve the captcha ON
 DEMAND (only after a `captcha_failed` answer), so shipping it changes nothing
-until the switch is flipped. Left for the founder: a real Turnstile sitekey on
-Vercel, then — after 1.0.5 adoption — the Supabase switch. Exact order and
-checks: [docs/MOBILE_AUTH.md → "Auth hardening"](MOBILE_AUTH.md). **Enable it
+until the switch is flipped. The builds that count are 1.0.6: on Android
+1.0.6 (107) is the first published build that can solve the captcha (1.0.5 was
+never published there), and on iPhone 1.0.6 (build 5) is the first that opens
+it in an in-app sheet — 1.0.5 build 4 still switches to Safari. Left for the
+founder: a real Turnstile sitekey on Vercel, then — after 1.0.6 adoption — the
+Supabase switch. Exact order and checks:
+[docs/MOBILE_AUTH.md → "Auth hardening"](MOBILE_AUTH.md). **Enable it
 LAST** — the toggle is project-wide and locks out every older install at once.
 
 ---
