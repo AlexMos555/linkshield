@@ -3653,7 +3653,6 @@
       "flagged_header": "Sinalizados esta semana",
       "flagged_note": "Estes voltaram como perigosos, ou merecem uma segunda olhada.",
       "times": "{{count}} verificação",
-      "times_plural": "{{count}} verificações",
       "times_one": "{{count}} verificação",
       "times_other": "{{count}} verificações",
       "clean_title": "Nada sinalizado esta semana",

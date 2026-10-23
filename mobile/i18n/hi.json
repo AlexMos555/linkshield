@@ -1630,7 +1630,6 @@
   "mobile.report.flagged_header": "इस हफ़्ते पकड़े गए",
   "mobile.report.flagged_note": "ये जाँच में ख़तरनाक निकले, या इन पर दोबारा नज़र डालना ठीक रहेगा।",
   "mobile.report.times": "{{count}} बार जाँचा गया",
-  "mobile.report.times_plural": "{{count}} जाँचें",
   "mobile.report.times_one": "{{count}} जाँच",
   "mobile.report.times_other": "{{count}} जाँचें",
   "mobile.report.clean_title": "इस हफ़्ते कुछ भी संदिग्ध नहीं मिला",

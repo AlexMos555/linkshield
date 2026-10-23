@@ -3593,7 +3593,6 @@
       "flagged_header": "Señalados esta semana",
       "flagged_note": "Estos resultaron peligrosos o merecen una segunda mirada.",
       "times": "{{count}} revisión",
-      "times_plural": "{{count}} revisiones",
       "times_one": "{{count}} revisión",
       "times_other": "{{count}} revisiones",
       "clean_title": "Nada señalado esta semana",

@@ -1630,7 +1630,6 @@
   "mobile.report.flagged_header": "Ditandai minggu ini",
   "mobile.report.flagged_note": "Yang ini hasilnya berbahaya, atau perlu dilihat lagi lebih teliti.",
   "mobile.report.times": "Dicek {{count}} kali",
-  "mobile.report.times_plural": "Dicek {{count}} kali",
   "mobile.report.times_one": "Dicek {{count}} kali",
   "mobile.report.times_other": "Dicek {{count}} kali",
   "mobile.report.clean_title": "Tidak ada yang ditandai minggu ini",

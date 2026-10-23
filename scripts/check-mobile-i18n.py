@@ -15,15 +15,22 @@ Three invariants, each of which has been violated for real:
 
 3. USED KEYS EXIST — every `t("mobile.…")` string literal referenced in
    mobile/app or mobile/src resolves in the generated en.json, accounting
-   for i18next plural suffixes (base key present is sufficient — the app
-   pins compatibilityJSON v3, so an unresolved plural suffix falls back to
-   the base key).
+   for i18next plural suffixes (base key present is sufficient — i18next
+   tries the v4 suffix the locale's plural rule picks, _one/_few/_other…,
+   and falls back to the base key when that variant is absent).
 
 4. NO LINKS, NO PHONE NUMBERS IN OUR OWN NOTIFICATIONS — the
    `mobile.android_native.*` strings are what the service posts (block
    alerts, the after-call notice). A link or a number in a notification is
    exactly what a scam notification looks like, and the person must never
    learn to tap one of ours; the site name stays plain text.
+
+5. PLURAL VARIANTS ARE TRANSLATIONS — a `<base>_one` / `_other` / `_few`…
+   key (one whose base key exists) is what i18next renders once `count` is
+   passed, so it must hold the string itself, not a note to the translator
+   (ar `mobile.report.times_one` shipped as "times_one: «…» (and optionally
+   add _two …)"). And no v3 `<base>_plural` keys: i18next 24+ never reads
+   them, so they only mislead the next translator.
 
 Dynamic template-literal keys (`mobile.result.verdict_${level}`) cannot be
 checked statically and are intentionally out of scope here.
@@ -41,6 +48,10 @@ KEY_REF = re.compile(r'["`](mobile\.[a-z0-9_.]+)["`]')
 NATIVE_PREFIX = "mobile.android_native."
 LINK = re.compile(r"https?://|www\.|tel:", re.IGNORECASE)
 PHONE = re.compile(r"\+?\d[\d\s\-()]{6,}\d")
+PLURAL_SUFFIXES = ("zero", "one", "two", "few", "many", "other")
+# A translator note names the plural variants it talks about ("_two «…»",
+# "keep _other as …") or opens with the key it belongs to ("times_one: …").
+PLURAL_NOTE = re.compile(r"(?<![A-Za-z0-9])_(?:zero|one|two|few|many|other|plural)\b")
 
 failures = []
 
@@ -55,6 +66,16 @@ if "en" not in locales:
     sys.exit(1)
 
 en = locales["en"]
+
+# `<base>_<category>` keys whose base exists are plural variants; a key that
+# merely ends in _one/_other (call_close_one, source_other) has no base.
+plural_variants = [
+    k for k in en
+    if k.rsplit("_", 1)[-1] in PLURAL_SUFFIXES and k.rsplit("_", 1)[0] in en
+]
+dead_v3_plurals = sorted(k for k in en if k.endswith("_plural") and k[: -len("_plural")] in en)
+if dead_v3_plurals:
+    failures.append(f"v3 _plural keys i18next no longer reads: {dead_v3_plurals}")
 
 for code, flat in sorted(locales.items()):
     missing = sorted(set(en) - set(flat))
@@ -77,6 +98,13 @@ for code, flat in sorted(locales.items()):
     ]
     if tappable:
         failures.append(f"{code}: notification strings carry a link or a phone number {tappable[:5]}")
+    noted = [
+        k for k in plural_variants
+        if PLURAL_NOTE.search(str(flat[k]))
+        or str(flat[k]).startswith(k.rsplit(".", 1)[-1] + ":")
+    ]
+    if noted:
+        failures.append(f"{code}: plural variants hold a translator note, not a string {noted[:5]}")
 
 used = set()
 for pattern in ("mobile/app/**/*.tsx", "mobile/src/**/*.ts", "mobile/src/**/*.tsx"):

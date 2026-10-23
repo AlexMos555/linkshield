@@ -3653,7 +3653,6 @@
       "flagged_header": "Signalés cette semaine",
       "flagged_note": "Ces liens sont ressortis dangereux, ou méritent un second regard.",
       "times": "{{count}} vérification",
-      "times_plural": "{{count}} vérifications",
       "times_one": "{{count}} vérification",
       "times_other": "{{count}} vérifications",
       "clean_title": "Rien à signaler cette semaine",

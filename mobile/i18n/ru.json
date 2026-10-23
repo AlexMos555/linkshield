@@ -1630,7 +1630,6 @@
   "mobile.report.flagged_header": "Отмечено на этой неделе",
   "mobile.report.flagged_note": "Эти ссылки оказались опасными — или к ним стоит присмотреться ещё раз.",
   "mobile.report.times": "Проверок: {{count}}",
-  "mobile.report.times_plural": "Проверок: {{count}}",
   "mobile.report.times_one": "Проверок: {{count}}",
   "mobile.report.times_other": "Проверок: {{count}}",
   "mobile.report.clean_title": "На этой неделе ничего не отмечено",

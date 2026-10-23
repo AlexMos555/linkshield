@@ -3653,7 +3653,6 @@
       "flagged_header": "Diese Woche auffällig",
       "flagged_note": "Diese kamen als gefährlich zurück – oder sind einen zweiten Blick wert.",
       "times": "{{count}} Prüfung",
-      "times_plural": "{{count}} Prüfungen",
       "times_one": "{{count}} Prüfung",
       "times_other": "{{count}} Prüfungen",
       "clean_title": "Diese Woche nichts Auffälliges",

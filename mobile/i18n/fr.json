@@ -1630,7 +1630,6 @@
   "mobile.report.flagged_header": "Signalés cette semaine",
   "mobile.report.flagged_note": "Ces liens sont ressortis dangereux, ou méritent un second regard.",
   "mobile.report.times": "{{count}} vérification",
-  "mobile.report.times_plural": "{{count}} vérifications",
   "mobile.report.times_one": "{{count}} vérification",
   "mobile.report.times_other": "{{count}} vérifications",
   "mobile.report.clean_title": "Rien à signaler cette semaine",
