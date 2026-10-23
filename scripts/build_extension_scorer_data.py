@@ -301,10 +301,9 @@ def attribution_comment() -> str:
     names (data/public_suffixes_in_top.json), adapted from the Majestic
     Million (CC BY 3.0) and the Chrome UX Report (CC BY 4.0): their notice."""
     sys.path.insert(0, str(ROOT / "scripts"))
-    from build_top_domains import attribution_lines
+    from ranking_attribution import attribution_lines
 
-    record = json.loads((ROOT / "data" / "top_domains_sources.json").read_text(encoding="utf-8"))
-    return "//\n// hostingTenantSuffixes:\n" + "".join(f"// {line}\n" for line in attribution_lines(record))
+    return "//\n// hostingTenantSuffixes:\n" + "".join(f"// {line}\n" for line in attribution_lines())
 
 
 def render_data_js() -> str:

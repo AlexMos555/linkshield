@@ -79,7 +79,7 @@ def load_reported_popular(max_rank: int = VETO_RANK) -> set[str]:
 def attribution_header() -> str:
     """'# ' lines with the ranking's CC BY attribution (the phone skips '#' lines)."""
     sys.path.insert(0, str(ROOT / "scripts"))
-    from build_top_domains import attribution_lines
+    from ranking_attribution import attribution_lines
 
     return "".join(f"# {line}\n" for line in attribution_lines(json.loads(SOURCES.read_text())))
 

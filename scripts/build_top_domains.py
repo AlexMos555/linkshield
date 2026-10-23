@@ -134,6 +134,7 @@ for _p in (_ROOT, _SCRIPTS):
         sys.path.insert(0, _p)
 
 import build_public_suffixes_in_top as psl_in_top  # noqa: E402
+from ranking_attribution import attribution_lines  # noqa: E402,F401 — re-exported
 import refresh_training_feeds as feeds  # noqa: E402
 from api.services import hosting_platforms  # noqa: E402
 
@@ -190,19 +191,6 @@ LICENCES = {
 }
 
 
-def attribution_lines(record: dict) -> list[str]:
-    """The CC BY notice for anything shipped that is adapted from the ranking
-    (the phone's veto and suffix lists, the extensions' tenant suffixes):
-    who made each list, its licence and where to read it, and what was
-    changed — read from data/top_domains_sources.json, so it says what the
-    shipped copy was built from."""
-    out = ["Contains data adapted from:"]
-    for key in ("majestic_million", "crux"):
-        src = record["sources"][key]
-        out.append(f"  {src['attribution']} ({src['licence_url']})")
-    out.append(f"Changes made: {record['method']}")
-    out.append("Details: docs/THIRD_PARTY_FEEDS.md section 5, data/top_domains_sources.json.")
-    return out
 CHANGES = (
     "Hosts folded to registrable domains (best rank per list; public suffixes left out), hosting tenants "
     f"dropped, the CrUX rank taken as the better of the global bucket and Russia's bucket x {RU_FACTOR}, "
