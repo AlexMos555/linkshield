@@ -1008,6 +1008,13 @@ export interface paths {
         /**
          * Unsubscribe Confirm
          * @description Process unsubscribe. Supports both browser POST and RFC 8058 one-click.
+         *
+         *     The signed token is the whole authorisation:
+         *       - invalid or expired token → 400, nothing recorded, whatever the body;
+         *       - valid token → unsubscribed and 200 (never a redirect, RFC 8058 §3.1),
+         *         whatever the body — with `List-Unsubscribe=One-Click` (mail client),
+         *         without the field (the confirmation page's form), or with any other
+         *         value of it (logged).
          */
         post: operations["unsubscribe_confirm_api_v1_email_unsubscribe__token__post"];
         delete?: never;
@@ -1863,8 +1870,8 @@ export interface components {
         };
         /** Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post */
         Body_unsubscribe_confirm_api_v1_email_unsubscribe__token__post: {
-            /** List Unsubscribe */
-            List_Unsubscribe: string | null;
+            /** List-Unsubscribe */
+            "List-Unsubscribe": string | null;
         };
         /** BrandCreate */
         BrandCreate: {
