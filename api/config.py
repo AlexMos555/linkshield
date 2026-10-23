@@ -217,6 +217,35 @@ class Settings(BaseSettings):
     # and the app 6 s, so the verdict must be back well inside that.
     analysis_budget_seconds: float = 3.0
 
+    # Load shedding (api/services/load_shedding.py, docs/runbooks/capacity.md).
+    # Every limit is PER WORKER PROCESS (WEB_CONCURRENCY=2: twice per
+    # replica); 0 = no limit. Past a request-class limit a request gets an
+    # immediate 503 with Retry-After instead of queueing in memory — until
+    # then an overloaded worker held ~550 MB (once 917 MB of 1 GB) of requests
+    # whose clients had already timed out (measured 2026-10-22).
+    load_shed_enabled: bool = True
+    # Requests in flight per class; normal load is far below (~5-20 per
+    # worker). A full budget is also the longest queue an admitted request
+    # waits behind. DNS is the largest so queries waiting on a slow upstream
+    # (up to 4 s each) do not crowd out cache hits; lower it for a tighter
+    # worst case (local DoH flood, docs/runbooks/capacity.md: 256 → p95 0.9 s,
+    # 1024 → 2.5-3 s).
+    load_shed_dns_max_inflight: int = 1024
+    load_shed_health_max_inflight: int = 64
+    load_shed_api_max_inflight: int = 128
+    # Fresh analyses running at once (the full fan-out of /check and the fresh
+    # path of /public/check); past it /public/check answers 503 and /check
+    # analyses what fits, the rest marked checks_incomplete=["analysis"].
+    load_shed_fresh_analysis_max_inflight: int = 16
+    # Live LLM calls at once, for the judge and for the explainer each; past
+    # it the call is skipped (the verdict stands; the explainer's template).
+    load_shed_llm_max_inflight: int = 4
+    # Source calls and site probes of all analyses at once. They WAIT for a
+    # slot (inside the analysis budget); sized so that at the default fresh
+    # budget nothing ever waits (16 x 13 licensed checks = 208).
+    load_shed_outbound_max_inflight: int = 256
+    load_shed_retry_after_s: int = 2
+
     # Benchmark bypass token. When set (non-empty), a request carrying the
     # matching `X-Cleanway-Benchmark` header skips IP rate limiting on the
     # public endpoints. This exists solely so the weekly fresh-URL benchmark

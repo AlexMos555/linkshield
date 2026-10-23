@@ -11,7 +11,8 @@ ad-blocking, and per-user policy are intentionally NOT shipped
 — they belong to dns.cleanway.ai/families (a future #6 lane).
 
 Hot path (docs/runbooks/doh-gateway.md has the measurements):
-  DohFastPath (raw ASGI, outermost) → rate limit (in process) →
+  LoadShedding (its own in-flight budget) → DohFastPath (raw ASGI) →
+  rate limit (in process) →
   resolve(): in-process blocklist filter → response cache → upstreams
   (Cloudflare, Quad9; HTTP/2, hedged failover) → serve-stale → SERVFAIL.
 The FastAPI routes below stay for the OpenAPI contract and as the path
@@ -34,7 +35,7 @@ from typing import Awaitable, Callable, NamedTuple, Optional
 from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import Response as FastAPIResponse
 
-from api.services import doh_filter, doh_metrics
+from api.services import doh_filter, doh_metrics, load_shedding
 from api.services.doh_cache import ResponseCache
 from api.services.doh_gateway import (
     DOH_CONTENT_TYPE,
@@ -283,6 +284,9 @@ async def doh_health() -> Response:
         "http2": doh_upstream.HTTP2_AVAILABLE,
         "cache_entries": len(response_cache()),
         "stats": doh_metrics.METRICS.snapshot(),
+        # This worker's in-flight budgets: in_flight / limit / peak / shed
+        # (api/services/load_shedding.py).
+        "load_shed": load_shedding.snapshot(),
     }
     return JSONResponse(body, status_code=200 if body["ok"] else 503, headers={"Cache-Control": "no-store"})
 

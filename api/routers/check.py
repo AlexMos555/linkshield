@@ -25,7 +25,8 @@ from api.models.schemas import (
     RiskLevel,
     ConfidenceLevel,
 )
-from api.services.analyzer import analyze_domain
+from api.services.analyzer import analyze_domain, rule_only_result
+from api.services import load_shedding
 from api.services import verdict_basis as vb
 from api.services.cleanway_blocklist import listed_as
 # /check is the most expensive auth-required endpoint — fans out to
@@ -174,20 +175,28 @@ async def check_domains(
         else:
             needs_analysis.append(domain)
 
-    # ── Rate limit only for domains that need full analysis ──
-    if needs_analysis:
-        remaining = await check_rate_limit(user, num_domains=len(needs_analysis))
-    else:
-        remaining = None  # No API calls used
-
     # ── Step 3: Full analysis for unknown domains (parallel) ──
+    # One fresh-analysis slot per domain (api/services/load_shedding.py).
+    # None free: 503 before any quota is spent. Some: those are analysed, the
+    # rest get the verdict on the address alone, marked partial — not
+    # counted against the quota, not cached.
+    remaining = None  # No API calls used
     if needs_analysis:
-        analyses = await asyncio.gather(
-            *[analyze_domain(d) for d in needs_analysis],
-            return_exceptions=True,
-        )
+        granted = load_shedding.FRESH_ANALYSES.try_acquire(len(needs_analysis))
+        if not granted:
+            raise load_shedding.Overloaded(load_shedding.FRESH_ANALYSES.name)
+        analyse_now, deferred = needs_analysis[:granted], needs_analysis[granted:]
+        try:
+            # Rate limit only for domains that get a full analysis
+            remaining = await check_rate_limit(user, num_domains=len(analyse_now))
+            analyses = await asyncio.gather(
+                *[analyze_domain(d) for d in analyse_now],
+                return_exceptions=True,
+            )
+        finally:
+            load_shedding.FRESH_ANALYSES.release(granted)
 
-        for domain, result in zip(needs_analysis, analyses):
+        for domain, result in zip(analyse_now, analyses):
             if isinstance(result, Exception):
                 results[domain] = DomainResult(
                     domain=domain, score=25, level=RiskLevel.caution,
@@ -197,6 +206,8 @@ async def check_domains(
             else:
                 results[domain] = result
                 await cache_result(result)
+        for domain in deferred:
+            results[domain] = rule_only_result(domain)
 
     # Return in original order
     ordered = []

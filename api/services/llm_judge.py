@@ -34,7 +34,9 @@ Privacy invariants (load-bearing):
      user's wait. A live call still running then is NOT cancelled:
      it finishes in the background and fills the cache for the next
      domain with the same pattern (_live_opinion). Live calls are
-     capped per day for the whole service (paid_budget).
+     capped per day for the whole service (paid_budget), and at
+     LOAD_SHED_LLM_MAX_INFLIGHT at once per worker (load_shedding):
+     past that the judge is skipped, never queued.
 
   4. On any LLM failure (network, schema mismatch, rate-limit,
      SDK exception) we silently fall back to the rule-based
@@ -517,12 +519,21 @@ async def _live_opinion(
     task = _INFLIGHT.get(cache_key)
     if task is None:
         from api.config import get_settings
-        from api.services import paid_budget
+        from api.services import load_shedding, paid_budget
+        # A bounded number of live calls per worker; past it the verdict
+        # stands without the judge — checked before the day's paid budget is
+        # spent, and the slot taken after it (the await may have filled it).
+        # The slot is held until the call really ends, background part included.
+        if not load_shedding.LLM_JUDGE.admits():
+            return None
         if not await paid_budget.take("llm_judge", get_settings().llm_judge_daily_budget):
+            return None
+        if not load_shedding.LLM_JUDGE.try_acquire():
             return None
         task = asyncio.ensure_future(_ask_and_cache(cache_key, features, score, redis_client))
         _INFLIGHT[cache_key] = task
         task.add_done_callback(lambda t: _forget(cache_key, t))
+        task.add_done_callback(lambda t: load_shedding.LLM_JUDGE.release())
     # shield: cancelling THIS caller (the analysis deadline) must not cancel
     # the call itself.
     return await asyncio.shield(task)

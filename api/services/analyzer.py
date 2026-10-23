@@ -23,7 +23,9 @@ consulted: they leave the plan and the total, so an analysis is 13 checks of
 13, not 13 of 19. LICENSED_INTEL=all consults all 19.
 
 A check still running at the deadline is cancelled and named in
-`checks_incomplete`; the LLM judge only gets whatever budget is left.
+`checks_incomplete`; the LLM judge only gets whatever budget is left. Every
+check waits for the worker's outbound gate first (load_shedding.OUTBOUND), so
+the source calls open at once stay bounded however many analyses run.
 
 Privacy: only domain names processed — never full URLs or user data.
 """
@@ -38,7 +40,7 @@ from typing import Any, Optional
 import httpx
 
 from api.config import get_settings
-from api.services import licensed_intel, paid_budget, security_alerts
+from api.services import licensed_intel, load_shedding, paid_budget, security_alerts
 from api.services import verdict_basis as vb
 from api.services.analysis_budget import MIN_STEP_S, Deadline, run_within_budget
 from api.services.tls_contexts import client_tls_context
@@ -239,6 +241,23 @@ async def _judge(
     return result.model_copy(update={"verdict_basis": basis})
 
 
+def rule_only_result(domain: str, raw_url: str = "") -> DomainResult:
+    """The verdict on the address alone, no check run — what a caller gets
+    when the analysis failed or there was no capacity to run it. It says it
+    is partial (`checks_incomplete: ["analysis"]`), and is never cached."""
+    signals = {"domain": domain, "raw_url": raw_url or domain}
+    score, level, reasons = calculate_score(signals)
+    partial = DomainResult(
+        domain=domain,
+        score=score,
+        level=level,
+        confidence=ConfidenceLevel.low,
+        reasons=reasons + [vb.checks_incomplete_reason(["analysis"])],
+        checks_incomplete=["analysis"],
+    )
+    return partial.model_copy(update={"verdict_basis": vb.derive_verdict_basis(partial)})
+
+
 # ── Steps ──
 
 def _discard(task: "asyncio.Future[Any]") -> None:
@@ -313,10 +332,22 @@ def _check_calls(domain: str, probes_allowed: bool) -> dict[str, Any]:
         "redirect": (redirect_breaker, check_redirect_chain),
     }
     return {
-        name: breaker.call(fn if name in _SITE_PROBES else _within_source_timeout(fn), domain)
+        name: breaker.call(_through_outbound_gate(fn if name in _SITE_PROBES else _within_source_timeout(fn)), domain)
         for name, (breaker, fn) in plan.items()
         if (probes_allowed or name not in _SITE_PROBES) and name not in skipped
     }
+
+
+def _through_outbound_gate(fn: Any) -> Any:
+    """`fn` once the worker's outbound gate lets it run
+    (load_shedding.OUTBOUND): however many analyses are admitted, at most
+    that many source calls and site probes are open at once. The wait is
+    outside the source's own time limit, so a queue on OUR side is never a
+    failure its breaker counts; the analysis deadline still cancels it."""
+    async def _call(domain: str) -> Any:
+        async with load_shedding.OUTBOUND.slot():
+            return await fn(domain)
+    return _call
 
 
 def _within_source_timeout(fn: Any) -> Any:

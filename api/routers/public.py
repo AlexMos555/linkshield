@@ -18,8 +18,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.config import get_settings
-from api.models.schemas import ConfidenceLevel, DomainResult, RiskLevel
-from api.services import ml_scorer, public_stats
+from api.models.schemas import DomainResult, RiskLevel
+from api.services import load_shedding, ml_scorer, public_stats
 from api.services import verdict_basis as vb
 from api.services.cleanway_blocklist import listed_as
 from api.services.domain_validator import DomainValidationError, validate_domain
@@ -32,7 +32,7 @@ from api.services.rate_limiter import (
     install_key,
     ip_rate_key,
 )
-from api.services.scoring import calculate_confidence_pct, calculate_score, is_trusted_top_domain
+from api.services.scoring import calculate_confidence_pct, is_trusted_top_domain
 
 # Per-domain in-flight singleflight map. When N concurrent requests
 # arrive for the same fresh domain, only the first runs analyze_domain;
@@ -208,7 +208,12 @@ async def public_check(domain: str, request: Request):
     if cached:
         return await _build_response(cached, modern)
 
-    # 6) Cap the expensive fan-out, then run it once per domain.
+    # 6) Cap the expensive fan-out, then run it once per domain. A worker
+    #    already running its whole fresh-analysis budget answers 503 at once,
+    #    before the caller's fresh-check quota is spent; a request for a
+    #    domain already being analysed joins that analysis instead.
+    if domain not in _INFLIGHT:
+        load_shedding.FRESH_ANALYSES.check()
     await _enforce_fresh_check_budget(request)
     return _format_public_result(await _analyze_once(domain), modern_client=modern)
 
@@ -261,7 +266,8 @@ async def _seconds_left(r, key: str, window: int) -> int:
 async def _analyze_once(domain: str) -> DomainResult:
     """SINGLEFLIGHT: the first caller runs the analysis, concurrent callers
     for the same domain await its result. If the first caller goes away
-    (its request was cancelled), a waiter runs its own analysis."""
+    (its request was cancelled), a waiter runs its own analysis. Only the
+    caller that runs it holds a fresh-analysis slot (Overloaded without one)."""
     existing = _INFLIGHT.get(domain)
     if existing is not None:
         try:
@@ -269,18 +275,19 @@ async def _analyze_once(domain: str) -> DomainResult:
         except asyncio.CancelledError:
             if not existing.cancelled():
                 raise  # this request itself was cancelled
-    fut = asyncio.get_event_loop().create_future()
-    _INFLIGHT[domain] = fut
-    try:
-        result = await _run_analyzer(domain)
-        fut.set_result(result)
-        return result
-    finally:
-        if not fut.done():
-            fut.cancel()
-        # Drop the in-flight slot so memory doesn't grow unbounded.
-        if _INFLIGHT.get(domain) is fut:
-            _INFLIGHT.pop(domain, None)
+    with load_shedding.FRESH_ANALYSES.slot():
+        fut = asyncio.get_event_loop().create_future()
+        _INFLIGHT[domain] = fut
+        try:
+            result = await _run_analyzer(domain)
+            fut.set_result(result)
+            return result
+        finally:
+            if not fut.done():
+                fut.cancel()
+            # Drop the in-flight slot so memory doesn't grow unbounded.
+            if _INFLIGHT.get(domain) is fut:
+                _INFLIGHT.pop(domain, None)
 
 
 async def _run_analyzer(domain: str) -> DomainResult:
@@ -299,17 +306,8 @@ async def _run_analyzer(domain: str) -> DomainResult:
 
 
 def _fallback_result(domain: str) -> DomainResult:
-    signals = {"domain": domain, "raw_url": domain}
-    score, level, reasons = calculate_score(signals)
-    partial = DomainResult(
-        domain=domain,
-        score=score,
-        level=level,
-        confidence=ConfidenceLevel.low,
-        reasons=reasons + [vb.checks_incomplete_reason(["analysis"])],
-        checks_incomplete=["analysis"],
-    )
-    return partial.model_copy(update={"verdict_basis": vb.derive_verdict_basis(partial)})
+    from api.services.analyzer import rule_only_result
+    return rule_only_result(domain, raw_url=domain)
 
 
 def _verdict_reasons(result, modern_client: bool = True) -> list:

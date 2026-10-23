@@ -12,6 +12,7 @@ older version we still have a delta for; the full artifact otherwise.
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import logging
 import time
@@ -40,6 +41,22 @@ RETRY_AFTER_S = 600
 # its sha — and read the small meta hash first, so the body is fetched from
 # Redis only when the published sha changed.
 _cached: Optional[tuple[str, bytes]] = None
+# And one read of the body per worker at a time. When the published sha
+# changes (a new list, a cold worker) every /health probe and phone sync in
+# flight used to pull its own copy (~5 MB of base64, decoded next to it): a
+# /health flood took a worker past 900 MB that way (docs/runbooks/capacity.md).
+# The rest wait for the first read and share its copy. One lock per event loop
+# (a uvicorn worker has one; each asyncio.run in a test gets its own).
+_body_lock: Optional[asyncio.Lock] = None
+_body_lock_loop: object = None
+
+
+def _body_read_lock() -> asyncio.Lock:
+    global _body_lock, _body_lock_loop
+    loop = asyncio.get_running_loop()
+    if _body_lock is None or _body_lock_loop is not loop:
+        _body_lock, _body_lock_loop = asyncio.Lock(), loop
+    return _body_lock
 
 
 async def load_meta() -> Optional[dict]:
@@ -66,25 +83,28 @@ async def load_artifact(meta: Optional[dict] = None) -> Optional[tuple[bytes, di
     sha = meta["sha256"]
     if _cached and _cached[0] == sha:
         return _cached[1], meta
-    try:
-        from api.services.cache import get_redis
-        r = await get_redis()
-        encoded = await r.get(REDIS_TEXT_KEY)
-    except Exception:
-        logger.warning("blocklist artifact: redis unavailable", exc_info=True)
-        return None
-    if not encoded:
-        return None
-    try:
-        blob = base64.b64decode(encoded)
-    except Exception:
-        logger.error("blocklist artifact: not valid base64 — refusing to serve")
-        return None
-    if sha != sha256_bytes(blob):
-        logger.error("blocklist artifact: meta sha256 does not match body — refusing to serve")
-        return None
-    _cached = (sha, blob)
-    return blob, meta
+    async with _body_read_lock():
+        if _cached and _cached[0] == sha:
+            return _cached[1], meta  # read by the caller we waited for
+        try:
+            from api.services.cache import get_redis
+            r = await get_redis()
+            encoded = await r.get(REDIS_TEXT_KEY)
+        except Exception:
+            logger.warning("blocklist artifact: redis unavailable", exc_info=True)
+            return None
+        if not encoded:
+            return None
+        try:
+            blob = base64.b64decode(encoded)
+        except Exception:
+            logger.error("blocklist artifact: not valid base64 — refusing to serve")
+            return None
+        if sha != sha256_bytes(blob):
+            logger.error("blocklist artifact: meta sha256 does not match body — refusing to serve")
+            return None
+        _cached = (sha, blob)
+        return blob, meta
 
 
 async def artifact_age_seconds() -> Optional[int]:
