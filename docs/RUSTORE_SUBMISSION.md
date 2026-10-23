@@ -7,7 +7,7 @@ no third-party ad/analytics SDKs; the DNS shield forwards ordinary lookups to th
 network's own resolver, see §4). A declaration that doesn't match the code is a
 rejection (and, on Play, a takedown) trigger.
 
-**The RuStore listing for the first submission, 1.0.5 (Russian, ready to paste), is §7.** The Google
+**The RuStore listing for the first submission, 1.0.6 (Russian, ready to paste), is §7.** The Google
 Play drafts (EN + RU) are in `docs/STORES.md` → "Google Play (Android app)".
 `mobile/STORE_LISTING.md` keeps the shared metadata and the history of removed
 claims.
@@ -41,7 +41,7 @@ required. The developer console signs in with **VK ID** (Госуслуги / Я
 
 | | Task |
 |---|---|
-| **[F] Founder only** | Keep the keystore backup safe (§1). Create the RuStore developer account (VK ID, физлицо). Wire transactional SMTP for sign-in mail before submitting (§5). Confirm `support@cleanway.ai` receives mail. Upload the artifact + paste the answers below. Close the TODOs in §7.0 before submitting 1.0.5. |
+| **[F] Founder only** | Keep the keystore backup safe (§1). Create the RuStore developer account (VK ID, физлицо). Wire transactional SMTP for sign-in mail before submitting (§5). Confirm `support@cleanway.ai` receives mail. Upload the artifact + paste the answers below. Close the TODOs in §7.0 before submitting 1.0.6. |
 | **[C] Claude — done** | Release-signing + ABI plugins, explicit `versionCode`, honest listing, this runbook, the `/android` funnel page, the in-app update check, **the keystore and the signed APK itself** (§1–2). |
 
 The keystore is **permanent identity material**: lose it and every user must
@@ -131,36 +131,38 @@ Keep them in step with the update-check server
 prompt is truthful. The three builds below (site, RuStore, Google Play) carry
 the same versionName and versionCode; each store counts its own.
 
-**Next Android release: 1.0.5 (versionCode 106)** — what `mobile/app.json`
+**Next Android release: 1.0.6 (versionCode 107)** — what `mobile/app.json`
 says. The last published one is **1.0.3 (103)**: GitHub release `v1.0.3`, the
 APK that cleanway.ai/android and the update check serve today. 1.0.4 was built
 (104, then 105 with the Supabase sign-in config and the SQLite reopen fix,
-#184) and tested, but never published — no GitHub release, no store; its
-changes reach phones with 1.0.5 (`CHANGELOG.md`). Asset names for 1.0.5:
+#184) and tested, but never published — no GitHub release, no store. 1.0.5
+(106) was not published on Android either (no GitHub release `v1.0.5`); a 106
+file, if one was built, is not uploaded anywhere — 107 replaces it. Their
+changes reach phones with 1.0.6 (`CHANGELOG.md`). Asset names for 1.0.6:
 
 | Build | File to upload | Where |
 |---|---|---|
-| A — site | `cleanway-1.0.5-106-arm.apk` | GitHub release `v1.0.5` (cleanway.ai/android and the update check point at it) |
-| B — RuStore | `cleanway-1.0.5-106-rustore.apk` | RuStore console only |
-| C — Google Play | `cleanway-1.0.5-106-play.aab` | Play Console only |
+| A — site | `cleanway-1.0.6-107-arm.apk` | GitHub release `v1.0.6` (cleanway.ai/android and the update check point at it) |
+| B — RuStore | `cleanway-1.0.6-107-rustore.apk` | RuStore console only |
+| C — Google Play | `cleanway-1.0.6-107-play.aab` | Play Console only |
 
 Change the server **only after** the signed site APK (A) is attached to the
-GitHub release `v1.0.5` — announcing a version nobody can download sends every
+GitHub release `v1.0.6` — announcing a version nobody can download sends every
 phone to a 404. Then, in Railway (API service → Variables), set:
 
 ```
-MOBILE_LATEST_VERSION_NAME=1.0.5
-MOBILE_LATEST_VERSION_CODE=106
-MOBILE_APK_URL=https://github.com/AlexMos555/linkshield/releases/download/v1.0.5/cleanway-1.0.5-106-arm.apk
+MOBILE_LATEST_VERSION_NAME=1.0.6
+MOBILE_LATEST_VERSION_CODE=107
+MOBILE_APK_URL=https://github.com/AlexMos555/linkshield/releases/download/v1.0.6/cleanway-1.0.6-107-arm.apk
 ```
 
 (the URL must be the exact asset name you uploaded — the site APK, never the
 RuStore one; the app opens only `https://` URLs). Optionally
 `MOBILE_RELEASE_NOTES=<one line>`. `MOBILE_MIN_SUPPORTED_VERSION_*` stays
-empty/0 unless you decide to force the update (1.0.5 carries the link-guard
+empty/0 unless you decide to force the update (1.0.6 carries the link-guard
 fix #201 that 1.0.3 lacks). In Vercel, point `NEXT_PUBLIC_APK_URL` at the same
 asset URL and redeploy without the build cache (see docs/GO_LIVE_CHECKLIST.md).
-Check: `curl -s https://api.cleanway.ai/api/v1/mobile/version` shows `1.0.5`
+Check: `curl -s https://api.cleanway.ai/api/v1/mobile/version` shows `1.0.6`
 (the answer is cached up to 15 minutes).
 
 **SMS text model kill switch (1.0.4+).** The same answer carries
@@ -243,8 +245,8 @@ bash scripts/fetch-seed-blocklist.sh
 #    succeeds but is signed with the DEBUG key (big warning in the log).
 KEYS="/path/to/the/folder/with/keystore.properties"
 OUT="$HOME/Desktop/cleanway-android-out"; mkdir -p "$OUT"
-V=$(node -p "require('./app.json').expo.version")                  # 1.0.5
-VC=$(node -p "require('./app.json').expo.android.versionCode")     # 106
+V=$(node -p "require('./app.json').expo.version")                  # 1.0.6
+VC=$(node -p "require('./app.json').expo.android.versionCode")     # 107
 
 # 5) One build per store. EXPO_PUBLIC_DISTRIBUTION decides the paywall (a web
 #    checkout link or not), the "download the new version" banner and whether
@@ -486,7 +488,7 @@ The "removed" rows are blocked in `mobile/app.json`
 (`expo.android.blockedPermissions` + `expo-camera` → `recordAudioAndroid: false`),
 which makes `expo prebuild` write `tools:node="remove"` entries so library
 manifests cannot re-add them. Only v1.0.0 (versionCode 100) still declared them.
-Before uploading 1.0.5, run `aapt2 dump permissions` on the RuStore APK (§2 build B)
+Before uploading 1.0.6, run `aapt2 dump permissions` on the RuStore APK (§2 build B)
 and confirm the list matches this table (and that `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`
 is there, and `com.android.vending.BILLING` is not).
 
@@ -594,17 +596,17 @@ older APK without the field, say only that login is optional.
 
 ---
 
-## 7. Листинг RuStore — версия 1.0.5, первая публикация (вставлять как есть)
+## 7. Листинг RuStore — версия 1.0.6, первая публикация (вставлять как есть)
 
 Copy below is the paste-ready text. Notes, TODOs and character counts are
 outside the text blocks — never paste them. Every claim was checked against
 the code on 2026-10-08 (`main` @ `9aff8ee`); the evidence is listed in §7.7.
 
-### 7.0 TODO for the founder before submitting 1.0.5
+### 7.0 TODO for the founder before submitting 1.0.6
 
-- [x] **Version.** `mobile/app.json` says `1.0.5` / versionCode `106`. The
+- [x] **Version.** `mobile/app.json` says `1.0.6` / versionCode `107`. The
       update-check env in Railway follows the site APK (§2), not RuStore.
-- [ ] **Upload build B only** — `cleanway-1.0.5-106-rustore.apk` from §2, never
+- [ ] **Upload build B only** — `cleanway-1.0.6-107-rustore.apk` from §2, never
       the site APK (it links to the web checkout and offers its own updates
       from our server; the RuStore build does neither). Its `aapt2` check shows no
       `com.android.vending.BILLING`; gradle refuses a release build without
@@ -651,7 +653,7 @@ the code on 2026-10-08 (`main` @ `9aff8ee`); the evidence is listed in §7.7.
       "$0.99" paywall at all (`paidPlansVisible` in `mobile/src/utils/freemium.ts`).
 - [ ] **Screenshots** are from v1.0.0. Since 1.0.4 the home screen has the "Мне
       звонят" button and the "Чтобы защита не выключалась" card. Recapture
-      `01`–`04` on the signed 1.0.5 RuStore APK and add the three new frames in §7.6.
+      `01`–`04` on the signed 1.0.6 RuStore APK and add the three new frames in §7.6.
 - [ ] **RuStore field limits** for the app name and keywords/tags: confirm in the
       console (the counts below are given so you can trim if needed).
 - [ ] **Keep-alive on real phones.** The "щит сам пробует включиться снова"
@@ -723,7 +725,7 @@ Character count: see §7.7 (re-run the snippet there after any edit).
 Every keyword maps to a feature in the build (no "антивирус", no "VPN" as a
 selling word — the app is neither an antivirus nor a privacy VPN).
 
-### 7.5 Что нового (1.0.5)
+### 7.5 Что нового (1.0.6)
 
 <!-- count: rustore_whatsnew max=500 -->
 ```text
@@ -734,9 +736,10 @@ selling word — the app is neither an antivirus nor a privacy VPN).
 • Понятнее сообщения при входе по email.
 ```
 
-The text is the change since 1.0.3, the last APK people have: 1.0.4 was never
-published, so its changes arrive with 1.0.5 (1.0.5's own additions are in
-`CHANGELOG.md` → App 1.0.5; add one only if it fits the 500 target).
+The text is the change since 1.0.3, the last APK people have: 1.0.4 and 1.0.5
+were never published on Android, so their changes arrive with 1.0.6 (the
+additions of 1.0.5 and 1.0.6 are in `CHANGELOG.md` → App 1.0.5 and App 1.0.6;
+add one only if it fits the 500 target).
 Source (all merged to `main` after the 1.0.3 commit `6aec2ed`): #69 call
 stop screen + after-call reminder; #81, #86, #91, #92, #96, #99 SMS rules,
 links without `http://`, on-device text model; #105 keep-alive checklist,
@@ -746,7 +749,7 @@ target (RuStore allows more); short notes get read.
 
 ### 7.6 Подписи к скриншотам
 
-Existing frames (v1.0.0 — recapture on 1.0.5, see §7.0):
+Existing frames (v1.0.0 — recapture on 1.0.6, see §7.0):
 
 | File | Screen | Caption |
 |---|---|---|
@@ -755,7 +758,7 @@ Existing frames (v1.0.0 — recapture on 1.0.5, see §7.0):
 | `03.png` | История | `Сайты мошенников блокируются во всех приложениях` |
 | `04.png` | Оценка | `Советы, как обезопасить себя` |
 
-New frames to capture on 1.0.5 (TODO):
+New frames to capture on 1.0.6 (TODO):
 
 | File | Screen | Caption |
 |---|---|---|
