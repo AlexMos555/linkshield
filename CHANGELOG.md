@@ -60,6 +60,12 @@ files, one per store ([docs/RUSTORE_SUBMISSION.md](docs/RUSTORE_SUBMISSION.md) Â
 
 Enablement order for the server-side switches: [docs/MOBILE_AUTH.md](docs/MOBILE_AUTH.md).
 
+Store review only (not for the store release notes): builds made after
+2026-10-23 (iOS: the build after build 4; Android: the files rebuilt from
+`main`) let the review account `review@cleanway.ai` sign in with a password â€”
+`EXPO_PUBLIC_REVIEW_EMAILS`; every other address keeps the email code. Account
+and password: [docs/runbooks/app-review-account.md](docs/runbooks/app-review-account.md).
+
 ## [Extension 0.2.2] - 2026-10-22
 
 Browser extension for Chrome, Edge, Opera, Firefox and Safari. 0.2.1 never reached the stores; 0.2.2 replaces it in the submission. Permissions are the same as in 0.2.1.

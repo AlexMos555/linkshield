@@ -152,11 +152,23 @@ installed 1.0.4** if flipped today:
   app (it's fragile across email clients and PKCE contexts). The unifier is the
   shared email + shared Supabase project, verified by the code the user types.
 
+## Store reviewers' account (a password for one address)
+App Store, Google Play and RuStore reviewers cannot receive a code we email to
+the account we give them. So `EXPO_PUBLIC_REVIEW_EMAILS` (comma-separated,
+case-insensitive exact match after trim; set to `review@cleanway.ai` in the
+`preview` / `production` profiles of `mobile/eas.json`, exported for local
+Android builds; unset = off) makes the sign-in screen show a password field for
+those addresses only, signing in with `signIn(email, password)` (captcha on
+demand, like the code request) — `mobile/src/utils/review-login.ts`. Every
+other address keeps the code flow byte for byte (pinned in
+`mobile/scripts/test-auth-error-key.mjs`). The account and its password:
+`scripts/create_review_account.py`, `docs/runbooks/app-review-account.md`.
+
 ## Notes for future work
-- The old email+password functions (`signIn`/`signUp`/`sendPasswordResetEmail`)
-  remain in `mobile/src/services/auth.ts` but are no longer used by the screen;
-  keep or remove them, but don't reintroduce a password field without a reason —
-  it re-splits web (passwordless) and app.
+- The old email+password functions (`signUp`/`sendPasswordResetEmail`) remain
+  in `mobile/src/services/auth.ts` unused; `signIn` is used only by the
+  reviewers' account above. Don't add a password field for anyone else — it
+  re-splits web (passwordless) and app.
 - CI should block a release where `isSupabaseConfigured()` would be false (empty
   URL/anon key) — a build that ships with auth silently dead is the failure mode
   this whole doc exists to prevent.

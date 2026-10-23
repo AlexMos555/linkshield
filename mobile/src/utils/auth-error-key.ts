@@ -3,7 +3,7 @@
  *
  * GoTrue's own messages are English-only ("Token has expired or is invalid",
  * "Error sending magic link email"); shown raw they put English in front of a
- * Russian-speaking user. These two tables are the whole mapping, kept free of
+ * Russian-speaking user. These tables are the whole mapping, kept free of
  * React and expo so mobile/scripts/test-auth-error-key.mjs can pin them.
  *
  * The input is the shape of services/auth.ts `AuthError` (`code` is GoTrue's
@@ -27,6 +27,14 @@ export type OtpSendErrorKey =
 export type OtpVerifyErrorKey =
   | "mobile.auth.err_code_wrong"
   | "mobile.auth.err_rate_limited"
+  | "mobile.auth.err_network"
+  | "mobile.auth.generic_error";
+
+export type PasswordSignInErrorKey =
+  | "mobile.auth.err_password_wrong"
+  | "mobile.auth.err_password_rate_limited"
+  | "mobile.auth.err_captcha"
+  | "mobile.auth.err_captcha_update"
   | "mobile.auth.err_network"
   | "mobile.auth.generic_error";
 
@@ -86,6 +94,26 @@ export function otpVerifyErrorKey(e: AuthFailureLike): OtpVerifyErrorKey {
   if (e.status === 400 || e.status === 401 || e.status === 403 || e.code === "otp_expired") {
     return "mobile.auth.err_code_wrong";
   }
+  if (isOffline(e)) return "mobile.auth.err_network";
+  return "mobile.auth.generic_error";
+}
+
+/**
+ * Failed `POST /auth/v1/token?grant_type=password` — only the store reviewers'
+ * account ever gets here (src/utils/review-login.ts).
+ *
+ * GoTrue answers a wrong password (and an unknown address) with 400
+ * `invalid_credentials`; older versions said `invalid_grant`. Too many tries
+ * is 429 from the per-IP limit on /token, and gets its own sentence: the code
+ * flow's "too many code requests" would be wrong here. A banned or
+ * unconfirmed account stays generic — the reviewer cannot fix either.
+ */
+export function passwordSignInErrorKey(e: AuthFailureLike, captchaRequired: boolean): PasswordSignInErrorKey {
+  if (e.code === "captcha_failed") {
+    return captchaRequired ? "mobile.auth.err_captcha" : "mobile.auth.err_captcha_update";
+  }
+  if (isRateLimited(e)) return "mobile.auth.err_password_rate_limited";
+  if (e.code === "invalid_credentials" || e.code === "invalid_grant") return "mobile.auth.err_password_wrong";
   if (isOffline(e)) return "mobile.auth.err_network";
   return "mobile.auth.generic_error";
 }

@@ -10,13 +10,21 @@ import { setAuthToken } from "../src/services/api";
 import {
   sendEmailOtp,
   verifyEmailOtp,
+  signIn,
   validateEmail,
   isValidOtpCode,
   normalizeOtpInput,
+  type AuthSession,
 } from "../src/services/auth";
 import { isSupabaseConfigured } from "../src/services/supabase";
 import { linkAfterSignIn } from "../src/services/account";
-import { authFailure, otpSendErrorKey, otpVerifyErrorKey } from "../src/utils/auth-error-key";
+import {
+  authFailure,
+  otpSendErrorKey,
+  otpVerifyErrorKey,
+  passwordSignInErrorKey,
+} from "../src/utils/auth-error-key";
+import { createReviewSignIn, isReviewEmail, parseReviewEmails } from "../src/utils/review-login";
 import {
   isCaptchaRequired,
   requestCaptchaToken,
@@ -41,6 +49,17 @@ const CAPTCHA_SHEET: AuthSheet = {
 const requestOtp = createOtpRequester({
   captchaConfigured: isCaptchaRequired(),
   send: sendEmailOtp,
+  getCaptchaToken: () => requestCaptchaToken(CAPTCHA_SHEET),
+});
+
+// App Store / Google Play / RuStore reviewers only (src/utils/review-login.ts,
+// docs/runbooks/app-review-account.md): an address that is EXACTLY on this
+// build's allowlist gets a password field instead of a code request. Unset in
+// the build = off. A literal process.env read — Metro inlines only those.
+const REVIEW_EMAILS = parseReviewEmails(process.env.EXPO_PUBLIC_REVIEW_EMAILS);
+const reviewSignIn = createReviewSignIn(REVIEW_EMAILS, {
+  captchaConfigured: isCaptchaRequired(),
+  signIn,
   getCaptchaToken: () => requestCaptchaToken(CAPTCHA_SHEET),
 });
 
@@ -69,6 +88,10 @@ export default function AuthScreen() {
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+  // Review account only; never logged, cleared once the address changes.
+  const [password, setPassword] = useState("");
+  const passwordRef = useRef<TextInput>(null);
+  const reviewMode = isReviewEmail(email, REVIEW_EMAILS);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
@@ -88,6 +111,10 @@ export default function AuthScreen() {
     // is not configured — nothing is ever pending.
     cancelCaptcha();
   }, []);
+
+  useEffect(() => {
+    if (!reviewMode) setPassword("");
+  }, [reviewMode]);
 
   const startCooldown = useCallback(() => {
     cooldownUntil.current = Date.now() + RESEND_COOLDOWN_S * 1000;
@@ -147,6 +174,22 @@ export default function AuthScreen() {
     }
   }
 
+  // After either sign-in (code, or the review account's password): the
+  // session is already persisted by services/auth.ts.
+  async function completeSignIn(session: AuthSession): Promise<void> {
+    setAuthToken(session.accessToken);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    // The plan counts devices: link this phone now. No free seat → the
+    // Account screen offers "unlink one" or "add a device". Offline or a
+    // server hiccup doesn't block sign-in; the next heartbeat links it.
+    const linked = await linkAfterSignIn();
+    if (linked.kind === "limit") {
+      router.replace({ pathname: "/account", params: { limit: "1" } });
+      return;
+    }
+    leaveAuth();
+  }
+
   async function submitCode(): Promise<void> {
     setError(null);
     if (!isValidOtpCode(code)) {
@@ -155,22 +198,41 @@ export default function AuthScreen() {
     }
     setLoading(true);
     try {
-      const session = await verifyEmailOtp(email.trim(), code);
-      setAuthToken(session.accessToken);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // The plan counts devices: link this phone now. No free seat → the
-      // Account screen offers "unlink one" or "add a device". Offline or a
-      // server hiccup doesn't block sign-in; the next heartbeat links it.
-      const linked = await linkAfterSignIn();
-      if (linked.kind === "limit") {
-        router.replace({ pathname: "/account", params: { limit: "1" } });
-        return;
-      }
-      leaveAuth();
+      await completeSignIn(await verifyEmailOtp(email.trim(), code));
     } catch (e: unknown) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       // A wrong or expired code is the common case — auth-error-key.ts names it.
       setError(t(otpVerifyErrorKey(authFailure(e))));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // The review account only — reviewSignIn itself refuses any other address.
+  async function submitPassword(): Promise<void> {
+    setError(null);
+    if (notConfigured) {
+      setError(t("mobile.auth.not_configured"));
+      return;
+    }
+    if (!password.trim()) {
+      setError(t("mobile.auth.err_password"));
+      return;
+    }
+    setLoading(true);
+    try {
+      const outcome = await reviewSignIn(email, password);
+      if (outcome.kind === "not_review_email") return;
+      if (outcome.kind === "captcha_cancelled") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setError(t("mobile.auth.err_captcha"));
+        return;
+      }
+      setPassword("");
+      await completeSignIn(outcome.session);
+    } catch (e: unknown) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setError(t(passwordSignInErrorKey(authFailure(e), isCaptchaRequired())));
     } finally {
       setLoading(false);
     }
@@ -198,7 +260,9 @@ export default function AuthScreen() {
       {step === "email" ? (
         <>
           <Text style={styles.title}>{t("mobile.auth.otp_title")}</Text>
-          <Text style={styles.subtitle}>{t("mobile.auth.otp_sub")}</Text>
+          <Text style={styles.subtitle}>
+            {reviewMode ? t("mobile.auth.password_sub") : t("mobile.auth.otp_sub")}
+          </Text>
 
           <View style={styles.form}>
             <TextInput
@@ -213,22 +277,46 @@ export default function AuthScreen() {
               textContentType="emailAddress"
               accessibilityLabel={t("mobile.auth.email_ph")}
               editable={!loading}
-              onSubmitEditing={() => void requestCode()}
-              returnKeyType="send"
+              onSubmitEditing={() => (reviewMode ? passwordRef.current?.focus() : void requestCode())}
+              returnKeyType={reviewMode ? "next" : "send"}
             />
+
+            {/* Store reviewers' account only (REVIEW_EMAILS above); for every
+                other address this block does not exist. */}
+            {reviewMode && (
+              <TextInput
+                ref={passwordRef}
+                style={styles.input}
+                placeholder={t("mobile.auth.password_ph")}
+                placeholderTextColor={colors.textMuted}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="password"
+                autoComplete="current-password"
+                accessibilityLabel={t("mobile.auth.password_ph")}
+                editable={!loading}
+                onSubmitEditing={() => void submitPassword()}
+                returnKeyType="done"
+              />
+            )}
 
             {error && <Text style={styles.errorText}>{error}</Text>}
 
             <TouchableOpacity
               style={[styles.btn, loading && styles.btnDisabled]}
-              onPress={() => void requestCode()}
+              onPress={() => void (reviewMode ? submitPassword() : requestCode())}
               disabled={loading}
               accessibilityRole="button"
-              accessibilityLabel={t("mobile.auth.otp_send")}
+              accessibilityLabel={reviewMode ? t("mobile.auth.password_submit") : t("mobile.auth.otp_send")}
             >
               {loading
                 ? <ActivityIndicator color="#0B1220" />
-                : <Text style={styles.btnText}>{t("mobile.auth.otp_send")}</Text>}
+                : <Text style={styles.btnText}>
+                    {reviewMode ? t("mobile.auth.password_submit") : t("mobile.auth.otp_send")}
+                  </Text>}
             </TouchableOpacity>
 
             {/* The address is collected here, so the policy is one tap away

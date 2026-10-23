@@ -3752,7 +3752,13 @@
       "err_captcha_update": "Para iniciar sesión necesitas una versión más reciente de Cleanway. Actualiza la app e inténtalo de nuevo.",
       "captcha_wait": "Finalizando la comprobación de seguridad…",
       "code_valid_for": "El código es válido durante 10 minutos.",
-      "code_spam_hint": "¿No llega el correo? Espera un minuto y revisa la carpeta de spam. El remitente es Cleanway."
+      "code_spam_hint": "¿No llega el correo? Espera un minuto y revisa la carpeta de spam. El remitente es Cleanway.",
+      "password_sub": "Esta cuenta inicia sesión con contraseña.",
+      "password_ph": "Contraseña",
+      "password_submit": "Iniciar sesión",
+      "err_password": "Introduce la contraseña",
+      "err_password_wrong": "Correo o contraseña incorrectos.",
+      "err_password_rate_limited": "Demasiados intentos de inicio de sesión. Espera unos minutos e inténtalo de nuevo."
     },
     "onboarding": {
       "s1_title": "Revisa cualquier cosa antes de tocarla",

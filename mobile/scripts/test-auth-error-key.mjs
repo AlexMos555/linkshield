@@ -31,10 +31,39 @@
  *     anon JWT and is never rejected for not being a JWT;
  *   • a server-only secret (sb_secret_…, a service_role JWT) never becomes
  *     the app's key, in either slot.
+ *
+ * And pins src/utils/review-login.ts (the store reviewers' password sign-in,
+ * docs/runbooks/app-review-account.md):
+ *   • EXPO_PUBLIC_REVIEW_EMAILS unset, empty or an unexpanded "$…" → the
+ *     feature is off; otherwise an exact, case-insensitive match after trim —
+ *     a lookalike, a +tag, a longer domain never switches to a password;
+ *   • every other address keeps the email code: the OTP request is sent with
+ *     the same bytes as before, the password grant is never called, and the
+ *     screen renders the password field only under `reviewMode`;
+ *   • the allowlisted address signs in with the password (captcha on demand,
+ *     like the code request), and its errors get their own sentences
+ *     (wrong password, too many attempts, offline);
+ *   • only @cleanway.ai addresses are ever allowlisted: the app drops any
+ *     other, whichever build path set the variable (EAS profile, mobile/.env,
+ *     the RuStore export), and the EAS profiles carry no entry it would drop;
+ *   • the screen never logs anything.
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
-import { authFailure, otpSendErrorKey, otpVerifyErrorKey } from "../src/utils/auth-error-key.ts";
+import {
+  authFailure,
+  otpSendErrorKey,
+  otpVerifyErrorKey,
+  passwordSignInErrorKey,
+} from "../src/utils/auth-error-key.ts";
+import { createOtpRequester, otpRequestBody } from "../src/utils/otp-request.ts";
+import {
+  createReviewSignIn,
+  isReviewEmail,
+  parseReviewEmails,
+  passwordSignInBody,
+} from "../src/utils/review-login.ts";
 import {
   OTP_CODE_MAX_LEN,
   OTP_CODE_MIN_LEN,
@@ -51,6 +80,15 @@ let failures = 0;
 function check(name, fn) {
   try {
     fn();
+    console.log(`  ok   ${name}`);
+  } catch (err) {
+    failures += 1;
+    console.log(`  FAIL ${name}\n       ${err.message}`);
+  }
+}
+async function checkAsync(name, fn) {
+  try {
+    await fn();
     console.log(`  ok   ${name}`);
   } catch (err) {
     failures += 1;
@@ -201,8 +239,250 @@ console.log("supabase client key");
   });
 }
 
+console.log("passwordSignInErrorKey (store reviewers' password sign-in)");
+for (const [error, captcha, key] of [
+  [{ status: 400, code: "invalid_credentials" }, false, "mobile.auth.err_password_wrong"],
+  [{ status: 400, code: "invalid_grant" }, true, "mobile.auth.err_password_wrong"],
+  [{ status: 429, code: "over_request_rate_limit" }, false, "mobile.auth.err_password_rate_limited"],
+  [{ status: 429 }, true, "mobile.auth.err_password_rate_limited"],
+  [{ status: 0, code: "network_error" }, false, "mobile.auth.err_network"],
+  [{ status: 0, code: "timeout" }, false, "mobile.auth.err_network"],
+  [{ status: 400, code: "captcha_failed" }, true, "mobile.auth.err_captcha"],
+  [{ status: 400, code: "captcha_failed" }, false, "mobile.auth.err_captcha_update"],
+  [{ status: 400, code: "user_banned" }, false, "mobile.auth.generic_error"],
+  [{ status: 400, code: "email_not_confirmed" }, false, "mobile.auth.generic_error"],
+  [{ status: 500, code: "unexpected_failure" }, false, "mobile.auth.generic_error"],
+  [{}, false, "mobile.auth.generic_error"],
+]) {
+  check(`${JSON.stringify(error)} captcha=${captcha} → ${key}`, () => {
+    assert.equal(passwordSignInErrorKey(error, captcha), key);
+  });
+}
+check("a thrown string ends up generic, not 'wrong password'", () => {
+  assert.equal(passwordSignInErrorKey(authFailure("boom"), false), "mobile.auth.generic_error");
+});
+
+const REVIEW = "review@cleanway.ai";
+const REVIEW_ENV = `${ENV_PREFIX}_REVIEW_EMAILS`;
+console.log("review sign-in: the allowlist (EXPO_PUBLIC_REVIEW_EMAILS)");
+for (const [raw, want] of [
+  [undefined, []],
+  [null, []],
+  ["", []],
+  ["   ", []],
+  [`$${REVIEW_ENV}`, []],
+  [REVIEW, [REVIEW]],
+  [" Review@Cleanway.AI ", [REVIEW]],
+  [`${REVIEW}, apple-review@cleanway.ai`, [REVIEW, "apple-review@cleanway.ai"]],
+  [`${REVIEW},,REVIEW@cleanway.ai, `, [REVIEW]],
+  [`not-an-address, ${REVIEW}, $OTHER_VAR`, [REVIEW]],
+  // Only @cleanway.ai survives, whichever build path set the variable (EAS
+  // profile, mobile/.env, the RuStore export): a typo or a pasted personal
+  // address must not show a real person a password field.
+  ["grandma@mail.ru", []],
+  [`${REVIEW}, me@gmail.com`, [REVIEW]],
+  ["me@gmail.com, Grandma@Mail.ru", []],
+  ["review@cleanway.ai.evil.com", []],
+  ["review@mail.cleanway.ai", []],
+  ["review@notcleanway.ai", []],
+  ["review@сleanway.ai", []], // Cyrillic с
+  ["@cleanway.ai", []],
+]) {
+  check(`parseReviewEmails(${JSON.stringify(raw)}) → ${JSON.stringify(want)}`, () => {
+    assert.deepEqual(parseReviewEmails(raw), want);
+  });
+}
+{
+  const allow = parseReviewEmails(REVIEW);
+  for (const email of [REVIEW, "REVIEW@cleanway.ai", "  review@cleanway.ai\n", "Review@CleanWay.ai"]) {
+    check(`isReviewEmail(${JSON.stringify(email)}) → true`, () => assert.equal(isReviewEmail(email, allow), true));
+  }
+  for (const email of [
+    "",
+    "review",
+    "review@cleanway",
+    "review@cleanway.ai.evil.com",
+    "xreview@cleanway.ai",
+    "review+1@cleanway.ai",
+    "review@cleanway.ai.",
+    "re view@cleanway.ai",
+    "rеview@cleanway.ai", // Cyrillic е
+    "review@сleanway.ai", // Cyrillic с
+    `${REVIEW},grandma@mail.ru`,
+    "grandma@mail.ru",
+  ]) {
+    check(`isReviewEmail(${JSON.stringify(email)}) → false`, () => assert.equal(isReviewEmail(email, allow), false));
+  }
+  check("feature off (variable unset): not even the review address gets a password field", () => {
+    assert.equal(isReviewEmail(REVIEW, parseReviewEmails(undefined)), false);
+    assert.equal(isReviewEmail(REVIEW, []), false);
+  });
+}
+
+/** A review sign-in wired to fakes; `script` answers each signIn call in turn. */
+function reviewFixture({ allowlist = [REVIEW], captchaConfigured = true, script = [], token = "captcha-tok" } = {}) {
+  const signIns = [];
+  let challenges = 0;
+  const run = createReviewSignIn(allowlist, {
+    captchaConfigured,
+    async signIn(email, password, captchaToken) {
+      signIns.push([email, password, captchaToken]);
+      const step = script.shift() ?? { ok: { accessToken: "access" } };
+      if (step.throw) throw step.throw;
+      return step.ok;
+    },
+    async getCaptchaToken() {
+      challenges += 1;
+      return token;
+    },
+  });
+  return { run, signIns, challenges: () => challenges };
+}
+
+console.log("review sign-in: everyone else keeps the email code");
+await checkAsync("other addresses: the code request goes out as before, the password grant never runs", async () => {
+  const allowlist = parseReviewEmails(REVIEW);
+  const sent = [];
+  const requestOtp = createOtpRequester({
+    captchaConfigured: false,
+    async send(email, captchaToken) {
+      sent.push([email, captchaToken]);
+    },
+    async getCaptchaToken() {
+      throw new Error("no challenge expected");
+    },
+  });
+  const f = reviewFixture({ allowlist });
+  const others = ["grandma@mail.ru", "Review+1@cleanway.ai", "review@cleanway.ai.evil.com", "rеview@cleanway.ai"];
+  for (const email of others) {
+    assert.equal(isReviewEmail(email, allowlist), false, email);
+    assert.deepEqual(await requestOtp(email), { kind: "sent" });
+    assert.deepEqual(await f.run(email, "Pw0rdPw0rdPw0rdPw0rdPw0rd"), { kind: "not_review_email" });
+  }
+  assert.deepEqual(sent, others.map((email) => [email, undefined]));
+  assert.equal(f.signIns.length, 0);
+  assert.equal(f.challenges(), 0);
+  assert.equal(JSON.stringify(otpRequestBody("grandma@mail.ru")), '{"email":"grandma@mail.ru","create_user":true}');
+});
+await checkAsync("feature off: even the review address is refused by the password path", async () => {
+  const f = reviewFixture({ allowlist: parseReviewEmails("") });
+  assert.deepEqual(await f.run(REVIEW, "Pw0rdPw0rdPw0rdPw0rdPw0rd"), { kind: "not_review_email" });
+  assert.equal(f.signIns.length, 0);
+});
+
+console.log("review sign-in: the allowlisted address");
+check("password body: no token → exactly {email, password}", () => {
+  assert.equal(JSON.stringify(passwordSignInBody(REVIEW, "x")), '{"email":"review@cleanway.ai","password":"x"}');
+});
+check("password body: token → gotrue_meta_security.captcha_token", () => {
+  assert.deepEqual(passwordSignInBody(REVIEW, "x", "tok"), {
+    email: REVIEW,
+    password: "x",
+    gotrue_meta_security: { captcha_token: "tok" },
+  });
+});
+await checkAsync("signs in with the lowercased address and the password (a pasted newline dropped)", async () => {
+  const f = reviewFixture({ script: [{ ok: { accessToken: "a1" } }] });
+  const out = await f.run(" Review@Cleanway.ai ", "Pw0rdPw0rdPw0rdPw0rdPw0rd\n");
+  assert.deepEqual(out, { kind: "signed_in", session: { accessToken: "a1" } });
+  assert.deepEqual(f.signIns, [[REVIEW, "Pw0rdPw0rdPw0rdPw0rdPw0rd", undefined]]);
+  assert.equal(f.challenges(), 0);
+});
+await checkAsync("server asks for a captcha → solve once, retry with the token", async () => {
+  const f = reviewFixture({ script: [{ throw: { status: 400, code: "captcha_failed" } }, { ok: { accessToken: "a2" } }] });
+  const out = await f.run(REVIEW, "pw");
+  assert.deepEqual(out, { kind: "signed_in", session: { accessToken: "a2" } });
+  assert.deepEqual(f.signIns, [[REVIEW, "pw", undefined], [REVIEW, "pw", "captcha-tok"]]);
+  assert.equal(f.challenges(), 1);
+});
+await checkAsync("challenge not completed → captcha_cancelled, no second attempt", async () => {
+  const f = reviewFixture({ token: null, script: [{ throw: { status: 400, code: "captcha_failed" } }] });
+  assert.deepEqual(await f.run(REVIEW, "pw"), { kind: "captcha_cancelled" });
+  assert.equal(f.signIns.length, 1);
+});
+await checkAsync("build without a challenge page → captcha_failed is rethrown (screen: update the app)", async () => {
+  const f = reviewFixture({ captchaConfigured: false, script: [{ throw: { status: 400, code: "captcha_failed" } }] });
+  await assert.rejects(f.run(REVIEW, "pw"), (e) => e.code === "captcha_failed");
+  assert.equal(f.challenges(), 0);
+});
+await checkAsync("a wrong password is rethrown once — no retry, no challenge", async () => {
+  const f = reviewFixture({ script: [{ throw: { status: 400, code: "invalid_credentials" } }] });
+  await assert.rejects(f.run(REVIEW, "wrong"), (e) => e.code === "invalid_credentials");
+  assert.equal(f.signIns.length, 1);
+  assert.equal(f.challenges(), 0);
+});
+
+console.log("review sign-in: the screen and the build profiles");
+{
+  const screen = readFileSync(new URL("../app/auth.tsx", import.meta.url), "utf8");
+  const helper = readFileSync(new URL("../src/utils/review-login.ts", import.meta.url), "utf8");
+  const OPEN = "{reviewMode && (";
+
+  /** [start, end] of every `{reviewMode && ( … )}` block of the screen. */
+  function reviewOnlyBlocks(src) {
+    const blocks = [];
+    for (let at = src.indexOf(OPEN); at !== -1; at = src.indexOf(OPEN, at + 1)) {
+      let depth = 0;
+      let end = -1;
+      for (let i = at + OPEN.length - 1; i < src.length; i += 1) {
+        if (src[i] === "(") depth += 1;
+        else if (src[i] === ")" && (depth -= 1) === 0) {
+          end = i;
+          break;
+        }
+      }
+      assert.ok(end > at, "unbalanced {reviewMode && ( block in app/auth.tsx");
+      blocks.push([at, end]);
+    }
+    return blocks;
+  }
+  const allIndexes = (src, needle) => {
+    const out = [];
+    for (let i = src.indexOf(needle); i !== -1; i = src.indexOf(needle, i + 1)) out.push(i);
+    return out;
+  };
+
+  check("the allowlist is the literal build-time variable (Metro inlines only literal reads)", () => {
+    assert.match(screen, new RegExp(`parseReviewEmails\\(process\\.env\\.${REVIEW_ENV}\\)`));
+  });
+  check("the password field renders only inside {reviewMode && ( … )}", () => {
+    const blocks = reviewOnlyBlocks(screen);
+    const inside = (i) => blocks.some(([a, b]) => i > a && i < b);
+    for (const needle of ["secureTextEntry", '"mobile.auth.password_ph"']) {
+      const hits = allIndexes(screen, needle);
+      assert.ok(hits.length > 0, `${needle} not found in app/auth.tsx`);
+      for (const i of hits) assert.ok(inside(i), `${needle} outside a {reviewMode && ( block`);
+    }
+  });
+  check("the email step's button still requests a code unless reviewMode", () => {
+    assert.match(screen, /reviewMode\s*\?\s*submitPassword\(\)\s*:\s*requestCode\(\)/);
+    assert.match(screen, /reviewMode\s*\?\s*passwordRef\.current\?\.focus\(\)\s*:\s*void requestCode\(\)/);
+  });
+  check("the screen never calls the password grant directly (only through createReviewSignIn)", () => {
+    assert.doesNotMatch(screen, /\bsignIn\(/);
+    assert.match(screen, /createReviewSignIn\(/);
+  });
+  check("nothing on the sign-in path logs (the password must never reach a log)", () => {
+    assert.doesNotMatch(screen, /\bconsole\./);
+    assert.doesNotMatch(helper, /\bconsole\./);
+  });
+  check("EAS store profiles allowlist only cleanway.ai addresses, the review one included", () => {
+    const eas = JSON.parse(readFileSync(new URL("../eas.json", import.meta.url), "utf8")).build;
+    for (const name of ["preview", "production"]) {
+      const raw = eas[name].env[REVIEW_ENV];
+      const list = parseReviewEmails(raw);
+      assert.ok(list.includes(REVIEW), `${name}: ${REVIEW} missing`);
+      // Every entry must survive the app's parse: an entry the app drops (not
+      // on cleanway.ai, a typo) is a mistake to fix here, not to ship.
+      const entries = raw.split(",").map((s) => s.trim()).filter(Boolean);
+      assert.equal(list.length, entries.length, `${name}: an entry the app ignores in ${JSON.stringify(raw)}`);
+      for (const email of list) assert.ok(email.endsWith("@cleanway.ai"), `${name}: ${email} is not ours`);
+    }
+  });
+}
+
 if (failures) {
   console.log(`\n${failures} failure(s)`);
   process.exit(1);
 }
-console.log("\nall auth-error-key + otp-code + supabase-key checks passed");
+console.log("\nall auth-error-key + otp-code + supabase-key + review-login checks passed");

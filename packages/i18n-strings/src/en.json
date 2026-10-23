@@ -3754,7 +3754,13 @@
       "err_captcha_update": "Signing in needs a newer version of Cleanway. Please update the app and try again.",
       "captcha_wait": "Finishing the security check…",
       "code_valid_for": "The code is valid for 10 minutes.",
-      "code_spam_hint": "No email? Give it a minute and check your Spam folder. The sender is Cleanway."
+      "code_spam_hint": "No email? Give it a minute and check your Spam folder. The sender is Cleanway.",
+      "password_sub": "This account signs in with a password.",
+      "password_ph": "Password",
+      "password_submit": "Sign in",
+      "err_password": "Enter the password",
+      "err_password_wrong": "Wrong email or password.",
+      "err_password_rate_limited": "Too many sign-in attempts. Please wait a few minutes and try again."
     },
     "onboarding": {
       "s1_title": "Check anything before you tap it",

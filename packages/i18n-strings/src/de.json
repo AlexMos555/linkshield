@@ -3812,7 +3812,13 @@
       "err_captcha_update": "Für die Anmeldung wird eine neuere Version von Cleanway benötigt. Bitte aktualisieren Sie die App und versuchen Sie es erneut.",
       "captcha_wait": "Sicherheitsprüfung wird abgeschlossen…",
       "code_valid_for": "Der Code ist 10 Minuten gültig.",
-      "code_spam_hint": "Keine E-Mail? Warten Sie eine Minute und sehen Sie im Spam-Ordner nach. Absender ist Cleanway."
+      "code_spam_hint": "Keine E-Mail? Warten Sie eine Minute und sehen Sie im Spam-Ordner nach. Absender ist Cleanway.",
+      "password_sub": "Dieses Konto meldet sich mit einem Passwort an.",
+      "password_ph": "Passwort",
+      "password_submit": "Anmelden",
+      "err_password": "Geben Sie das Passwort ein",
+      "err_password_wrong": "E-Mail-Adresse oder Passwort falsch.",
+      "err_password_rate_limited": "Zu viele Anmeldeversuche. Warten Sie einige Minuten und versuchen Sie es erneut."
     },
     "onboarding": {
       "s1_title": "Prüfe alles, bevor du es antippst",

@@ -307,9 +307,15 @@ Google's PEPK tool) keeps one signature everywhere.
 - [x] **Screenshots and feature graphic** — EN and RU, 1080×1920, from 1.0.4
       (`mobile/assets/store/google-play/`, README there); feature graphic
       1024×500 per language; icon `mobile/assets/store/icon-512.png`.
-- [ ] **Sign-in works for the reviewer** — transactional SMTP in Supabase
-      (`docs/RUSTORE_SUBMISSION.md` §5). In "App access" say that every
-      protection feature works without signing in; sign-in is optional.
+- [ ] **Sign-in works for the reviewer** — the reviewer cannot receive our
+      emailed code, so they get the review account `review@cleanway.ai` with a
+      password: for that address only (`EXPO_PUBLIC_REVIEW_EMAILS`) the app
+      shows a password field instead of the code; every other address keeps the
+      code. Create it / rotate the password with
+      `python3 scripts/create_review_account.py` (password in the macOS
+      Keychain), then fill "App access" (§6.9, `docs/STORE_SUBMISSION_KIT.md`
+      §1.5). Only builds made with the variable have the field (the first one
+      after 2026-10-23) — `docs/runbooks/app-review-account.md`.
 
 ### 6.1–6.2 Listing text (EN + RU)
 
@@ -435,7 +441,7 @@ permission in `app.json` (`blockedPermissions`) before uploading.
 | Health | No health features |
 | News app | No |
 | Data safety | §6.3 |
-| App access | All functionality available without special access; sign-in is optional (email one-time code) |
+| App access | **All or some functionality is restricted** — every protection feature works without an account, but the account screens need a sign-in and the reviewer cannot receive the emailed code. Instructions: username `review@cleanway.ai`, the password from the Keychain (`docs/runbooks/app-review-account.md`), and the "Any other information" text from `docs/STORE_SUBMISSION_KIT.md` §1.5 (Settings → Sign in → type the address → a password field appears for it only). Do not let Android use the credentials for automated testing |
 
 ### 6.10 Founder checklist in Play Console
 
@@ -444,8 +450,11 @@ permission in `app.json` (`blockedPermissions`) before uploading.
 2. [ ] Store listing, graphics, contact details: `docs/STORE_SUBMISSION_KIT.md`
        §1.2–1.4 (Russian translation §1.3).
 3. [ ] Privacy policy URL `https://cleanway.ai/privacy-policy`.
-4. [ ] App access: "All functionality is available without special access"
-       (+ the note that sign-in is optional).
+4. [ ] App access: "All or some functionality in my app is restricted" →
+       Add instructions — `review@cleanway.ai`, the password from the Keychain
+       (`python3 scripts/create_review_account.py` first), the text from
+       `docs/STORE_SUBMISSION_KIT.md` §1.5; leave "Allow Android to use the
+       credentials … for testing" off. After a password rotation, update it here.
 5. [ ] Ads: No. Advertising ID: No (after the `aapt` check).
 6. [ ] Content rating: §6.8. Target audience: §6.9 (18+).
 7. [ ] Data safety: §6.3, including the account-deletion URL

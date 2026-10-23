@@ -44,6 +44,7 @@ import { EventEmitter } from "events";
 import { setAuthToken, setTokenProvider } from "./api";
 import { needsRefresh, refreshDelayMs, refreshFailure, singleFlight } from "../utils/account-session";
 import { otpRequestBody } from "../utils/otp-request";
+import { passwordSignInBody } from "../utils/review-login";
 import {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
@@ -245,13 +246,20 @@ async function readStoredSession(): Promise<AuthSession | null> {
 
 // ─── Public API ───────────────────────────────────────────────────
 
+/**
+ * Password sign-in. People sign in by code; the only caller is the store
+ * reviewers' account (src/utils/review-login.ts, which decides who may get
+ * here and when to pass a captcha token). The session is persisted exactly
+ * as the code path's is.
+ */
 export async function signIn(
   email: string,
   password: string,
+  captchaToken?: string,
 ): Promise<AuthSession> {
   const data = await goTrue(
     "/auth/v1/token?grant_type=password",
-    { email, password },
+    passwordSignInBody(email, password, captchaToken),
   );
   const session = await persistSession(data, data.user?.email ?? email);
   if (!session) {

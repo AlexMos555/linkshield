@@ -27,6 +27,7 @@
         "EXPO_PUBLIC_SUPABASE_URL": "https://bpyqgzzclsbfvxthyfsf.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY",
         "EXPO_PUBLIC_CAPTCHA_URL": "https://cleanway.ai/auth/captcha",
+        "EXPO_PUBLIC_REVIEW_EMAILS": "review@cleanway.ai",
         "EXPO_PUBLIC_DISTRIBUTION": "site"
       },
       "ios": {
@@ -44,6 +45,7 @@
         "EXPO_PUBLIC_SUPABASE_URL": "https://bpyqgzzclsbfvxthyfsf.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$EXPO_PUBLIC_SUPABASE_ANON_KEY",
         "EXPO_PUBLIC_CAPTCHA_URL": "https://cleanway.ai/auth/captcha",
+        "EXPO_PUBLIC_REVIEW_EMAILS": "review@cleanway.ai",
         "EXPO_PUBLIC_DISTRIBUTION": "play"
       },
       "ios": {
@@ -65,6 +67,7 @@
     }
   },
   "//captcha": "EXPO_PUBLIC_CAPTCHA_URL (preview + production) is the hosted Turnstile challenge page. Since 1.0.5 it is used ON DEMAND only (src/utils/otp-request.ts): the code request goes out without a token, and only if Supabase answers captcha_failed does the app open this page and resend with the token. On iPhone it opens in an in-app sheet (ASWebAuthenticationSession, modules/cleanway-safari) from the build after 1.0.5 build 4 on, never in Safari (App Review 4.0); build 4 still switches to Safari, so captcha stays off until the next iOS build is out (docs/MOBILE_AUTH.md). So while Supabase captcha protection is off nothing changes for anyone - no browser hop, same request bytes - and the day it is switched on (after 1.0.5 adoption, see docs/MOBILE_AUTH.md) every 1.0.5+ build already copes. The page needs NEXT_PUBLIC_TURNSTILE_SITE_KEY set on Vercel. Remove the line to build without captcha support (then a captcha_failed answer shows update-the-app).",
+  "//review": "EXPO_PUBLIC_REVIEW_EMAILS (preview + production) is the store reviewers' allowlist: on the sign-in screen an address that EXACTLY matches one (comma-separated, case-insensitive, trimmed) gets a password field instead of an emailed code, because the code would land in our inbox, not the reviewer's (src/utils/review-login.ts). Every other address keeps the code flow unchanged. Unset = off. Not a secret: hiding the field is presentation, the account is protected by its random password. Only @cleanway.ai addresses: the app drops any other whatever build path sets the variable, and the test fails if a profile here lists one it would drop (mobile/scripts/test-auth-error-key.mjs). Account and password: scripts/create_review_account.py, docs/runbooks/app-review-account.md.",
   "//ios": "iOS builds are always the App Store build (EXPO_PUBLIC_DISTRIBUTION is ignored on iOS). In-app purchase needs EXPO_PUBLIC_REVENUECAT_IOS_KEY (public appl_ key) as an EAS environment variable; without it (or with a wrong key) the build shows no paid plans at all — no Plan/Upgrade row, no paywall, no prices — and sets no daily check limit (src/utils/store-billing.ts paidPlansOffered). Build recipe, entitlements, App Store Connect checklist: docs/IOS.md.",
   "//distribution": "EXPO_PUBLIC_DISTRIBUTION names the Android store: production is the Google Play AAB (play: Play Billing only, no web-checkout link, no self-update banner), preview is the internal-test APK and stays the site build it always was. iOS ignores it (every iOS build is the App Store build). An Android release without it fails at the start of gradle (plugins/withDistributionGuard.js). The Play build also needs EXPO_PUBLIC_REVENUECAT_ANDROID_KEY (public goog_ key) as an EAS environment variable, or its paywall says paying is coming soon. RuStore and the direct APK are built locally: docs/RUSTORE_SUBMISSION.md §2.",
   "//supabase":"EXPO_PUBLIC_SUPABASE_ANON_KEY must exist as an EAS environment variable (Expo dashboard -> project -> Environment variables) or the build ships with sign-in dead. Local gradle builds read it from the git-ignored mobile/.env instead. From 1.0.5 the app prefers EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY (sb_publishable_...) when it is set - add it as an EAS environment variable; it is deliberately not in the env blocks above (an undefined $VAR reference there would be ignored by the app anyway). See docs/MOBILE_AUTH.md."
