@@ -239,11 +239,11 @@ def test_the_served_model_reads_the_copy_it_was_trained_on():
         # served its archived copy, and reads the tunnel as it learned it.
         archive = ml_features.archive_path(str(DATA), "public_suffixes_in_top.json", sha)
         assert Path(archive).exists()
-        assert "trycloudflare.com" not in served.shared_suffixes
+        assert not served.shared_suffixes & {"trycloudflare.com"}
         assert features["is_hosting_subdomain"] == 0.0
     else:
         # A model trained after this change reads the live file.
-        assert "trycloudflare.com" in served.shared_suffixes
+        assert {"trycloudflare.com"} <= served.shared_suffixes
         assert features["is_hosting_subdomain"] == 1.0
 
 
