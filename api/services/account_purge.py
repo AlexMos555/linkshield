@@ -35,6 +35,17 @@ erased, or whose auth record can't be deleted, is skipped and retried on
 the next run. Last, the user's Redis keys go (_USER_REDIS_KEYS plus the
 referral code record).
 
+The Admin API DELETE keeps Supabase Auth's own sign-in log
+(auth.audit_log_entries: account id, email, IP of every sign-in and token
+refresh) and adds a `user_deleted` row carrying the email. Once the
+identities are gone, one call to migration 027's
+delete_auth_audit_log_for_users removes every row about the batch (the
+auth schema is not exposed through PostgREST). No answer → the batch waits
+for the next run; any other refusal (404: 027 not applied) would come back
+every run, so the erase goes on and the summary carries
+`auth_audit_log_error` — the rows then age out with retention.py's 2-year
+rule.
+
 A user who restores while a run is under way is never purged. Restore
 (POST /user/account/restore) only clears a deletion that is still inside
 the grace window, so it can never succeed for a row this run listed; and
@@ -62,6 +73,13 @@ logger = logging.getLogger("cleanway.account_purge")
 
 # Must match _DELETION_GRACE_DAYS in api/routers/user.py.
 GRACE_DAYS = 30
+
+AUTH_AUDIT_DELETE_FN = "delete_auth_audit_log_for_users"  # migration 027
+# One call scans the whole sign-in log (GoTrue's table, no index on the
+# payload): more than the client's 10 seconds.
+AUTH_AUDIT_TIMEOUT_S = 60.0
+# Answers that mean "not reached": the gateway, not the function, spoke.
+_AUTH_AUDIT_RETRY_STATUSES = (502, 503, 504)
 
 
 async def purge_expired_accounts() -> dict:
@@ -225,6 +243,18 @@ async def purge_expired_accounts() -> dict:
         if not deleted_ids:
             return _summary([], skipped_ids, restored_ids)
 
+        # Step 1.7: Supabase Auth's sign-in log. After the identities: their
+        # DELETE writes a `user_deleted` row with the email. If the call got
+        # no answer, keep the batch — next run the identities answer 404
+        # (done) and this is retried. A refusal goes on with the erase (see
+        # the module docstring).
+        auth_audit = await _delete_auth_audit_entries(
+            client, settings.supabase_url, headers, deleted_ids
+        )
+        if "retry" in auth_audit:
+            skipped_ids.extend(deleted_ids)
+            return _summary([], skipped_ids, restored_ids)
+
         # Step 2: hard-delete. We rely on the cascading foreign keys —
         # a single DELETE on users.id wipes every dependent row. Orgs the
         # users administer don't cascade (see the module docstring), so
@@ -264,6 +294,7 @@ async def purge_expired_accounts() -> dict:
             "skipped": skipped_ids,
             "restored": restored_ids,
             "cutoff": cutoff,
+            "auth_audit_deleted": auth_audit.get("deleted"),
         },
     )
 
@@ -285,7 +316,49 @@ async def purge_expired_accounts() -> dict:
             meta={"grace_days": GRACE_DAYS, "cutoff": cutoff},
         )
 
-    return _summary(deleted_ids, skipped_ids, restored_ids)
+    result = _summary(deleted_ids, skipped_ids, restored_ids)
+    if "error" in auth_audit:
+        result["auth_audit_log_error"] = auth_audit["error"]
+    return result
+
+
+async def _delete_auth_audit_entries(client, supabase_url: str, headers: dict, ids: list[str]) -> dict:
+    """Delete the rows about these accounts in Supabase Auth's sign-in log
+    (migration 027). {"deleted": n or None}, {"error": …} — answered, not
+    done, would repeat — or {"retry": …} — no answer, nothing confirmed."""
+    try:
+        resp = await client.request(
+            "POST",
+            f"{supabase_url}/rest/v1/rpc/{AUTH_AUDIT_DELETE_FN}",
+            json={"p_user_ids": ids},
+            headers=headers,
+            timeout=AUTH_AUDIT_TIMEOUT_S,
+        )
+    except Exception as e:  # noqa: BLE001 — the batch waits for the next run
+        logger.error(
+            "account_purge.auth_audit_delete_unconfirmed",
+            extra={"user_ids": ids, "error": type(e).__name__},
+        )
+        return {"retry": type(e).__name__}
+    status = resp.status_code
+    if status == 200:
+        try:
+            n = resp.json()
+        except Exception:  # noqa: BLE001 — it ran; only the count is unknown
+            n = None
+        return {"deleted": n if isinstance(n, int) and not isinstance(n, bool) else None}
+    if status in _AUTH_AUDIT_RETRY_STATUSES:
+        logger.error(
+            "account_purge.auth_audit_delete_unconfirmed",
+            extra={"user_ids": ids, "status": status},
+        )
+        return {"retry": f"status_{status}"}
+    error = "not_installed" if status == 404 else f"status_{status}"
+    logger.error(
+        "account_purge.auth_audit_delete_failed",
+        extra={"user_ids": ids, "status": status, "error": error},
+    )
+    return {"error": error}
 
 
 async def _delete_admin_orgs(client, supabase_url: str, headers: dict, ids: list[str]) -> None:

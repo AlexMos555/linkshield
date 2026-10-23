@@ -11,6 +11,10 @@ Pinned here:
   - "off" (the default) does nothing at all;
   - one failing table doesn't stop the others and is reported;
   - the account purge runs only in "on" mode; dry-run counts candidates;
+  - Supabase Auth's own sign-in log (auth.audit_log_entries, not exposed
+    through PostgREST) is purged after the security log's 2 years through
+    migration 027's function: POST to delete, GET (a read-only transaction)
+    to count; a missing function fails the pass;
   - the background loop is not started unless RETENTION_PURGE is set;
   - the docs that point a reader at the policy's retention list name the
     section it has today.
@@ -38,6 +42,8 @@ class _Resp:
         self.headers = headers or {}
 
     def json(self):
+        if isinstance(self._body, Exception):
+            raise self._body
         return self._body
 
 
@@ -46,6 +52,10 @@ class _Stub:
         self.calls: List[Dict[str, Any]] = []
         self.fail_tables: set[str] = set()
         self.count = 3
+        # /rest/v1/rpc/<fn> answers with the function's bigint.
+        self.rpc_status = 200
+        self.rpc_body: Any = 5
+        self.rpc_error: Exception | None = None
 
     def client(self):
         stub = self
@@ -60,13 +70,18 @@ class _Stub:
             async def __aexit__(self, *_a):
                 return None
 
-            async def request(self, method, url, params=None, headers=None, **_kw):
+            async def request(self, method, url, params=None, headers=None, json=None, **_kw):
                 table = url.rsplit("/", 1)[-1]
                 stub.calls.append(
-                    {"method": method, "table": table, "params": dict(params or {}), "headers": dict(headers or {})}
+                    {"method": method, "table": table, "params": dict(params or {}), "headers": dict(headers or {}),
+                     "json": json, "rpc": "/rest/v1/rpc/" in url}
                 )
                 if table in stub.fail_tables:
                     return _Resp(500)
+                if "/rest/v1/rpc/" in url:
+                    if stub.rpc_error is not None:
+                        raise stub.rpc_error
+                    return _Resp(stub.rpc_status, stub.rpc_body)
                 return _Resp(200 if method == "GET" else 204, [], {"Content-Range": f"*/{stub.count}"})
 
         return _Client
@@ -86,6 +101,10 @@ def stub(monkeypatch):
 
 def _by_table(calls, table):
     return [c for c in calls if c["table"] == table]
+
+
+def _rpc_calls(calls):
+    return [c for c in calls if c["rpc"]]
 
 
 def test_rules_match_the_policy():
@@ -121,6 +140,9 @@ def test_windows_agree_with_the_code_that_sets_them():
     assert retention.AUDIT_LOG_DAYS == 730
     assert retention.WEEKLY_AGGREGATES_DAYS == 365
     assert retention.FEEDBACK_REPORTS_DAYS == 365
+    # The policy names no period for Supabase's own sign-in log (section 9
+    # only says it may keep the sign-in IP): it follows our security log.
+    assert retention.AUTH_AUDIT_LOG_DAYS == retention.AUDIT_LOG_DAYS == 730
 
 
 def _policy_section_number(title: str) -> int:
@@ -185,6 +207,8 @@ async def test_dry_run_counts_and_never_deletes(stub, monkeypatch):
     assert out["accounts"] == {"would_delete": 3}
     assert out["tables"]["family_alerts_expired"] == {"would_delete": 3}
     for c in stub.calls:
+        if c["rpc"]:
+            continue  # the auth log's count: test_dry_run_counts_the_auth_audit_log_read_only
         assert c["params"]["limit"] == "1"
         assert c["headers"]["Prefer"] == "count=exact"
 
@@ -425,3 +449,110 @@ async def test_redis_down_never_breaks_a_pass(stub, redis_down, monkeypatch):
     monkeypatch.setattr("api.services.account_purge.purge_expired_accounts", _purge_ok)
     out = await retention.run_retention("on", now=NOW)
     assert out["tables"]["audit_log_2y"] == {"deleted": 3}
+
+
+# ── Supabase Auth's own sign-in log (migration 027) ──
+#
+# GoTrue writes auth.audit_log_entries (account id, email, IP) for every
+# sign-in and token refresh. The auth schema is not exposed through
+# PostgREST, so the pass calls migration 027's SECURITY DEFINER function.
+
+
+@pytest.mark.asyncio
+async def test_on_mode_purges_the_auth_audit_log_through_the_function(stub, monkeypatch):
+    monkeypatch.setattr("api.services.account_purge.purge_expired_accounts", _purge_ok)
+
+    out = await retention.run_retention("on", now=NOW)
+
+    (call,) = _rpc_calls(stub.calls)
+    assert (call["method"], call["table"]) == ("POST", "purge_auth_audit_log")
+    assert call["json"] == {"p_retention_days": 730, "p_dry_run": False}
+    assert call["params"] == {}
+    assert call["headers"]["apikey"] == "sb_secret_test_value_123"
+    assert out["tables"]["auth_audit_log_2y"] == {"deleted": 5}
+
+
+@pytest.mark.asyncio
+async def test_dry_run_counts_the_auth_audit_log_read_only(stub):
+    """GET: PostgREST runs it in a READ ONLY transaction, so a dry run can't
+    delete even if the arguments said so; p_dry_run says it anyway."""
+    out = await retention.run_retention("dry_run", now=NOW)
+
+    (call,) = _rpc_calls(stub.calls)
+    assert (call["method"], call["table"]) == ("GET", "purge_auth_audit_log")
+    assert call["params"] == {"p_retention_days": 730, "p_dry_run": True}
+    assert call["json"] is None
+    assert out["tables"]["auth_audit_log_2y"] == {"would_delete": 5}
+
+
+@pytest.mark.asyncio
+async def test_auth_audit_function_not_installed_fails_the_pass(stub, fake_redis, monkeypatch):
+    """PostgREST answers 404 for a function it doesn't know: migration 027
+    is not applied yet. The other rules still run; /health/deep shows it."""
+    monkeypatch.setattr("api.services.account_purge.purge_expired_accounts", _purge_ok)
+    monkeypatch.setattr(retention, "_settings_mode", lambda: "on")
+    stub.rpc_status = 404
+
+    out = await retention.run_retention("on", now=NOW)
+
+    assert out["tables"]["auth_audit_log_2y"] == {"error": "not_installed"}
+    assert out["tables"]["audit_log_2y"] == {"deleted": 3}
+    st = await retention.health_status(now=NOW_TS + 60)
+    assert st["last_pass_failed"] == ["auth_audit_log_2y"]
+    assert (st["ok"], st["error"]) == (False, "no_recent_pass")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status", "body", "error"),
+    [
+        (500, {"code": "57014"}, "status_500"),
+        (403, {"code": "42501"}, "status_403"),
+        (200, "five", "bad_response"),
+        (200, True, "bad_response"),
+        (200, -1, "bad_response"),
+    ],
+)
+async def test_auth_audit_purge_failures_are_reported(stub, monkeypatch, status, body, error):
+    monkeypatch.setattr("api.services.account_purge.purge_expired_accounts", _purge_ok)
+    stub.rpc_status, stub.rpc_body = status, body
+
+    out = await retention.run_retention("on", now=NOW)
+
+    assert out["tables"]["auth_audit_log_2y"] == {"error": error}
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_auth_audit_answer_is_reported(stub):
+    stub.rpc_body = ValueError("not json")
+    out = await retention.run_retention("dry_run", now=NOW)
+    assert out["tables"]["auth_audit_log_2y"] == {"error": "bad_response"}
+
+
+@pytest.mark.asyncio
+async def test_auth_audit_purge_that_raises_is_reported(stub, monkeypatch):
+    import httpx
+
+    monkeypatch.setattr("api.services.account_purge.purge_expired_accounts", _purge_ok)
+    stub.rpc_error = httpx.ReadTimeout("slow")
+
+    out = await retention.run_retention("on", now=NOW)
+
+    assert out["tables"]["auth_audit_log_2y"] == {"error": "ReadTimeout"}
+    assert out["tables"]["feedback_reports_1y"] == {"deleted": 3}
+
+
+@pytest.mark.asyncio
+async def test_an_account_purge_that_left_the_auth_log_counts_as_failed(stub, fake_redis, monkeypatch):
+    """The erase went on, but a purged account's sign-in log entries stayed
+    (account_purge says why): not a clean pass."""
+    async def _purge_left_auth_log():
+        return {"deleted": 1, "ids": ["u1"], "auth_audit_log_error": "not_installed"}
+
+    monkeypatch.setattr("api.services.account_purge.purge_expired_accounts", _purge_left_auth_log)
+
+    out = await retention.run_retention("on", now=NOW)
+
+    assert out["accounts"]["auth_audit_log_error"] == "not_installed"
+    st = await retention.health_status(now=NOW_TS + 60)
+    assert st["last_pass_failed"] == ["accounts"]

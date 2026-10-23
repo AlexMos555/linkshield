@@ -53,7 +53,7 @@ ALLOWED_EXTRAS = frozenset({
     # retention and account purge
     "mode", "tables", "table", "accounts_deleted", "accounts_would_delete",
     "failed", "interval_s", "cutoff", "candidates", "deleted", "restored",
-    "skipped", "ids", "user_ids",
+    "skipped", "ids", "user_ids", "auth_audit_deleted",
     # data export (api/services/export.py): which part failed, never its content
     "part",
     # email (never the address, subject or body)

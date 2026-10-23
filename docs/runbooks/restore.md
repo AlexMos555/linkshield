@@ -80,16 +80,20 @@ EXECUTE на каждую функцию — включая SECURITY DEFINER `re
    ```
    Допустима только одна, безвредная ошибка: `schema "public" already exists`.
    Любая другая — остановиться и разобраться.
-6. **Обязательно: заново наложить запрет и триггер** (все шесть миграций
-   идемпотентны — повторный запуск безопасен; 025 — последней):
+6. **Обязательно: заново наложить запрет и триггер** (все семь миграций
+   идемпотентны — повторный запуск безопасен; по порядку номеров; после 025
+   идут только те, что клиентам ничего не выдают):
    ```bash
    for f in 010_auto_create_user_records 017_audit_log_retention 022_account_devices \
-            023_entitlements 024_store_purchases_revenuecat 025_lock_down_client_access; do
+            023_entitlements 024_store_purchases_revenuecat 025_lock_down_client_access \
+            027_auth_audit_log_retention; do
      psql "$NEW_DB_URL" -v ON_ERROR_STOP=1 -f "supabase/migrations/$f.sql" || break
    done
    ```
    017 создаст индекс журнала и закрытую функцию очистки, даже если в
-   production её не применяли, — это безвредно.
+   production её не применяли, — это безвредно. 027 — функции очистки журнала
+   входов Supabase Auth (только для `service_role`): без них задача очистки
+   пишет `auth_audit_log_2y: not_installed`.
    Это нужно и после восстановления дампа **с** правами: права в дампе
    записаны относительно значений по умолчанию, и лишние права, которые новый
    проект выдаёт `anon`/`authenticated` при создании таблиц, они не отнимают.
@@ -110,7 +114,8 @@ EXECUTE на каждую функцию — включая SECURITY DEFINER `re
    cross join (values ('anon'), ('authenticated')) r(role)
    where n.nspname = 'public'
      and p.proname in ('register_device', 'revoke_device', 'report_phone',
-                       'handle_new_auth_user', 'purge_old_audit_log')
+                       'handle_new_auth_user', 'purge_old_audit_log',
+                       'purge_auth_audit_log', 'delete_auth_audit_log_for_users')
      and has_function_privilege(r.role, p.oid, 'EXECUTE');
 
    -- в) триггер регистрации на месте — ожидается 1 строка
