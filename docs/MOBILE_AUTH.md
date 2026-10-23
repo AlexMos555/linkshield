@@ -101,8 +101,8 @@ installed 1.0.4** if flipped today:
   `verifyOtp` needs no token.
 - **iPhone: the challenge must open inside the app.** App Review 4.0 rejects a
   sign-in step that leaves the app for Safari, and once captcha is on every
-  iPhone sign-in — the reviewer's included — goes through this page. Builds
-  after 1.0.5 build 4 open it in an in-app sheet (ASWebAuthenticationSession,
+  iPhone sign-in — the reviewer's included — goes through this page. 1.0.6
+  (build 5) and later open it in an in-app sheet (ASWebAuthenticationSession,
   `mobile/modules/cleanway-safari`, no new dependency); the sheet catches the
   `cleanway://captcha-return` redirect itself, with the same nonce check.
   **1.0.5 build 4 and older still switch to Safari** (`Linking.openURL`).
@@ -112,10 +112,12 @@ installed 1.0.4** if flipped today:
 
 ### Order (founder steps marked ★)
 
-1. **Ship 1.0.5 everywhere** — App Store, Google Play, RuStore and the direct APK
-   on cleanway.ai. Local gradle builds (direct APK / RuStore) read
-   `mobile/.env`, not `eas.json`: add `EXPO_PUBLIC_CAPTCHA_URL` there too.
-   **On iPhone that means a build after 1.0.5 build 4** — the first one with
+1. **Ship 1.0.6 everywhere** — App Store, Google Play, RuStore and the direct APK
+   on cleanway.ai. On Android 1.0.6 (107) is the first published build that
+   can solve the captcha (1.0.5 was not published there). Local gradle builds
+   (direct APK / RuStore) read `mobile/.env`, not `eas.json`: add
+   `EXPO_PUBLIC_CAPTCHA_URL` there too.
+   **On iPhone that means 1.0.6 (build 5)** — the first build with
    the in-app sheet (above). Build 4 opens Safari, so it must not be the App
    Store build on the day captcha goes on: ship the next iOS build first, and
    in step 3 count build 4 together with 1.0.4 and older.
@@ -133,7 +135,7 @@ installed 1.0.4** if flipped today:
 4. ★ **Enable captcha in Supabase**: Dashboard → Authentication → Attack
    Protection → Enable Captcha protection → provider **Turnstile** → the
    widget's **secret key** from step 2. Immediately test: web `/signup`, a
-   1.0.5 Android phone and an iPhone on the build with the sheet (the
+   1.0.6 Android phone and an iPhone on the build with the sheet (the
    challenge page should open once — on iPhone as a sheet over the app, never
    Safari — then the code arrives). Rollback = switch it off; nothing else to
    undo.
