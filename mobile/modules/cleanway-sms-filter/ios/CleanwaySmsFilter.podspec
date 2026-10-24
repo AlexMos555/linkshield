@@ -5,9 +5,9 @@ Pod::Spec.new do |s|
   s.description    = 'Hands the server switches for the on-device SMS check to the CleanwaySmsFilter extension through the app group, tells the app whether this build carries the extension, and runs the same on-device message engine for the in-app message check. The filter itself is the CleanwaySmsFilter target (plugins/withSmsFilter.js); docs/IOS.md section 5.'
   s.author         = 'Cleanway'
   s.homepage       = 'https://cleanway.ai'
-  # Not above the app's deployment target (Expo SDK 54: iOS 15.1), or autolinking skips the pod.
+  # Not above the app's deployment target (Expo SDK 56+: iOS 16.4), or autolinking skips the pod.
   s.platforms      = {
-    :ios => '15.1'
+    :ios => '16.4'
   }
   s.source         = { git: '' }
   s.static_framework = true

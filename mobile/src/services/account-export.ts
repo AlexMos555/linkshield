@@ -42,7 +42,10 @@ async function shareAsFile(text: string, name: string, title: string): Promise<b
     if (!(await Sharing.isAvailableAsync())) return false;
     const file = new File(Paths.cache, name);
     file.create({ overwrite: true });
-    file.write(text);
+    // Async since Expo SDK 58 (expo-file-system 58): without the await the
+    // share sheet got an empty or half-written file, and a failed write
+    // skipped the catch below instead of falling back to the text.
+    await file.write(text);
     await Sharing.shareAsync(file.uri, { mimeType: "application/json", UTI: "public.json", dialogTitle: title });
     return true;
   } catch {

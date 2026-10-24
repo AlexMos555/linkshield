@@ -7,12 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "cleanway",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": false,
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0f172a"
-    },
     "locales": {
       "en": "./i18n/ios/en.json",
       "ru": "./i18n/ios/ru.json",
@@ -87,6 +81,14 @@
         "expo-router",
         {
           "sitemap": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0f172a"
         }
       ],
       [

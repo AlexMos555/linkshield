@@ -265,11 +265,11 @@ check("expo-notifications is kept out of the iOS build (no push on iPhone yet)",
   for (const file of files) assert.ok(!/from ["']expo-notifications["']/.test(read(file)), file);
 });
 
-check("the native module's pod is not above the app's iOS deployment target (Expo SDK 54: 15.1)", () => {
+check("the native module's pod is not above the app's iOS deployment target (Expo SDK 56+: 16.4)", () => {
   const podspec = read("modules/cleanway-vpn/ios/CleanwayVpn.podspec");
   const m = /:ios => '(\d+)\.(\d+)'/.exec(podspec);
   assert.ok(m, "ios platform declared");
-  assert.ok(Number(m[1]) * 100 + Number(m[2]) <= 1501, `pod needs iOS ${m[1]}.${m[2]}`);
+  assert.ok(Number(m[1]) * 100 + Number(m[2]) <= 1604, `pod needs iOS ${m[1]}.${m[2]}`);
 });
 
 check("the share extension: links and text, one at a time — the URL itself, not the web page", () => {
@@ -396,7 +396,7 @@ check("Safari extension target: bundle id, app group, iOS 16.4, Safari web-exten
   assert.equal(safariPlugin.TARGET, "CleanwaySafariExtension");
   assert.equal(safariPlugin.extensionBundleId("ai.cleanway.app"), "ai.cleanway.app.safari-extension");
   assert.equal(safariPlugin.appGroupOf("ai.cleanway.app"), "group.ai.cleanway.app");
-  // Module service workers arrived in Safari 16.4; the app itself stays at 15.1.
+  // Module service workers arrived in Safari 16.4 — the app's own minimum since Expo SDK 56.
   assert.equal(safariPlugin.DEPLOYMENT_TARGET, "16.4");
   const info = safariPlugin.infoPlistContent("group.ai.cleanway.app");
   assert.match(info, /<key>NSExtensionPointIdentifier<\/key>\s*<string>com\.apple\.Safari\.web-extension<\/string>/);
@@ -491,7 +491,7 @@ check("Safari extension: every localized name fits App Store Connect's 40-charac
 check("the Safari status module's pod is not above the app's iOS deployment target", () => {
   const podspec = read("modules/cleanway-safari/ios/CleanwaySafari.podspec");
   const m = /:ios => '(\d+)\.(\d+)'/.exec(podspec);
-  assert.ok(m && Number(m[1]) * 100 + Number(m[2]) <= 1501, "pod above iOS 15.1");
+  assert.ok(m && Number(m[1]) * 100 + Number(m[2]) <= 1604, "pod above iOS 16.4");
   const swift = read("modules/cleanway-safari/ios/CleanwaySafariModule.swift");
   // The iOS 26.2 calls stay behind a runtime check (and a compiler check for older Xcode).
   const guarded = (call) => new RegExp(String.raw`#if compiler\(>=6\.2\.3\)\s*if #available\(iOS 26\.2, \*\) \{[\s\S]*?` + call);

@@ -333,12 +333,21 @@ class MainActivity : ReactActivity() {
     ]) assert.ok(blocked.includes(perm), `${perm} must be in android.blockedPermissions`);
     assert.ok(!blocked.includes("android.permission.CAMERA"), "CAMERA is used by the QR scanner and must stay");
   });
-  // Google Play target API 36 (Expo SDK 54): RN still relies on onBackPressed,
-  // which Android 16 stops calling for targetSdk 36 apps unless predictive back
-  // is opted out; and the legacy architecture is what reanimated 3 needs.
-  check("app.json keeps predictive back off and the legacy architecture", () => {
+  // Google Play target API 36: RN still relies on onBackPressed, which
+  // Android 16 stops calling for targetSdk 36 apps unless predictive back is
+  // opted out. Since Expo SDK 55 the New Architecture is the only one, and the
+  // app.json schema rejects `newArchEnabled`, so it must stay out.
+  check("app.json keeps predictive back off and has no newArchEnabled", () => {
     assert.strictEqual(appJson.android.predictiveBackGestureEnabled, false);
-    assert.strictEqual(appJson.newArchEnabled, false);
+    assert.ok(!("newArchEnabled" in appJson), "newArchEnabled was removed in Expo SDK 55");
+  });
+  // Expo SDK 58: the root `splash` is no longer in the app.json schema; the
+  // launch screen comes from the expo-splash-screen plugin entry instead.
+  check("app.json: the launch screen is the expo-splash-screen plugin's, no root splash", () => {
+    assert.ok(!("splash" in appJson), "root splash is rejected by the SDK 58 schema");
+    const entry = (appJson.plugins || []).find((p) => Array.isArray(p) && p[0] === "expo-splash-screen");
+    assert.ok(entry, "expo-splash-screen plugin entry present");
+    assert.deepStrictEqual(entry[1], { image: "./assets/splash.png", resizeMode: "contain", backgroundColor: "#0f172a" });
   });
   check("app.json registers the dark-system-bars plugin", () => {
     assert.ok((appJson.plugins || []).includes("./plugins/withDarkSystemBars"));
@@ -464,12 +473,13 @@ class MainActivity : ReactActivity() {
 }
 
 // --- expo-share-intent: a shared file stays in the cache (Android) ---------
-// 5.1.1 copied a shared file to cacheDir/<the sender's _display_name>, so any
-// app on the phone could send "../shared_prefs/…" and overwrite Cleanway's
-// private data (docs/EXPO_UPGRADE_PLAN.md §1.2). patches/expo-share-intent+5.1.1.patch
-// is upstream's 8.0.1 fix; scripts/check-share-intent.mjs proves it is in the
-// installed module and that the share sheet takes text/plain only. Here: it
-// passes, and it fails when the fix is missing or left behind.
+// 2.0.0–8.0.0 copied a shared file to cacheDir/<the sender's _display_name>,
+// so any app on the phone could send "../shared_prefs/…" and overwrite
+// Cleanway's private data (docs/EXPO_UPGRADE_PLAN.md §1.2). 1.0.6 patched 5.1.1;
+// since Expo SDK 58 the app takes ^9.0.0, which has upstream's 8.0.1 fix, and
+// the patch is gone. scripts/check-share-intent.mjs proves the fix is in the
+// installed module, that no patch is left behind and that the share sheet
+// takes text/plain only. Here: it passes, and it fails when it should.
 console.log("expo-share-intent (Android shared-file path traversal):");
 {
   const { spawnSync } = require("node:child_process");
@@ -481,44 +491,62 @@ console.log("expo-share-intent (Android shared-file path traversal):");
   const run = (...args) => spawnSync(process.execPath, [script, ...args], { encoding: "utf8" });
   const KT = path.join("android", "src", "main", "java", "expo", "modules", "shareintent", "ExpoShareIntentModule.kt");
   const installed = path.dirname(require.resolve("expo-share-intent/package.json", { paths: [mobileDir] }));
-  const patched = fs.readFileSync(path.join(installed, KT), "utf8");
-  // The patch's one hunk, both ways: what it replaces and what it writes.
-  const lines = fs.readFileSync(path.join(mobileDir, "patches", "expo-share-intent+5.1.1.patch"), "utf8").split("\n");
-  const hunk = lines.slice(lines.findIndex((l) => l.startsWith("@@")) + 1).filter((l) => l !== "");
-  const pre = hunk.filter((l) => l[0] !== "+").map((l) => l.slice(1)).join("\n");
-  const post = hunk.filter((l) => l[0] !== "-").map((l) => l.slice(1)).join("\n");
-  const withFakePackage = (version, source, fn) => {
+  const fixed = fs.readFileSync(path.join(installed, KT), "utf8");
+  // Upstream's fix (#221, 8.0.1), both ways: the line 2.0.0–8.0.0 had in
+  // getDataColumn, and the lines 8.0.1 and 9.0.0 have instead.
+  const HOLE = [
+    "                    targetFile = File(context.cacheDir, fileName)",
+    "                }",
+  ].join("\n");
+  const FIX = [
+    "                    val safeName = fileName?.let { File(it).name }.orEmpty()",
+    "                    if (safeName.isNotEmpty()) {",
+    "                        val candidate = File(context.cacheDir, safeName)",
+    "                        val cacheRoot = context.cacheDir.canonicalPath + File.separator",
+    "                        if (candidate.canonicalPath.startsWith(cacheRoot)) {",
+    "                            targetFile = candidate",
+    "                        }",
+    "                    }                }",
+  ].join("\n");
+  const withFakePackage = (version, source, fn, patches = []) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cleanway-share-intent-"));
     try {
-      fs.mkdirSync(path.join(dir, path.dirname(KT)), { recursive: true });
-      fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name: "expo-share-intent", version }));
-      fs.writeFileSync(path.join(dir, KT), source);
-      fn(run(`--package-dir=${dir}`));
+      fs.mkdirSync(path.join(dir, "pkg", path.dirname(KT)), { recursive: true });
+      fs.mkdirSync(path.join(dir, "patches"));
+      fs.writeFileSync(path.join(dir, "pkg", "package.json"), JSON.stringify({ name: "expo-share-intent", version }));
+      fs.writeFileSync(path.join(dir, "pkg", KT), source);
+      for (const name of patches) fs.writeFileSync(path.join(dir, "patches", name), "--- a/x\n+++ b/x\n");
+      fn(run(`--package-dir=${path.join(dir, "pkg")}`, `--patches-dir=${path.join(dir, "patches")}`));
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   };
-  check("the installed module carries the fix, and the share sheet takes text/plain only", () => {
+  check("package.json takes expo-share-intent ^9.0.0, and 9.x is what is installed", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(mobileDir, "package.json"), "utf8"));
+    assert.strictEqual(pkg.dependencies["expo-share-intent"], "^9.0.0");
+    const version = JSON.parse(fs.readFileSync(path.join(installed, "package.json"), "utf8")).version;
+    assert.match(version, /^9\./);
+  });
+  check("the installed module carries the fix, no patch is left, and the share sheet takes text/plain only", () => {
     const r = run();
     assert.strictEqual(r.status, 0, r.stdout + r.stderr);
-    assert.ok(r.stdout.includes("applied cleanly"), r.stdout);
+    assert.ok(r.stdout.includes("carries the fix itself"), r.stdout);
+    assert.ok(r.stdout.includes("no expo-share-intent patch in mobile/patches/"), r.stdout);
+    assert.ok(fixed.includes(FIX), "the installed file holds upstream's fix, as 8.0.1 wrote it");
   });
-  check("fails on the unpatched 5.1.1 file, i.e. a patch that did not apply", () => {
-    assert.ok(patched.includes(post), "the installed file holds the patch's result");
-    withFakePackage("5.1.1", patched.replace(post, pre), (r) => {
+  check("fails on the file 2.0.0–8.0.0 shipped, i.e. a module without the fix", () => {
+    withFakePackage("8.0.0", fixed.replace(FIX, HOLE), (r) => {
       assert.strictEqual(r.status, 1, r.stdout + r.stderr);
       assert.ok(r.stdout.includes("File(context.cacheDir, fileName)"), r.stdout);
-      // "did not apply" = the installed file with the hunk undone is upstream
-      // 5.1.1 byte for byte, so the patch applies to 5.1.1 cleanly.
-      assert.ok(r.stdout.includes("expo-share-intent+5.1.1.patch did not apply"), r.stdout);
+      assert.ok(r.stdout.includes("expo-share-intent 8.0.0 has the hole"), r.stdout);
     });
   });
-  check("fails when a package that has the fix itself (1.1.0: >= 9.0.0) still has the 5.1.1 patch", () => {
-    withFakePackage("9.0.0", patched, (r) => {
+  check("fails when the fixed module still has a patch next to it (the 5.1.1 one, forgotten)", () => {
+    withFakePackage("9.0.0", fixed, (r) => {
       assert.strictEqual(r.status, 1, r.stdout + r.stderr);
-      assert.ok(r.stdout.includes("delete mobile/patches/expo-share-intent+5.1.1.patch"), r.stdout);
+      assert.ok(r.stdout.includes("expo-share-intent+5.1.1.patch is left behind"), r.stdout);
       assert.ok(r.stdout.includes("only if its canonical path is inside cacheDir"), "its own code passes");
-    });
+    }, ["expo-share-intent+5.1.1.patch"]);
   });
 
   // --manifest: the AndroidManifest.xml a release build actually uses. An
@@ -591,6 +619,102 @@ console.log("expo-share-intent (Android shared-file path traversal):");
   check("app.json registers withShareIntentGuard", () => {
     const plugins = JSON.parse(fs.readFileSync(path.join(mobileDir, "app.json"), "utf8")).expo.plugins || [];
     assert.ok(plugins.includes("./plugins/withShareIntentGuard"));
+  });
+}
+
+// --- After prebuild: every plugin above landed in the generated android/ ------
+// Each plugin does nothing when a new Expo template moves its anchor, so a
+// template change shows up only as a release signed with the debug key, or
+// one without its checks. scripts/check-prebuild-gradle.mjs reads the real
+// prebuild output in the build mirror (docs/EXPO_UPGRADE_PLAN.md §3.2); here it
+// is shown to pass on the plugins' own output and to fail without any one of them.
+console.log("check-prebuild-gradle (plugins landed after expo prebuild):");
+{
+  const { spawnSync } = require("node:child_process");
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const { _patch: patchDist } = require("../withDistributionGuard.js");
+  const { _patch: patchShare } = require("../withShareIntentGuard.js");
+  const script = path.join(__dirname, "..", "..", "scripts", "check-prebuild-gradle.mjs");
+  const ACTIVITY = "class MainActivity : ReactActivity() {\n  override fun onCreate(savedInstanceState: Bundle?) {\n    setTheme(R.style.AppTheme);\n    super.onCreate(null)\n  }\n}\n";
+  const steps = {
+    withReleaseSigning: patchSigning,
+    withAbiFilters: (g) => patchAbi(g, DEFAULT_ABIS),
+    withSeedGuard: patchSeed,
+    withDistributionGuard: (g) => patchDist(g, "rustore"),
+    withShareIntentGuard: patchShare,
+  };
+  const prebuild = ({ skip = "" } = {}, ...args) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cleanway-prebuild-"));
+    try {
+      let gradle = TEMPLATE;
+      for (const [name, step] of Object.entries(steps)) if (name !== skip) gradle = step(gradle);
+      const javaDir = path.join(dir, "app", "src", "main", "java", "ai", "cleanway", "app");
+      fs.mkdirSync(javaDir, { recursive: true });
+      fs.writeFileSync(path.join(dir, "app", "build.gradle"), gradle);
+      fs.writeFileSync(path.join(javaDir, "MainActivity.kt"), skip === "withDarkSystemBars" ? ACTIVITY : patchDarkBars(ACTIVITY));
+      return spawnSync(process.execPath, [script, `--android=${dir}`, ...args], { encoding: "utf8" });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  };
+  check("passes when every plugin landed, and on the store it was generated for", () => {
+    const r = prebuild({}, "--distribution=rustore");
+    assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+    for (const m of ["release-signing", "abi-filters", "seed-guard", "distribution-guard", "share-intent-guard", "dark-system-bars"]) {
+      assert.ok(r.stdout.includes(`cleanway-${m}`), m);
+    }
+  });
+  check("fails when any one plugin found no anchor", () => {
+    for (const name of [...Object.keys(steps), "withDarkSystemBars"]) {
+      const r = prebuild({ skip: name });
+      assert.strictEqual(r.status, 1, `${name}: ${r.stdout}${r.stderr}`);
+      assert.ok(r.stdout.includes(`plugins/${name}.js found no anchor`), r.stdout);
+    }
+  });
+  check("fails on an android/ generated for another store", () => {
+    const r = prebuild({}, "--distribution=play");
+    assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+    assert.ok(r.stdout.includes("generated for 'rustore', not 'play'"), r.stdout);
+  });
+}
+
+// --- Expo SDK 58: native modules that are installed but never linked ---------
+// expo-router 58 depends on react-native-drawer-layout, whose required peers
+// (gesture-handler, reanimated, + worklets for reanimated 4) npm installs with
+// it. react-native.config.js keeps their native code out of both apps; that
+// holds only while nothing the app ships imports them.
+console.log("not-linked native modules (react-native.config.js):");
+{
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const mobileDir = path.join(__dirname, "..", "..");
+  const NOT_LINKED = ["react-native-gesture-handler", "react-native-reanimated", "react-native-worklets"];
+  const { dependencies } = require(path.join(mobileDir, "react-native.config.js"));
+  check("gesture-handler, reanimated and worklets are linked on neither platform", () => {
+    for (const name of NOT_LINKED) assert.deepStrictEqual(dependencies[name], { platforms: { android: null, ios: null } }, name);
+  });
+  check("package.json does not depend on them, nor on expo-router's drawer", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(mobileDir, "package.json"), "utf8"));
+    for (const name of [...NOT_LINKED, "react-native-drawer-layout"]) {
+      assert.ok(!(name in pkg.dependencies), `${name} is a direct dependency: link it (react-native.config.js) or drop it`);
+    }
+  });
+  check("no app code imports them (or expo-router/drawer, expo-router/js-stack)", () => {
+    const banned = [...NOT_LINKED, "react-native-drawer-layout", "expo-router/drawer", "expo-router/js-stack"];
+    const importRe = new RegExp(String.raw`(from\s+|require\(\s*|import\(\s*|import\s+)["'](${banned.map((b) => b.replace(/[/.]/g, "\\$&")).join("|")})(/[^"']*)?["']`);
+    const offenders = [];
+    const walk = (dir) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name === "node_modules" || entry.name === "android" || entry.name === "ios" || entry.name.startsWith(".")) continue;
+        const p = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(p);
+        else if (/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(entry.name) && importRe.test(fs.readFileSync(p, "utf8"))) offenders.push(path.relative(mobileDir, p));
+      }
+    };
+    for (const dir of ["app", "src", "modules"]) walk(path.join(mobileDir, dir));
+    assert.deepStrictEqual(offenders, []);
   });
 }
 

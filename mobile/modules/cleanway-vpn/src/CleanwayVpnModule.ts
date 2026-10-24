@@ -54,6 +54,8 @@ declare class CleanwayVpnModule extends NativeModule<CleanwayVpnModuleEvents> {
   /** Persist the chosen UI locale for native notifications. */
   setNotificationLocale?(code: string): void;
   isDefaultLinkHandler?(): boolean;
+  /** Can the browser role be verified here at all (RoleManager, Android 10+)? */
+  isLinkHandlerSupported?(): boolean;
   /** Ask the OS to make Cleanway the default link handler. */
   requestLinkHandler?(): Promise<boolean>;
   /** Loaded blocklist + freshness. Optional: older native builds lack it. */

@@ -5,10 +5,10 @@ Pod::Spec.new do |s|
   s.description    = 'Reads whether the Cleanway Safari Web Extension is switched on (iOS 26.2+) and when it last ran on a web page (app group), and opens its page in Settings. docs/IOS.md. Also the in-app web sheet (ASWebAuthenticationSession) for the sign-in captcha, docs/MOBILE_AUTH.md.'
   s.author         = 'Cleanway'
   s.homepage       = 'https://cleanway.ai'
-  # Not above the app's deployment target (Expo SDK 54: iOS 15.1), or Expo's
+  # Not above the app's deployment target (Expo SDK 56+: iOS 16.4), or Expo's
   # autolinking silently skips the pod and the app dies at launch.
   s.platforms      = {
-    :ios => '15.1'
+    :ios => '16.4'
   }
   s.source         = { git: '' }
   s.static_framework = true

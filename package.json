@@ -29,18 +29,16 @@
   },
   "overrides": {
     "next": "15.5.28",
-    "expo": "~54.0.37",
+    "expo": "~58.0.19",
     "postcss": "^8.5.23",
     "source-map-js": "^1.2.2",
     "sharp": "^0.35.5",
     "prismjs": "^1.30.0",
     "uuid": "^11.1.1",
-    "xcode": "3.0.1",
     "react-email": {
       "glob": "^10.5.0",
       "@babel/core": "^7.29.7"
-    },
-    "xcode": "3.0.1"
+    }
   },
   "dependencies": {
     "tweetnacl": "^1.0.3",
