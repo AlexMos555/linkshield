@@ -36,7 +36,7 @@
 - [ ] **17. Mobile horizontal-overflow E2E локально** · cd landing && npx playwright test e2e/mobile.spec.ts --project=mobile-safari · 30 мин · если passes — убери `.skip` и закоммить; если fails — note в issue
 
 ### Пятница 2026-07-03, 14:00-18:00 (~45 мин)
-- [ ] **18. 🎯 Chrome Web Store submission** · chrome.google.com/webstore/devconsole · 45 мин · buy $5 dev account → upload `dist/store-artifacts/cleanway-extension.zip` → copy-paste из `docs/marketing/chrome-web-store-listing.md` → 5 screenshots @ 1280×800 → submit · status = "In review" by EOD
+- [ ] **18. 🎯 Chrome Web Store submission** · chrome.google.com/webstore/devconsole · 45 мин · buy $5 dev account → upload `dist/store-artifacts/cleanway-0.2.2-chrome.zip` → листинг по `docs/CWS_SUBMISSION.md` → готовые скриншоты из `store-assets/extension/en/` (01, 02, 04, 05; см. README там) → submit · status = "In review" by EOD
 
 ---
 

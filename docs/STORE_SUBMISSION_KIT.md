@@ -434,7 +434,7 @@ Cleanway предупреждает о мошеннических и фишин�
 | Малая промо-плитка 440 × 280 | `store-assets/browser-extension/en/promo-small-440x280.png` (ru: `…/ru/promo-small-440x280.png`) |
 | Большая (marquee) 1400 × 560 | `store-assets/browser-extension/en/promo-marquee-1400x560.png` (ru: `…/ru/…`) |
 | Логотип Edge 300 × 300 | `store-assets/browser-extension/edge-store-logo-300.png` |
-| Скриншоты 1280 × 800 | `store-assets/browser-extension/screenshots/en/` — `01-link-badges.png`, `02-popup-verdict.png`, `03-block-page.png`, `04-credential-warning.png`, `05-settings.png` (ru: те же имена в `…/screenshots/ru/`); что на них — README там же |
+| Скриншоты 1280 × 800 (в этом порядке) | en: `store-assets/extension/en/` — `01-block-page.png`, `02-popup-safe.png`, `04-link-badges.png`, `05-settings.png` (четыре, **без `03`**); ru: `store-assets/extension/ru/` — все пять, `01-block-page.png` … `05-settings.png`. Что на каждом, как снято и порядок загрузки — `store-assets/extension/README.md` |
 
 <!-- asset: extension/public/icons/icon128.png 128x128 -->
 <!-- asset: store-assets/browser-extension/en/promo-small-440x280.png 440x280 opaque -->
@@ -442,18 +442,20 @@ Cleanway предупреждает о мошеннических и фишин�
 <!-- asset: store-assets/browser-extension/en/promo-marquee-1400x560.png 1400x560 opaque -->
 <!-- asset: store-assets/browser-extension/ru/promo-marquee-1400x560.png 1400x560 opaque -->
 <!-- asset: store-assets/browser-extension/edge-store-logo-300.png 300x300 -->
-<!-- asset: store-assets/browser-extension/screenshots/en/01-link-badges.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/en/02-popup-verdict.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/en/03-block-page.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/en/04-credential-warning.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/en/05-settings.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/ru/01-link-badges.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/ru/02-popup-verdict.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/ru/03-block-page.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/ru/04-credential-warning.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/ru/05-settings.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/en/01-block-page.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/en/02-popup-safe.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/en/03-popup-caution.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/en/04-link-badges.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/en/05-settings.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/ru/01-block-page.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/ru/02-popup-safe.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/ru/03-popup-caution.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/ru/04-link-badges.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/ru/05-settings.png 1280x800 opaque -->
 
-Промо-плитки и картинка для Play нарисованы из иконки и названия скриптом `store-assets/render-graphics.mjs` (без элементов интерфейса); скриншоты — настоящие кадры, см. README рядом с ними. Все десять сняты заново 2026-10-21 со сборки 0.2.1: в 0.2.1 предупреждение — собственная страница расширения (`blocked.html`), а не слой поверх мошеннической страницы, поэтому старые `02` и `03` не подходят.
+Английский `03-popup-caution.png` не загружаем: попап 0.2.2 пишет в нём «1 links on this page need a closer look» (число всегда 1, формы единственного числа в строке нет), и эта ошибка попала бы в листинг. Магазину Chrome достаточно от одного до пяти скриншотов, так что четырёх хватает. В русском кадре строка звучит правильно. Когда формулировку исправят в следующей версии, перезапустите скрипт и верните `en/03` в список.
+
+Промо-плитки и картинка для Play нарисованы из иконки и названия скриптом `store-assets/render-graphics.mjs` (без элементов интерфейса). Скриншоты — настоящие кадры сборки 0.2.2, снимать руками ничего не нужно: их делает `scripts/store-screenshots/extension.mjs` (одна команда, без живого API и без новых зависимостей — см. README рядом со скриншотами). Расширение загружается как есть, вердикты дают его собственные офлайн-правила, страницы — демонстрационные на выдуманных адресах, а попап (настоящий, открытый кликом по значку) положен поверх снимка той же вкладки. После изменений интерфейса перезапустите скрипт.
 
 ---
 

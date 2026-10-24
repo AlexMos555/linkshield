@@ -96,13 +96,18 @@ grep '"version"' extension/manifest.json
      - Do **not** claim "no data collected", and do not leave these boxes
        unticked. Full answers: `docs/CWS_SUBMISSION.md` §4.
    - Link the privacy policy: https://cleanway.ai/privacy-policy
-4. Screenshots (1280×800 or 640×400):
-   - 1. Popup with safe verdict
-   - 2. Popup with dangerous verdict + reasons
-   - 3. Block page with evidence cards
-   - 4. Credential-guardian modal (#7) with three buttons
-   - 5. Transparency report on cleanway.ai/transparency
-5. Promo tiles (440×280, 1400×560) and screenshots: `docs/STORE_SUBMISSION_KIT.md` §2.3 (`store-assets/browser-extension/`).
+4. Screenshots (1280×800, ready — upload, don't retake): `store-assets/extension/en/`
+   (Russian listing: `ru/`), in this order:
+   - 1. `01-block-page.png` — block page with the "why we blocked" cards
+   - 2. `02-popup-safe.png` — popup, safe verdict
+   - 3. `03-popup-caution.png` — popup, caution verdict (**Russian listing only**:
+     the English one reads "1 links on this page need a closer look", a 0.2.2
+     wording slip, so the English listing gets four shots)
+   - 4. `04-link-badges.png` — link badges on search results, red tooltip open
+   - 5. `05-settings.png` — Settings
+   Made by `scripts/store-screenshots/extension.mjs`; what each shows, the upload
+   order per language and how to retake them: `store-assets/extension/README.md`.
+5. Promo tiles (440×280, 1400×560): `docs/STORE_SUBMISSION_KIT.md` §2.3 (`store-assets/browser-extension/`).
 6. Pricing: free
 7. **Save draft → Preview → Submit for review.** Reviews typically 1-4 days; expedite by linking the transparency report (proves we publish FP rate).
 
