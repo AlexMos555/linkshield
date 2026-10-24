@@ -72,8 +72,8 @@ Variables: нет `LICENSED_INTEL=all` и нет `PUBLISH_CONFIRMED_THREATS`.
 - **Где.** App Store Connect → Business: принять Paid Apps Agreement, указать банк,
   Tax Forms → форма США (для компании W-8BEN-E). Apple разрешает это и частному
   аккаунту (тогда форма W-8BEN на человека), но мы решили ждать: Paid Apps, банк,
-  налоги и подписки оформляем только после перевода аккаунта на компанию, чтобы
-  выручка сразу шла компании ([`runbooks/company-accounts.md`](runbooks/company-accounts.md),
+  налоги и подписки оформляем только после перевода аккаунта на компанию, чтобы банк
+  и налоги сразу были на компанию ([`runbooks/company-accounts.md`](runbooks/company-accounts.md),
   [`IOS.md`](IOS.md) §3.1). Google Play Console → Settings → Payments profile →
   налоговые данные США.
 - **Вопросы бухгалтеру.** Есть ли у страны компании договор с США об избежании
@@ -459,15 +459,14 @@ Variables: нет `LICENSED_INTEL=all` и нет `PUBLISH_CONFIRMED_THREATS`.
   договору с агрегатором. Черновики оферты и согласий написаны под ИП на УСН
   ([`legal/README.md`](legal/README.md)). Без этого `BILLING_ENABLED` не включают:
   пять условий перечислены в [`BILLING.md`](BILLING.md).
-- **Что.** ИП или ООО (решение основателя, `legal/README.md`). Шаги 16 и 18 и код
+- **Что.** ИП или ООО (решение основателя, `legal/README.md`). Шаги 16, 18 и код
   написаны под ИП. Для ООО до шага 18 нужна работа Claude, которой здесь нет: оферта
   (`legal/OFFER_RU.md`, «ОГРНИП {{OGRNIP}}») и согласие (`legal/CONSENT_RU.md`,
-  написано «после регистрации ИП»), проверка
-  реквизитов на сайте ([`landing/lib/billing.ts`](../landing/lib/billing.ts):
-  `sellerFromEnv` принимает только ИНН из 12 цифр и ОГРНИП из 15, а у ООО ИНН — 10
-  цифр, ОГРН — 13, и реквизиты покажутся неполными), имя переменной
-  `NEXT_PUBLIC_BILLING_SELLER_OGRNIP`, строки `requisites_*` на сайте и тест
-  `landing/e2e/billing.spec.ts`. Договор с MIXPLAT;
+  написано «после регистрации ИП»), проверка реквизитов на сайте
+  ([`landing/lib/billing.ts`](../landing/lib/billing.ts): `sellerFromEnv` принимает
+  только ИНН из 12 цифр и ОГРНИП из 15, а у ООО ИНН — 10 цифр, ОГРН — 13, и реквизиты
+  покажутся неполными), имя переменной `NEXT_PUBLIC_BILLING_SELLER_OGRNIP`, строки
+  `requisites_*` на сайте и тест `landing/e2e/billing.spec.ts`. Договор с MIXPLAT;
   вопросы менеджеру — в `BILLING.md`, раздел Providers: `amount` или `amount_merchant`,
   поле валюты, `recurrent_id`, адреса вебхука, отправка SMS, кто выдаёт чеки по 54-ФЗ.
   Короткий номер для SMS «СТОП». Юрист проверяет `legal/OFFER_RU.md` и `legal/CONSENT_RU.md`.
