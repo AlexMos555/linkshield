@@ -67,7 +67,9 @@ export function buildInfo(root, extDir) {
   const version = JSON.parse(readFileSync(join(extDir, "manifest.json"), "utf8")).version;
   const relExt = relative(root, extDir);
   const inRepo = relExt && !relExt.startsWith("..");
-  const commit = inRepo ? git(root, ["rev-parse", "--short", "HEAD"]) : "";
+  // The last commit that changed the build, not HEAD: it names the same files
+  // and stays valid when the commit carrying a new set of shots is rebased.
+  const commit = inRepo ? git(root, ["log", "-1", "--format=%h", "--", relExt]) : "";
   const dirty = inRepo ? git(root, ["status", "--porcelain", "--", relExt]) !== "" : false;
   const zipPath = join(root, "dist", "store-artifacts", `cleanway-${version}-chrome.zip`);
   if (!existsSync(zipPath)) return { version, commit, dirty, zip: null, zipDiff: null, zipScore: null };

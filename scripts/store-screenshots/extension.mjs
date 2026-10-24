@@ -8,7 +8,8 @@
  * NODE_PATH, like scripts/test-extension-sw.mjs; nothing is added to the
  * repository's dependencies. Writes store-assets/extension/<lang>/0N-*.png
  * (1280x800, RGB, no alpha) and, after a run in both languages, the README
- * there, which says what each picture shows and how it was made.
+ * there, which says what each picture shows, how it was made and which to
+ * upload per language (readme.mjs, HOLD_BACK).
  *
  * The extension is the real unpacked build (extension/ by default), loaded
  * the way a person loads it. Around it:
@@ -36,7 +37,7 @@ import { connectBrowser } from "./cdp.mjs";
 import { EXPECTED, HOSTS, URLS, WHERE } from "./fixtures.mjs";
 import { interceptAll } from "./network.mjs";
 import { decodePng, encodeRgbPng } from "./png.mjs";
-import { SHOTS, writeReadme } from "./readme.mjs";
+import { HOLD_BACK, SHOTS, heldBack, writeReadme } from "./readme.mjs";
 
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
@@ -223,7 +224,7 @@ async function popupShot(s, { expectState, dismissTip = false }) {
     if (h > POPUP_MAX_H) throw new Error(`popup is ${h}px tall: Chrome would cut it at ${POPUP_MAX_H}px with a scrollbar`);
     const shot = await browser.send("Page.captureScreenshot",
       { format: "png", captureBeyondViewport: true, clip: { x: 0, y: 0, width: w, height: h, scale: 1 } }, sessionId);
-    return { png: Buffer.from(shot.data, "base64"), width: w, height: h };
+    return { png: Buffer.from(shot.data, "base64"), width: w, height: h, line: ui.sub };
   } finally {
     await browser.send("Target.closeTarget", { targetId: target.targetId }).catch(() => {});
     await sleep(300);
@@ -279,7 +280,8 @@ async function captureLocale(lang, score, log) {
     await expectBadges(page, links.map((href) => [href, "safe"]));
     await sleep(600);
     const recipeTab = await tabShot(page);
-    save(await withPopup(context, recipeTab, await popupShot(s, { expectState: "safe", dismissTip: true })), file(2));
+    const safePopup = await popupShot(s, { expectState: "safe", dismissTip: true });
+    save(await withPopup(context, recipeTab, safePopup), file(2));
     const worker = context.serviceWorkers().find((w) => new URL(w.url()).host === extId);
     const tipDone = worker && await worker.evaluate(() =>
       chrome.storage.local.get("onboarding_done").then((d) => d.onboarding_done === true));
@@ -290,7 +292,8 @@ async function captureLocale(lang, score, log) {
     await sleep(1500); // the page check
     if (new URL(page.url()).hostname !== HOSTS.caution) throw new Error(`caution page left for ${page.url()}`);
     const cautionTab = await tabShot(page);
-    save(await withPopup(context, cautionTab, await popupShot(s, { expectState: "warning" })), file(3));
+    const cautionPopup = await popupShot(s, { expectState: "warning" });
+    save(await withPopup(context, cautionTab, cautionPopup), file(3));
 
     // 01 — opening the scam page: the tab is taken to the extension's block page.
     await page.goto(URLS.scam, { waitUntil: "commit" }); // it does not stay long enough to "load"
@@ -306,7 +309,9 @@ async function captureLocale(lang, score, log) {
     await page.goto(`chrome-extension://${extId}/src/options/options.html`);
     await sleep(1500); // the account row and the saved settings
     save(await tabShot(page), file(5));
-    return { lang, uiLocale: s.uiLocale, browser: s.browser.version };
+    // The popups' second lines, for the README's upload order (HOLD_BACK).
+    const popupLines = { [SHOTS[1][0]]: safePopup.line, [SHOTS[2][0]]: cautionPopup.line };
+    return { lang, uiLocale: s.uiLocale, browser: s.browser.version, popupLines };
   } finally {
     s.browser.close();
     await context.close();
@@ -332,6 +337,15 @@ console.log(`extension ${info.version} from ${relative(ROOT, EXT) || EXT}${info.
 const log = { api: new Set(), refused: new Set() };
 const runs = [];
 for (const lang of LANGS.length ? LANGS : ["en", "ru"]) runs.push(await captureLocale(lang, score, log));
+
+for (const h of HOLD_BACK) {
+  const run = runs.find((r) => r.lang === h.lang);
+  if (run && !heldBack([run]).includes(h)) {
+    console.log(`  note: ${h.lang}/${h.file} no longer shows what kept it out of the upload order ` +
+      `(${JSON.stringify(run.popupLines[h.file])}); it is back in the README's order: update the docs that list it ` +
+      "(docs/CWS_SUBMISSION.md §6, docs/STORES.md, docs/STORE_SUBMISSION_KIT.md §2.3) and drop its HOLD_BACK entry");
+  }
+}
 
 if (new Set(runs.map((r) => r.lang)).size === 2) {
   writeReadme(OUT, {

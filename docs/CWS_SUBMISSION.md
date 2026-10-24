@@ -145,14 +145,21 @@ content,"* and *"we never sell your data."* Both are true and on-brand. See
 ## 6. Screenshots and promo tiles
 
 Ready, nothing to take by hand: EN and RU, 1280×800 PNG (RGB, no alpha), real
-captures of the 0.2.2 build in `store-assets/extension/{en,ru}/`, upload in this
-order:
+captures of the 0.2.2 build in `store-assets/extension/{en,ru}/`:
 
 1. `01-block-page.png` — a scam page blocked (STOP + "Why we blocked this site")
 2. `02-popup-safe.png` — the toolbar popup on an ordinary page: safe
 3. `03-popup-caution.png` — the toolbar popup on a doubtful page: caution
 4. `04-link-badges.png` — badges on search results, the red one's tooltip open
 5. `05-settings.png` — the Settings page
+
+Upload in that order, but **not `en/03-popup-caution.png`**: the English listing
+gets four (01, 02, 04, 05), the Russian one all five. In English the 0.2.2
+popup's caution line reads "1 links on this page need a closer look" (its count
+is always 1 and the string has no singular form), and that slip should not go on
+the listing. The Chrome Web Store needs at least one screenshot and takes up to
+five, so four is a complete listing. Once a later version fixes the wording,
+rerun the script and add `en/03` back.
 
 They are made by `scripts/store-screenshots/extension.mjs` (one command, no live
 API, no repo dependency; how to rerun after a UI change is in
@@ -184,8 +191,8 @@ Audit panel.
 5. [ ] Fill Privacy practices (§4): tick every category marked YES, add the
        justification text, tick the 3 certifications, add the privacy-policy URL.
 6. [ ] "Are you using remote code?" → **No**.
-7. [ ] Upload the screenshots (`store-assets/extension/en/01…05`, and `ru/` for the
-       Russian listing) and the promo tiles (§6).
+7. [ ] Upload the screenshots (English: `store-assets/extension/en/` 01, 02, 04, 05,
+       without 03; Russian listing: `ru/` 01…05) and the promo tiles (§6).
 8. [ ] Submit. Chrome review is typically 1–3 business days.
 
 Then repeat for Edge/Opera with the same ZIP (Edge validator is pickier on

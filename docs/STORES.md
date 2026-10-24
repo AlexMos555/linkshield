@@ -100,11 +100,13 @@ grep '"version"' extension/manifest.json
    (Russian listing: `ru/`), in this order:
    - 1. `01-block-page.png` — block page with the "why we blocked" cards
    - 2. `02-popup-safe.png` — popup, safe verdict
-   - 3. `03-popup-caution.png` — popup, caution verdict
+   - 3. `03-popup-caution.png` — popup, caution verdict (**Russian listing only**:
+     the English one reads "1 links on this page need a closer look", a 0.2.2
+     wording slip, so the English listing gets four shots)
    - 4. `04-link-badges.png` — link badges on search results, red tooltip open
    - 5. `05-settings.png` — Settings
-   Made by `scripts/store-screenshots/extension.mjs`; what each shows and how to
-   retake them: `store-assets/extension/README.md`.
+   Made by `scripts/store-screenshots/extension.mjs`; what each shows, the upload
+   order per language and how to retake them: `store-assets/extension/README.md`.
 5. Promo tiles (440×280, 1400×560): `docs/STORE_SUBMISSION_KIT.md` §2.3 (`store-assets/browser-extension/`).
 6. Pricing: free
 7. **Save draft → Preview → Submit for review.** Reviews typically 1-4 days; expedite by linking the transparency report (proves we publish FP rate).

@@ -60,7 +60,10 @@ export function interceptAll(browser, lang, score, log) {
     }
     const html = pageFor(url, lang);
     if (html) return fulfill(requestId, 200, "text/html; charset=utf-8", html);
-    log.refused.add(`${u.origin}${u.pathname}`);
+    // "(en)"/"(ru)": the macOS wrapper's -AppleLanguages value, which headless
+    // Chromium also opens as its start page (extension.mjs, launch). Not a
+    // host name, and whether it is seen depends on timing: not logged.
+    if (!/^\([a-z]{2}\)$/.test(u.hostname)) log.refused.add(`${u.origin}${u.pathname}`);
     return browser.send("Fetch.failRequest", { requestId, errorReason: "NameNotResolved" });
   });
   return browser.send("Fetch.enable", { patterns: [{ urlPattern: "http://*" }, { urlPattern: "https://*" }] });

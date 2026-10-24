@@ -19,8 +19,9 @@ export const SHOTS = [
     "text carry green ticks. The welcome tip had been closed with its × button, as a person would."],
   ["03-popup-caution.png",
     `The toolbar popup on a doubtful "pay the redelivery fee" page (\`${HOSTS.caution}\`): the yellow "Some links look ` +
-    "suspicious\" state. A caution verdict does not block the page. (In English the second line reads \"1 links on this page " +
-    "need a closer look\": that is the popup's own 0.2.2 wording, whose count is always 1 for the page itself.)"],
+    "suspicious\" state. A caution verdict does not block the page. In English the second line reads \"1 links on this page " +
+    "need a closer look\": that is the popup's own 0.2.2 wording, whose count is always 1 for the page itself (see " +
+    "\"Upload order\")."],
   ["04-link-badges.png",
     `A search-results page (\`${HOSTS.search}\`) with a badge after every result: green ticks for Wikipedia and ` +
     `\`${HOSTS.help}\`, yellow marks for \`${HOSTS.caution}\` and \`${HOSTS.tracking}\`, a red cross for \`${HOSTS.scam}\`. ` +
@@ -30,7 +31,42 @@ export const SHOTS = [
     "scanning off."],
 ];
 
+// Captured but kept out of one language's upload order while the popup in it
+// shows `text`. 0.2.2's English caution line is built from a link count the
+// background never sends (popup.js, status_warning_subtitle), so it always
+// reads "1 links on this page need a closer look": true to the build, but a
+// grammar slip on the listing. The run checks the popup's text, so once a
+// later version fixes the wording the shot goes back into the order by itself.
+export const HOLD_BACK = [
+  { lang: "en", file: "03-popup-caution.png", text: /^1 links\b/,
+    why: "its second line reads \"1 links on this page need a closer look\": the 0.2.2 popup builds that line from a " +
+      "link count the background never sends, so it always says 1, and the English text has no singular form" },
+];
+
+/** HOLD_BACK entries that still apply to what this run's popups showed. */
+export const heldBack = (locales) => HOLD_BACK.filter((h) => {
+  const run = locales.find((l) => l.lang === h.lang);
+  return run && h.text.test(run.popupLines[h.file] || "");
+});
+
 const code = (s) => `\`${s}\``;
+
+function uploadOrder(locales) {
+  const held = heldBack(locales);
+  const rows = locales.map(({ lang }) => {
+    const files = SHOTS.map(([f]) => f).filter((f) => !held.some((h) => h.lang === lang && h.file === f));
+    return `| ${code(`${lang}/`)} | ${files.map(code).join(", ")} |`;
+  }).join("\n");
+  const notes = held.length ? [
+    "The Chrome Web Store needs at least one screenshot and takes up to five, so a listing with four is complete.",
+    ...held.map((h) => `**Not uploaded: ${code(`${h.lang}/${h.file}`)}.** It is true to the build, but ${h.why}. ` +
+      "It stays in the folder; when a later version fixes the wording, rerun the script: it reads the popup's text and " +
+      "puts the shot back into this order by itself."),
+  ] : [];
+  return [`| Listing | Upload, in this order |
+|---------|-----------------------|
+${rows}`, ...notes].join("\n\n");
+}
 
 export function writeReadme(outDir, run) {
   const verdictRows = run.verdicts.map((v) =>
@@ -41,7 +77,7 @@ export function writeReadme(outDir, run) {
     ? run.refused.map((u) => `- ${code(u)}`).join("\n")
     : "- none";
   const build = `${code(run.extRel)} at version ${run.version}` +
-    (run.commit ? ` (commit ${code(run.commit)}${run.dirty ? ", with local changes" : ""})` : "");
+    (run.commit ? ` (last changed in commit ${code(run.commit)}${run.dirty ? ", plus local changes" : ""})` : "");
   let vsZip = "";
   if (run.zip && run.zipDiff.length === 0) {
     vsZip = ` It is byte-identical to the store package ${code(run.zip)}.`;
@@ -55,8 +91,8 @@ export function writeReadme(outDir, run) {
   const md = `# Cleanway browser extension: store screenshots
 
 Screenshots for the Chrome Web Store, Microsoft Edge Add-ons and Firefox AMO: 1280×800 PNG, 24-bit RGB with no alpha
-channel, one set in English (\`en/\`) and one in Russian (\`ru/\`) with the same file names. Upload them in this order
-(the Chrome Web Store takes up to five). They are taken in Chromium; the Edge, Firefox and Safari builds share the same
+channel, one set in English (\`en/\`) and one in Russian (\`ru/\`) with the same file names. Upload them in the order
+given under "Upload order". They are taken in Chromium; the Edge, Firefox and Safari builds share the same
 pages, styles and texts (\`packages/extension-core\`). They are made by
 [\`scripts/store-screenshots/extension.mjs\`](../../scripts/store-screenshots/extension.mjs); this file is written by the
 same run.
@@ -64,6 +100,10 @@ same run.
 | File | What it shows |
 |------|---------------|
 ${SHOTS.map(([file, what]) => `| \`${file}\` | ${what} |`).join("\n")}
+
+## Upload order
+
+${uploadOrder(run.locales)}
 
 ## What is real and what is staged
 

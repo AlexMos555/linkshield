@@ -43,7 +43,9 @@
 
 ### 2. Скриншоты для листинга — готовы, снимать не нужно
 5 скриншотов 1280×800 (EN и RU) лежат в `store-assets/extension/{en,ru}/`, их делает
-`scripts/store-screenshots/extension.mjs`. Что на каждом — `store-assets/extension/README.md`.
+`scripts/store-screenshots/extension.mjs`. Что на каждом и что загружать —
+`store-assets/extension/README.md`. В английский листинг идут четыре (01, 02, 04, 05):
+в `en/03` попап 0.2.2 пишет «1 links on this page need a closer look». В русский — все пять.
 
 ### 3. Rotate Anthropic API key + Railway env
 **Что:** Пересоздать Anthropic ключ, положить в Railway.
@@ -81,8 +83,9 @@
 **Шаги:**
 1. Купить dev-аккаунт ($5 однократно).
 2. Upload `dist/store-artifacts/cleanway-0.2.2-chrome.zip` (⚠️ имя такое, не `cleanway-extension.zip`).
-3. Листинг: copy-paste из `docs/marketing/chrome-web-store-listing.md` (текст честный, готов).
-4. Загрузить 5 скриншотов из `store-assets/extension/en/` (шаг 2).
+3. Листинг: copy-paste из `extension/STORE_LISTING.md`, ответы для проверки — из
+   `docs/CWS_SUBMISSION.md` (`docs/marketing/chrome-web-store-listing.md` больше не источник).
+4. Загрузить скриншоты из `store-assets/extension/en/`: 01, 02, 04, 05 (шаг 2).
 5. Submit → статус «In review».
 **Зачем:** это и есть distribution — без листинга ноль пользователей. Всё остальное к этому.
 **Совет:** можно сабмитить как **Unlisted** сначала (доступ только по прямой ссылке) —
