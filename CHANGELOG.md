@@ -25,7 +25,9 @@
 
 ## [App 1.0.6] - unreleased
 
-iOS build 5, Android versionCode 107. Everything merged after the 1.0.5
+iOS build 6, Android versionCode 107. (iOS build 5, uploaded to TestFlight on
+2026-10-24, lacks the Safari popup wording fix #320; build 6 is the one for
+App Review.) Everything merged after the 1.0.5
 release commit (#216) that ships in the app. On iPhone it is the build after
 1.0.5 build 4.
 
@@ -52,7 +54,7 @@ and must not be uploaded (docs/EXPO_UPGRADE_PLAN.md §1.2).
 - **«Скачать мои данные» на экране «Аккаунт»:** аккаунт, тариф, устройства, настройки и данные семьи с нашего сервера одним файлом JSON через меню «Поделиться» (#275). Журналы, в том числе журнал входов, в файл не входят.
 - **Android: экран подписки перечисляет только то, что даёт подписка** — без «Автоматической проверки SMS» (её нет ни в одной сборке) и «Защиты во время звонков» (она бесплатна для всех) (#277).
 - **iPhone: проверка «я не робот» при входе открывается в окне внутри приложения** (ASWebAuthenticationSession), а не в Safari; запрос доступа к камере для QR-кодов — на языке телефона (#277).
-- **iPhone: расширение для Safari внутри приложения — версия 0.2.2** (#278): меньше ложных предупреждений на настоящих страницах входа, проверка ссылок не останавливается из-за общего лимита на IP-адрес, «Сообщить об ошибке» передаёт, в чём ошибка; подробно — Extension 0.2.2 ниже. Список хостингов, где сайт — это сайт одного клиента, в нём теперь собран из тех же лицензированных данных, что и на Android (Majestic Million и Chrome UX Report, ниже), вместо Tranco (#284); собственные домены брендов (например, adobelogin.com) оно больше не считает подделками (#294).
+- **iPhone: расширение для Safari внутри приложения — версия 0.2.2** (#278): меньше ложных предупреждений на настоящих страницах входа, проверка ссылок не останавливается из-за общего лимита на IP-адрес, «Сообщить об ошибке» передаёт, в чём ошибка; подробно — Extension 0.2.2 ниже. Список хостингов, где сайт — это сайт одного клиента, в нём теперь собран из тех же лицензированных данных, что и на Android (Majestic Million и Chrome UX Report, ниже), вместо Tranco (#284); собственные домены брендов (например, adobelogin.com) оно больше не считает подделками (#294). Окно «осторожно» говорит о самом сайте, без выдуманного «1 ссылка» (#320).
 - **Android: встроенный список популярных сайтов** (их защита никогда не блокирует целиком — страховка от ошибочного списка) и список хостингов, где сайт — это сайт одного клиента, теперь собраны из открытых данных с лицензией — Majestic Million (CC BY 3.0) и Chrome UX Report (CC BY 4.0) — вместо Tranco (#284, #285).
 - **«Настройки» → «Источники данных»:** откуда эти данные и на каких условиях — ссылка на страницу методики на cleanway.ai (#291).
 
@@ -66,7 +68,7 @@ and must not be uploaded (docs/EXPO_UPGRADE_PLAN.md §1.2).
 - "Download my data" on the Account screen: the account, plan, devices, settings and family records from our server, one JSON file through the share sheet (#275). Logs, the sign-in log among them, are not in the file.
 - Android: the paywall lists only what the subscription adds — no "Automatic SMS check" (no build has it) and no "Protection during phone calls" (free for everyone) (#277).
 - iPhone: the on-demand sign-in captcha opens in an in-app sheet (ASWebAuthenticationSession) instead of switching to Safari; the camera prompt for QR codes is in the phone's language (#277).
-- iPhone: the Safari extension inside the app is 0.2.2 (#278): fewer false warnings on real sign-in pages, link checks that no longer stop on a limit shared by an IP address, "Report wrong result" that says which way we were wrong; details under Extension 0.2.2 below. Its list of hosting zones where a site is one customer's is now built from the same licensed data as on Android (the Majestic Million and the Chrome UX Report, below) instead of Tranco (#284), and it no longer calls brands' own other domains (adobelogin.com, for one) fakes (#294).
+- iPhone: the Safari extension inside the app is 0.2.2 (#278): fewer false warnings on real sign-in pages, link checks that no longer stop on a limit shared by an IP address, "Report wrong result" that says which way we were wrong; details under Extension 0.2.2 below. Its list of hosting zones where a site is one customer's is now built from the same licensed data as on Android (the Majestic Million and the Chrome UX Report, below) instead of Tranco (#284), and it no longer calls brands' own other domains (adobelogin.com, for one) fakes (#294). Its caution popup talks about the site itself instead of a made-up "1 links" (#320).
 - Android: the built-in popular-site list (the shield never blocks those whole — the safety net against a bad list) and the list of hosting zones where a site is one customer's are now built from licensed open data — the Majestic Million (CC BY 3.0) and the Chrome UX Report (CC BY 4.0) — instead of Tranco (#284, #285).
 - Settings → "Data sources" says where that data comes from and under which licences — a link to the methodology page on cleanway.ai (#291).
 
