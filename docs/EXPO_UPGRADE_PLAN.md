@@ -1,7 +1,8 @@
 # План обновления Expo SDK: 54 → 58
 
-Для основателя. Это только оценка: код не менялся, в этом PR один документ.
-Опытный прыжок на SDK 58 уже сделан в черновом PR
+Для основателя. Разделы 1–9 — оценка, написанная до работы над кодом (тогда
+код не менялся и PR состоял из одного документа). Работа идёт в #327, и где
+она разошлась с оценкой, строки помечены «→ 10.x»: верен раздел 10. Опытный прыжок на SDK 58 уже сделан в черновом PR
 [#253](https://github.com/AlexMos555/linkshield/pull/253) (`exp/expo-sdk-58`,
 коммит `46c4f7a`, «do not merge»). Здесь разобрано, что он доказал, чего не
 доказал и как довести обновление до релиза.
@@ -255,7 +256,9 @@ versions incrementally, one at a time». #253 показал, что прыжо�
      `react-native-gesture-handler`, у нас и сейчас не установлен. Итог:
      новая зависимость `react-native-worklets` не нужна, нативных библиотек
      на две меньше, чем в #253, APK меньше, и уходит известная причина роста
-     памяти Hermes V1 (риск 10);
+     памяти Hermes V1 (риск 10). **→ 10.1 п. 1: из `node_modules` они не
+     уходят** (их ставит `react-native-drawer-layout`); их нативный код
+     отключён в `mobile/react-native.config.js`;
    - решить, что делать с `react-native-get-random-values` (3.1);
    - проверка: `npx expo-doctor`, release-бандл Metro
      (`npx expo export -p android` и `-p ios`) и запуск без reanimated;
@@ -286,10 +289,10 @@ versions incrementally, one at a time». #253 показал, что прыжо�
 | Что | 54 → 58 | Что меняется для нас | Статус |
 |---|---|---|---|
 | `react-native` | 0.81.5 → 0.88.0 | Старая архитектура удалена (SDK 55): `newArchEnabled` надо убрать из `app.json`. Строгие типы RN 0.87: глубоких импортов `react-native/Libraries/*` нет (проверено), тип `color` иконки вкладки исправлен. Удалены `InteractionManager`, корневой `Touchable`, проп `Modal animated`, пропы `StatusBar backgroundColor/translucent` — ничего из этого мы не используем (проверено; `TouchableOpacity` остаётся, у `Modal` мы задаём `animationType`, `StatusBar` берём из `expo-status-bar` только со `style`) | Сделано в #253 |
-| Hermes V1 (с SDK 56 по умолчанию) | — | Рост памяти с worklets/reanimated исправили в `expo@57.0.9`. У нас этих пакетов не будет: reanimated удаляем на шаге А. Но память на слабых телефонах всё равно проверить (раздел 6) | Проверить на телефоне |
-| `expo/fetch` вместо глобального `fetch` (SDK 56) | — | Через него пойдут все наши запросы: API, вход по коду, капча, проверка обновлений, семья. `src/services/auth.ts:149` отличает отмену по `name === "AbortError"`. Вернуть старое поведение можно переменной `EXPO_PUBLIC_USE_RN_FETCH=1` | Не проверено |
+| Hermes V1 (с SDK 56 по умолчанию) | — | Рост памяти с worklets/reanimated исправили в `expo@57.0.9`. У нас их нативного кода не будет (→ 10.1 п. 1: пакеты в `node_modules` остаются, но автолинковка их не собирает). Но память на слабых телефонах всё равно проверить (раздел 6) | Проверить на телефоне |
+| `expo/fetch` вместо глобального `fetch` (SDK 56) | — | Через него пойдут все наши запросы: API, вход по коду, капча, проверка обновлений, семья. `src/services/auth.ts:149` отличает отмену по `name === "AbortError"`, а `expo/fetch` отменённый запрос отклоняет своим `FetchError` с именем `Error`; так же отличал таймаут `packages/api-client` (повтор медленной проверки ссылки, текст «проверка идёт долго»). Вернуть старое поведение можно переменной `EXPO_PUBLIC_USE_RN_FETCH=1` | Сделано в #327: таймаут — по своему таймеру (`controller.signal.aborted`), с тестами (→ 10.1 п. 10) |
 | `expo-router` | 6.0 → 58.0 | С SDK 56 без `@react-navigation/*`: мы их не импортируем (проверено). В SDK 58 переписано ядро навигации: детерминированные ключи, переходы выполняются после отрисовки. Мы используем `Stack`, `Tabs`, `Redirect`, `useRouter`, `useLocalSearchParams`, `useFocusEffect`, `router` и `redirectSystemPath` в `app/+native-intent.tsx`. Риски: `router.replace` внутри эффектов (переход после «Поделиться») и повторяющиеся параметры ссылки (#273 берёт первое значение), потому что разбор ссылок больше не идёт через `query-string` | Проверить на телефоне |
-| `expo-file-system` | 19 → 58 | `copy`/`move` стали асинхронными (SDK 56) — не используем. **`File.write()` стал асинхронным (SDK 58)**, а `src/services/account-export.ts:45` вызывает `file.write(text)` без `await` и сразу отдаёт файл в «Поделиться». На 58 «Скачать мои данные» может выдать пустой или обрезанный файл, а ошибка записи пройдёт мимо `catch`. CI это не поймает: заглушка в `mobile/scripts/test-account-export.mjs` синхронная, а TypeScript не ругается на промис без `await`. Нужно `file.writeSync(text)` или `await file.write(text)`, и заглушку сделать асинхронной. Код появился в #275, уже после основы #253 | **Не сделано** |
+| `expo-file-system` | 19 → 58 | `copy`/`move` стали асинхронными (SDK 56) — не используем. **`File.write()` стал асинхронным (SDK 58)**, а `src/services/account-export.ts:45` вызывает `file.write(text)` без `await` и сразу отдаёт файл в «Поделиться». На 58 «Скачать мои данные» может выдать пустой или обрезанный файл, а ошибка записи пройдёт мимо `catch`. CI это не поймает: заглушка в `mobile/scripts/test-account-export.mjs` синхронная, а TypeScript не ругается на промис без `await`. Нужно `file.writeSync(text)` или `await file.write(text)`, и заглушку сделать асинхронной. Код появился в #275, уже после основы #253 | Сделано в #327: `await file.write`, заглушка асинхронная (→ 10.1 п. 9) |
 | `expo-sqlite` | 16 → 58 | libSQL удалён — не используем. На Android перезагрузка JS теперь закрывает открытые базы (58.0.11). Это совпадает с логикой «открыть заново один раз» из #184, и `test-local-store` в #253 проходит | Проверить на телефоне, включая обновление поверх 1.0.6 |
 | `expo-secure-store` | 15 → 58 | Только минимальная iOS 16.4. Опции плагина `faceIDPermission: false` и `configureAndroidBackup: false` проверить по итоговому манифесту | Проверить сборку |
 | `expo-localization` | 17 → 58 | На iOS `supportsRTL` больше не включает RTL сам: направление следует за `I18nManager`. Мы и так вызываем `allowRTL`/`forceRTL` (`src/i18n/index.ts:75-76`), но арабский на iPhone проверить | Проверить на телефоне |
@@ -298,22 +301,22 @@ versions incrementally, one at a time». #253 показал, что прыжо�
 | `expo-splash-screen` | — → 58 | Корневой `splash` больше не принимается схемой `app.json`, он переезжает в настройки плагина. Это **новая прямая зависимость** | Сделано в #253 |
 | `@expo/vector-icons` | через `expo` → прямая 15.1 | С SDK 56 `expo` от неё не зависит. Пакет объявлен устаревшим в пользу `@react-native-vector-icons/*` (есть codemod). Переход — отдельной правкой позже | Сделано в #253 (прямая зависимость) |
 | `expo-share-intent` | 5.1.1 → 9.0.0 | **В 5.1.1 на Android дыра с обходом пути (раздел 1.2).** Исправлена в 8.0.1 и в 9.0.0 (проверено по исходнику), поэтому в 1.1.0 берём ≥ 9.0.0, а наш патч для 5.1.1 удаляем. Версия 9.0.0 вышла 21.10.2026, три дня назад. В 6.1.1 ссылка стала уникальной для каждой передачи, а `redirectSystemPath` ищет её через `path.includes("dataUrl=<ключ>")`. Там же исправлено сохранение чужих app group — это наш случай (`group.ai.cleanway.app` общая с Safari и SMS) | Взять последний патч 9.0.x, проверить на обоих телефонах |
-| `react-native-reanimated` (+ `react-native-worklets` из #253) | 3.19 → **удалён** | Приложение их не импортирует (проверено). Для `expo-router` 6 и 58 оба — необязательные peer-зависимости, нужны только «шторке» `expo-router/drawer`, а её у нас нет (2.2). #253 поднял reanimated до 4.7.1 и добавил `react-native-worklets` 0.13.0. При переносе #253 это не берём | Удалить на шаге А |
-| `react-native-get-random-values` | 1.11.0 (март 2024) → 1.11 или 2.0.0 | Старый bridge-модуль с синхронным методом (`RCT_EXPORT_SYNCHRONOUS_TYPED_METHOD` на iOS, `@ReactMethod(isBlockingSynchronousMethod = true)` на Android). JS ищет его через `NativeModules.RNGetRandomValues`, то есть через тот же слой совместимости новой архитектуры, что и RevenueCat. На нём держатся nonce капчи (`src/services/captcha.ts`), ключи семьи через tweetnacl (`src/lib/family-crypto.ts`), id устройства (`src/services/device-id.ts`) и id установки на iPhone (`src/services/install-id.ts`; на Android его даёт наш модуль). Если модуль не найдётся, капча и «Семья» упадут с ошибкой, а id устройства и установки **молча** станут пустыми: `catch` возвращает `null`. Заметить это будет трудно: при обновлении поверх 1.0.6 id устройства и ключи семьи уже лежат в SecureStore, и новый вызов не нужен. `expo install --fix` пакет не трогает: в `bundledNativeModules.json` SDK 58 его нет (в SDK 54 был `~1.11.0`). Есть 2.0.0 (22.10.2025): codegen TurboModule через `TurboModuleRegistry.getEnforcing`, peer RN ≥ 0.81 | Решить на шаге А: оставить 1.11 и проверить или перейти на 2.0.0. Проверка — раздел 6.2 |
+| `react-native-reanimated` (+ `react-native-worklets` из #253) | 3.19 → **удалён** | Приложение их не импортирует (проверено). Для `expo-router` 6 и 58 оба — необязательные peer-зависимости, нужны только «шторке» `expo-router/drawer`, а её у нас нет (2.2). #253 поднял reanimated до 4.7.1 и добавил `react-native-worklets` 0.13.0. При переносе #253 это не берём | Сделано в #327 иначе: из `package.json` убраны, но npm ставит их через `react-native-drawer-layout`; нативный код отключён (→ 10.1 п. 1) |
+| `react-native-get-random-values` | 1.11.0 (март 2024) → 1.11 или 2.0.0 | Старый bridge-модуль с синхронным методом (`RCT_EXPORT_SYNCHRONOUS_TYPED_METHOD` на iOS, `@ReactMethod(isBlockingSynchronousMethod = true)` на Android). JS ищет его через `NativeModules.RNGetRandomValues`, то есть через тот же слой совместимости новой архитектуры, что и RevenueCat. На нём держатся nonce капчи (`src/services/captcha.ts`), ключи семьи через tweetnacl (`src/lib/family-crypto.ts`), id устройства (`src/services/device-id.ts`) и id установки на iPhone (`src/services/install-id.ts`; на Android его даёт наш модуль). Если модуль не найдётся, капча и «Семья» упадут с ошибкой, а id устройства и установки **молча** станут пустыми: `catch` возвращает `null`. Заметить это будет трудно: при обновлении поверх 1.0.6 id устройства и ключи семьи уже лежат в SecureStore, и новый вызов не нужен. `expo install --fix` пакет не трогает: в `bundledNativeModules.json` SDK 58 его нет (в SDK 54 был `~1.11.0`). Есть 2.0.0 (22.10.2025): codegen TurboModule через `TurboModuleRegistry.getEnforcing`, peer RN ≥ 0.81 | Решено в #327: 2.0.0 (→ 10.1 п. 7). Проверка — раздел 6.2 |
 | `@sentry/react-native` | 7.2 → 8.28 | Нужны iOS 15+ и Xcode 16.4+ — выполнено. Без `EXPO_PUBLIC_SENTRY_DSN` SDK спит (`src/lib/sentry.ts`). Окружение берётся из `NODE_ENV`, а в SDK 58 его выставляет Expo CLI: для release это `production`, так и задумано | Сделано в #253 |
 | `react-native-purchases` | 10.11 | Требует RN ≥ 0.73. В README про новую архитектуру ничего нет. И наш код (`src/services/store-billing.ts:78`), и сам SDK RevenueCat ищут модуль через `NativeModules.RNPurchases`, а в новой архитектуре это работает через слой совместимости. Если поиск вернёт пусто, платные планы **молча** исчезнут, без падения | Проверить на телефоне: Play AAB и iOS. Подумать о последней 10.x |
-| TypeScript | 5.9 → 6.0.3 | `types: ["node"]`. В 10 тестовых скриптах добавлен `--ignoreConfig`. `react-i18next` 15 и `openapi-typescript` ждут TS 5 (у первого это необязательная зависимость — только предупреждение). Можно и остаться на 5.9 через `expo.install.exclude` | Сделано в #253; решение в разделе 9 |
-| `i18next` | — | В `main` уже `^26.5.3` (#303, после основы #253). `mobile/package-lock.json` (lock зеркала) всё ещё говорит `^23.15.0` — при обновлении его всё равно пересобирать | Учесть при переносе |
-| `expo prebuild` (SDK 57) | — | Теперь по умолчанию стирает `android/` и `ios/`. Наши инструкции и так используют `--clean` и после каждого prebuild возвращают ключ подписи (`docs/RUSTORE_SUBMISSION.md` §2). В комментарии `plugins/withDistributionGuard.js` осталось «без `--clean`» — поправить | Только документы |
+| TypeScript | 5.9 → 6.0.3 | `types: ["node"]`. В 10 тестовых скриптах добавлен `--ignoreConfig`. `react-i18next` 15 и `openapi-typescript` ждут TS 5 (у первого это необязательная зависимость — только предупреждение). Можно и остаться на 5.9 через `expo.install.exclude` | В #327 остаёмся на 5.9: с TS 6 `npm install` падает (→ 10.1 п. 3) |
+| `i18next` | — | В `main` уже `^26.5.3` (#303, после основы #253). `mobile/package-lock.json` (lock зеркала) всё ещё говорит `^23.15.0` — при обновлении его всё равно пересобирать | Сделано в #327: lock собран заново |
+| `expo prebuild` (SDK 57) | — | Теперь по умолчанию стирает `android/` и `ios/`. Наши инструкции и так используют `--clean` и после каждого prebuild возвращают ключ подписи (`docs/RUSTORE_SUBMISSION.md` §2). В комментарии `plugins/withDistributionGuard.js` осталось «без `--clean`» — поправить | Сделано в #327 |
 | Сценовый цикл iOS (SDK 58) | — | prebuild создаёт `SceneDelegate.swift`, окно создаёт сцена. Ни один наш плагин не меняет `AppDelegate` (проверено). Окно для капчи (ASWebAuthenticationSession) уже берётся из `connectedScenes` (`modules/cleanway-safari/ios/CleanwaySafariModule.swift:146-150`). Ссылки `cleanway://` и передача из «Поделиться» теперь приходят через сцену; Expo обещает передавать их подписчикам `ExpoAppDelegate` | Проверить холодный и тёплый старт |
 | iOS 27 с iOS 27 SDK | — | Окно iPhone-приложения может менять размер, а `requireFullScreen` от этого больше не спасает. У нас только портретный режим и только iPhone (`supportsTablet: false`) — проверить вёрстку на нестандартной ширине | Проверить на iOS 27 |
-| R8 в release-сборках Android (SDK 58) | выключен → включён | В шаблоне `android.enableMinifyInReleaseBuilds=true`. В нашем Kotlin-модуле рефлексии нет (проверено: только `org.json`). Классы из манифеста (служба VPN, ресиверы, активити) сохраняют правила AAPT. Класс Expo-модуля перечислен в сгенерированном списке пакетов, а сохранять модули Expo должны правила `expo-modules-core` — это проверит release-сборка. RevenueCat и Sentry приносят свои правила. Итог: APK меньше (это важно для мобильного трафика в воронке Tele2), но стек вызовов в отчётах о падениях запутан. Нужно хранить `mapping.txt` каждого релиза и загружать его в Play | Release-сборка не пробовалась. Решение в разделе 9 |
+| R8 в release-сборках Android (SDK 58) | выключен → включён | В шаблоне `android.enableMinifyInReleaseBuilds=true`. В нашем Kotlin-модуле рефлексии нет (проверено: только `org.json`). Классы из манифеста (служба VPN, ресиверы, активити) сохраняют правила AAPT. Класс Expo-модуля перечислен в сгенерированном списке пакетов, а сохранять модули Expo должны правила `expo-modules-core` — это проверит release-сборка. RevenueCat и Sentry приносят свои правила. Итог: APK меньше (это важно для мобильного трафика в воронке Tele2), но стек вызовов в отчётах о падениях запутан. Нужно хранить `mapping.txt` каждого релиза и загружать его в Play | Release-сборки в #327 собирались, но лог не сохранился (→ 10.2). Решение в разделе 9 |
 | Gradle / AGP | 8.14 / 8.11 → 9.4.1 / 9.2.1 | Шаблон 58 отключает новинки AGP 9 (`android.builtInKotlin=false`, `android.newDsl=false`). `modules/cleanway-vpn/android/build.gradle` ещё на `apply from: ExpoModulesCorePlugin.gradle` и `lintOptions` — это работает, пока `newDsl=false`. Технический долг: перейти на `expo-module-gradle-plugin` и `lint {}` | Debug собирается (#253, 2 предупреждения) |
 
 ### 3.2 Наши config-плагины (`mobile/plugins/`)
 
-Главный риск здесь — не ошибка сборки, а молчаливый пропуск. Четыре
-Android-плагина меняют `android/app/build.gradle` и, если не находят свой якорь
+Главный риск здесь — не ошибка сборки, а молчаливый пропуск. Пять
+Android-плагинов меняют `android/app/build.gradle` и, если не находят свой якорь
 (или файл не на Groovy), **тихо ничего не делают**. Сборка при этом пишет
 BUILD SUCCESSFUL. Мы так и задумывали — чтобы плагин не мог сломать сборку. Но
 при смене шаблона это обернётся release-сборкой с ключом отладки (её не примет
@@ -324,16 +327,17 @@ BUILD SUCCESSFUL. Мы так и задумывали — чтобы плаги�
 |---|---|---|---|---|
 | `withReleaseSigning` | release-подпись из `android/keystore.properties` | Якоря `android {`, `signingConfigs {`, `release { … signingConfig signingConfigs.debug` в шаблоне 58 на месте, файл по-прежнему на Groovy | Шаблон в ветке `sdk-58` репозитория expo | После prebuild проверить метки в сгенерированном файле (ниже) |
 | `withAbiFilters` | только ARM в release | Якорь `buildTypes { … release {` на месте | То же | То же |
-| `withSeedGuard` | нет release без стартового списка | Дописывает в конец файла — не зависит от якорей | — | То же |
-| `withDistributionGuard` | release-сборка обязана назвать магазин | Дописывает в конец, `gradle.taskGraph.whenReady` | Появился в #277, **после основы #253**, на SDK 58 не запускался | То же, плюс одна заведомо неверная сборка (должна упасть) |
+| `withSeedGuard` | нет release без стартового списка | Дописывает в конец файла — не зависит от якорей. Срабатывает в `pre<Variant>Build` | AGP 9.2.1 / Gradle 9.4.1: `preReleaseBuild` есть в графе `assembleRelease` и `bundleRelease`, без списка оба падают (→ 10.2) | То же |
+| `withDistributionGuard` | release-сборка обязана назвать магазин | Дописывает в конец, `gradle.taskGraph.whenReady` | Появился в #277, после основы #253. AGP 9.2.1 / Gradle 9.4.1: AAB с `site` и сборка для другого магазина падают (→ 10.2) | То же |
+| `withShareIntentGuard` | нет release со старым `expo-share-intent` | Дописывает в конец, `pre<Variant>Build` запускает `scripts/check-share-intent.mjs` | AGP 9.2.1 / Gradle 9.4.1: пять строк `ok:` перед сборкой; поддельный 8.0.0 и фильтр `text/*` в манифесте — падение (→ 10.2) | В логе каждой release-сборки — пять строк `ok:` (`docs/RUSTORE_SUBMISSION.md` §2) |
 | `withDarkSystemBars` | ночной режим до `super.onCreate` | В `MainActivity.kt` шаблона 58 по-прежнему `super.onCreate(null)` | Шаблон `sdk-58` | Визуально: тёмная панель навигации при светлой теме телефона |
 | `withBackupRules` | наши правила резервного копирования | Атрибуты манифеста, без изменений | — | Проверить итоговый манифест |
 | `withIosAppStore` | без push-права, только `dns-settings` | Без изменений. Должен стоять первым | prebuild в #253 прошёл | Проверить права в сборке EAS |
 | `withSmsFilter` | цель расширения SMS-фильтра | Минимум 15.1 → 16.4 | Сделано в #253. В CI `ios-sms-engine` (`swift test`) проходит, но это только движок, не расширение | Компиляция расширения в EAS |
-| `withSafariExtension` | цель Safari-расширения | Использует внутренности пакета `xcode` 3.0.1 и наш патч `patches/xcode+3.0.1.patch`. В lock SDK 58 по-прежнему `xcode` 3.0.1 (проверено), `@expo/config-plugins` 58.0.9. Минимум приложения теперь совпадает с расширением (16.4) | prebuild в #253 создал все цели с 16.4 | Проверить, что EAS создаёт профиль для расширения (`extra.eas.build.experimental.ios.appExtensions`) |
+| `withSafariExtension` | цель Safari-расширения | Использует внутренности пакета `xcode`. → 10.1 п. 2: в #327 это `xcode` 4.0.0 (его требует `@expo/config-plugins` 58.0.10), наша правка в нём уже есть, `patches/xcode+3.0.1.patch` удалён. Минимум приложения теперь совпадает с расширением (16.4) | prebuild в #253 создал все цели с 16.4 | Проверить, что EAS создаёт профиль для расширения (`extra.eas.build.experimental.ios.appExtensions`) |
 | `withXcode26Patches` | три заплатки для Xcode 26 (fmt, Sentry, expo-localization) | Все три срабатывают только по условию. По описанию #253, на 58 они уже ничего не меняют: в RN 0.88 ядро собрано заранее, в Sentry 8 нет исправляемой строки, у expo-localization не найдётся якорь. Ломает сборку только в одном случае — если в Podfile нет `post_install do \|installer\|`, но в 58 он есть | prebuild в #253 прошёл | После первой сборки EAS посмотреть лог `pod install`: если строк `[Cleanway] patched` нет, удалить плагин отдельным PR |
 
-**Проверка меток (предложение для PR обновления).** Небольшой скрипт
+**Проверка меток (сделано в #327, шесть меток: добавились share-intent и тёмные панели).** Небольшой скрипт
 `mobile/scripts/check-prebuild-gradle.mjs` запускается в зеркале после
 `expo prebuild -p android` и падает, если в `android/app/build.gradle` нет хотя
 бы одной из меток `cleanway-release-signing`, `cleanway-abi-filters`,
@@ -350,11 +354,12 @@ BUILD SUCCESSFUL. Мы так и задумывали — чтобы плаги�
 
 | Модуль | Что на SDK 58 | Проверено | Не проверено |
 |---|---|---|---|
-| `cleanway-vpn` (Kotlin + Swift) | Expo Modules API работает в новой архитектуре напрямую (JSI). В TS объявлен `isLinkHandlerSupported` (#253) | Android: компилируется в `assembleDebug` (#253) | Запуск и остановка VPN, события, `BootReceiver` в процессе `:boot`, `ShieldWatchdog`, `LinkGuardActivity`, `LinkCheckService`, будильник обновления списка. Всё это — с R8. Kotlin-тесты (`./gradlew :cleanway-vpn:testDebugUnitTest`) на 58 не запускались |
+| `cleanway-vpn` (Kotlin + Swift) | Expo Modules API работает в новой архитектуре напрямую (JSI). В TS объявлен `isLinkHandlerSupported` (#253) | Android: компилируется в `assembleDebug` (#253) | Запуск и остановка VPN, события, `BootReceiver` в процессе `:boot`, `ShieldWatchdog`, `LinkGuardActivity`, `LinkCheckService`, будильник обновления списка. Всё это — с R8. Kotlin-тесты (`./gradlew :cleanway-vpn:testDebugUnitTest`): в #327 записано 341 из 343, лог не сохранился (→ 10.2) |
 | `cleanway-sms-filter` (Swift) | pod 15.1 → 16.4 (#253) | Тесты платформ в CI | Компиляция |
 | `cleanway-safari` (Swift) | pod 15.1 → 16.4 (#253). Окно капчи (#277) появилось после основы #253 | Тесты платформ в CI | Компиляция и запуск |
 
-На iOS не собрано вообще ничего. В #253 сборка `xcodebuild` упала ещё до нашего
+До #327 на iOS не было собрано ничего (→ 10.2: в #327 Debug для симулятора
+собрался на Xcode 26.3, лог не сохранился). В #253 сборка `xcodebuild` упала ещё до нашего
 кода: компилятор Swift 6.2.4 из Xcode 26.3 сам аварийно завершился на
 `expo-modules-core/ios/Core/Functions/AsyncFunctionDefinition.swift:196`.
 SDK 56+ требует Xcode 26.4+. Кроме того, с SDK 55 ядро Expo перешло на режим
@@ -524,6 +529,9 @@ Swift 6, и более строгие проверки параллелизма 
       коммит не идёт), основатель входит по коду. Окно капчи должно открыться,
       nonce вернуться через `cleanway://captcha-return`, вход завершиться.
       Пока капча на сервере выключена, GoTrue токен просто игнорирует.
+15. Медленная связь (`expo/fetch`, 10.1 п. 10): если проверка ссылки не
+    дождалась ответа, она сама повторяет запрос один раз, а при второй неудаче
+    пишет «сервер отвечает медленно», а не «нет связи».
 
 **iPhone:**
 
@@ -668,12 +676,37 @@ pre-launch нет новых падений.
 9. Мелочи: строгие типы RN 0.88 у `ref` поля пароля (`app/auth.tsx`,
    появилось после #253); `File.write` в «Скачать мои данные» ждёт записи,
    заглушка в тесте асинхронная и ловит пропущенный `await` (4.2.3).
+10. **Таймаут на `expo/fetch`** (строка 3.1). С SDK 56 глобальный `fetch` —
+   это `expo/fetch`, и запрос, отменённый до ответа, он отклоняет своим
+   `FetchError` с именем `Error`, а не `AbortError` (`expo@58.0.19`,
+   `src/winter/fetch/fetch.ts`). `src/services/auth.ts` и
+   `packages/api-client` узнавали таймаут по имени, так что медленный ответ
+   стал бы «нет сети». При входе текст тот же (`err_network`), а у проверки
+   ссылки пропали бы единственный автоматический повтор медленного запроса
+   (`retryOnceOnTimeout`) и текст «сервер отвечает медленно». Теперь таймаут —
+   это сработавший свой таймер (`controller.signal.aborted`), проверка имени
+   осталась для браузеров и Node. Новые тесты падали на старом коде.
 
-### 10.2 Что проверено локально
+### 10.2 Что проверено
 
-| Что | Результат |
+**С доказательством, которое можно перепроверить:**
+
+| Что | Результат | Где доказательство |
+|---|---|---|
+| CI в #327 | Все проверки зелёные (`mobile`: typecheck, i18n, тесты плагинов, все `test-*.mjs`; lock sync; CodeQL; Security) | Проверки на последнем коммите PR |
+| Защиты release-сборки на AGP 9.2.1 / Gradle 9.4.1: `withShareIntentGuard`, `withSeedGuard`, `withDistributionGuard` (25.10) | Отдельный минимальный Android-проект: те же AGP 9.2.1, Gradle 9.4.1 и флаги шаблона 58 (`android.builtInKotlin=false`, `android.newDsl=false`). Конец `app/build.gradle` — то, что пишут `_patch()` наших трёх плагинов; рядом настоящий `scripts/check-share-intent.mjs`, `app.json` ветки, `expo-share-intent` 9.0.0 и `@expo/config-plugins` 58.0.10 (хеш архива совпал с lock). `preReleaseBuild` есть в графе `assembleRelease` и `bundleRelease` и выполняется до компиляции. `assembleRelease`: строка магазина, пять строк `ok:` от проверки share-intent, BUILD SUCCESSFUL (с `-PcleanwayNoSeed`). Падают, как задумано: без стартового списка (`assembleRelease` и `bundleRelease`); `expo-share-intent` с версией 8.0.0; фильтр `text/*` в манифесте; AAB с `site`; сборка для другого магазина. `assembleDebug` защиты не запускает. React Native и Kotlin-плагина в проекте нет: проверен механизм AGP, а не сборка приложения | Выдержки из логов — комментарий в #327 |
+| Версии зависимостей против SDK 58 | Все 24 прямые зависимости, которые есть в `bundledNativeModules.json` `expo@58.0.19`, по `mobile/package-lock.json` попадают в его диапазоны (expo 58.0.19, react-native 0.88.0, react 19.3.0). Это та же сверка, что делает `expo install --check`, но без установки, а не сама команда | Повторяется за минуту: `npm pack expo@58.0.19` и сверка с lock |
+| Таймаут на `expo/fetch` (10.1 п. 10) | Тесты в `scripts/test-api-client-errors.mjs` и `mobile/scripts/test-account-session.mjs` падали на старом коде и проходят на новом | CI (`test`, `mobile`) |
+
+**По записям сессии 24–25.10, лог не сохранился.** Зеркало
+`~/Library/Caches/cleanway-dev/cwmobile` удалено. В
+`~/Desktop/cleanway-android-out` только APK 1.0.6 на SDK 54 (их хеши совпадают
+с `SHA256SUMS-1.0.6.txt`, то есть сборки SDK 58 туда не попали). CI не делает
+ни prebuild, ни gradle. Поэтому строки ниже — запись того, что делалось, а не
+доказательство для слияния. Перед слиянием каждую повторить с логом (10.3).
+
+| Что | Записано |
 |---|---|
-| CI в #327 | Все проверки зелёные (`mobile`: typecheck, i18n, тесты плагинов, все `test-*.mjs`; lock sync; CodeQL; Security) |
 | `npx expo-doctor` в зеркале | 20/20 |
 | `npx expo install --check` | «Dependencies are up to date» (`typescript` исключён) |
 | `scripts/check-prebuild-gradle.mjs` после каждого prebuild | Все шесть меток плагинов на месте (подпись, ABI, стартовый список, магазин, share-intent, тёмные панели) |
@@ -691,6 +724,13 @@ pre-launch нет новых падений.
 
 ### 10.3 Что осталось
 
+- **Перед слиянием повторить с логами всё из второй таблицы 10.2:** три
+  release-сборки по `docs/RUSTORE_SUBMISSION.md` §2 (`cw_build` теперь пишет
+  лог gradle в `$OUT/logs/` и останавливается, если защиты не напечатали свои
+  строки), проверки `aapt2`, `zipalign`, `llvm-readelf` с выводом в файл, хеши
+  файлов, `expo-doctor`, `expo install --check`,
+  `:cleanway-vpn:testDebugUnitTest`, iOS-сборка. Выдержки и хеши — в PR.
+  Отметка [x] без них доказательством не считается.
 - Проверка на телефонах — весь раздел 6.2 (ничего не ставилось ни на
   телефон, ни в эмулятор).
 - iOS в EAS (`development`/`preview`, затем Release) — раздел 5, риск 5.

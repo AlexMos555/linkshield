@@ -233,7 +233,9 @@ needed. Exact converter flags: docs/IOS.md §2.6.
 > for, answered from the code.
 >
 > **1.1.0 (Expo SDK 58 / RN 0.88, draft #327, 2026-10-24):** the requirements in
-> §6.A still hold on a debug-signed compile check — `targetSdkVersion 36`,
+> §6.A still hold on a debug-signed compile check (a session record, no log
+> kept: re-check with logs before #327 merges, docs/EXPO_UPGRADE_PLAN.md §10.2)
+> — `targetSdkVersion 36`,
 > `compileSdkVersion 37`, 16 KB alignment of all `arm64-v8a` libraries, the same
 > permissions; the AAB is 49 MB, ARM-only. R8 now minifies release builds:
 > upload each release's `mapping.txt` to Play (docs/RUSTORE_SUBMISSION.md §2,

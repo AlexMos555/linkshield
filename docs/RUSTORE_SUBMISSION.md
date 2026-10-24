@@ -286,7 +286,14 @@ cw_build() {   # cw_build <site|rustore|play> <gradle task>...
   # "PREBUILD CHECK FAILED" = STOP: a plugin found no anchor in this template.
   node scripts/check-prebuild-gradle.mjs --distribution="$EXPO_PUBLIC_DISTRIBUTION" || return 1
   cp "$KEYS/keystore.properties" "$KEYS/cleanway-release.jks" android/
-  (cd android && ./gradlew "$@")                  # prints "Cleanway: building the … build"
+  # The gradle log is the evidence for the PR (a ticked box without it is not):
+  # keep it. Before compiling, the store guard prints "Cleanway: building the …"
+  # and the share-intent guard 5× "ok:" (under > Task :app:preReleaseBuild).
+  # No such lines = a guard did not run on this template = STOP.
+  local log="$OUT/logs/$V-$VC-$EXPO_PUBLIC_DISTRIBUTION-gradle.log"; mkdir -p "$OUT/logs"
+  (set -o pipefail; cd android && ./gradlew "$@" 2>&1 | tee "$log") || return 1
+  grep -q '^Cleanway: building' "$log" && [ "$(grep -c '^ok: ' "$log")" -ge 5 ] \
+    || { echo "STOP: a release guard printed nothing ($log)"; return 1; }
 }
 APK=android/app/build/outputs/apk/release/app-release.apk
 AAB=android/app/build/outputs/bundle/release/app-release.aab
@@ -368,7 +375,9 @@ shasum -a 256 cleanway-$V-$VC-arm.apk cleanway-$V-$VC-rustore.apk cleanway-$V-$V
 ```
 
 Confirm the **target API, the signer and 16 KB alignment** before uploading —
-for each of the three APKs (the Play one stands in for its AAB):
+for each of the three APKs (the Play one stands in for its AAB). Keep what
+these checks print (e.g. run them inside `script -q "$OUT/logs/$V-$VC-checks.txt"`,
+then `exit`) and attach it, the gradle logs and `SHA256SUMS-$V.txt` to the PR:
 
 ```bash
 APK="$OUT/cleanway-$V-$VC-arm.apk"   # then -rustore.apk, then -play-check.apk
@@ -442,8 +451,19 @@ in place (no "App not installed"). That proves B2 is fixed end-to-end.
 > blocked site, the QR scanner (camera) and the after-call screen. No release
 > key was used and nothing was installed on the phone during the upgrade.
 
-> **Expo SDK 58 (1.1.0, #327, 2026-10-24) — compile check only.** Built in a
-> mirror exactly as above, without the release key (debug-signed), from the
+> **Expo SDK 58 (1.1.0, #327, 2026-10-24) — compile check only, and no log
+> kept.** The mirror was deleted afterwards and no gradle output or checksum of
+> these builds survives, so everything in this paragraph is a session record,
+> not evidence: before #327 merges, rebuild with `cw_build` above (it keeps the
+> gradle log now) and attach the logs and checksums. What *was* re-checked with
+> a kept log (2026-10-25, excerpts in #327): on AGP 9.2.1 / Gradle 9.4.1 with
+> the template's AGP-9 opt-outs, `preReleaseBuild` is in the `assembleRelease`
+> and `bundleRelease` graphs and runs before anything compiles, so the
+> share-intent guard prints its 5× `ok:` and fails on a fake 8.0.0 package or
+> a `text/*` manifest, the seed guard fails without the seed, and the store
+> guard fails for a site AAB or another store's `android/` (a minimal Android
+> project with the guards' exact text, not the app). The session record: built
+> in a mirror exactly as above, without the release key (debug-signed), from the
 > branch's `app.json` (still 1.0.6 / 107): site and RuStore `assembleRelease`,
 > Play `bundleRelease assembleRelease`, each with its own prebuild. All succeed
 > (a cold first build ~15 min; later ones 6–8 min). `check-prebuild-gradle.mjs`

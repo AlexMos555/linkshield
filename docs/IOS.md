@@ -55,7 +55,9 @@ expo-localization compiling on Xcode 26 (SDK 54; on SDK 58 it patches nothing).
 A full build is ~4 GB of DerivedData — delete the mirror and `build/` afterwards.
 
 **Expo SDK 58 (1.1.0, #327, 2026-10-25):** the same recipe builds the Debug
-simulator app with Xcode 26.3 (BUILD SUCCEEDED; `pod install` 123 pods). Expo
+simulator app with Xcode 26.3 (BUILD SUCCEEDED; `pod install` 123 pods —
+a session record: the log was not kept, so rebuild and keep it before #327
+merges, docs/EXPO_UPGRADE_PLAN.md §10.2). Expo
 officially wants Xcode 26.4+ from SDK 56, and in #253 the Swift 6.2.4 compiler
 crashed on `expo-modules-core`; since `expo@58.0.19` `ExpoModulesCore` and five
 other Expo modules come as precompiled xcframeworks, and Xcode 26.3 imports
