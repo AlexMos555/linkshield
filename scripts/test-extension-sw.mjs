@@ -54,7 +54,8 @@
  * The Safari tree is loaded into Chromium too: that cannot prove Safari's
  * runtime, but it does prove the Safari manifest + module graph load and run.
  * The Firefox tree is MV2 and Chromium no longer loads MV2; it is covered by
- * the static checks in scripts/test-extension-core.mjs.
+ * the static checks in scripts/test-extension-core.mjs and, in a real
+ * Firefox, by scripts/smoke-firefox-extension.mjs (run before an AMO upload).
  */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";

@@ -1818,6 +1818,30 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     assert.equal((await ask({ type: "BLOCK_PAGE", domain: "paypa1-login.example", result: DANGER }, top)).action, "navigated");
   });
 
+  // "Open anyway" takes the tab away from the block page, and the block page
+  // goes with it. A reply sent after the navigation reaches a page that is no
+  // longer there: Firefox then rejects the page's sendMessage promise after
+  // its context unloaded and logs that as an error against blocked.js
+  // (seen by scripts/smoke-firefox-extension.mjs). Reply first, then navigate.
+  await check(`[${tree}] "open anyway" replies to the block page before it takes the tab away`, async () => {
+    const { createBlockRedirect } = await blockRedirectModule(tree);
+    const B = loadBlockedUrl(tree);
+    const { api, log } = fakeBlockApi();
+    const order = [];
+    const update = api.tabs.update;
+    api.tabs.update = async (tabId, props) => { order.push("navigate"); return update(tabId, props); };
+    const handle = createBlockRedirect({ api, getCached: () => null, onShown: async () => {}, onProceeded: () => {} });
+    const page = B.build(EXT, DANGER, "https://paypa1-login.example/signin");
+    const sender = { id: "abcdefghijklmnop", tab: { id: 7 }, frameId: 0, url: page };
+    const reply = await new Promise((resolve) => {
+      assert.equal(handle({ type: "BLOCK_PROCEED" }, sender, (r) => { order.push("reply"); resolve(r); }), true);
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    assert.deepEqual(reply, { ok: true });
+    assert.deepEqual(order, ["reply", "navigate"], "navigated before replying");
+    assert.deepEqual(log.updates, [{ tabId: 7, url: "https://paypa1-login.example/signin" }]);
+  });
+
   await check(`[${tree}] a browser that refuses the navigation gets the in-page overlay as a last resort`, async () => {
     const { createBlockRedirect } = await blockRedirectModule(tree);
     const { api, log } = fakeBlockApi({ updateFails: true, session: false });
