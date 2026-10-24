@@ -3,7 +3,9 @@
  * expo-share-intent on Android: a shared file can no longer be written
  * outside the cache. Run with `node mobile/scripts/check-share-intent.mjs` —
  * CI runs it in the mobile job (through plugins/__tests__/plugins.test.js),
- * the build mirror right after `npm install` (docs/RUSTORE_SUBMISSION.md §2).
+ * the build mirror right after `npm install` (docs/RUSTORE_SUBMISSION.md §2),
+ * and every Android release build before it compiles anything
+ * (plugins/withShareIntentGuard.js; a failure here fails the build).
  *
  * The hole (docs/EXPO_UPGRADE_PLAN.md §1.2; CWE-22, "Dirty Stream"): for a
  * shared file, getDataColumn in ExpoShareIntentModule.kt copied it to
@@ -29,6 +31,10 @@
  *     the one type 5.1.1 reads as text without copying a file. Checked on
  *     the manifest the plugin itself generates from app.json. Not enough on
  *     its own (an explicit intent ignores filters), hence 1 and 2.
+ *  4. with --manifest=<android/app/src/main/AndroidManifest.xml>: the same
+ *     filter in the manifest a build actually uses. Release builds run the
+ *     check this way before compiling (plugins/withShareIntentGuard.js), so
+ *     an android/ generated before the filter was narrowed fails as well.
  *
  * --package-dir=<dir> points checks 1 and 2 at another copy of the package;
  * plugins.test.js uses it to show that this check fails when it should.
@@ -60,15 +66,28 @@ const SHARE_TYPES = ["text/plain"];
 const SEND = "android.intent.action.SEND";
 const SEND_MULTIPLE = "android.intent.action.SEND_MULTIPLE";
 
-const dirArg = process.argv.find((a) => a.startsWith("--package-dir="));
-const pkgDir = dirArg
-  ? resolve(dirArg.slice("--package-dir=".length))
-  : dirname(require.resolve(`${PKG}/package.json`));
+const arg = (name) => {
+  const a = process.argv.find((x) => x.startsWith(`--${name}=`));
+  return a === undefined ? undefined : resolve(a.slice(name.length + 3));
+};
+const pkgDir = arg("package-dir") ?? dirname(require.resolve(`${PKG}/package.json`));
+const manifestPath = arg("manifest");
 const patchesDir = join(mobile, "patches");
 
 const ok = [];
 const failures = [];
 const gitBlobId = (buf) => createHash("sha1").update(`blob ${buf.length}\0`).update(buf).digest("hex");
+/** MainActivity's SEND / SEND_MULTIPLE filters in a manifest (xml2js shape): [{ actions, types }]. */
+const shareFiltersOf = (manifest) => {
+  const activities = manifest.manifest?.application?.[0]?.activity ?? [];
+  const main = activities.find((a) => a.$?.["android:name"] === ".MainActivity");
+  if (!main) return undefined;
+  const actions = (f) => (f.action ?? []).map((a) => a.$["android:name"]);
+  return (main["intent-filter"] ?? [])
+    .filter((f) => actions(f).some((a) => a === SEND || a === SEND_MULTIPLE))
+    .map((f) => ({ actions: actions(f), types: (f.data ?? []).map((d) => d.$["android:mimeType"]) }));
+};
+const EXPECTED_SHARES = [{ actions: [SEND], types: SHARE_TYPES }];
 const olderThan = (version, floor) => {
   const v = version.split("-")[0].split(".").map(Number);
   for (let i = 0; i < 3; i++) if (v[i] !== floor[i]) return v[i] < floor[i];
@@ -192,18 +211,42 @@ const where = `${PKG} ${version} ${KT}`;
     } finally {
       console.warn = warn;
     }
-    const filters = result.modResults.manifest.application[0].activity[0]["intent-filter"] ?? [];
-    const actions = (f) => (f.action ?? []).map((a) => a.$["android:name"]);
-    const shares = filters
-      .filter((f) => actions(f).some((a) => a === SEND || a === SEND_MULTIPLE))
-      .map((f) => ({ actions: actions(f), types: (f.data ?? []).map((d) => d.$["android:mimeType"]) }));
-    if (!isDeepStrictEqual(shares, [{ actions: [SEND], types: SHARE_TYPES }])) {
+    const shares = shareFiltersOf(result.modResults);
+    if (!isDeepStrictEqual(shares, EXPECTED_SHARES)) {
       failures.push(
         `the share filters MainActivity gets are ${JSON.stringify(shares)}; expected one SEND for ${SHARE_TYPES.join(", ")} ` +
           `(app.json: androidIntentFilters ${JSON.stringify(SHARE_TYPES)}, no androidMultiIntentFilters)`,
       );
     } else {
       ok.push(`share sheet: MainActivity takes SEND for ${SHARE_TYPES.join(", ")} only (plugin output from app.json)`);
+    }
+  }
+}
+
+// 4. The manifest this android/ builds from (release builds pass --manifest).
+if (manifestPath !== undefined) {
+  const { AndroidConfig } = require("@expo/config-plugins");
+  let manifest;
+  if (!existsSync(manifestPath)) {
+    failures.push(`${manifestPath}: no such file`);
+  } else {
+    try {
+      manifest = await AndroidConfig.Manifest.readAndroidManifestAsync(manifestPath);
+    } catch (e) {
+      failures.push(`${manifestPath}: cannot read it (${e.message})`);
+    }
+  }
+  if (manifest) {
+    const shares = shareFiltersOf(manifest);
+    if (shares === undefined) {
+      failures.push(`${manifestPath}: no .MainActivity in it`);
+    } else if (!isDeepStrictEqual(shares, EXPECTED_SHARES)) {
+      failures.push(
+        `${manifestPath}: MainActivity's share filters are ${JSON.stringify(shares)}; expected one SEND for ` +
+          `${SHARE_TYPES.join(", ")}. This android/ was generated from an older app.json: expo prebuild -p android --clean`,
+      );
+    } else {
+      ok.push(`${manifestPath}: MainActivity takes SEND for ${SHARE_TYPES.join(", ")} only`);
     }
   }
 }

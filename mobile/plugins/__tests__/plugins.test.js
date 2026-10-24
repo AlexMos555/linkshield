@@ -520,6 +520,78 @@ console.log("expo-share-intent (Android shared-file path traversal):");
       assert.ok(r.stdout.includes("only if its canonical path is inside cacheDir"), "its own code passes");
     });
   });
+
+  // --manifest: the AndroidManifest.xml a release build actually uses. An
+  // android/ generated before app.json narrowed the filter still says text/*.
+  const manifestWith = (types, fn) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cleanway-share-manifest-"));
+    const file = path.join(dir, "AndroidManifest.xml");
+    const data = types.map((t) => `<data android:mimeType="${t}"/>`).join("");
+    fs.writeFileSync(file, `<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application android:name=".MainApplication">
+    <activity android:name=".MainActivity" android:exported="true">
+      <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+      <intent-filter><action android:name="android.intent.action.VIEW"/><data android:scheme="cleanway"/></intent-filter>
+      <intent-filter><action android:name="android.intent.action.SEND"/><category android:name="android.intent.category.DEFAULT"/>${data}</intent-filter>
+    </activity>
+  </application>
+</manifest>
+`);
+    try {
+      fn(run(`--manifest=${file}`), file);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  };
+  check("--manifest passes a built manifest whose share filter is text/plain only", () => {
+    manifestWith(["text/plain"], (r, file) => {
+      assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+      assert.ok(r.stdout.includes(`ok: ${file}: MainActivity takes SEND for text/plain only`), r.stdout);
+    });
+  });
+  check("--manifest fails an android/ generated with the old text/* filter, and a missing manifest", () => {
+    manifestWith(["text/*"], (r) => {
+      assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+      assert.ok(r.stdout.includes('"types":["text/*"]'), r.stdout);
+      assert.ok(r.stdout.includes("expo prebuild -p android --clean"), r.stdout);
+    });
+    manifestWith(["text/plain", "text/html"], (r) => assert.strictEqual(r.status, 1, r.stdout + r.stderr));
+    const missing = run(`--manifest=${path.join(os.tmpdir(), "cleanway-no-such-dir", "AndroidManifest.xml")}`);
+    assert.strictEqual(missing.status, 1, missing.stdout + missing.stderr);
+    assert.ok(missing.stdout.includes("no such file"), missing.stdout);
+  });
+
+  // The release build runs that check itself: a failed or skipped postinstall
+  // leaves the mirror's old node_modules in place, and gradle never looks at
+  // the Kotlin source, so without this a signed release with the hole builds.
+  const { _patch: patchShare, SENTINEL: SHARE_SENTINEL } = require("../withShareIntentGuard.js");
+  const out = patchShare(TEMPLATE);
+  check("withShareIntentGuard: every non-debug pre<Variant>Build runs the check, before compiling", () => {
+    assert.ok(out.includes("tasks.matching { it.name ==~ /pre\\w+Build/ && !(it.name ==~ /(?i).*debug.*/) }"));
+    assert.ok(out.includes("task.doFirst {"));
+  });
+  check("withShareIntentGuard: runs scripts/check-share-intent.mjs from mobile/ on this android/'s manifest", () => {
+    assert.ok(out.includes('["node", "scripts/check-share-intent.mjs",'));
+    assert.ok(out.includes('"--manifest=" + cleanwayShareManifest'));
+    assert.ok(out.includes('def cleanwayShareManifest = file("src/main/AndroidManifest.xml").getAbsolutePath()'));
+    assert.ok(out.includes("def cleanwayShareCheckDir = rootDir.getAbsoluteFile().getParentFile()"));
+    assert.ok(out.includes(".execute(null, cleanwayShareCheckDir)"));
+    assert.ok(fs.existsSync(path.join(mobileDir, "scripts", "check-share-intent.mjs")));
+  });
+  check("withShareIntentGuard: a failed check fails the build, with no switch to skip it", () => {
+    assert.ok(out.includes("if (cleanwayShareCheck.exitValue() != 0) {"));
+    assert.ok(out.includes("throw new GradleException("));
+    assert.ok(!out.includes("hasProperty"), "no -P switch");
+  });
+  check("withShareIntentGuard: appended after the android block, idempotent", () => {
+    assert.ok(out.startsWith(TEMPLATE.trimEnd()));
+    assert.strictEqual(patchShare(out), out);
+    assert.strictEqual(out.split(`${SHARE_SENTINEL}:`).length, 2);
+  });
+  check("app.json registers withShareIntentGuard", () => {
+    const plugins = JSON.parse(fs.readFileSync(path.join(mobileDir, "app.json"), "utf8")).expo.plugins || [];
+    assert.ok(plugins.includes("./plugins/withShareIntentGuard"));
+  });
 }
 
 console.log(`\n${passed} assertions passed`);

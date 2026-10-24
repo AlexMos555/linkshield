@@ -38,7 +38,9 @@ release build without it, #277;
 [docs/RUSTORE_SUBMISSION.md](docs/RUSTORE_SUBMISSION.md) §2):
 `cleanway-1.0.6-107-arm.apk` (site, GitHub release `v1.0.6`),
 `cleanway-1.0.6-107-rustore.apk` (RuStore), `cleanway-1.0.6-107-play.aab`
-(Google Play).
+(Google Play). Only files built after #318 was merged carry the
+`expo-share-intent` fix below; earlier 1.0.6 (107) files have the same names
+and must not be uploaded (docs/EXPO_UPGRADE_PLAN.md §1.2).
 
 **Что нового**
 - **Android: исправление безопасности.** Другое приложение на телефоне больше не может через «Поделиться» записать свой файл в приватную папку Cleanway (настройки, список «не мошенники») и так незаметно ослабить защиту. Для этого не требовалось ни разрешений, ни действий от человека. Ошибка была в сторонней библиотеке `expo-share-intent`, в приложение перенесено исправление её автора. Cleanway теперь появляется в меню «Поделиться» только для текста и ссылок: ничего другого он и раньше не проверял (#318). iPhone не затронут.
