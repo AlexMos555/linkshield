@@ -323,10 +323,13 @@ async def doh_health() -> Response:
 _stats_task = None
 
 
-async def startup() -> None:
+async def startup(load_filter: bool = True) -> None:
+    """`load_filter=False` (SERVICE_ROLE=api): no blocklist in memory — a
+    query that still arrives is decided by the per-query Redis fallback."""
     from api.config import get_settings
     global _stats_task
-    doh_filter.HOLDER.start(get_settings().doh_filter_refresh_s)
+    if load_filter:
+        doh_filter.HOLDER.start(get_settings().doh_filter_refresh_s)
     if _stats_task is None or _stats_task.done():
         _stats_task = asyncio.get_running_loop().create_task(doh_metrics.stats_logger())
 

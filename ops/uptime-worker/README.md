@@ -14,7 +14,20 @@
 | `warnings_other` | `warnings` holds nothing else | `/health/deep` raised a warning this monitor does not know yet |
 | `doh_resolve` | a DNS-over-HTTPS query for `google.com` to `dns.cleanway.ai` gets RCODE 0 and an answer | iPhones with DNS protection resolve nothing |
 | `doh_block` | the same query for `list-canary.cleanway.ai` gets NXDOMAIN **with our SOA** (`blocked.cleanway.ai`) | the public DNS path does not block; an upstream NXDOMAIN does not count |
+| `dns_latency` | `https://dns.cleanway.ai/health/doh` → `stats.p95_ms_le` under 200 — **alerts after 5 slow minutes in a row**, not 2 | DNS is short of CPU: the capacity runbook's line (`docs/runbooks/capacity.md`) for another DNS replica, or for DNS in a service of its own (`docs/runbooks/dns-service-split.md`) |
 | `backup` | the newest `db/` object in R2 is under 30 h old — **only with the `BACKUPS` binding** | the nightly `DB backup` workflow stopped (GitHub sends no mail for a run that never starts) |
+
+**How `dns_latency` reads `/health/doh`.** `p95_ms_le` is the upper bound of
+the latency bucket the p95 falls in (buckets … 50, 100, 200, 500 … ms), server
+time only, of the one worker process that answered, counted since it started
+(`api/services/doh_metrics.py`). So `200` means the p95 is between 100 and
+200 ms, `null` with queries means over 5 s (counted as slow), and each minute
+may reach another worker — five slow readings in a row mean most of them are
+slow. A worker with fewer than 100 queries since it started (right after a
+deploy) is not judged, and neither is an answer that cannot be read: an
+unreachable DNS service is `doh_resolve`'s alert. The URL is on the DNS name,
+so it watches whichever service serves `dns.cleanway.ai`, before and after
+the split.
 
 Each warning is its own check, so a warning that stays red (one email) never
 hides the next one. One `/health/deep` request per minute serves all of them;
@@ -22,7 +35,7 @@ the endpoint reuses a result for 30 s, so the API's dependencies see no extra
 load. `/health` is not used: it is always 200, and its `status` turned
 `degraded` whenever a third-party threat-intel breaker opened.
 
-After two failed runs in a row it emails `amoskotin@gmail.com` from
+After two failed runs in a row (`dns_latency`: five) it emails `amoskotin@gmail.com` from
 `alerts@cleanway.ai` (Cloudflare Email Routing `send_email` binding — the
 destination must stay a verified Email Routing address), and once more when the
 check recovers. The mail says what the check means and points at
@@ -48,13 +61,21 @@ update it, upload `worker.js` as an ES module named `worker.js` with bindings:
   `backup` check. The Worker only lists object names and upload times.
 
 and keep the cron trigger `* * * * *`. Free-plan limits are far away: 1,440
-runs/day, up to 10 subrequests per run (the free limit is 50), a KV read per run,
+runs/day, up to 11 subrequests per run (the free limit is 50), a KV read per run,
 a KV write on change and every 10 minutes (~150/day of 1,000), and with
 `BACKUPS` one R2 list per run (~43k/month of the free 1M class-A operations).
 
 Dashboard path for the founder: Cloudflare → Workers & Pages →
 `cleanway-uptime` → Edit code → paste `worker.js` → Deploy; then Settings →
 Bindings → Add → R2 bucket → variable `BACKUPS`, bucket `cleanway-db-backups`.
+
+**2026-10-24 version (`dns_latency`): paste the new `worker.js`, nothing else.**
+No new binding or variable; the KV state from the previous version is read
+as is. Within a minute `GET https://cleanway-uptime.amoskotin.workers.dev/`
+lists `dns_latency` under `fails` (with `0`; it stays absent while every
+worker it reaches has fewer than 100 queries since it started). The first
+alert can come no sooner than five minutes after the upload. It works the
+same before and after DNS moves to its own Railway service.
 
 Tests: `node --test ops/uptime-worker/worker.test.mjs` (CI runs it through
 `tests/test_uptime_worker.py`).

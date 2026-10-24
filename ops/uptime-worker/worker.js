@@ -10,11 +10,14 @@
 //     gateway's block decision, the Supabase server key;
 //   * the public DNS path both ways: a real name resolves, and the list canary
 //     gets OUR NXDOMAIN (SOA blocked.cleanway.ai) — not upstream's;
+//   * how fast the DNS service answers: the p95 /health/doh reports, against
+//     the capacity runbook's line (docs/runbooks/capacity.md);
 //   * optionally the age of the newest nightly backup (R2 binding BACKUPS).
 //
-// After FAIL_THRESHOLD consecutive failures it emails the founder once
-// (Cloudflare Email Routing send_email binding, destination must be a verified
-// address), and once more when the check is back. A send that fails is
+// After FAIL_THRESHOLD consecutive failures (a check may ask for more: its
+// `threshold`) it emails the founder once (Cloudflare Email Routing send_email
+// binding, destination must be a verified address), and once more when the
+// check is back. A send that fails is
 // retried the next minute and recorded as `alert_error` until a mail goes
 // out or none is owed any more. State lives in KV,
 // written on change and at least every HEARTBEAT_MS; GET / shows it, and the
@@ -27,6 +30,9 @@ import { EmailMessage } from "cloudflare:email";
 
 const DEEP_URL = "https://api.cleanway.ai/health/deep";
 const DOH_URL = "https://dns.cleanway.ai/dns-query";
+// On the DNS name: before and after DNS moves to a service of its own
+// (docs/runbooks/dns-service-split.md) this is the process phones talk to.
+const DOH_HEALTH_URL = "https://dns.cleanway.ai/health/doh";
 const BLOCK_SOA_MNAME = "blocked.cleanway.ai"; // api/services/dns_wire.py
 const LIST_CANARY = "list-canary.cleanway.ai"; // api/services/blocklist_artifact.py
 const KNOWN_WARNINGS = ["blocklist", "doh", "supabase_server_key"];
@@ -35,6 +41,18 @@ const FAIL_THRESHOLD = 2;
 const TIMEOUT_MS = 10_000;
 const HEARTBEAT_MS = 10 * 60_000;
 const BACKUP_MAX_AGE_H = 30; // nightly cron, which GitHub starts up to ~5 h late
+// docs/runbooks/capacity.md: add a DNS replica (or move DNS to its own
+// service) once /health/doh reports p95_ms_le ≥ 200. p95_ms_le is the upper
+// bound of the latency bucket the p95 falls in (… 100, 200, 500 … ms,
+// api/services/doh_metrics.py): server time only, of the one worker process
+// that answered, since it started. Each minute may reach another worker, so
+// DNS_SLOW_MINUTES slow readings in a row mean most of them are slow.
+const DNS_P95_ALERT_MS = 200;
+const DNS_SLOW_MINUTES = 5;
+// Fewer queries than this since the worker started: too few to judge (right
+// after a deploy the first lookups are the slow ones: cold cache, new upstream
+// connection).
+const DNS_MIN_QUERIES = 100;
 const FROM = "alerts@cleanway.ai";
 const SKIP = Symbol("skip"); // nothing to judge this minute: keep the last count
 
@@ -144,6 +162,21 @@ function warningCheck(name, warning, help) {
   };
 }
 
+// Judge /health/doh's `stats` (one worker's histogram since it started).
+function dnsLatency(stats) {
+  const queries = (stats.counts || {}).queries || 0;
+  if (queries < DNS_MIN_QUERIES) return SKIP;
+  const p95 = stats.p95_ms_le;
+  // null once there are queries: past the last bucket, which over_ms names.
+  const lastBucket = Object.keys(stats.over_ms || {})[0] || "the last bucket";
+  const ms = (v) => (typeof v === "number" ? `≤ ${v} ms` : `over ${lastBucket} ms`);
+  if (p95 !== null && typeof p95 !== "number") return SKIP; // a shape this monitor does not know
+  if (p95 !== null && p95 < DNS_P95_ALERT_MS) return null;
+  const line = p95 === null ? `p95 ${ms(p95)}` : `p95 ${ms(p95)} (alert at ≥ ${DNS_P95_ALERT_MS})`;
+  const since = Number.isFinite(stats.since) ? new Date(stats.since * 1000).toISOString() : "?";
+  return `${line}, p99 ${ms(stats.p99_ms_le)}, ${queries} queries on the worker that answered, since ${since}`;
+}
+
 async function newestBackupMs(bucket) {
   let cursor;
   let newest = 0;
@@ -208,6 +241,23 @@ const CHECKS = [
       a.rcode === 3 && a.soa === BLOCK_SOA_MNAME ? null : `rcode ${a.rcode}, soa ${a.soa || "none"} (not our block)`),
   },
   {
+    name: "dns_latency",
+    help:
+      `DNS отвечает медленно: p95 в /health/doh ≥ ${DNS_P95_ALERT_MS} мс ${DNS_SLOW_MINUTES} минут подряд. ` +
+      "Не хватает CPU для DNS: добавить реплику DNS-сервиса или вынести DNS в свой сервис " +
+      "(docs/runbooks/capacity.md, docs/runbooks/dns-service-split.md).",
+    threshold: DNS_SLOW_MINUTES,
+    run: async (get) => {
+      let stats;
+      try {
+        stats = JSON.parse(new TextDecoder().decode((await get(DOH_HEALTH_URL)).body)).stats;
+      } catch {
+        return SKIP; // unreachable or not JSON: doh_resolve and doh_block speak for DNS being down
+      }
+      return stats && typeof stats === "object" ? dnsLatency(stats) : SKIP;
+    },
+  },
+  {
     name: "backup",
     help: `Ночной резервной копии базы больше ${BACKUP_MAX_AGE_H} ч: проверьте workflow DB backup (docs/runbooks/restore.md).`,
     enabled: (env) => Boolean(env.BACKUPS),
@@ -258,6 +308,7 @@ async function notify(env, subject, body) {
 }
 
 const HELP = Object.fromEntries(CHECKS.map((c) => [c.name, c.help]));
+const THRESHOLD = Object.fromEntries(CHECKS.map((c) => [c.name, c.threshold || FAIL_THRESHOLD]));
 
 function readState(raw) {
   let s = {};
@@ -283,10 +334,10 @@ async function tick(env, now = Date.now()) {
       continue;
     }
     // Capped, so a long outage does not rewrite KV every minute.
-    fails[name] = err ? Math.min((prev.fails[name] || 0) + 1, FAIL_THRESHOLD) : 0;
+    fails[name] = err ? Math.min((prev.fails[name] || 0) + 1, THRESHOLD[name]) : 0;
     if (err) errors[name] = err;
   }
-  const failing = Object.keys(fails).filter((n) => fails[n] >= FAIL_THRESHOLD);
+  const failing = Object.keys(fails).filter((n) => fails[n] >= THRESHOLD[n]);
   let down = prev.down.filter((n) => n in fails); // what the founder was told is down
   const newlyDown = failing.filter((n) => !down.includes(n));
   const recovered = down.filter((n) => !failing.includes(n));

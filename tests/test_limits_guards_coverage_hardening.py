@@ -487,7 +487,7 @@ def test_host_header_parsing(host, expected):
 
 def test_dns_host_guard_ignores_ipv6_hosts_and_non_http():
     record = []
-    guarded = rg.DnsHostOnly(_asgi_app(record))
+    guarded = rg.DnsRouting(_asgi_app(record))
     sent = _run(guarded, _http([(b"host", b"[::1]:8000")], path="/api/v1/pricing"),
                 [{"type": "http.request", "body": b""}])
     assert sent[0]["status"] == 200

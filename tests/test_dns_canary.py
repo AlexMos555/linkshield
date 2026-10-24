@@ -106,17 +106,20 @@ DOH_HEALTH_OK = json.dumps({"ok": True, "filter": {"loaded": True, "count": 4700
 
 def _install(monkeypatch, *, rcodes, artifact_text, etag=None, count_hdr=None,
              health=(200, HEALTH_OK), landing=(200, b"<html>"), requests=None,
-             doh_health=None,
+             doh_health=None, doh_bases=None,
              soa=None, public=None, live_feed=(200, b""), uptime=None):
     """Stub every network call: DoH lookups (our gateway, and the public
     resolver the live probe asks), the artifact fetch, the live-probe feed,
     /health/deep and the landing page. `soa` overrides the SOA of a gateway
     NXDOMAIN per name; `public` maps name -> DnsAnswer from the public
-    resolver. `requests` (a list) collects every urllib Request."""
+    resolver. `requests` (a list) collects every urllib Request, `doh_bases`
+    (a list) the base of every DoH lookup."""
     soa = soa or {}
     public = public or {}
 
     def _doh(base, name, timeout=10.0):
+        if doh_bases is not None:
+            doh_bases.append(base)
         if base == canary.PUBLIC_DOH_BASE:
             return public.get(name, canary.DnsAnswer(3, 0, UPSTREAM_SOA))
         return _gateway_answer(rcodes.get(name, 0), soa.get(name))
@@ -370,6 +373,46 @@ def test_landing_base_is_configurable_separately_from_api_base(monkeypatch, caps
     urls = [r.full_url for r in seen]
     assert "https://api.staging.test/health/deep" in urls
     assert "https://staging.test/ru/android" in urls
+
+
+# ── 2026-10-24: DNS gets a Railway service of its own ─────────────────────
+# docs/runbooks/dns-service-split.md: dns.cleanway.ai moves to its own service
+# and api.cleanway.ai stops answering /dns-query. The canary asks its DNS
+# questions where phones ask them.
+
+def _bases(monkeypatch, capsys, argv=()):
+    seen, bases = [], []
+    code, out = _run(monkeypatch, capsys, argv=argv, rcodes={"list-canary.cleanway.ai": 3},
+                     artifact_text=HEALTHY, requests=seen, doh_bases=bases)
+    assert code == 0, out
+    return set(bases) - {canary.PUBLIC_DOH_BASE}, [r.full_url for r in seen]
+
+
+def test_dns_questions_go_to_the_dns_name_and_the_rest_to_the_api(monkeypatch, capsys):
+    gateways, urls = _bases(monkeypatch, capsys)
+    assert gateways == {"https://dns.cleanway.ai"}
+    assert "https://dns.cleanway.ai/health/doh" in urls
+    assert "https://api.cleanway.ai/health/deep" in urls
+    assert "https://api.cleanway.ai/api/v1/blocklist/dns" in urls
+    assert not any(u.startswith("https://api.cleanway.ai/health/doh") for u in urls)
+
+
+def test_another_api_base_keeps_the_dns_questions_on_it(monkeypatch, capsys):
+    """A manual run against a single-service deployment (staging) probes one host."""
+    gateways, urls = _bases(monkeypatch, capsys, argv=["--base", "https://api.staging.test/"])
+    assert gateways == {"https://api.staging.test"}
+    assert "https://api.staging.test/health/doh" in urls
+
+
+@pytest.mark.parametrize("how", ["flag", "env"])
+def test_the_dns_base_can_be_set_on_its_own(monkeypatch, capsys, how):
+    argv = ["--dns-base", "https://dns.staging.test/"] if how == "flag" else []
+    if how == "env":
+        monkeypatch.setenv("CANARY_DNS_BASE", "https://dns.staging.test")
+    gateways, urls = _bases(monkeypatch, capsys, argv=argv)
+    assert gateways == {"https://dns.staging.test"}
+    assert "https://dns.staging.test/health/doh" in urls
+    assert "https://api.cleanway.ai/health/deep" in urls
 
 
 def test_landing_base_env_var_is_honoured(monkeypatch, capsys):
