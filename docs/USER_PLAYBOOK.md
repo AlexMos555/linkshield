@@ -148,7 +148,7 @@
   1. https://chrome.google.com/webstore/devconsole/ — buy developer account ($5 one-time)
   2. New item → upload `dist/store-artifacts/cleanway-0.2.2-chrome.zip`
   3. Листинг и ответы для проверки — по `docs/CWS_SUBMISSION.md` (тексты из `extension/STORE_LISTING.md`; `docs/marketing/chrome-web-store-listing.md` больше не источник)
-  4. Скриншоты 1280×800 уже готовы, снимать не нужно: `store-assets/extension/en/` 01, 02, 04, 05 (без 03), для русского листинга `ru/` все пять; что на каждом и почему без `en/03` — `store-assets/extension/README.md`
+  4. Скриншоты 1280×800 уже готовы, снимать не нужно: `store-assets/extension/en/` все пять (01…05), для русского листинга `ru/` тоже все пять; что на каждом — `store-assets/extension/README.md`
   5. Submit for review
 - **Сколько:** 45 минут (most of it — filling listing copy)
 - **Review SLA:** 1-7 days

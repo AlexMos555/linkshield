@@ -293,6 +293,10 @@ async function captureLocale(lang, score, log) {
     if (new URL(page.url()).hostname !== HOSTS.caution) throw new Error(`caution page left for ${page.url()}`);
     const cautionTab = await tabShot(page);
     const cautionPopup = await popupShot(s, { expectState: "warning" });
+    // The caution line is about the site; it once printed a link count nobody counted ("1 links…").
+    if (!cautionPopup.line.includes(HOSTS.caution) || /\d/.test(cautionPopup.line)) {
+      throw new Error(`the caution popup's line should name ${HOSTS.caution} and give no count: ${cautionPopup.line}`);
+    }
     save(await withPopup(context, cautionTab, cautionPopup), file(3));
 
     // 01 — opening the scam page: the tab is taken to the extension's block page.

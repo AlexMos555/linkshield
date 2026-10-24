@@ -100,9 +100,7 @@ grep '"version"' extension/manifest.json
    (Russian listing: `ru/`), in this order:
    - 1. `01-block-page.png` — block page with the "why we blocked" cards
    - 2. `02-popup-safe.png` — popup, safe verdict
-   - 3. `03-popup-caution.png` — popup, caution verdict (**Russian listing only**:
-     the English one reads "1 links on this page need a closer look", a 0.2.2
-     wording slip, so the English listing gets four shots)
+   - 3. `03-popup-caution.png` — popup, caution verdict
    - 4. `04-link-badges.png` — link badges on search results, red tooltip open
    - 5. `05-settings.png` — Settings
    Made by `scripts/store-screenshots/extension.mjs`; what each shows, the upload
