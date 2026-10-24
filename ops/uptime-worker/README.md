@@ -14,20 +14,37 @@
 | `warnings_other` | `warnings` holds nothing else | `/health/deep` raised a warning this monitor does not know yet |
 | `doh_resolve` | a DNS-over-HTTPS query for `google.com` to `dns.cleanway.ai` gets RCODE 0 and an answer | iPhones with DNS protection resolve nothing |
 | `doh_block` | the same query for `list-canary.cleanway.ai` gets NXDOMAIN **with our SOA** (`blocked.cleanway.ai`) | the public DNS path does not block; an upstream NXDOMAIN does not count |
-| `dns_latency` | `https://dns.cleanway.ai/health/doh` → `stats.p95_ms_le` under 200 — **alerts after 5 slow minutes in a row**, not 2 | DNS is short of CPU: the capacity runbook's line (`docs/runbooks/capacity.md`) for another DNS replica, or for DNS in a service of its own (`docs/runbooks/dns-service-split.md`) |
+| `dns_latency` | `https://dns.cleanway.ai/health/doh` → `stats.recent.p95_ms_le` (the last 150–180 s) under 200 — **alerts after 5 slow minutes in a row**, not 2 | DNS is short of CPU: the capacity runbook's line (`docs/runbooks/capacity.md`) for another DNS replica, or for DNS in a service of its own (`docs/runbooks/dns-service-split.md`) |
 | `backup` | the newest `db/` object in R2 is under 30 h old — **only with the `BACKUPS` binding** | the nightly `DB backup` workflow stopped (GitHub sends no mail for a run that never starts) |
 
-**How `dns_latency` reads `/health/doh`.** `p95_ms_le` is the upper bound of
-the latency bucket the p95 falls in (buckets … 50, 100, 200, 500 … ms), server
-time only, of the one worker process that answered, counted since it started
-(`api/services/doh_metrics.py`). So `200` means the p95 is between 100 and
-200 ms, `null` with queries means over 5 s (counted as slow), and each minute
-may reach another worker — five slow readings in a row mean most of them are
-slow. A worker with fewer than 100 queries since it started (right after a
-deploy) is not judged, and neither is an answer that cannot be read: an
-unreachable DNS service is `doh_resolve`'s alert. The URL is on the DNS name,
-so it watches whichever service serves `dns.cleanway.ai`, before and after
-the split.
+**How `dns_latency` reads `/health/doh`.** It judges `stats.recent`: the
+latency histogram of the one worker process that answered, over its last
+150–180 s (`api/services/doh_metrics.py`; `window_s` says 180). Not the
+lifetime fields next to it (`stats.p95_ms_le`, counted since the worker
+started): those move in proportion to uptime, so a day-old worker needed over
+an hour of slow answers before they showed it, and kept looking slow for hours
+after it was fast again. `p95_ms_le` is the upper bound of the latency bucket
+the p95 falls in (buckets … 50, 100, 200, 500 … ms), server time only. So
+`200` means the p95 is between 100 and 200 ms, and `null` with queries means
+over 5 s (counted as slow). The window is shorter than the five minutes, so a
+slowdown of a minute or so does not mail; one that lasts two to three minutes
+or more does, four to five minutes after it started, and the "снова работает"
+mail comes about three minutes after it ends.
+
+Each minute may reach another of the 2 × 2 workers, and one fast reading
+starts the count again: five slow readings in a row mean most workers are
+slow. If only one replica is slow (half the workers), the readings alternate
+and five in a row is luck: expect the mail after an hour or more, and the
+"снова работает" mail at the next fast reading. Railway → Metrics per replica
+shows that case. A worker with fewer than 100 queries in the window is not
+judged: a p95 of a handful of lookups says nothing. At today's volume (about
+2 queries a minute per worker, mostly this monitor's own two probes) that is
+every worker, so the check waits; it starts judging at about 35–40 queries a
+minute per worker (with 2 × 2 workers, ~70 active phones on average). An
+answer that cannot be read, or one from an API without `recent`, is not
+judged either: an unreachable DNS service is `doh_resolve`'s alert. The URL is
+on the DNS name, so it watches whichever service serves `dns.cleanway.ai`,
+before and after the split.
 
 Each warning is its own check, so a warning that stays red (one email) never
 hides the next one. One `/health/deep` request per minute serves all of them;
@@ -71,11 +88,14 @@ Bindings → Add → R2 bucket → variable `BACKUPS`, bucket `cleanway-db-backu
 
 **2026-10-24 version (`dns_latency`): paste the new `worker.js`, nothing else.**
 No new binding or variable; the KV state from the previous version is read
-as is. Within a minute `GET https://cleanway-uptime.amoskotin.workers.dev/`
-lists `dns_latency` under `fails` (with `0`; it stays absent while every
-worker it reaches has fewer than 100 queries since it started). The first
-alert can come no sooner than five minutes after the upload. It works the
-same before and after DNS moves to its own Railway service.
+as is. It reads `stats.recent`, which the API has from the same PR (Railway
+deploys it on merge); paste after that deploy, though pasting earlier is
+harmless (an API without `recent` is not judged). `dns_latency` stays absent
+from `fails` in `GET https://cleanway-uptime.amoskotin.workers.dev/` while
+every worker it reaches has fewer than 100 queries in its window, which is
+the case at today's volume; once traffic grows it shows `0`. The first alert
+can come no sooner than five minutes after the check starts judging. It works
+the same before and after DNS moves to its own Railway service.
 
 Tests: `node --test ops/uptime-worker/worker.test.mjs` (CI runs it through
 `tests/test_uptime_worker.py`).

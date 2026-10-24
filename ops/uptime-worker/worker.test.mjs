@@ -66,18 +66,20 @@ function healthyDeep() {
 }
 
 // The live /health/doh shape (api/routers/doh.py, api/services/doh_metrics.py),
-// trimmed: stats are one worker process's, cumulative since it started.
+// trimmed: stats are one worker process's, cumulative since it started, and
+// `recent` the same histogram over its last 150-180 s.
 function healthyDoh() {
   return {
     ok: true,
     filter: { loaded: true, error: null, count: 628734 },
     stats: {
       since: 1792786992,
-      counts: { queries: 5000, cache_hit: 3000 },
+      counts: { queries: 500000, cache_hit: 300000 },
       p50_ms_le: 5.0,
       p95_ms_le: 50.0,
       p99_ms_le: 100.0,
       over_ms: { 5000: 0 },
+      recent: { window_s: 180, queries: 3000, p50_ms_le: 5.0, p95_ms_le: 50.0, p99_ms_le: 100.0, over_ms: { 5000: 0 } },
     },
   };
 }
@@ -254,9 +256,12 @@ test("a DNS gateway that resolves nothing alerts", async () => {
 
 const DOH_HEALTH = "https://dns.cleanway.ai/health/doh";
 
+// The last minutes of the worker that answered (stats.recent).
+const recent = (w) => w.doh.body.stats.recent;
+
 function slow(w, p95 = 500) {
-  w.doh.body.stats.p95_ms_le = p95;
-  w.doh.body.stats.p99_ms_le = 1000;
+  recent(w).p95_ms_le = p95;
+  recent(w).p99_ms_le = 1000;
 }
 
 test("one /health/doh request per run, on the DNS name", async () => {
@@ -272,9 +277,12 @@ test("DNS slow for five minutes in a row mails once, and once more when it is fa
   assert.equal(w.sent.length, 0);
   await w.tick(T0 + 4 * MIN);
   assert.deepEqual(w.subjects(), ["Cleanway: не работает dns_latency"]);
-  assert.match(w.sent[0].raw, /dns_latency: p95 ≤ 500 ms \(alert at ≥ 200\), p99 ≤ 1000 ms, 5000 queries/);
+  assert.match(
+    w.sent[0].raw,
+    /dns_latency: p95 ≤ 500 ms \(alert at ≥ 200\), p99 ≤ 1000 ms, 3000 queries in the last 180 s on the worker that answered/,
+  );
   assert.match(w.sent[0].raw, /docs\/runbooks\/capacity\.md/);
-  w.doh.body.stats.p95_ms_le = 50;
+  recent(w).p95_ms_le = 50;
   await w.tick(T0 + 5 * MIN);
   assert.deepEqual(w.subjects(), ["Cleanway: не работает dns_latency", "Cleanway: снова работает dns_latency"]);
 });
@@ -293,7 +301,7 @@ test("one fast minute starts the count again", async () => {
   const w = world();
   slow(w);
   await minutes(w, T0, 4);
-  w.doh.body.stats.p95_ms_le = 20;
+  recent(w).p95_ms_le = 20;
   await w.tick(T0 + 4 * MIN);
   slow(w);
   await minutes(w, T0 + 5 * MIN, 4);
@@ -302,27 +310,61 @@ test("one fast minute starts the count again", async () => {
 
 test("p95 past the last histogram bucket (null with queries) is slow, not missing", async () => {
   const w = world();
-  w.doh.body.stats.p95_ms_le = null;
-  w.doh.body.stats.p99_ms_le = null;
-  w.doh.body.stats.over_ms = { 5000: 400 };
+  recent(w).p95_ms_le = null;
+  recent(w).p99_ms_le = null;
+  recent(w).over_ms = { 5000: 400 };
   await minutes(w, T0, 5);
   assert.deepEqual(w.subjects(), ["Cleanway: не работает dns_latency"]);
   assert.match(w.sent[0].raw, /dns_latency: p95 over 5000 ms/);
 });
 
-test("a worker with too few queries to judge keeps the count instead of resetting it", async () => {
-  // Right after a deploy every worker is new and its first lookups are the
-  // slow ones (cold cache, new upstream connection).
+test("a worker with too few recent queries to judge keeps the count instead of resetting it", async () => {
+  // Today's ~2 queries a minute per worker, mostly this monitor's own probes,
+  // or a worker that just started: a p95 of a handful of lookups says nothing.
+  // The floor is on the window, not on the lifetime count (500,000 here).
   const w = world();
   slow(w);
   await minutes(w, T0, 3);
-  w.doh.body.stats.counts.queries = 20;
+  recent(w).queries = 20;
   await minutes(w, T0 + 3 * MIN, 3);
   assert.equal(w.sent.length, 0);
   assert.equal(w.state().fails.dns_latency, 3);
-  w.doh.body.stats.counts.queries = 5000;
+  recent(w).queries = 3000;
   await minutes(w, T0 + 6 * MIN, 2);
   assert.deepEqual(w.subjects(), ["Cleanway: не работает dns_latency"]);
+});
+
+test("a long-lived worker that turns slow alerts on its last minutes, not on its lifetime", async () => {
+  // 2026-10-24 review: judged since start, a day-old worker needed over an
+  // hour of slow answers before its p95 moved.
+  const w = world();
+  slow(w);
+  assert.equal(w.doh.body.stats.p95_ms_le, 50); // the lifetime p95 has not moved
+  await minutes(w, T0, 5);
+  assert.deepEqual(w.subjects(), ["Cleanway: не работает dns_latency"]);
+});
+
+test("a worker that is fast again recovers although its lifetime p95 stays high", async () => {
+  // Judged since start, a two-hour slowdown kept a day-old worker's p95 over
+  // the line for ~14 h: the "снова работает" mail waited for a deploy.
+  const w = world();
+  slow(w);
+  w.doh.body.stats.p95_ms_le = 500;
+  await minutes(w, T0, 5);
+  recent(w).p95_ms_le = 50;
+  recent(w).p99_ms_le = 100;
+  await w.tick(T0 + 5 * MIN);
+  assert.deepEqual(w.subjects(), ["Cleanway: не работает dns_latency", "Cleanway: снова работает dns_latency"]);
+  assert.equal(w.state().fails.dns_latency, 0);
+});
+
+test("an API without stats.recent (a deploy older than the monitor) is not judged", async () => {
+  const w = world();
+  delete w.doh.body.stats.recent;
+  w.doh.body.stats.p95_ms_le = 500;
+  await minutes(w, T0, 6);
+  assert.equal(w.sent.length, 0);
+  assert.ok(!("dns_latency" in w.state().fails));
 });
 
 test("an unreadable /health/doh is not a latency alert: doh_resolve speaks for DNS being down", async () => {

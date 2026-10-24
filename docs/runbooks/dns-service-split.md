@@ -67,7 +67,11 @@ CPU у DNS всех телефонов. В отдельном сервисе у 
      меньше (локально при старте ~125 МБ против ~260 МБ у `all`), CPU — так же:
      ≥ 2 vCPU на реплику для двух воркеров;
    - Networking → **Generate Domain**: `dns-…up.railway.app`, для проверки до
-     переключения. Private networking не нужен.
+     переключения. **Private networking** в проекте включён по умолчанию — так
+     и оставить: `REDIS_URL` (`${{Redis.REDIS_URL}}`) ведёт к Redis по
+     внутренней сети (обычно `redis.railway.internal`). Без неё список не
+     загрузится, и DNS не будет блокировать ничего (шаг 3 это поймает:
+     `"redis":"ok"`, `filter.loaded`).
 
 ### 2. Переменные `dns` (5 минут)
 
@@ -193,10 +197,26 @@ curl -s https://api.cleanway.ai/health/deep           # 200, "warnings":[]
 ## Что меняется для мониторинга
 
 - **Монитор `cleanway-uptime`** (`ops/uptime-worker`) ничего менять не нужно:
-  `doh_resolve`, `doh_block` и `dns_latency` (p95 из `/health/doh` ≥ 200 мс
-  5 минут подряд) спрашивают `dns.cleanway.ai` — после шага 4 это сервис
-  `dns`. `api`, `blocklist`, `dns_filter`, `server_key` читают
-  `api.cleanway.ai/health/deep` — сервис `web`.
+  `doh_resolve`, `doh_block` и `dns_latency` (p95 за последние 150–180 с из
+  `/health/doh` ≥ 200 мс 5 минут подряд) спрашивают `dns.cleanway.ai` — после
+  шага 4 это сервис `dns`. `api`, `blocklist`, `dns_filter`, `server_key`
+  читают `api.cleanway.ai/health/deep` — сервис `web`.
+- **`dns_filter` зелёный, а `doh_block` красный** после шага 4 значит: решение
+  внутри `web` блокирует, а сервис `dns`, куда идут телефоны, — нет. Обычно
+  это сам `dns`: неверный `REDIS_URL` или выключенная внутренняя сеть, список
+  не загрузился. Проверить `curl -s https://dns.cleanway.ai/health`
+  (`"redis":"ok"`), `curl -s https://dns.cleanway.ai/health/doh`
+  (`"filter":{"loaded":true,…}`), Railway → `dns` → Logs
+  (`doh_filter_loaded`). Строка в `monitoring.md` говорит то же.
+- **Публикация списка** (`scripts/refresh_dangerous_domains.py`, workflow
+  Refresh dangerous domains) после каждой публикации спрашивает живой DNS,
+  блокирует ли он новые имена и не блокирует ли `github.com` и прочие
+  обязательные; если нет — откатывает список (выход 5). С 2026-10-24 она
+  спрашивает `dns.cleanway.ai` (переменная `CLEANWAY_DNS_BASE`, по умолчанию
+  так), а не `api.cleanway.ai`: после шага 4 проверяется сервис `dns`, а после
+  шага 5 проверка не превращается в «недоступно — пропускаю» (раньше
+  `api.cleanway.ai/dns-query` отвечал бы 404, и плохой список проходил бы
+  зелёным). Менять ничего не нужно.
 - **DNS canary** (GitHub) с 2026-10-24 задаёт DNS-вопросы и читает
   `/health/doh` у `dns.cleanway.ai`, а артефакт и `/health/deep` — у
   `api.cleanway.ai`, так что работает и до, и после переноса.

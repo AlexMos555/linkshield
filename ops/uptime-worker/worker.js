@@ -10,8 +10,9 @@
 //     gateway's block decision, the Supabase server key;
 //   * the public DNS path both ways: a real name resolves, and the list canary
 //     gets OUR NXDOMAIN (SOA blocked.cleanway.ai) — not upstream's;
-//   * how fast the DNS service answers: the p95 /health/doh reports, against
-//     the capacity runbook's line (docs/runbooks/capacity.md);
+//   * how fast the DNS service answers: the p95 of the last few minutes that
+//     /health/doh reports, against the capacity runbook's line
+//     (docs/runbooks/capacity.md);
 //   * optionally the age of the newest nightly backup (R2 binding BACKUPS).
 //
 // After FAIL_THRESHOLD consecutive failures (a check may ask for more: its
@@ -45,13 +46,16 @@ const BACKUP_MAX_AGE_H = 30; // nightly cron, which GitHub starts up to ~5 h lat
 // service) once /health/doh reports p95_ms_le ≥ 200. p95_ms_le is the upper
 // bound of the latency bucket the p95 falls in (… 100, 200, 500 … ms,
 // api/services/doh_metrics.py): server time only, of the one worker process
-// that answered, since it started. Each minute may reach another worker, so
+// that answered. Judged on `stats.recent` (its last 150-180 s), not on the
+// lifetime fields: those move in proportion to the worker's uptime, so a
+// day-old worker needed over an hour of slow answers to alert and stayed
+// "slow" for hours after. The window is shorter than DNS_SLOW_MINUTES, so a
+// blip of a minute or so does not mail. Each minute may reach another worker:
 // DNS_SLOW_MINUTES slow readings in a row mean most of them are slow.
 const DNS_P95_ALERT_MS = 200;
 const DNS_SLOW_MINUTES = 5;
-// Fewer queries than this since the worker started: too few to judge (right
-// after a deploy the first lookups are the slow ones: cold cache, new upstream
-// connection).
+// Fewer queries than this in the window: too few for a p95 to mean anything
+// (today's ~2 a minute per worker are mostly this monitor's own probes).
 const DNS_MIN_QUERIES = 100;
 const FROM = "alerts@cleanway.ai";
 const SKIP = Symbol("skip"); // nothing to judge this minute: keep the last count
@@ -162,19 +166,22 @@ function warningCheck(name, warning, help) {
   };
 }
 
-// Judge /health/doh's `stats` (one worker's histogram since it started).
+// Judge /health/doh's `stats.recent` (one worker's last few minutes).
 function dnsLatency(stats) {
-  const queries = (stats.counts || {}).queries || 0;
+  const r = stats.recent;
+  // An API older than this monitor has no `recent`: nothing to judge.
+  if (!r || typeof r !== "object") return SKIP;
+  const queries = typeof r.queries === "number" ? r.queries : 0;
   if (queries < DNS_MIN_QUERIES) return SKIP;
-  const p95 = stats.p95_ms_le;
+  const p95 = r.p95_ms_le;
   // null once there are queries: past the last bucket, which over_ms names.
-  const lastBucket = Object.keys(stats.over_ms || {})[0] || "the last bucket";
+  const lastBucket = Object.keys(r.over_ms || {})[0] || "the last bucket";
   const ms = (v) => (typeof v === "number" ? `≤ ${v} ms` : `over ${lastBucket} ms`);
   if (p95 !== null && typeof p95 !== "number") return SKIP; // a shape this monitor does not know
   if (p95 !== null && p95 < DNS_P95_ALERT_MS) return null;
   const line = p95 === null ? `p95 ${ms(p95)}` : `p95 ${ms(p95)} (alert at ≥ ${DNS_P95_ALERT_MS})`;
-  const since = Number.isFinite(stats.since) ? new Date(stats.since * 1000).toISOString() : "?";
-  return `${line}, p99 ${ms(stats.p99_ms_le)}, ${queries} queries on the worker that answered, since ${since}`;
+  const span = Number.isFinite(r.window_s) ? `${r.window_s} s` : "minutes";
+  return `${line}, p99 ${ms(r.p99_ms_le)}, ${queries} queries in the last ${span} on the worker that answered`;
 }
 
 async function newestBackupMs(bucket) {
@@ -243,7 +250,8 @@ const CHECKS = [
   {
     name: "dns_latency",
     help:
-      `DNS отвечает медленно: p95 в /health/doh ≥ ${DNS_P95_ALERT_MS} мс ${DNS_SLOW_MINUTES} минут подряд. ` +
+      `DNS отвечает медленно: p95 за последние минуты в /health/doh ≥ ${DNS_P95_ALERT_MS} мс ` +
+      `${DNS_SLOW_MINUTES} минут подряд. ` +
       "Не хватает CPU для DNS: добавить реплику DNS-сервиса или вынести DNS в свой сервис " +
       "(docs/runbooks/capacity.md, docs/runbooks/dns-service-split.md).",
     threshold: DNS_SLOW_MINUTES,
