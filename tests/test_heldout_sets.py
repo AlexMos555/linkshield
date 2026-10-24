@@ -167,9 +167,10 @@ def test_variants_are_the_four_licence_builds():
     assert names["licensed"] == rdd.NON_COMMERCIAL_FEEDS
     assert names["licensed-minus-tweetfeed"] == rdd.NON_COMMERCIAL_FEEDS | {"TweetFeed"}
     # `licensed` is the list production publishes: since 2026-10-23 that is
-    # without CSIRT Italia too (ACN's terms bar commercial use).
-    assert {"OpenPhish", "phishing.army", "CSIRT Italia"} <= names["licensed"]
-    assert "CSIRT Italia" not in names["all"]
+    # without CSIRT Italia too (ACN's terms bar commercial use), and since
+    # 2026-10-24 without Phishing.Database (its upstream feeds are unnamed).
+    assert {"OpenPhish", "phishing.army", "CSIRT Italia", "Phishing.Database"} <= names["licensed"]
+    assert not {"CSIRT Italia", "Phishing.Database"} & names["all"]
 
 
 def _stub_refresh(monkeypatch, rdd) -> None:

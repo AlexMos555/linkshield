@@ -1,0 +1,350 @@
+{
+  "schema": "cleanway.day-one-coverage/1",
+  "generated_at": "2026-10-24T07:25:52Z",
+  "question": "Of the phishing hosts a held-out source first reported within the last N days, what share does the phone's blocklist block on that day? A listed name blocks itself and every subdomain; IP-literal URLs and one tenant's page on shared hosting cannot be blocked by a domain list and are reported apart.",
+  "freshness_days": [
+    1,
+    7,
+    30
+  ],
+  "feed_snapshot": {
+    "bodies": 67,
+    "sha256": "e55e4cfe4febd72ead4a1e1f3589508acc5a10a958485048d44841c08cb984e9"
+  },
+  "build": "scripts/refresh_dangerous_domains.py --dry-run --artifact-out, no Redis (no retention, no top-1M guard), every variant on one feed snapshot; variants differ only in `excluded`",
+  "variants": {
+    "all": {
+      "excluded_feeds": [],
+      "feeds": [
+        "CERT Polska",
+        "CSIRT Italia",
+        "OpenPhish",
+        "PhishDestroy",
+        "Phishing.Database",
+        "Phishunt",
+        "TweetFeed",
+        "phishing.army"
+      ],
+      "names": 621424,
+      "artifact_bytes": 3728628,
+      "sha256": "7fa5004e98ea4e2d7142af4403ce2bbaf7ef8d9839e8c3f4abdb13228c7fb1f5",
+      "false_positives_top10k": 0,
+      "false_positive_examples": []
+    },
+    "licensed": {
+      "excluded_feeds": [
+        "CSIRT Italia",
+        "OpenPhish",
+        "Phishing.Database",
+        "phishing.army"
+      ],
+      "feeds": [
+        "CERT Polska",
+        "PhishDestroy",
+        "Phishunt",
+        "TweetFeed"
+      ],
+      "names": 263363,
+      "artifact_bytes": 1580262,
+      "sha256": "b70c56bce6636cc71649d655605a8543e57bd90ab34c291cb4e00e915580b5f9",
+      "false_positives_top10k": 0,
+      "false_positive_examples": []
+    },
+    "all-minus-tweetfeed": {
+      "excluded_feeds": [
+        "TweetFeed"
+      ],
+      "feeds": [
+        "CERT Polska",
+        "CSIRT Italia",
+        "OpenPhish",
+        "PhishDestroy",
+        "Phishing.Database",
+        "Phishunt",
+        "phishing.army"
+      ],
+      "names": 595167,
+      "artifact_bytes": 3571086,
+      "sha256": "b1703aa66a4831d3ea5e53d323bb3b423aafa61bd4d7134fff7aabae5f85b728",
+      "false_positives_top10k": 0,
+      "false_positive_examples": []
+    },
+    "licensed-minus-tweetfeed": {
+      "excluded_feeds": [
+        "CSIRT Italia",
+        "OpenPhish",
+        "Phishing.Database",
+        "TweetFeed",
+        "phishing.army"
+      ],
+      "feeds": [
+        "CERT Polska",
+        "PhishDestroy",
+        "Phishunt"
+      ],
+      "names": 235816,
+      "artifact_bytes": 1414980,
+      "sha256": "243d5919b2c568f20406901e4765f711560cbde8196aeabcc5e3dcbd2ef7edda",
+      "false_positives_top10k": 0,
+      "false_positive_examples": []
+    }
+  },
+  "held_out": {
+    "phishtank": {
+      "reports": 57459,
+      "distinct_hosts": 28061,
+      "as_of": "2026-10-24T06:18:37Z",
+      "windows": {
+        "1": {
+          "hostnames": 196,
+          "blockable_hostnames": 175,
+          "ip_literal_hostnames": 0,
+          "shared_hosting_hostnames": 21,
+          "coverage": {
+            "all": {
+              "coverage_all_pct": 98.0,
+              "coverage_blockable_pct": 97.7,
+              "hit": 192,
+              "hit_blockable": 171,
+              "circular": false
+            },
+            "licensed": {
+              "coverage_all_pct": 25.0,
+              "coverage_blockable_pct": 24.0,
+              "hit": 49,
+              "hit_blockable": 42,
+              "circular": false
+            },
+            "all-minus-tweetfeed": {
+              "coverage_all_pct": 98.0,
+              "coverage_blockable_pct": 97.7,
+              "hit": 192,
+              "hit_blockable": 171,
+              "circular": false
+            },
+            "licensed-minus-tweetfeed": {
+              "coverage_all_pct": 24.5,
+              "coverage_blockable_pct": 23.4,
+              "hit": 48,
+              "hit_blockable": 41,
+              "circular": false
+            }
+          }
+        },
+        "7": {
+          "hostnames": 861,
+          "blockable_hostnames": 722,
+          "ip_literal_hostnames": 1,
+          "shared_hosting_hostnames": 138,
+          "coverage": {
+            "all": {
+              "coverage_all_pct": 95.5,
+              "coverage_blockable_pct": 96.4,
+              "hit": 822,
+              "hit_blockable": 696,
+              "circular": false
+            },
+            "licensed": {
+              "coverage_all_pct": 30.7,
+              "coverage_blockable_pct": 34.2,
+              "hit": 264,
+              "hit_blockable": 247,
+              "circular": false
+            },
+            "all-minus-tweetfeed": {
+              "coverage_all_pct": 95.5,
+              "coverage_blockable_pct": 96.4,
+              "hit": 822,
+              "hit_blockable": 696,
+              "circular": false
+            },
+            "licensed-minus-tweetfeed": {
+              "coverage_all_pct": 29.5,
+              "coverage_blockable_pct": 32.8,
+              "hit": 254,
+              "hit_blockable": 237,
+              "circular": false
+            }
+          }
+        },
+        "30": {
+          "hostnames": 2279,
+          "blockable_hostnames": 1778,
+          "ip_literal_hostnames": 1,
+          "shared_hosting_hostnames": 500,
+          "coverage": {
+            "all": {
+              "coverage_all_pct": 95.7,
+              "coverage_blockable_pct": 95.9,
+              "hit": 2181,
+              "hit_blockable": 1705,
+              "circular": false
+            },
+            "licensed": {
+              "coverage_all_pct": 29.2,
+              "coverage_blockable_pct": 34.6,
+              "hit": 665,
+              "hit_blockable": 615,
+              "circular": false
+            },
+            "all-minus-tweetfeed": {
+              "coverage_all_pct": 95.7,
+              "coverage_blockable_pct": 95.9,
+              "hit": 2181,
+              "hit_blockable": 1705,
+              "circular": false
+            },
+            "licensed-minus-tweetfeed": {
+              "coverage_all_pct": 27.7,
+              "coverage_blockable_pct": 32.7,
+              "hit": 632,
+              "hit_blockable": 582,
+              "circular": false
+            }
+          }
+        }
+      }
+    },
+    "tweetfeed": {
+      "reports": 86307,
+      "distinct_hosts": 41004,
+      "as_of": "2026-10-24T06:50:58Z",
+      "windows": {
+        "1": {
+          "hostnames": 106,
+          "blockable_hostnames": 74,
+          "ip_literal_hostnames": 15,
+          "shared_hosting_hostnames": 17,
+          "coverage": {
+            "all": {
+              "coverage_all_pct": 83.0,
+              "coverage_blockable_pct": 95.9,
+              "hit": 88,
+              "hit_blockable": 71,
+              "circular": true
+            },
+            "licensed": {
+              "coverage_all_pct": 83.0,
+              "coverage_blockable_pct": 95.9,
+              "hit": 88,
+              "hit_blockable": 71,
+              "circular": true
+            },
+            "all-minus-tweetfeed": {
+              "coverage_all_pct": 10.4,
+              "coverage_blockable_pct": 13.5,
+              "hit": 11,
+              "hit_blockable": 10,
+              "circular": false
+            },
+            "licensed-minus-tweetfeed": {
+              "coverage_all_pct": 3.8,
+              "coverage_blockable_pct": 5.4,
+              "hit": 4,
+              "hit_blockable": 4,
+              "circular": false
+            }
+          }
+        },
+        "7": {
+          "hostnames": 1683,
+          "blockable_hostnames": 1555,
+          "ip_literal_hostnames": 84,
+          "shared_hosting_hostnames": 44,
+          "coverage": {
+            "all": {
+              "coverage_all_pct": 93.9,
+              "coverage_blockable_pct": 98.8,
+              "hit": 1580,
+              "hit_blockable": 1536,
+              "circular": true
+            },
+            "licensed": {
+              "coverage_all_pct": 93.9,
+              "coverage_blockable_pct": 98.8,
+              "hit": 1580,
+              "hit_blockable": 1536,
+              "circular": true
+            },
+            "all-minus-tweetfeed": {
+              "coverage_all_pct": 33.9,
+              "coverage_blockable_pct": 36.5,
+              "hit": 571,
+              "hit_blockable": 567,
+              "circular": false
+            },
+            "licensed-minus-tweetfeed": {
+              "coverage_all_pct": 32.7,
+              "coverage_blockable_pct": 35.4,
+              "hit": 551,
+              "hit_blockable": 550,
+              "circular": false
+            }
+          }
+        },
+        "30": {
+          "hostnames": 3082,
+          "blockable_hostnames": 2666,
+          "ip_literal_hostnames": 258,
+          "shared_hosting_hostnames": 158,
+          "coverage": {
+            "all": {
+              "coverage_all_pct": 90.3,
+              "coverage_blockable_pct": 98.5,
+              "hit": 2784,
+              "hit_blockable": 2627,
+              "circular": true
+            },
+            "licensed": {
+              "coverage_all_pct": 90.3,
+              "coverage_blockable_pct": 98.5,
+              "hit": 2784,
+              "hit_blockable": 2627,
+              "circular": true
+            },
+            "all-minus-tweetfeed": {
+              "coverage_all_pct": 22.3,
+              "coverage_blockable_pct": 24.7,
+              "hit": 688,
+              "hit_blockable": 658,
+              "circular": false
+            },
+            "licensed-minus-tweetfeed": {
+              "coverage_all_pct": 19.7,
+              "coverage_blockable_pct": 22.3,
+              "hit": 607,
+              "hit_blockable": 595,
+              "circular": false
+            }
+          }
+        }
+      }
+    }
+  },
+  "headline": {
+    "phishtank": {
+      "days": 1,
+      "hostnames": 196,
+      "coverage_all_pct": {
+        "all": 98.0,
+        "licensed": 25.0,
+        "all-minus-tweetfeed": 98.0,
+        "licensed-minus-tweetfeed": 24.5
+      }
+    },
+    "tweetfeed": {
+      "days": 1,
+      "hostnames": 106,
+      "coverage_all_pct": {
+        "all-minus-tweetfeed": 10.4,
+        "licensed-minus-tweetfeed": 3.8
+      }
+    }
+  },
+  "notes": [
+    "PhishTank is held out only while PHISHTANK_API_KEY is unset on the refresh job; with it set, PhishTank is a source and its numbers here are circular.",
+    "TweetFeed year.csv is a source since 2026-09-26 (#47): its numbers are honest only for the *-minus-tweetfeed variants (marked circular=false).",
+    "phishing.army is built from PhishTank, OpenPhish, CERT.pl, PhishFindR, urlscan and Phishunt, so the `all` variant's PhishTank number is inflated by that path; `licensed` has no such path.",
+    "A dry-run build has no retention window: the published list also keeps names for 14 days after their feeds drop them, which helps older windows, not day one."
+  ]
+}

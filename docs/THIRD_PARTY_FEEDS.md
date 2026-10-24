@@ -7,20 +7,31 @@ behind plan §4 ("лицензионный срез до первого рубл
 the dates given; a row marked *likely* rests on a secondary source or an
 earlier reading and should be re-read before it is relied on.
 
-While the product was free, non-commercial terms were a grey area. With the
-first paid subscription they are not. Where things stand (2026-10-23):
-`BLOCKLIST_LICENSED_ONLY` is `true` in the repository's Actions variables,
-so the published blocklist no longer reads OpenPhish, phishing.army or,
-since 2026-10-23, CSIRT Italia (§1; unset, the code still builds the list
-as before); `LICENSED_INTEL=licensed` is the analyzer's default since
-2026-10-21, so without an explicit `all` the six non-commercial lookups are
-not asked (§2); URLhaus is retired from the blocklist and from training
-since 2026-10-21 (§1, §3); Tranco left training on 2026-10-22 and the
-popularity ranking on 2026-10-23 (§2a, §3), though installed app and
-extension copies keep its lists until their next releases (§2a). Still
-open: Phishing.Database's provenance (§1). CSIRT Italia's terms were
-settled on 2026-10-23 by leaving it out under the switch until ACN grants
-written permission (§1). The order of flipping, the numbers it cost and
+While the product was free, non-commercial terms were a grey area. With
+the first paid subscription they are not. Where things stand (2026-10-24):
+`BLOCKLIST_LICENSED_ONLY` is `true` in the repository's Actions variables
+(read 2026-10-24), so the published blocklist no longer reads OpenPhish,
+phishing.army, since 2026-10-23 CSIRT Italia, and — from the first forced
+publish after the change of 2026-10-24 — Phishing.Database (§1; unset, the
+code still builds the list as before); `LICENSED_INTEL=licensed` is the
+analyzer's default since 2026-10-21, so without an explicit `all` the six
+non-commercial lookups are not asked (§2); URLhaus is retired from the
+blocklist and from training since 2026-10-21 (§1, §3); Tranco left
+training on 2026-10-22 and the popularity ranking on 2026-10-23 (§2a, §3),
+though installed app and extension copies keep its lists until their next
+releases (§2a). CSIRT Italia's terms were settled on 2026-10-23 by leaving
+it out under the switch until ACN grants written permission (§1).
+Phishing.Database's provenance, the last open question here, was settled
+on 2026-10-24 as far as the public record goes: part of its data is the
+maintainers' own, the rest comes from upstream "partners" and "trusted
+third party sources" they do not name and cannot attribute entry by entry,
+so those partners' terms are unknown, and an MIT notice on the compilation
+cannot relicense them. That makes use in a paid product *not clearly
+permitted* — not shown to be barred: §1 gives the evidence both ways — so
+under the commercially-licensed-only policy the switch leaves it out too,
+until they say in writing what is in it and under which terms (§1; the
+first publish without it needs `--force` once, and the merge starts a
+clock — §1, the switch). The order of flipping, the numbers it cost and
 what replaced the loss are in the PR that added this file and in
 `docs/benchmarks/day-one-coverage-latest.json`.
 
@@ -36,7 +47,7 @@ names. Redistribution to every phone is the act each licence has to allow.
 | ~~**URLhaus** (abuse.ch)~~ | ~~`https://urlhaus.abuse.ch/downloads/csv_online/`~~ | abuse.ch Terms of Use 2025-11-04: free for not-for-profit use only, no derivative works; commercial use through a Spamhaus subscription (read 2026-09-21, 2026-09-29). Since 2026-10-21 the anonymous exports answer **410 Gone**; downloads need a personal Auth-Key in the URL | **Retired 2026-10-21** (`RETIRED_FEEDS`): never fetched; the ~900 published names only it backed left with the first publish without it (not carried, not retained). Cleanway sells plans, so we did not request a key | Gone |
 | **OpenPhish** community feed | `https://openphish.com/feed.txt` | openphish.com/terms.html: no commercial use "including … security operations, threat intelligence, detection … customer protection", no redistribution of any part to third parties; lifted only by written consent (read 2026-09-21, 2026-09-29) | Phishing URL hosts | **`BLOCKLIST_LICENSED_ONLY=1` removes it** |
 | **phishing.army** extended | `https://phishing.army/download/phishing_army_blocklist_extended.txt` | CC BY-NC 4.0 (the file's own header). Aggregates PhishTank, OpenPhish, CERT.pl, PhishFindR, urlscan, Phishunt (read 2026-09-21) | ~150k domain names | **`BLOCKLIST_LICENSED_ONLY=1` removes it** |
-| **Phishing.Database** (mitchellkrogza) | `https://raw.githubusercontent.com/mitchellkrogza/Phishing.Database/master/phishing-domains-ACTIVE.txt` | MIT on the compilation; the README does not name its sources, and MIT does not launder PhishTank/OpenPhish terms if the data comes from there (read 2026-09-29) | ~390k active phishing domains — the bulk of the list | Keep. **One e-mail to the maintainer about provenance is open** (plan §4) |
+| **Phishing.Database** (mitchellkrogza; now github.com/Phishing-Database) | `https://raw.githubusercontent.com/mitchellkrogza/Phishing.Database/master/phishing-domains-ACTIVE.txt` | MIT on the compilation (LICENSE, © Mitchell Krog, Nissar Chababy, Phishing.Database Contributors). **Provenance (read 2026-10-24): an aggregation of third-party feeds the project does not name.** No list of sources exists in the README, the organisation's README, the contribution repo (Phishing-Database/phishing: community additions, false positives, a url-shorteners whitelist), or the public build script (`ci/update.sh` and `ci/.loadenv` in the first commit after the 2024-12-18 history rewrite, `394b74e9`: it only unpacks `input-source/ALL-phishing-*.zip`, made off GitHub). What the maintainers have said in the issue tracker: the build fetches and cleans "the different sources" (funilrys, #2, 2018-09-25); "combined input sources files" (mitchellkrogza, #9, 2019-07-03); an entry "very possible" came "from Phishtank or Phishstats" (#274, 2021-11-26); PhishTank inputs "suspended" for false positives (#275, 2022-01-07); "multiple sources", and no time to tell "which provider it came from" (#329, 2022-07-18); an entry from "one of our partners", not their crawlers (funilrys, #365, 2022-09-20); "We have our very own. + Others." (funilrys, #348, 2024-12-18); a Safekeeper: domains imported "from trusted third party sources" (discussion #1261, 2025-03-20), and another asking for the crawler logs to see why a name was listed (dev-center #7, 2024-03-30). Their 2024 README asked false-positive reporters for proof of removal "from other platforms (e.g., Phishtank, Openphish)", and the issue form still offers PhishTank and OpenPhish as where a listing was found. PyFunceble (Apache-2.0) only re-tests whether a name is up; it is not a source. **Against a restriction** (read 2026-10-24): the README calls the project "an official data **vendor** for **VirusTotal**", a commercial service; the organisation's new-adopter issue form invites an "Organization / Company" or a "Security Vendor"; and part of the data is the maintainers' own ("We have our very own", #348). **The upstreams they named:** PhishTank is the best-evidenced — verbatim PhishTank CSV rows in ALL-phishing-links (#275, until those inputs were suspended), and the "partner" listing in #365 traced by a commenter to PhishTank phish_id 5976284 — and PhishTank allows commercial use (§2). PhishStats was named once, in 2021, as a possible origin ("Very possible … from Phishtank or Phishstats I guess", #274); the terms quoted for it are the June 2026 edition (phishstats.info/terms §5: no sharing or redistributing "raw PhishStats data feeds without our written permission"), not necessarily the terms in force when that data came in. OpenPhish (above) bars redistribution and is only implied. **What decides it:** the rest comes from unnamed "partners" (#365) and "trusted third party sources" (discussion #1261) whose terms are unknown, and the maintainers cannot say whose each entry is (#329); an MIT notice cannot relicense data its authors did not own. So **use in a paid product is not clearly permitted** — not shown to be barred either — and the policy (commercially licensed sources only) leaves it out until it is. Also: the GitHub copy has not changed since 2026-10-02 15:30 UTC and phish.co.za, the official download, has been down since 2026-10-03 (503 when read 2026-10-24; their #2325, open) | ~392k "active" phishing domains (392,072 distinct on 2026-10-24), the bulk of the list until this change: 381,804 of the 675,263 names a licensed build held on 2026-10-24 were backed by it alone (56.5 %); 6,314 of its hosts (1.6 %) are on another licensed feed. Of 400 of those names drawn at random, 53 % still resolve (65 % of the names that stay) | **`BLOCKLIST_LICENSED_ONLY=1` removes it** (`NON_COMMERCIAL_FEEDS`) — left out under `BLOCKLIST_LICENSED_ONLY` since 2026-10-24. **The first publish without it needs `--force` once** (58.3 % of the live artifact changes, 50 % gate; the merge-day steps and their deadline are below). Revisit if the maintainers name, in writing, every source in it and the terms each comes under (contact@phish.co.za; not sent — a founder step); bringing it back adds ~381k names at once and needs one forced publish too (the same steps). Never used for training (§3). Credited on the methodology page in the past tense, not as a source in use: MIT's notice goes with every copy, and the Android files built while it was in carry it in their seed list (§5); with the switch off it is read exactly as before |
 | **Phishunt.io** | `https://phishunt.io/feed.txt` | Terms §7 "Data license": feeds and API responses released as CC0 1.0 (read 2026-09-21) | Hourly phishing URL hosts | Keep |
 | **TweetFeed.live** | `https://raw.githubusercontent.com/0xDanielLopez/TweetFeed/master/year.csv` | README: CSV/JSON/RSS/MISP/STIX feeds and public API responses under CC0 1.0, no attribution required. The `/v1/ioc` and `external.json` blocks are abuse.ch-licensed and are never read (read 2026-09-21) | 365-day window of reported domains/URLs | Keep — but it is a *source*, so a TweetFeed sample is not a held-out benchmark for this list |
 | **CERT Polska** Lista Ostrzeżeń | `https://hole.cert.pl/domains/v2/domains.txt` | API spec §1: publicly available, may be processed without restriction, manually or automatically; names that leave the list must be unblocked (we rebuild from scratch every run) (read 2026-09-21) | Exact hosts only (never promoted to a whole domain) | Keep |
@@ -62,10 +73,11 @@ Unset (default): every row above except PhishTank, byte for byte the list
 published today (proved in the PR on one feed snapshot: same names, same
 count, the only header difference the build timestamp). Set to `1`:
 
-* OpenPhish, phishing.army and (since 2026-10-23) CSIRT Italia
-  (`NON_COMMERCIAL_FEEDS`) are not downloaded and not in
-  `fetched` — so they are **not an outage**: nothing is carried for them,
-  their stored health state is forgotten, and the run does not go red.
+* OpenPhish, phishing.army, (since 2026-10-23) CSIRT Italia and (since
+  2026-10-24) Phishing.Database (`NON_COMMERCIAL_FEEDS`) are not downloaded
+  and not in `fetched` — so they are **not an outage**: nothing is carried
+  for them, their stored health state is forgotten, and the run does not
+  go red.
 * The published names only they backed (per the last healthy run's backing
   record) leave with that publish. They are *not* held for the 14-day
   retention window: that window exists for feeds that forget a live
@@ -81,9 +93,74 @@ count, the only header difference the build timestamp). Set to `1`:
   switch already on: its window held 184 distinct exact hosts (340 host
   entries) of the ~700k live set, ~0.03 %; `tests/test_blocklist_licence_switches.py`
   publishes such a switch-on run without `--force`.)
+* **Phishing.Database joining the switch (2026-10-24) does need `--force`,
+  once.** Measured on one feed snapshot of 2026-10-24 with
+  `scripts/eval_day_one_coverage.py` (fingerprint `e55e4cfe…`, the same in
+  `docs/benchmarks/day-one-coverage-2026-10-24-with-phishing-database.json`
+  and `day-one-coverage-2026-10-24.json`): the licensed build goes from
+  675,263 names to 293,459 (381,804 leave, none join: 56.5 % of the set),
+  its artifact from 602,426 hashes / 3.61 MB to 263,363 / 1.58 MB. Against
+  the live artifact of that day (628,733 hashes, of which the licensed build
+  without the change holds 600,901) a publish without it changes 58.3 %;
+  against the 699,870 names production's Redis set held on 2026-10-23,
+  ~55 %. Both are over `MAX_CHURN` (50 %). So after the merge **every
+  scheduled run is refused by the gate** (`PUBLISH GATE: churn …`, exit 4,
+  the run goes red) and the live set and phone artifact stay as they were,
+  Phishing.Database's names included, until one forced publish.
+  **A refused run refreshes nothing, so the clock runs from the last
+  successful publish before the merge** (runs every 6 h at :23), not from
+  the merge: after **~13 h** `/health/deep` reports the blocklist stale
+  (`MAX_HEALTHY_AGE_S`, `api/services/blocklist_artifact.py`;
+  `api/services/health_probes.py`), the DNS canary fails and the uptime
+  worker alerts («Список опасных сайтов для телефонов устарел…»); after
+  **48 h** Android calls its copy stale (`BlockList.kt` `STALE_AFTER_MS`);
+  after **72 h** the set and the artifact expire (`TTL_SECONDS`) — no DNS
+  blocking, nothing for the phones to sync. **Right after merging, before
+  the next :23 run:**
+  1. Dispatch `refresh-dangerous-domains.yml` with `dry_run: true` and
+     `force` **off**. It is expected to end red on `PUBLISH GATE: churn
+     ~55–58 %`. Check its log: the line `licence switch: N published names
+     only Phishing.Database backed leave with this publish` shows N ≈
+     381,000, and there is **no `FEED DEGRADED` line**. Not with `force`:
+     `--force` also takes every feed's size at face value (`accept_sizes`),
+     so it would hide a truncated feed — which the forced run would then
+     keep as that feed's new baseline. If a `FEED DEGRADED` line is there,
+     stop and wait for the feed to recover.
+  2. At once after it, dispatch again with `force: true` only. It should be
+     green with `publish gate: ok` and the same leaving line.
+  3. The next scheduled run is green without `--force`.
+
+  The forced run takes the names only it backed out (not carried, not
+  retained, not an outage). `tests/test_blocklist_licence_switches.py`
+  walks refused → forced → ordinary, pins that a dry run without force is
+  the check `--force` cannot be, and that bringing the feed back needs the
+  same one forced publish.
 * `BLOCKLIST_EXCLUDE_FEEDS=TweetFeed` (comma-separated names) leaves further
   feeds out — used by `scripts/eval_day_one_coverage.py` to build the
   variants it scores, never in production.
+
+**What leaving Phishing.Database out costs** (2026-10-24, the snapshot
+above; the phone's rule — a listed name blocks itself and its subdomains;
+`licensed` is what production publishes):
+
+| Held-out sample | With it | Without it |
+|---|---:|---:|
+| PhishTank online-valid, first reported ≤ 1 day (196 hosts), `licensed` | 25.5 % | 25.0 % |
+| — ≤ 7 days (861) / ≤ 30 days (2,279) | 30.9 % / 29.4 % | 30.7 % / 29.2 % |
+| — the whole dump (28,061 distinct hosts, any age) | 28.3 % | 24.0 % |
+| TweetFeed ≤ 1 / 7 / 30 days (106 / 1,683 / 3,082), `licensed-minus-tweetfeed` (the honest variant) | 3.8 / 32.7 / 20.4 % | 3.8 / 32.7 / 19.7 % |
+| The weekly benchmark's selection (`eval_fresh_urls.py`: first 600 PhishTank rows, one per host, 200 kept), drawn 2026-10-24 | 50 of 200 | 49 of 200 |
+| The committed weekly sample of 2026-10-18 (`docs/benchmarks/latest.json`, URLhaus + PhishTank, 121 IP literals) | 17 of 200 | 17 of 200 |
+
+Fresh phishing barely moves because the feed has stopped: its GitHub copy
+stopped changing on 2026-10-02 and phish.co.za is down (§1), so what it
+alone held is the long tail (28.3 → 24.0 % on the whole dump). The weekly
+benchmark scores the live `/public/check`, where a listed host is
+dangerous at once (`cleanway_blocklist`) but every other signal still runs,
+so this change can cost that number at most the hosts only it covered: 1
+of the 200 drawn on 2026-10-24 (8ezsnw.n0c.world), 0 of the 2026-10-18
+sample. Top-10k false positives: 0 with and without it. ML training never
+read it (§3), so the Monday retrain does not change.
 
 ### The held-out problem
 
@@ -101,7 +178,10 @@ Every coverage number needs a sample the list was *not* built from.
   without it; the day-one report builds such variants.
 * **phishing.army is itself built from PhishTank**, so as long as it is in
   the list the PhishTank number is inflated by that path (82 % of a PhishTank
-  sample verbatim, 2026-09-21). The `licensed` variant has no such path.
+  sample verbatim, 2026-09-21). The `licensed` variant has no such path —
+  and since 2026-10-24 not the older one either: Phishing.Database took
+  PhishTank inputs until its maintainer suspended them on 2022-01-07 (§1),
+  and its "active" list keeps such names while they resolve.
 
 Proposal for after the flips (a founder decision, not made here): hold out
 **CERT Polska** (small, exact-host, no overlap with the aggregates — cheap to
@@ -126,7 +206,7 @@ PhishTank can be ingested and the public number stays measurable.
 | **Feodo Tracker** | `feodotracker.abuse.ch/downloads/ipblocklist.json` | abuse.ch ToU 2025-11-04. Still answers 200 without a key (2026-10-21) | **Off by default** (`LICENSED_INTEL=licensed`) |
 | **Spamhaus DBL** public mirror | DNS `<domain>.dbl.spamhaus.org` | DNSBL fair-use policy: "free of charge for non-commercial use by small and medium sized organisations"; queries must come from an identifiable resolver, not large shared hosting (read 2026-09-29). Through a public resolver the mirror answers `127.255.255.254` — until 2026-09-29 the analyzer read that as "not listed" (`api/services/dnsbl_checks.py` fixes it: an error code is "not consulted") | **Off by default** (`LICENSED_INTEL=licensed`) |
 | **SURBL** multi | DNS `<base>.multi.surbl.org` | surbl.org/guidelines: `127.0.0.1` means access is blocked, sign up for the Sponsored Data Service; the usage policy excludes the free service from paid products (*likely*, read 2026-09-21/29) | **Off by default** (`LICENSED_INTEL=licensed`) |
-| **PhishStats** | `phishstats.info:2096/api/phishing` | Free API, no key; terms not located (*uncertain*) | On |
+| **PhishStats** | `phishstats.info:2096/api/phishing` | Free API, no key, tiered plans. Terms of Service (phishstats.info/terms, "Last updated: June 2026", read 2026-10-24): §10 a limited, revocable licence to use the Service "for lawful security research, threat intelligence, and related purposes"; §5 no sharing, reselling or redistributing raw data feeds without written permission, no bulk download beyond the tier's limits; §11 (Disclaimers): "Phishing intelligence is provided for informational and security-research purposes only". Commercial use is neither granted nor barred in words — by §1's standard that is **not clearly permitted for a paid product** either. It stays On for now, and that is a different call from §1's, said here so it is not mistaken for the same one: a per-check lookup copies nothing to anyone (§5's bar is on redistributing feeds, which is what §1 removes Phishing.Database for), the terms are known and §10 licenses threat-intelligence use by name, and §11 sits in the warranty disclaimer. The strict reading would add `phishstats` to `RESTRICTED_CHECKS` (`api/services/licensed_intel.py`), leaving it off under `LICENSED_INTEL=licensed`; whether a paid product's lookups are within §10–§11 is a founder decision, or a question for PhishStats | On |
 | **AlienVault / LevelBlue OTX** | `otx.alienvault.com/api/v1/indicators/domain/…` | Free community API; OTX terms of service (*likely*: free use with attribution) | On |
 | **IPQualityScore** | `ipqualityscore.com/api/json/url/…` | Vendor API terms, free tier 5,000/month, paid above; keyed | On with `IPQUALITYSCORE_KEY`, daily budget |
 | **RDAP** | `rdap.org/domain/…` | Public registry protocol (redirector) | On |
@@ -351,8 +431,11 @@ feed (terms: no "product development", "detection" or "customer
 protection"). **Removed from training**: URLhaus and OpenPhish (both
 2026-10-21), Tranco (2026-10-22, the benign side). **Not used for
 training**: Cisco Umbrella's list (no licence stated), Cloudflare Radar
-(CC BY-NC 4.0), Phishing.Database (MIT on the
-compilation, sources unnamed — waits on the provenance e-mail in §1),
+(CC BY-NC 4.0), Phishing.Database (MIT on the compilation; besides their
+own data its maintainers import from upstream partners they do not name,
+whose terms are unknown — settled 2026-10-24, §1: it stays out of training
+as it is out of the licensed blocklist; the weekly retrain never read it,
+so nothing changes there),
 phishing.army (CC BY-NC), PhishTank (needs a key; the weekly benchmark's
 held-out PhishTank sample is evaluation only, never a training row).
 
@@ -593,22 +676,35 @@ builds made before this change have no such row). CC BY 4.0 §3(a)(2) allows
 the credit as a link to a page that carries it. `tests/test_data_attribution.py`
 fails when a feed the blocklist or the model reads is missing from that list,
 and when the list credits a feed neither reads (one the licence switch
-leaves out, such as CSIRT Italia since 2026-10-23, or a retired one);
+leaves out, such as CSIRT Italia since 2026-10-23 and Phishing.Database
+since 2026-10-24, or a retired one) as a source in use. A feed that left
+while copies of its data are still handed out keeps a past-tense credit
+(`FORMER_PHISHING_SOURCES`): Phishing.Database is MIT, whose notice goes
+with every copy, and release Android files embed the published list as
+their seed (`mobile/scripts/fetch-seed-blocklist.sh`, `SeedBlocklist.kt`)
+— the released 1.0.3 APK, and any 1.0.6 file built before the first
+forced publish without it. So build the 1.0.6 Android files (or re-run
+`fetch-seed-blocklist.sh`) only after that publish: the new seed (~263k
+hashes on 2026-10-24) is well above the script's 100,000 `MIN_COUNT`.
 `scripts/test-landing-honesty.mjs` holds the CC BY lines to the licences
-`data/top_domains_sources.json` and `data/model_meta.json` record.
+`data/top_domains_sources.json` and `data/model_meta.json` record, and an
+MIT line to its copyright notice.
 
 Cleanway's blocklist includes data from Phishunt.io (CC0), TweetFeed.live
-(CC0), CERT Polska's Lista Ostrzeżeń,
-Phishing.Database (MIT, © Mitchell Krog, Nissar Chababy, Phishing.Database
-Contributors; the repository moved to
-github.com/Phishing-Database/Phishing.Database), PhishDestroy DestroyList
+(CC0), CERT Polska's Lista Ostrzeżeń, PhishDestroy DestroyList
 (phishdestroy.io, CC0 / MIT); before the licence cut also phishing.army
 (CC BY-NC 4.0) and OpenPhish (`BLOCKLIST_LICENSED_ONLY` is `true` in the
-repository's Actions variables, read 2026-10-23), until 2026-10-23 CSIRT
+repository's Actions variables, read 2026-10-24), until 2026-10-23 CSIRT
 Italia / ACN (TLP:CLEAR events; no licence stated and ACN's terms bar
-commercial use, so the switch leaves it out — §1), and until 2026-10-21
-URLhaus (abuse.ch). Public suffixes from the Mozilla Public Suffix List
-(MPL 2.0).
+commercial use, so the switch leaves it out — §1), until the first forced
+publish after 2026-10-24 Phishing.Database (MIT on the compilation,
+© Mitchell Krog, Nissar Chababy, Phishing.Database Contributors,
+github.com/Phishing-Database/Phishing.Database; part of its data comes
+from upstream partners it does not name, terms unknown, so the switch
+leaves it out — §1; the methodology page keeps this credit in the past
+tense while Android files built with it are handed out), and until
+2026-10-21 URLhaus (abuse.ch). Public suffixes from the Mozilla Public
+Suffix List (MPL 2.0).
 
 Cleanway's domain popularity ranking — the allowlist, the top-1M in Redis,
 the blocklist's popularity veto, the phone's veto list and the

@@ -57,6 +57,7 @@ import {
 import { apkReleaseFrom } from "../landing/lib/apk-release.ts";
 import {
   DATA_SOURCES_ANCHOR,
+  FORMER_PHISHING_SOURCES,
   PHISHING_SOURCES,
   POPULARITY_SOURCES,
   THIRD_PARTY_FEEDS_URL,
@@ -996,7 +997,7 @@ console.log("\ndata sources (the credit CC BY asks for)");
 {
   // Which feeds must be listed is pinned in tests/test_data_attribution.py
   // (it reads the Python feed lists); this pins what each line links to.
-  const ALL = [...POPULARITY_SOURCES, ...PHISHING_SOURCES];
+  const ALL = [...POPULARITY_SOURCES, ...PHISHING_SOURCES, ...FORMER_PHISHING_SOURCES];
   const ranking = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "top_domains_sources.json"), "utf-8")).sources;
   const trained = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "model_meta.json"), "utf-8")).benign_sources;
   const byId = (id) => ALL.find((source) => source.id === id);
@@ -1035,6 +1036,20 @@ console.log("\ndata sources (the credit CC BY asks for)");
   check("a CC BY source names who made it (CC BY 3.0 §4(b), 4.0 §3(a)(1)(A)(i))", () => {
     for (const source of ALL.filter((s) => s.licence?.startsWith("CC BY"))) {
       assert.ok(source.by && source.by.trim().length > 0, `${source.id}: no creator`);
+    }
+  });
+  check("an MIT source keeps its copyright line (MIT: the notice goes in all copies)", () => {
+    for (const source of ALL.filter((s) => s.licence === "MIT")) {
+      assert.match(source.by ?? "", /^© \S/, `${source.id}: no copyright notice`);
+    }
+  });
+  check("a former source is credited only in the past tense", () => {
+    // Not in use (tests/test_data_attribution.py holds it to the feed lists),
+    // so never also among the sources in use; the duplicate-id check above
+    // sees both lists.
+    assert.ok(FORMER_PHISHING_SOURCES.length > 0, "no former sources");
+    for (const source of FORMER_PHISHING_SOURCES) {
+      assert.ok(!PHISHING_SOURCES.some((s) => s.id === source.id), `${source.id}: also listed as in use`);
     }
   });
   check("the app's Settings link lands on the section the page renders", () => {

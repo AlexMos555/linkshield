@@ -6,6 +6,7 @@
  */
 import {
   DATA_SOURCES_ANCHOR,
+  FORMER_PHISHING_SOURCES,
   PHISHING_SOURCES,
   POPULARITY_SOURCES,
   THIRD_PARTY_FEEDS_URL,
@@ -18,9 +19,9 @@ const link: React.CSSProperties = { color: "#60a5fa", textDecoration: "underline
 
 // Each Latin name sits in <bdi>, so on the Arabic page the parentheses of
 // "crux-top-lists (Zakir Durumeric)" and the separators stay where they belong.
-function SourceList({ sources, t }: { sources: readonly DataSource[]; t: Translate }) {
+function SourceList({ sources, t, testId }: { sources: readonly DataSource[]; t: Translate; testId?: string }) {
   return (
-    <ul style={{ paddingInlineStart: 22 }}>
+    <ul style={{ paddingInlineStart: 22 }} data-testid={testId}>
       {sources.map((source) => (
         <li key={source.id}>
           <bdi><a href={source.url} style={link}>{source.name}</a></bdi>
@@ -54,7 +55,16 @@ export function DataSources({ t, h2, h3 }: { t: Translate; h2: React.CSSProperti
       <SourceList sources={POPULARITY_SOURCES} t={t} />
       <h3 style={h3}>{t("sources_phishing_heading")}</h3>
       <p>{t("sources_phishing_body")}</p>
-      <SourceList sources={PHISHING_SOURCES} t={t} />
+      <SourceList sources={PHISHING_SOURCES} t={t} testId="sources-phishing" />
+      {/* No longer used, but copies of its data are still handed out (the
+          Android files' seed list), and its licence asks for the notice in
+          every copy: credited in the past tense. */}
+      {FORMER_PHISHING_SOURCES.length > 0 ? (
+        <>
+          <p>{t("sources_phishing_former")}</p>
+          <SourceList sources={FORMER_PHISHING_SOURCES} t={t} testId="sources-phishing-former" />
+        </>
+      ) : null}
       <p style={{ marginTop: 12 }}>
         {t("sources_full_list")}{" "}
         <a href={THIRD_PARTY_FEEDS_URL} style={link}>docs/THIRD_PARTY_FEEDS.md</a>

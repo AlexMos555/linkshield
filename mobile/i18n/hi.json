@@ -830,6 +830,7 @@
   "landing.methodology.sources_popularity_model": "हमारा फ़िशिंग मॉडल भी इन्हीं दो सूचियों से सीखता है कि असली साइटें कैसी दिखती हैं। मॉडल के लिए सूचियों को होस्ट और साइट के नामों तक छोटा किया गया है, मिलाया गया है, और उनमें से प्रशिक्षण के उदाहरण चुने गए हैं।",
   "landing.methodology.sources_phishing_heading": "ख़तरनाक साइटें",
   "landing.methodology.sources_phishing_body": "Cleanway जिन ख़तरनाक साइटों को ब्लॉक करता है उनकी सूची, और वे फ़िशिंग उदाहरण जिनसे हमारा मॉडल सीखता है, इन सार्वजनिक स्रोतों से आते हैं।",
+  "landing.methodology.sources_phishing_former": "सूची के पिछले संस्करणों में नीचे दिया गया स्रोत भी शामिल था। उन संस्करणों से बनी Android ऐप की फ़ाइलों में अब भी उसके डेटा की एक प्रति है।",
   "landing.methodology.sources_via": "माध्यम:",
   "landing.methodology.sources_terms": "उपयोग की शर्तें",
   "landing.methodology.sources_full_list": "हम जिन स्रोतों का इस्तेमाल करते हैं, वे सभी, उनकी शर्तों और उस तारीख के साथ जब हमने उन्हें पढ़ा:",

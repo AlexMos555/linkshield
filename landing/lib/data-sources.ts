@@ -92,6 +92,25 @@ export const PHISHING_SOURCES: readonly DataSource[] = [
     licence: "CC0 1.0",
     licenceUrl: CC0,
   },
+  // Not listed as in use: Phishing.Database (FORMER_PHISHING_SOURCES below).
+  // Not listed: CSIRT Italia (ACN). Its MISP feed states no licence (TLP:CLEAR
+  // is a sharing label, not one) and ACN's Note legali bar commercial use, so
+  // since 2026-10-23 production builds without it (BLOCKLIST_LICENSED_ONLY;
+  // docs/THIRD_PARTY_FEEDS.md §1). Back here only with ACN's written permission.
+];
+
+/**
+ * Feeds the list no longer uses whose data still goes out in copies, credited
+ * in the past tense. Phishing.Database: MIT covers the maintainers'
+ * compilation, but part of its data comes from upstream partners they do not
+ * name, whose terms are unknown, so production builds without it
+ * (BLOCKLIST_LICENSED_ONLY; docs/THIRD_PARTY_FEEDS.md §1). MIT's notice goes
+ * with every copy, and the Android files built while it was in embed the
+ * published list as their seed (mobile/scripts/fetch-seed-blocklist.sh) — so
+ * its credit stays while those files are handed out. Back under
+ * PHISHING_SOURCES only once its sources and their terms are known in writing.
+ */
+export const FORMER_PHISHING_SOURCES: readonly DataSource[] = [
   {
     id: "Phishing.Database",
     name: "Phishing.Database",
@@ -100,8 +119,4 @@ export const PHISHING_SOURCES: readonly DataSource[] = [
     licence: "MIT",
     licenceUrl: "https://github.com/Phishing-Database/Phishing.Database/blob/master/LICENSE",
   },
-  // Not listed: CSIRT Italia (ACN). Its MISP feed states no licence (TLP:CLEAR
-  // is a sharing label, not one) and ACN's Note legali bar commercial use, so
-  // since 2026-10-23 production builds without it (BLOCKLIST_LICENSED_ONLY;
-  // docs/THIRD_PARTY_FEEDS.md §1). Back here only with ACN's written permission.
 ];

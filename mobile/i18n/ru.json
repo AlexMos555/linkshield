@@ -830,6 +830,7 @@
   "landing.methodology.sources_popularity_model": "Ещё по этим двум спискам наша модель распознавания фишинга учится тому, как выглядят настоящие сайты. Для неё списки сокращены до имён хостов и сайтов, объединены, и из них выбраны примеры для обучения.",
   "landing.methodology.sources_phishing_heading": "Опасные сайты",
   "landing.methodology.sources_phishing_body": "Список опасных сайтов, которые блокирует Cleanway, и примеры фишинга, на которых учится наша модель, взяты из этих открытых источников.",
+  "landing.methodology.sources_phishing_former": "Раньше в список входила и лента ниже. Файлы приложения для Android, собранные из тех версий списка, всё ещё содержат копию её данных.",
   "landing.methodology.sources_via": "через",
   "landing.methodology.sources_terms": "условия использования",
   "landing.methodology.sources_full_list": "Все источники, которые мы используем, с их условиями и датой, когда мы их прочитали:",

@@ -52,9 +52,10 @@ WRITE_BATCH = 5_000
 SECONDS_PER_DAY = 86_400
 # Normal churn is ~1.2k departures a day (~300 per 6-hour run). A silently
 # broken parser on a big feed looks like "everything left at once" —
-# Phishing.Database alone backs ~390k names. Past this many departures in one
-# run, record nothing: retaining them would balloon the sorted set and hide
-# the breakage from the churn gate for the whole window.
+# Phishing.Database alone backs ~390k names with the licence switch off, and
+# PhishDestroy and CERT Polska ~130k each with it on. Past this many
+# departures in one run, record nothing: retaining them would balloon the
+# sorted set and hide the breakage from the churn gate for the whole window.
 MAX_DEPARTURES_PER_RUN = 25_000
 
 
