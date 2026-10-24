@@ -17,6 +17,12 @@
  * pointing back at mobile/patches. A patch whose package is missing EVERYWHERE
  * is still a hard failure — that means a dependency vanished and the patch is
  * silently doing nothing, which is exactly what we want CI to catch.
+ *
+ * A patch that no longer applies fails the install too, everywhere. On its
+ * own patch-package fails only when it detects CI: the mirror's plain
+ * `npm install` would print the error, exit 0 and build the unpatched code —
+ * for expo-share-intent+5.1.1.patch that is a security fix gone missing from
+ * a release (docs/EXPO_UPGRADE_PLAN.md §1.2). Hence --error-on-fail.
  */
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
@@ -73,6 +79,6 @@ const relPatchDir = path.relative(root, patchDir) || ".";
 
 execFileSync(
   process.execPath,
-  [require.resolve("patch-package/index.js"), "--patch-dir", relPatchDir],
+  [require.resolve("patch-package/index.js"), "--patch-dir", relPatchDir, "--error-on-fail"],
   { cwd: root, stdio: "inherit" },
 );

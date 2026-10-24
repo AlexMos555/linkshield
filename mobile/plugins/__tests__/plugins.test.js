@@ -463,4 +463,63 @@ class MainActivity : ReactActivity() {
   });
 }
 
+// --- expo-share-intent: a shared file stays in the cache (Android) ---------
+// 5.1.1 copied a shared file to cacheDir/<the sender's _display_name>, so any
+// app on the phone could send "../shared_prefs/…" and overwrite Cleanway's
+// private data (docs/EXPO_UPGRADE_PLAN.md §1.2). patches/expo-share-intent+5.1.1.patch
+// is upstream's 8.0.1 fix; scripts/check-share-intent.mjs proves it is in the
+// installed module and that the share sheet takes text/plain only. Here: it
+// passes, and it fails when the fix is missing or left behind.
+console.log("expo-share-intent (Android shared-file path traversal):");
+{
+  const { spawnSync } = require("node:child_process");
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const mobileDir = path.join(__dirname, "..", "..");
+  const script = path.join(mobileDir, "scripts", "check-share-intent.mjs");
+  const run = (...args) => spawnSync(process.execPath, [script, ...args], { encoding: "utf8" });
+  const KT = path.join("android", "src", "main", "java", "expo", "modules", "shareintent", "ExpoShareIntentModule.kt");
+  const installed = path.dirname(require.resolve("expo-share-intent/package.json", { paths: [mobileDir] }));
+  const patched = fs.readFileSync(path.join(installed, KT), "utf8");
+  // The patch's one hunk, both ways: what it replaces and what it writes.
+  const lines = fs.readFileSync(path.join(mobileDir, "patches", "expo-share-intent+5.1.1.patch"), "utf8").split("\n");
+  const hunk = lines.slice(lines.findIndex((l) => l.startsWith("@@")) + 1).filter((l) => l !== "");
+  const pre = hunk.filter((l) => l[0] !== "+").map((l) => l.slice(1)).join("\n");
+  const post = hunk.filter((l) => l[0] !== "-").map((l) => l.slice(1)).join("\n");
+  const withFakePackage = (version, source, fn) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cleanway-share-intent-"));
+    try {
+      fs.mkdirSync(path.join(dir, path.dirname(KT)), { recursive: true });
+      fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name: "expo-share-intent", version }));
+      fs.writeFileSync(path.join(dir, KT), source);
+      fn(run(`--package-dir=${dir}`));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  };
+  check("the installed module carries the fix, and the share sheet takes text/plain only", () => {
+    const r = run();
+    assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+    assert.ok(r.stdout.includes("applied cleanly"), r.stdout);
+  });
+  check("fails on the unpatched 5.1.1 file, i.e. a patch that did not apply", () => {
+    assert.ok(patched.includes(post), "the installed file holds the patch's result");
+    withFakePackage("5.1.1", patched.replace(post, pre), (r) => {
+      assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+      assert.ok(r.stdout.includes("File(context.cacheDir, fileName)"), r.stdout);
+      // "did not apply" = the installed file with the hunk undone is upstream
+      // 5.1.1 byte for byte, so the patch applies to 5.1.1 cleanly.
+      assert.ok(r.stdout.includes("expo-share-intent+5.1.1.patch did not apply"), r.stdout);
+    });
+  });
+  check("fails when a package that has the fix itself (1.1.0: >= 9.0.0) still has the 5.1.1 patch", () => {
+    withFakePackage("9.0.0", patched, (r) => {
+      assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+      assert.ok(r.stdout.includes("delete mobile/patches/expo-share-intent+5.1.1.patch"), r.stdout);
+      assert.ok(r.stdout.includes("only if its canonical path is inside cacheDir"), "its own code passes");
+    });
+  });
+}
+
 console.log(`\n${passed} assertions passed`);

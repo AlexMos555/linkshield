@@ -117,7 +117,7 @@
           },
           "iosShareExtensionName": "Cleanway — Check Link",
           "androidIntentFilters": [
-            "text/*"
+            "text/plain"
           ]
         }
       ],
