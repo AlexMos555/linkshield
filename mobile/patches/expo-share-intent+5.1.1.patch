@@ -1,0 +1,21 @@
+diff --git a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
+index 0153c89c7e2ce4fa20351bc2d5e7b1c6cd341dbe..ff5b1001e7bb3443482727cec48c22579465c73b 100644
+--- a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
++++ b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
+@@ -301,8 +301,14 @@ class ExpoShareIntentModule : Module() {
+                     val columnIndex = cursor.getColumnIndexOrThrow(column)
+                     val fileName = cursor.getString(columnIndex)
+                     Log.i("FileDirectory", "File name: $fileName")
+-                    targetFile = File(context.cacheDir, fileName)
+-                }
++                    val safeName = fileName?.let { File(it).name }.orEmpty()
++                    if (safeName.isNotEmpty()) {
++                        val candidate = File(context.cacheDir, safeName)
++                        val cacheRoot = context.cacheDir.canonicalPath + File.separator
++                        if (candidate.canonicalPath.startsWith(cacheRoot)) {
++                            targetFile = candidate
++                        }
++                    }                }
+             } finally {
+                 cursor?.close()
+             }

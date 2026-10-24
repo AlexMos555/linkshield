@@ -41,8 +41,13 @@ legitimately blocks. Both are fixed here; tests/test_dns_canary.py pins them.
 Exit 0 = healthy. Exit 1 = something is wrong; the run fails and GitHub mails
 the owner. Read-only: it never writes Redis.
 
+DNS questions (1, 2 and /health/doh) go to dns.cleanway.ai, the name phones
+use; the artifact and /health/deep to the API (--base). Since 2026-10-24 DNS
+can run in a Railway service of its own (docs/runbooks/dns-service-split.md).
+
 Usage:
     python3 scripts/dns_canary.py [--base https://api.cleanway.ai]
+                                  [--dns-base https://dns.cleanway.ai]
                                   [--landing-base https://cleanway.ai]
                                   [--live-source https://phishunt.io/feed.txt]
                                   [--uptime-worker https://cleanway-uptime.amoskotin.workers.dev/]
@@ -64,6 +69,11 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_BASE = "https://api.cleanway.ai"
+# Where phones send their DNS questions (/dns-query, /health/doh). Since DNS
+# can run in a Railway service of its own, whose API-only twin answers no DNS
+# (docs/runbooks/dns-service-split.md), only this name reaches the process
+# phones use. A run with another --base (staging: one service) keeps DNS there.
+DEFAULT_DNS_BASE = "https://dns.cleanway.ai"
 DEFAULT_LANDING_BASE = "https://cleanway.ai"
 LANDING_PATH = "/ru/android"
 USER_AGENT = "cleanway-dns-canary"
@@ -388,6 +398,9 @@ def parse_args() -> argparse.Namespace:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default=os.environ.get("CANARY_BASE", DEFAULT_BASE),
                     help="API base URL (env CANARY_BASE)")
+    ap.add_argument("--dns-base", default=os.environ.get("CANARY_DNS_BASE", ""),
+                    help=f"DoH base URL for /dns-query and /health/doh (env CANARY_DNS_BASE); default "
+                         f"{DEFAULT_DNS_BASE} with the default --base, else --base itself")
     ap.add_argument("--landing-base", default=os.environ.get("CANARY_LANDING_BASE", DEFAULT_LANDING_BASE),
                     help="landing-page base URL (env CANARY_LANDING_BASE)")
     ap.add_argument("--live-source", default=os.environ.get("CANARY_LIVE_SOURCE", DEFAULT_LIVE_SOURCE),
@@ -402,6 +415,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     base = args.base.rstrip("/")
+    dns_base = (args.dns_base or (DEFAULT_DNS_BASE if base == DEFAULT_BASE else base)).rstrip("/")
     landing_base = args.landing_base.rstrip("/")
     problems: list[str] = []
 
@@ -411,8 +425,8 @@ def main() -> int:
     except ValueError as exc:
         problems.append(f"MUST-RESOLVE LIST BROKEN: {exc}")
         names = []
-    problems += check_resolves(base, names)
-    print(f"resolve-check: {len(names)} names")
+    problems += check_resolves(dns_base, names)
+    print(f"resolve-check: {len(names)} names via {dns_base}")
 
     # 2. The blocklist must still block — with OUR NXDOMAIN. The list canary
     #    always; plus real listed hosts that the public internet resolves.
@@ -422,10 +436,10 @@ def main() -> int:
         problems.append(f"artifact fetch failed: {exc}")
         blob, etag, count_hdr = b"", "", None
     probes = list(known_blocked_samples())
-    problems += check_blocked(base, probes)
+    problems += check_blocked(dns_base, probes)
     print(f"block-check: {len(probes)} listed names")
     live, note = live_probes(args.live_source, artifact_hashes(blob))
-    problems += check_blocked(base, live)
+    problems += check_blocked(dns_base, live)
     print(f"live-block-check: {len(live)} listed names that resolve publicly ({note})")
 
     # 3. The artifact phones sync.
@@ -440,8 +454,8 @@ def main() -> int:
 
     # 4 + 5. The API end to end, and the page people install from.
     problems += check_health_deep(base)
-    problems += check_health_doh(base)
-    print("health-check: /health/deep")
+    problems += check_health_doh(dns_base)
+    print(f"health-check: {base}/health/deep, {dns_base}/health/doh")
     problems += check_landing(landing_base)
     print(f"landing-check: {LANDING_PATH}")
 

@@ -7,15 +7,27 @@ BodySizeLimit
     refused the moment it passes the cap. Without it, any route that parses
     a body (JSON, multipart) would read whatever it is sent first.
 
-DnsHostOnly
-    dns.cleanway.ai is a CNAME to the same Railway service as api.cleanway.ai.
-    The DNS name is what every DNS-profile phone talks to; it serves DNS and
-    its health probes, nothing else — 404 for the whole API under it.
+DnsRouting
+    Which paths this process answers, by host name and SERVICE_ROLE
+    (api/config.py, docs/runbooks/dns-service-split.md); everything else
+    gets 404 before it reaches the app:
+      * dns.cleanway.ai — what every DNS-profile phone talks to — serves DNS
+        and its health probes, nothing else, whatever the role;
+      * SERVICE_ROLE=dns serves the same paths under every other name too
+        (its Railway domain included);
+      * SERVICE_ROLE=api serves no DNS (/dns-query, /health/doh) under API
+        names. Under dns.cleanway.ai it still does: if the founder flips the
+        role before that name has moved to the DNS service, phones keep
+        their DNS.
+    It sits outside the DoH fast path, which would otherwise answer
+    /dns-query first.
 """
 
 from __future__ import annotations
 
 import json
+
+from api.config import get_settings
 
 DEFAULT_BODY_LIMIT = 1024 * 1024
 
@@ -32,6 +44,9 @@ DNS_ONLY_HOSTS = frozenset({"dns.cleanway.ai"})
 # /health is the Railway probe and the uptime monitor's; /health/doh the
 # DoH-specific probe (scripts/dns_canary.py, docs/runbooks/monitoring.md).
 DNS_HOST_PATHS = frozenset({"/dns-query", "/health", "/health/doh"})
+# Of those, the ones that exist only for DNS. /health stays everywhere: it is
+# every service's Railway health check.
+DNS_ONLY_PATHS = DNS_HOST_PATHS - {"/health"}
 
 
 def body_limit_for(path: str) -> int:
@@ -119,12 +134,26 @@ def _host(scope) -> str:
     return raw.rsplit(":", 1)[0].rstrip(".") if ":" in raw else raw.rstrip(".")
 
 
-class DnsHostOnly:
+def serves(role: str, host: str, path: str) -> bool:
+    """Whether a process with SERVICE_ROLE `role` answers `path` under `host`."""
+    if host in DNS_ONLY_HOSTS or role == "dns":
+        return path in DNS_HOST_PATHS
+    if role == "api":
+        return path not in DNS_ONLY_PATHS
+    return True
+
+
+class DnsRouting:
     def __init__(self, app) -> None:
         self.app = app
 
     async def __call__(self, scope, receive, send) -> None:
-        if scope["type"] == "http" and _host(scope) in DNS_ONLY_HOSTS and scope.get("path") not in DNS_HOST_PATHS:
-            await _send_json(send, 404, "Not Found")
-            return
+        if scope["type"] == "http":
+            role = get_settings().service_role
+            path = scope.get("path", "")
+            # A DNS query outside the api role is always answered: skip the
+            # Host header on the hot path.
+            if not (role != "api" and path in DNS_HOST_PATHS) and not serves(role, _host(scope), path):
+                await _send_json(send, 404, "Not Found")
+                return
         await self.app(scope, receive, send)

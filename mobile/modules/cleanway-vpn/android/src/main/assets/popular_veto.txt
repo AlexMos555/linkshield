@@ -5602,6 +5602,7 @@ msftauth.net
 msftconnecttest.com
 msftncsi.com
 msi.com
+msidentity.com
 mskcc.org
 msn.com
 msnbc.com

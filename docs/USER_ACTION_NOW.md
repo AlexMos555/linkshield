@@ -41,12 +41,10 @@
 отчёту в тот же день. **Делать ДО submit'а.**
 **Время:** 20 мин.
 
-### 2. Скриншоты для листинга (нужно 5 штук, их ещё НЕТ)
-**Что:** 5 скриншотов расширения @ 1280×800 px для Chrome Web Store.
-**Как:** после шага 1 расширение уже загружено — сделай скрины: (1) popup с verdict,
-(2) бейджи на ссылках, (3) блок-страница фишинга, (4) scam-explainer, (5) Family Hub / Options.
-**Зачем:** CWS требует минимум 1, реально нужно 4-5 для доверия. Без них листинг слабый.
-**Время:** 20 мин (совмести с шагом 1).
+### 2. Скриншоты для листинга — готовы, снимать не нужно
+5 скриншотов 1280×800 (EN и RU) лежат в `store-assets/extension/{en,ru}/`, их делает
+`scripts/store-screenshots/extension.mjs`. Что на каждом и что загружать —
+`store-assets/extension/README.md`. И в английский, и в русский листинг идут все пять.
 
 ### 3. Rotate Anthropic API key + Railway env
 **Что:** Пересоздать Anthropic ключ, положить в Railway.
@@ -84,8 +82,9 @@
 **Шаги:**
 1. Купить dev-аккаунт ($5 однократно).
 2. Upload `dist/store-artifacts/cleanway-0.2.2-chrome.zip` (⚠️ имя такое, не `cleanway-extension.zip`).
-3. Листинг: copy-paste из `docs/marketing/chrome-web-store-listing.md` (текст честный, готов).
-4. Загрузить 5 скриншотов из шага 2.
+3. Листинг: copy-paste из `extension/STORE_LISTING.md`, ответы для проверки — из
+   `docs/CWS_SUBMISSION.md` (`docs/marketing/chrome-web-store-listing.md` больше не источник).
+4. Загрузить скриншоты из `store-assets/extension/en/`: 01…05 (шаг 2).
 5. Submit → статус «In review».
 **Зачем:** это и есть distribution — без листинга ноль пользователей. Всё остальное к этому.
 **Совет:** можно сабмитить как **Unlisted** сначала (доступ только по прямой ссылке) —

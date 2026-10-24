@@ -44,7 +44,10 @@ missing bridge (`expo-share-intent`: iOS Share Extension + Android `ACTION_SEND`
   SDK-52 version with `npx expo install expo-share-intent`** — do this first).
 - `app.json` — added the `expo-share-intent` config plugin (creates the iOS Share
   Extension target + wires Android intent handling; `iosShareExtensionName`,
-  web-URL + text activation rules, `androidIntentFilters: ["text/*"]`).
+  web-URL + text activation rules, `androidIntentFilters: ["text/*"]`; since
+  1.0.6 `["text/plain"]`, the one type the app reads, and expo-share-intent
+  5.1.1 is patched against a shared-file path traversal — #318,
+  docs/EXPO_UPGRADE_PLAN.md §1.2).
 - `app/_layout.tsx` — wrapped the root in `<ShareIntentProvider>` and added a
   `ShareIntentRouter` that pushes an inbound shared URL/text to `/shared?url=…`.
 - `app/shared.tsx` — unchanged (already complete).

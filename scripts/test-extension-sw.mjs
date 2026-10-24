@@ -620,7 +620,8 @@ async function runTree(tree) {
     await check("the popup over the block page says the site is a scam, not 'safe'", async () => {
       // A toolbar click opens the popup over the active tab. Here the popup
       // is a background tab in the same window, so its "active tab" is still
-      // the block page (as in store-assets/.../capture.mjs).
+      // the block page. (scripts/store-screenshots/extension.mjs opens the
+      // real popup instead, with DevTools Extensions.triggerAction.)
       await blockedTab.bringToFront();
       const [popup] = await Promise.all([
         context.waitForEvent("page"),

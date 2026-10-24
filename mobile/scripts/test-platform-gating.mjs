@@ -18,7 +18,8 @@
  *     render React Native);
  *   • the iOS app is App Store-shaped: no VPN entitlement, no push
  *     entitlement, no microphone or Face ID string, a camera string,
- *     ITSAppUsesNonExemptEncryption=false, a privacy manifest with reasons,
+ *     ITSAppUsesNonExemptEncryption=false (true only while the app is off the
+ *     French App Store — docs/IOS.md §2), a privacy manifest with reasons,
  *     iPhone only, and the native module's pod not above the app's iOS
  *     deployment target (it was, and the app died at launch);
  *   • the Safari Web Extension inside the app: the home card's Safari layer

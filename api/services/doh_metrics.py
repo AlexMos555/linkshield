@@ -2,9 +2,10 @@
 
 Privacy rule: nothing per query is ever logged — no names, no client IPs, no
 per-request access line (the fast path bypasses the request logger). What
-exists instead is a handful of process-wide counters and a latency histogram,
-surfaced in /health/doh and /health/deep and written as ONE `doh_stats` log
-line every STATS_LOG_EVERY_S. A counter can't say who asked for what.
+exists instead is a handful of process-wide counters and a latency histogram
+(since start, and over the last few minutes), surfaced in /health/doh and
+/health/deep and written as ONE `doh_stats` log line every STATS_LOG_EVERY_S.
+A counter can't say who asked for what.
 
 The rate limiter is here because it is the other per-query bookkeeping and it
 used to be a Redis INCR per DNS query. Now it is a per-process fixed window
@@ -29,48 +30,87 @@ logger = logging.getLogger("cleanway.doh")
 
 STATS_LOG_EVERY_S = 300
 _BUCKETS_MS = (1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000)
+# `recent`: the same histogram over the last RECENT_SLOTS x RECENT_SLOT_S
+# seconds (a ring of per-slot histograms; the current slot is partly filled,
+# so it covers 150-180 s). The lifetime one moves in proportion to the
+# worker's uptime: on a day-old worker every query has to be slow for over an
+# hour before its p95 shows it, and after a long slowdown it stays high for
+# hours. The uptime monitor's dns_latency alert judges `recent`
+# (ops/uptime-worker/worker.js). Shorter than the monitor's five slow minutes
+# in a row, so a blip of a minute or so does not mail.
+RECENT_SLOT_S = 30
+RECENT_SLOTS = 6
+
+
+def _quantile(hist: list[int], q: float) -> Optional[float]:
+    """Upper bound of the bucket holding quantile `q`; None with no data or
+    when it falls past the last bucket (see `over_ms` in the snapshot).
+    Never inf: JSON has no infinity, and returning it made /health/doh
+    answer 500 once 1% of queries had ever taken over 5 s — the probe a
+    monitor or load balancer reads as "DNS is down"."""
+    total = sum(hist)
+    if not total:
+        return None
+    target = q * total
+    acc = 0
+    for i, n in enumerate(hist):
+        acc += n
+        if acc >= target:
+            return float(_BUCKETS_MS[i]) if i < len(_BUCKETS_MS) else None
+    return None
+
+
+def _latency_fields(hist: list[int]) -> dict:
+    return {
+        # Upper bucket bounds, i.e. "p50 <= x ms". Server-side time only.
+        # null = no queries, or slower than the last bucket.
+        "p50_ms_le": _quantile(hist, 0.5),
+        "p95_ms_le": _quantile(hist, 0.95),
+        "p99_ms_le": _quantile(hist, 0.99),
+        # Queries slower than the last bucket bound.
+        "over_ms": {str(_BUCKETS_MS[-1]): hist[-1]},
+    }
 
 
 class Metrics:
-    def __init__(self) -> None:
+    def __init__(self, clock=time.monotonic) -> None:
         self.started = time.time()
         self.counts: Counter = Counter()
         self.latency = [0] * (len(_BUCKETS_MS) + 1)
+        self._clock = clock
+        self._slot_ids = [-1] * RECENT_SLOTS
+        self._slots = [[0] * (len(_BUCKETS_MS) + 1) for _ in range(RECENT_SLOTS)]
 
     def inc(self, key: str, n: int = 1) -> None:
         self.counts[key] += n
 
     def observe(self, seconds: float) -> None:
-        self.latency[bisect_left(_BUCKETS_MS, seconds * 1000)] += 1
+        i = bisect_left(_BUCKETS_MS, seconds * 1000)
+        self.latency[i] += 1
+        slot = int(self._clock() // RECENT_SLOT_S)
+        k = slot % RECENT_SLOTS
+        if self._slot_ids[k] != slot:
+            self._slot_ids[k] = slot
+            self._slots[k] = [0] * len(self.latency)
+        self._slots[k][i] += 1
 
-    def _quantile(self, q: float) -> Optional[float]:
-        """Upper bound of the bucket holding quantile `q`; None with no data or
-        when it falls past the last bucket (see `over_ms` in the snapshot).
-        Never inf: JSON has no infinity, and returning it made /health/doh
-        answer 500 once 1% of queries had ever taken over 5 s — the probe a
-        monitor or load balancer reads as "DNS is down"."""
-        total = sum(self.latency)
-        if not total:
-            return None
-        target = q * total
-        acc = 0
-        for i, n in enumerate(self.latency):
-            acc += n
-            if acc >= target:
-                return float(_BUCKETS_MS[i]) if i < len(_BUCKETS_MS) else None
-        return None
+    def _recent(self) -> list[int]:
+        now = int(self._clock() // RECENT_SLOT_S)
+        hist = [0] * len(self.latency)
+        for slot, counts in zip(self._slot_ids, self._slots):
+            if now - RECENT_SLOTS < slot <= now:
+                for i, n in enumerate(counts):
+                    hist[i] += n
+        return hist
 
     def snapshot(self) -> dict:
+        recent = self._recent()
         return {
             "since": int(self.started),
             "counts": dict(self.counts),
-            # Upper bucket bounds, i.e. "p50 <= x ms". Server-side time only.
-            # null = no queries yet, or slower than the last bucket.
-            "p50_ms_le": self._quantile(0.5),
-            "p95_ms_le": self._quantile(0.95),
-            "p99_ms_le": self._quantile(0.99),
-            # Queries slower than the last bucket bound, since start.
-            "over_ms": {str(_BUCKETS_MS[-1]): self.latency[-1]},
+            **_latency_fields(self.latency),  # since start
+            "recent": {"window_s": RECENT_SLOTS * RECENT_SLOT_S, "queries": sum(recent),
+                       **_latency_fields(recent)},
         }
 
 
