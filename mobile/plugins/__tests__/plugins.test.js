@@ -17,7 +17,8 @@ const { _patch: patchSeed } = require("../withSeedGuard.js");
 const { _patch: patchDarkBars } = require("../withDarkSystemBars.js");
 
 // A trimmed but structurally faithful app/build.gradle (Expo SDK 52 / RN 0.76;
-// the anchors are unchanged in the SDK 54 / RN 0.81 prebuild output).
+// the anchors are unchanged in the SDK 54 / RN 0.81 and SDK 58 / RN 0.88
+// prebuild output — scripts/check-prebuild-gradle.mjs, 2026-10-24).
 const TEMPLATE = `
 apply plugin: "com.android.application"
 def enableProguardInReleaseBuilds = false
@@ -114,6 +115,18 @@ console.log("withAbiFilters:");
       out.indexOf("signingConfigs {"),
     );
     assert.ok(!defaultConfig.includes("abiFilters"));
+  });
+  // New Architecture (Expo SDK 55+): the RN gradle plugin adds every
+  // reactNativeArchitectures ABI to defaultConfig.ndk.abiFilters and AGP merges
+  // it with the build type's, so the first SDK 58 release APK still had x86.
+  check("New Architecture: moves React Native's defaultConfig ABIs to debug, after RN's finalizeDsl", () => {
+    assert.ok(out.includes("androidComponents {\n    finalizeDsl { ext ->"));
+    assert.ok(out.includes("def cleanwayAllAbis = new ArrayList(ext.defaultConfig.ndk.abiFilters)"));
+    assert.ok(out.includes("ext.defaultConfig.ndk.abiFilters.clear()"));
+    assert.ok(out.includes('ext.buildTypes.getByName("debug").ndk.abiFilters.addAll(cleanwayAllAbis)'));
+    assert.ok(!out.includes('getByName("release")'), "release keeps only its own filter");
+    // At file scope after the android { … } block (and after `apply plugin: "com.facebook.react"`).
+    assert.ok(out.indexOf("\nandroidComponents {") > out.indexOf("minifyEnabled enableProguardInReleaseBuilds\n        }\n    }\n}"));
   });
   check("honours a CLEANWAY_ABIS override", () => {
     const only64 = patchAbi(TEMPLATE, "arm64-v8a");
@@ -279,7 +292,8 @@ console.log("withDistributionGuard:");
 
 console.log("withDarkSystemBars:");
 {
-  // The Expo SDK 54 prebuild MainActivity.kt onCreate, verbatim.
+  // The Expo SDK 54 prebuild MainActivity.kt onCreate, verbatim (SDK 58 keeps
+  // the `super.onCreate(null)` anchor).
   const MAIN_ACTIVITY = `package ai.cleanway.app
 
 import android.os.Build

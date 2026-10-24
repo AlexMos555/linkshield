@@ -248,6 +248,9 @@ check("the iOS entitlements plugin runs first: strips push and VPN, keeps the ap
   assert.deepEqual(out, { "com.apple.security.application-groups": ["group.ai.cleanway.app"], [NE]: ["dns-settings"] });
   assert.deepEqual(patch({}), { [NE]: ["dns-settings"] });
   assert.deepEqual(patch({ [NE]: ["dns-settings", "packet-tunnel-provider", "app-proxy-provider"] }), { [NE]: ["dns-settings"] });
+  // expo-share-intent 9 prepends its group to the one the SMS / Safari plugins already added.
+  const groups = "com.apple.security.application-groups";
+  assert.deepEqual(patch({ [groups]: ["group.ai.cleanway.app", "group.ai.cleanway.app"] })[groups], ["group.ai.cleanway.app"]);
 });
 
 check("expo-notifications is kept out of the iOS build (no push on iPhone yet)", () => {
