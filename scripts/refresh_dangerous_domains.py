@@ -10,9 +10,9 @@ Sources (bulk, no API key unless said). The licence of each is quoted beside
 its URL constant below and in docs/THIRD_PARTY_FEEDS.md:
   * OpenPhish        — community phishing feed          (non-commercial terms)
   * Phishing.Database — mitchellkrogza phishing-domains-ACTIVE (MIT on the
-                       compilation; built from upstream feeds it does not
-                       name — left out under BLOCKLIST_LICENSED_ONLY since
-                       2026-10-24)
+                       compilation; partly from upstream partners it does
+                       not name, terms unknown — left out under
+                       BLOCKLIST_LICENSED_ONLY since 2026-10-24)
   * phishing.army    — extended blocklist               (CC BY-NC 4.0)
   * Phishunt.io      — hourly phishing URL feed (CC0 1.0)
   * TweetFeed.live   — 365-day OSINT window from reporting accounts (CC0 1.0)
@@ -47,9 +47,17 @@ changes the set by more than the churn gate allows: publish once with
 its own exact hosts (184 distinct on 2026-10-23, ~0.03% of the set): no
 --force. Phishing.Database joining it does need one: it alone backs most of
 the list (2026-10-24: 381,804 of a licensed build's 675,263 names, 56.5%;
-58% of the live artifact), so the first scheduled run after the change is
+58% of the live artifact), so every scheduled run after the change is
 refused by the churn gate (exit 4, the live set stays) until one run with
---force. The set's 3-day TTL is not refreshed by a refused run.
+--force — and bringing it back needs one too. A refused run refreshes
+nothing, so the clock runs from the last successful publish (runs every 6 h
+at :23): /health/deep calls the list stale after 13 h
+(blocklist_artifact.MAX_HEALTHY_AGE_S; the uptime worker alerts), Android
+after 48 h (BlockList.kt STALE_AFTER_MS), and the set and artifact expire
+after 72 h (TTL_SECONDS: no DNS blocking, nothing for phones to sync).
+--force also takes every feed's size at face value (accept_sizes), so the
+check before it is a --dry-run WITHOUT --force: it names the leaving count
+and any shrunken feed (FEED DEGRADED), then stops at the churn gate.
 
 Exact-host-only sources: CERT Polska and CSIRT Italia name the precise host
 and say so — CERT Polska's API spec is explicit that listing `a.example.com`
@@ -297,11 +305,11 @@ OPENPHISH_FEED = "https://openphish.com/feed.txt"
 # false positives after the guards. That is the difference between a product
 # and a demo.
 #
-# Phishing.Database's MIT licence covers the maintainers' compilation. The
-# data comes from upstream feeds the project does not name ("multiple
-# sources", "partners", "trusted third party sources"; PhishTank and
-# PhishStats named as likely origins; docs/THIRD_PARTY_FEEDS.md §1 cites
-# each statement), and an MIT notice cannot relicense data its authors did
+# Phishing.Database's MIT licence covers the maintainers' compilation. Part
+# of the data is their own; the rest comes from upstream "partners" and
+# "trusted third party sources" the project does not name, whose terms are
+# unknown (docs/THIRD_PARTY_FEEDS.md §1 cites each statement, and the
+# counter-evidence), and an MIT notice cannot relicense data its authors did
 # not own — so it is in NON_COMMERCIAL_FEEDS since 2026-10-24. Its GitHub copy
 # has not changed since 2026-10-02 and phish.co.za, the official download,
 # has been down since 2026-10-03 (the project's issue #2325).
@@ -385,14 +393,16 @@ TTL_SECONDS = 60 * 60 * 24 * 3  # 3-day safety TTL: if the cron dies, the set ex
 # authorisation, and the MISP feed states no licence of its own (TLP:CLEAR is
 # a sharing label, not a licence). Policy: commercially licensed sources
 # only, so it waits for ACN's written permission. Added 2026-10-24:
-# Phishing.Database — MIT on the compilation, but the maintainers say the
-# data comes from third-party feeds they do not name and cannot attribute
-# entry by entry; the likely origins they did name are PhishTank and
-# PhishStats, whose terms bar redistributing its feeds without written
-# permission (docs/THIRD_PARTY_FEEDS.md §1). Not clearly licensed for a paid
-# product, so out until the maintainers say in writing which sources are in
-# it and under what terms. BLOCKLIST_LICENSED_ONLY=1 leaves all four out;
-# unset, they are built in exactly as before.
+# Phishing.Database — MIT on the compilation, but besides their own data
+# the maintainers import from upstream partners they do not name and cannot
+# attribute entry by entry, so those partners' terms are unknown
+# (docs/THIRD_PARTY_FEEDS.md §1; PhishStats was named once, in 2021, as a
+# possible origin, and the terms quoted for it are the 2026 edition; the
+# best-evidenced upstream, PhishTank, allows commercial use). Not shown to be
+# barred — not clearly permitted either, so under the same policy it is out
+# until the maintainers say in writing which sources are in it and under
+# what terms. BLOCKLIST_LICENSED_ONLY=1 leaves all four out; unset, they are
+# built in exactly as before.
 NON_COMMERCIAL_FEEDS = frozenset({"OpenPhish", "phishing.army", "CSIRT Italia", "Phishing.Database"})
 # Former sources, never fetched again. A name one of them backed on its last
 # healthy run (blocklist_feed_backing) leaves with the next publish instead

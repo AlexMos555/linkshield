@@ -578,6 +578,7 @@
     "sources_popularity_model": "Il nostro modello di riconoscimento del phishing impara anche da queste due liste come sono fatti i siti reali. Per il modello, le liste sono ridotte a nomi di host e di sito, unite e campionate come esempi di addestramento.",
     "sources_phishing_heading": "Siti pericolosi",
     "sources_phishing_body": "La lista dei siti pericolosi che Cleanway blocca e gli esempi di phishing da cui impara il nostro modello provengono da queste fonti pubbliche.",
+    "sources_phishing_former": "Le versioni precedenti della lista includevano anche la fonte qui sotto. I file dell'app Android creati con quelle versioni ne contengono ancora una copia.",
     "sources_via": "tramite",
     "sources_terms": "condizioni d'uso",
     "sources_full_list": "Tutte le fonti che usiamo, con le loro condizioni e la data in cui le abbiamo lette:"

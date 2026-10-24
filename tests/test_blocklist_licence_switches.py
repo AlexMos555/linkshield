@@ -616,19 +616,21 @@ async def test_switching_on_takes_csirt_italias_names_out_without_force_or_an_ou
 # ── Phishing.Database, left out under the switch since 2026-10-24 ────────────
 #
 # Its MIT licence covers the maintainers' compilation, not the data in it.
-# The data comes from upstream feeds the project does not name: the
-# maintainers call them "multiple sources" and "partners", named PhishTank
-# and PhishStats as likely origins, and say they cannot tell which provider
-# an entry came from (docs/THIRD_PARTY_FEEDS.md §1 has the citations).
-# PhishStats' terms bar redistributing its feeds without written permission,
-# and an MIT notice cannot relicense data its authors did not own. Use in a
-# paid product is not clearly permitted, so it goes the way of OpenPhish,
+# Part of the data is their own ("We have our very own. + Others."); the
+# rest comes from upstream "partners" and "trusted third party sources" the
+# project does not name, and the maintainers cannot tell which provider an
+# entry came from (docs/THIRD_PARTY_FEEDS.md §1 has the citations, and the
+# counter-evidence: a VirusTotal data vendor, an adopter form that invites
+# companies). Those partners' terms are unknown, and an MIT notice cannot
+# relicense data its authors did not own. Use in a paid product is not
+# clearly permitted — not shown to be barred — so under the
+# commercially-licensed-only policy it goes the way of OpenPhish,
 # phishing.army and CSIRT Italia: out while BLOCKLIST_LICENSED_ONLY is on.
 #
 # It backs most of the list — on 2026-10-24, 381,804 of the 675,263 names a
 # licensed build held (56.5 %), 58.3 % of the live artifact's hashes — so,
 # unlike CSIRT Italia, the first publish without it trips the 50 % churn gate
-# and needs --force once.
+# and needs --force once; so would bringing it back.
 
 PDB = "Phishing.Database"
 
@@ -696,3 +698,60 @@ async def test_with_the_switch_off_phishing_database_still_reaches_the_list(monk
     assert rdd.PHISHING_DATABASE in seen
     assert set(BASE) <= _published(fake)
     assert _phone_blocks(fake, BASE[0])
+
+
+@pytest.mark.asyncio
+async def test_bringing_phishing_database_back_needs_one_forced_publish_too(monkeypatch, caplog):
+    """The way back (the maintainers name their sources, or the switch is
+    unset): the ~381k names return at once, the same churn the other way."""
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    _world(monkeypatch, fake, env={rdd.LICENSED_ONLY_ENV: "1"})
+    assert await rdd.refresh("redis://fake", dry_run=False, now=T0) == 0
+    assert not set(BASE) & _published(fake)
+
+    back = rdd.NON_COMMERCIAL_FEEDS - {PDB}
+    assert await rdd.refresh("redis://fake", dry_run=False, now=T0 + 6 * 3600, excluded=back) == 4
+    assert "PUBLISH GATE: churn" in caplog.text
+    assert not set(BASE) & _published(fake), "the previous set stays live"
+    assert await rdd.refresh("redis://fake", dry_run=False, now=T0 + 12 * 3600, excluded=back,
+                             force=True) == 0
+    assert set(BASE) | set(LICENSED_BASE) <= _published(fake)
+
+
+@pytest.mark.asyncio
+async def test_the_merge_day_check_is_a_dry_run_without_force(monkeypatch, caplog):
+    """--force also takes every feed's size at face value (accept_sizes), so
+    a feed truncated during the forced run would become its new baseline
+    unseen. The check before it must be a dry run WITHOUT force: it names
+    the leaving count and any shrunken feed, writes nothing, and ends 4 on
+    the churn gate. The same dry run with force hides the truncation."""
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    pdb = [f"pdb{i}.xyz" for i in range(3000)]
+    destroy = [f"destroy{i}.xyz" for i in range(1200)]
+    healthy = {rdd.PHISHING_DATABASE: "\n".join(pdb), rdd.PHISHDESTROY_ACTIVE: json.dumps(destroy)}
+    _world(monkeypatch, fake, extra=healthy)
+    before = rdd.NON_COMMERCIAL_FEEDS - {PDB}
+    assert await rdd.refresh("redis://fake", dry_run=False, now=T0, excluded=before) == 0
+    live = _published(fake)
+    assert set(pdb) | set(destroy) <= live
+
+    truncated = {**healthy, rdd.PHISHDESTROY_ACTIVE: json.dumps(destroy[:400])}
+    caplog.clear()
+    code = await _refresh(monkeypatch, fake, T0 + 6 * 3600, extra=truncated,
+                          env={rdd.LICENSED_ONLY_ENV: "1"}, dry_run=True)
+    assert code == 4
+    assert "FEED DEGRADED: PhishDestroy — shrank from 1200 to 400 hosts" in caplog.text
+    # Not exactly 3000: the degraded feed's carry keeps what its backing
+    # record (a Bloom filter, ~1 % false positives) claims.
+    assert "published names only Phishing.Database backed leave with this publish" in caplog.text
+    assert "PUBLISH GATE: churn" in caplog.text
+    assert _published(fake) == live, "a dry run writes nothing"
+
+    caplog.clear()
+    code = await _refresh(monkeypatch, fake, T0 + 6 * 3600, extra=truncated,
+                          env={rdd.LICENSED_ONLY_ENV: "1"}, dry_run=True, force=True)
+    assert code == 0
+    assert "FEED DEGRADED" not in caplog.text and "shrank" not in caplog.text, "force hides the truncation"
+    assert _published(fake) == live

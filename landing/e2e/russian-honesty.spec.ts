@@ -105,13 +105,21 @@ test("/ru/transparency/methodology credits its open data and links the licences"
   await expect(sources).toContainText("Чтобы составить этот рейтинг, мы их изменили");
   await expect(sources).toContainText("со следующих версий");
   await expect(sources).toContainText("примеры для обучения");
+  const inUse = sources.getByTestId("sources-phishing");
   for (const feed of ["PhishDestroy", "CERT Polska", "TweetFeed", "Phishunt"]) {
-    await expect(sources).toContainText(feed);
+    await expect(inUse).toContainText(feed);
   }
-  // Left out of the blocklist since 2026-10-24: MIT covers the compilation,
-  // its upstream feeds are unnamed third parties — so not credited as a source.
-  await expect(sources).not.toContainText("Phishing.Database");
-  await expect(sources.locator('a[href^="https://github.com/Phishing-Database/"]')).toHaveCount(0);
+  // Left out of the blocklist since 2026-10-24 (MIT covers the compilation;
+  // its upstream partners are unnamed, their terms unknown), so not a source
+  // in use. MIT's notice goes with every copy, though, and the Android files
+  // built while it was in still carry one: a past-tense credit stays.
+  await expect(inUse).not.toContainText("Phishing.Database");
+  await expect(sources).toContainText("Раньше в список входила и лента ниже");
+  await expect(sources).toContainText("Android");
+  const former = sources.getByTestId("sources-phishing-former");
+  await expect(former.locator('a[href="https://github.com/Phishing-Database/Phishing.Database"]')).toHaveText("Phishing.Database");
+  await expect(former).toContainText("© Mitchell Krog, Nissar Chababy, Phishing.Database Contributors");
+  await expect(former.locator('a[href="https://github.com/Phishing-Database/Phishing.Database/blob/master/LICENSE"]')).toHaveText("MIT");
   // A feed with no standard licence links its publisher's own terms.
   const certPl = sources.locator("li", { hasText: "CERT Polska" });
   await expect(certPl.locator('a[href="https://hole.cert.pl/schema/certpl_lista_ostrzezen_api_v2.pdf"]')).toHaveText("условия использования");

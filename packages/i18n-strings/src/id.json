@@ -2129,6 +2129,7 @@
       "sources_popularity_model": "Model phishing kami juga belajar dari kedua daftar ini seperti apa situs asli. Untuk model, daftar itu dipangkas menjadi nama host dan nama situs, digabung, lalu diambil sampelnya sebagai contoh pelatihan.",
       "sources_phishing_heading": "Situs berbahaya",
       "sources_phishing_body": "Daftar situs berbahaya yang diblokir Cleanway dan contoh phishing tempat model kami belajar berasal dari sumber-sumber publik ini.",
+      "sources_phishing_former": "Versi daftar sebelumnya juga memuat sumber di bawah ini. File aplikasi Android yang dibuat dengan versi tersebut masih berisi salinan datanya.",
       "sources_via": "melalui",
       "sources_terms": "ketentuan penggunaan",
       "sources_full_list": "Semua sumber yang kami gunakan, beserta ketentuannya dan tanggal kami membacanya:"

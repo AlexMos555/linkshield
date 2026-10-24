@@ -23,7 +23,13 @@ Pinned here:
     landing/lib/data-sources.ts, so a new source cannot ship uncredited;
   * and only those: a feed production leaves out (OpenPhish, phishing.army,
     since 2026-10-23 CSIRT Italia, since 2026-10-24 Phishing.Database) or
-    has retired (URLhaus) is not on the page as a source we use.
+    has retired (URLhaus) is not on the page as a source we use;
+  * a feed that left while copies of its data are still handed out keeps a
+    past-tense credit (FORMER_PHISHING_SOURCES): Phishing.Database is MIT,
+    whose notice goes with every copy, and the Android files built while it
+    was in embed the published list as their seed (SeedBlocklist.kt) — the
+    released 1.0.3 APK among them. The sentence above that list names the
+    Android files in every language.
 
 What each listed source links to, and that the app's link lands on the
 section the page renders, is in scripts/test-landing-honesty.mjs, which can
@@ -55,6 +61,7 @@ ATTRIBUTION_KEYS: dict[tuple[str, ...], tuple[str, ...]] = {
         "sources_popularity_model",
         "sources_phishing_heading",
         "sources_phishing_body",
+        "sources_phishing_former",
         "sources_via",
         "sources_terms",
         "sources_full_list",
@@ -154,7 +161,9 @@ def test_every_feed_the_licensed_blocklist_reads_is_listed():
     feeds = rdd.run_sources(excluded, {})
     assert feeds, "no feeds"
     assert not feeds & rdd.NON_COMMERCIAL_FEEDS
-    assert feeds <= _attributed_ids(), f"not credited on the page: {sorted(feeds - _attributed_ids())}"
+    # Under the sources in use, not only in the past-tense list.
+    in_use = _attributed_ids("PHISHING_SOURCES")
+    assert feeds <= in_use, f"not credited on the page: {sorted(feeds - in_use)}"
 
 
 def test_the_page_credits_no_feed_production_leaves_out():
@@ -168,10 +177,34 @@ def test_the_page_credits_no_feed_production_leaves_out():
     listed = _attributed_ids("PHISHING_SOURCES")
     assert listed, "no phishing sources parsed from the page"
     assert "CSIRT Italia" not in _attributed_ids(), "left out since 2026-10-23 (ACN's terms bar commercial use)"
-    assert "Phishing.Database" not in _attributed_ids(), (
-        "left out since 2026-10-24 (MIT on the compilation; the upstream feeds are unnamed third parties)")
+    assert "Phishing.Database" not in listed, (
+        "left out since 2026-10-24 (MIT on the compilation; its upstream partners are unnamed, their terms unknown)")
     assert not listed & (rdd.NON_COMMERCIAL_FEEDS | rdd.RETIRED_FEEDS)
     assert listed <= licensed | trained, f"credited but not used: {sorted(listed - licensed - trained)}"
+
+
+def test_a_feed_that_left_keeps_a_past_tense_credit():
+    # MIT asks for its notice in every copy, and copies outlive the switch:
+    # the live set until the first forced publish, and the seed in every
+    # Android file built before it (mobile/scripts/fetch-seed-blocklist.sh).
+    rdd = _module("refresh_dangerous_domains")
+    rtf = _module("refresh_training_feeds")
+    former = _attributed_ids("FORMER_PHISHING_SOURCES")
+    assert former == {"Phishing.Database"}
+    licensed = rdd.run_sources(rdd.excluded_feeds({rdd.LICENSED_ONLY_ENV: "1"}), {})
+    trained = {source.name for source in rtf.PHISHING_SOURCES}
+    # Past tense only for what production really left: never a feed in use.
+    assert former <= rdd.NON_COMMERCIAL_FEEDS | rdd.RETIRED_FEEDS
+    assert not former & (licensed | trained | _attributed_ids("PHISHING_SOURCES"))
+
+
+@pytest.mark.parametrize("locale", LOCALES)
+def test_the_former_sources_sentence_names_the_android_files(locale):
+    # The copies still handed out are the Android files' seed lists; the
+    # sentence says so instead of claiming the feed is gone everywhere.
+    methodology = _load(locale)["landing"]["methodology"]
+    assert "Android" in methodology["sources_phishing_former"], f"[{locale}] {methodology['sources_phishing_former']!r}"
+    assert "Android" not in methodology["sources_phishing_body"], f"[{locale}] {methodology['sources_phishing_body']!r}"
 
 
 def test_every_feed_the_model_learns_from_is_listed():

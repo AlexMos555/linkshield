@@ -830,6 +830,7 @@
   "landing.methodology.sources_popularity_model": "Nuestro modelo de phishing también aprende de estas dos listas cómo son los sitios reales. Para él, las listas se reducen a nombres de host y de sitio, se combinan y se toman muestras de ellas como ejemplos de entrenamiento.",
   "landing.methodology.sources_phishing_heading": "Sitios peligrosos",
   "landing.methodology.sources_phishing_body": "La lista de sitios peligrosos que bloquea Cleanway y los ejemplos de phishing con los que aprende nuestro modelo provienen de estas fuentes públicas.",
+  "landing.methodology.sources_phishing_former": "Versiones anteriores de la lista también incluían la fuente de abajo. Los archivos de la app para Android creados con esas versiones aún contienen una copia de sus datos.",
   "landing.methodology.sources_via": "a través de",
   "landing.methodology.sources_terms": "condiciones de uso",
   "landing.methodology.sources_full_list": "Todas las fuentes que usamos, con sus condiciones y la fecha en que las leímos:",

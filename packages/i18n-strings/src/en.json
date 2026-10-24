@@ -2125,6 +2125,7 @@
       "sources_popularity_model": "Our phishing model also learns from these two lists what real sites look like. For it, the lists are reduced to host and site names, merged, and sampled as training examples.",
       "sources_phishing_heading": "Dangerous sites",
       "sources_phishing_body": "The list of dangerous sites Cleanway blocks and the phishing examples our model learns from come from these public feeds.",
+      "sources_phishing_former": "Earlier versions of the list also included the feed below. Android app files built from those versions still carry a copy of its data.",
       "sources_via": "via",
       "sources_terms": "terms of use",
       "sources_full_list": "Every source we use, with its terms and the date we read them:"
