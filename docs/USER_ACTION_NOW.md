@@ -111,13 +111,12 @@ Weekly-бенчмарк рассчитан укладываться в лими�
 ### 9. Firefox AMO + Edge listings (те же zip, бесплатно)
 **Что:** `dist/store-artifacts/cleanway-0.2.2-firefox.zip` → addons.mozilla.org,
 `cleanway-0.2.2-edge.zip` → Edge dev console.
-**Сначала (5 минут, только Firefox):** `about:debugging` → «Этот Firefox» → «Загрузить
-временное дополнение» → `extension-firefox/manifest.json`. Открыть окно по значку
-(должен появиться вердикт, а не вечное «Проверяю страницу…»), Настройки (уровень
-и статистика загрузились) и образец страницы предупреждения: в about:debugging у
-Cleanway указан «URL манифеста» (`moz-extension://…/manifest.json`) — открыть его,
-заменив `manifest.json` на `src/popup/block-preview.html`. Автотесты Firefox-сборку
-не запускают: Chromium не умеет MV2.
+**Проверка в Firefox перед загрузкой — ✅ сделано автоматически:**
+`scripts/smoke-firefox-extension.mjs` ставит `cleanway-0.2.2-firefox.zip` в настоящий
+Firefox и проходит окно по значку (вердикт, а не вечное «Проверяю страницу…»),
+Настройки (уровень и статистика), страницу блокировки и её образец, консоль ошибок.
+Прогон 2026-10-24 (Firefox 158.0.1): 26 из 26. Как запустить снова и ручной
+вариант на 5 минут — `docs/STORE_SUBMISSION_KIT.md` §5.0.
 **Зачем:** покрывает ещё ~30% браузерного рынка теми же артефактами. Дев-аккаунты бесплатные.
 **Время:** 30 мин каждый.
 
