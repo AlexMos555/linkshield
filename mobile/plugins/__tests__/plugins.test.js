@@ -703,14 +703,19 @@ console.log("not-linked native modules (react-native.config.js):");
   });
   check("no app code imports them (or expo-router/drawer, expo-router/js-stack)", () => {
     const banned = [...NOT_LINKED, "react-native-drawer-layout", "expo-router/drawer", "expo-router/js-stack"];
-    const importRe = new RegExp(String.raw`(from\s+|require\(\s*|import\(\s*|import\s+)["'](${banned.map((b) => b.replace(/[/.]/g, "\\$&")).join("|")})(/[^"']*)?["']`);
+    // Every module specifier a file names: import … from "x", import "x", require("x"), import("x").
+    const specifierRe = /(?:from\s+|require\(\s*|import\(\s*|import\s+)["']([^"']+)["']/g;
+    const isBanned = (spec) => banned.some((b) => spec === b || spec.startsWith(`${b}/`));
     const offenders = [];
     const walk = (dir) => {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         if (entry.name === "node_modules" || entry.name === "android" || entry.name === "ios" || entry.name.startsWith(".")) continue;
         const p = path.join(dir, entry.name);
         if (entry.isDirectory()) walk(p);
-        else if (/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(entry.name) && importRe.test(fs.readFileSync(p, "utf8"))) offenders.push(path.relative(mobileDir, p));
+        else if (/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(entry.name)) {
+          const specs = [...fs.readFileSync(p, "utf8").matchAll(specifierRe)].map((m) => m[1]);
+          if (specs.some(isBanned)) offenders.push(path.relative(mobileDir, p));
+        }
       }
     };
     for (const dir of ["app", "src", "modules"]) walk(path.join(mobileDir, dir));
