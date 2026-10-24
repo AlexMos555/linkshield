@@ -15,8 +15,8 @@
 - [~] **4. Rotate Anthropic API key + update Railway env** · console.anthropic.com/settings/keys → Railway dashboard → Variables → ANTHROPIC_API_KEY · 5 мин · check: POST `/api/v1/explain` returns `"source": "llm"`
 - [x] **5. GitHub secret: SUPABASE_URL** · github.com/AlexMos555/linkshield/settings/secrets/actions → New repo secret · 3 мин · value из Supabase → Project Settings → API → Project URL
 - [x] **6. GitHub secret: SUPABASE_SERVICE_KEY** · Same page · 3 мин · value из Supabase → API → `service_role` (НЕ anon)
-- [x] **7. GitHub secret: GOOGLE_SAFE_BROWSING_KEY** · Same page · 5 мин · Google Cloud Console → APIs & Services → Credentials → restrict to "Safe Browsing API v4"
-- [x] **8. GitHub secret: VT_API_KEY** · Same page · 2 мин · https://www.virustotal.com/gui/my-apikey (free, 500 req/day)
+- [x] ~~**7. GitHub secret: GOOGLE_SAFE_BROWSING_KEY**~~ · не нужно с 2026-10-24: бесплатный Safe Browsing v4 — только для некоммерческого использования, бенчмарк его больше не спрашивает, ни один workflow секрет не читает ([THIRD_PARTY_FEEDS.md](THIRD_PARTY_FEEDS.md) §2b)
+- [x] ~~**8. GitHub secret: VT_API_KEY**~~ · не нужно с 2026-10-24: публичный API VirusTotal запрещён в коммерческих продуктах, по той же причине
 - [~] **9. GitHub secret: PHISHTANK_API_KEY** · Same page · 2 мин · https://www.phishtank.com/api_info.php
 - [x] ~~**10. Railway tokens: RAILWAY_TOKEN_PRODUCTION + RAILWAY_TOKEN_STAGING**~~ · не нужно: Railway сам выкатывает `main`, workflow деплоя удалены 2026-10-23 ([deploy.md](runbooks/deploy.md))
 - [x] ~~**11. Railway service IDs + health URLs (4 secrets)**~~ · не нужно, по той же причине

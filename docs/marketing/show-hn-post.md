@@ -54,7 +54,7 @@ Happy to answer questions, especially about the privacy architecture, the benchm
 HN top comments on a Show HN are predictable. Have these ready as paste-able responses.
 
 ### Q: "Why should anyone trust your benchmark? You wrote it."
-**A:** Right — that's exactly why the script is in the repo, the dataset is two public feeds (URLhaus + PhishTank), and the cron runs every Monday on a fresh sample. Anyone can clone and reproduce. The four competitor adapters are open too. If my numbers were juiced, you'd see it in your own run.
+**A:** Right — that's exactly why the script is in the repo, the phishing sample is a public feed (PhishTank's online-valid dump), and the cron runs every week on a fresh sample. Anyone can clone and reproduce. The competitor adapters are open too. If my numbers were juiced, you'd see it in your own run.
 
 ### Q: "What about Google Safe Browsing? Isn't it free + built into Chrome?"
 **A:** Yes, and it catches a lot. But Safe Browsing only checks against its hash database — no per-page heuristics (BitB, credential form mismatch, tab-napping), no per-link warnings inside Gmail/Outlook, no honeypot password injection. We layer 15 other threat-intel signals on top of Safe Browsing (11 named blocklist feeds + Tranco popularity, favicon brand-clone, typosquat watchtower, ML model, LLM judge). Per-vendor recall — with per-vendor denominators, unknown-rates included — is at cleanway.ai/transparency/methodology; refresh the number from the current `latest.json` before posting. There is no Safe Browsing row to quote: its free API is for non-commercial use only, so the benchmark stopped asking it in October 2026.

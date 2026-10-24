@@ -7,7 +7,9 @@ at training time, side-by-side with PhishTank and Cloudflare
 1.1.1.1 for Families. Until 2026-10-24 also Google Safe Browsing
 and VirusTotal's 70-vendor aggregate, whose free APIs bar a
 commercial product (NON_COMMERCIAL_RESOLVERS): they now run only
-when asked for by name, and such a run is never published.
+when asked for by name, and such a run is never published. Neither
+is a --local-analyzer run whose in-process analyzer asks Safe
+Browsing v4 (non_commercial_asked).
 
 Output goes to docs/benchmarks/<YYYY-MM>-fresh-urls.json (raw)
 and .md (human-readable table). This is the source-of-truth
@@ -99,10 +101,13 @@ PHISHTANK_FEED_URL = "https://data.phishtank.com/data/online-valid.csv.gz"
 # them in, and the weekly job had both keys. They stay available by name
 # (--virustotal / --gsb) for a non-commercial rerun with your own key, and a
 # report holding either never becomes docs/benchmarks/latest.json
-# (check_quality_gate). Cloudflare 1.1.1.1 for Families stays: its terms (the
-# Website and Online Services Terms of Use, cloudflare.com/website-terms,
-# effective 2025-08-01) name the resolver as an Online Service and carry no
-# non-commercial clause. PhishTank's FAQ allows commercial use.
+# (check_quality_gate). Cloudflare 1.1.1.1 for Families stays, pending the
+# founder: its terms (the Website and Online Services Terms of Use,
+# cloudflare.com/website-terms, effective 2025-08-01) name the resolver as an
+# Online Service and carry no non-commercial clause, but their §6 bars use of
+# the services' "information, data" except as Cloudflare authorizes, and
+# whether a published block rate is such a use they do not say
+# (docs/THIRD_PARTY_FEEDS.md §2b). PhishTank's FAQ allows commercial use.
 NON_COMMERCIAL_RESOLVERS: dict[str, tuple[str, str]] = {
     "virustotal": ("VirusTotal",
                    'its public API "must not be used in commercial products or services" '
@@ -111,6 +116,23 @@ NON_COMMERCIAL_RESOLVERS: dict[str, tuple[str, str]] = {
             'its v4 API is "for non-commercial use only", Google sells the same lookup '
             "as Web Risk — developers.google.com/safe-browsing/v4"),
 }
+
+# report["sources"] key: which Google lookup the --local-analyzer row made
+# (local_google_lookup). Absent from a run without that row.
+LOCAL_GOOGLE_LOOKUP = "cleanway_local_google_lookup"
+
+
+def non_commercial_asked(report: dict) -> list[str]:
+    """The NON_COMMERCIAL_RESOLVERS a report asked: as a column of their own,
+    or Safe Browsing v4 inside the --local-analyzer row. That row is the
+    server's own analyzer, which asks v4 whenever a v4 key is set and Web
+    Risk's is not (safe_browsing.get_client). A row whose lookup the report
+    does not record counts as having asked it."""
+    asked = set(report.get("phishing") or {}) | set(report.get("safe") or {})
+    if ("cleanway_local" in asked
+            and (report.get("sources") or {}).get(LOCAL_GOOGLE_LOOKUP) not in ("web_risk", "none")):
+        asked.add("gsb")
+    return [name for name in NON_COMMERCIAL_RESOLVERS if name in asked]
 
 # Rough per-request budget. Cleanway is hot and on-network so we
 # can run it concurrently with -c 20; Google SB has tight quotas;
@@ -583,17 +605,37 @@ async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
 _analyze_domain = None
 
 
+def _repo_on_path() -> None:
+    """Put the repo root on sys.path so 'api.*' imports resolve."""
+    repo_root = str(ROOT)
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+
+
 def _load_analyzer():
     global _analyze_domain
     if _analyze_domain is not None:
         return _analyze_domain
-    # Ensure repo root is on sys.path so 'api.*' imports resolve.
-    repo_root = str(ROOT)
-    if repo_root not in sys.path:
-        sys.path.insert(0, repo_root)
+    _repo_on_path()
     from api.services.analyzer import analyze_domain  # noqa: E402
     _analyze_domain = analyze_domain
     return _analyze_domain
+
+
+def local_google_lookup() -> str:
+    """The Google lookup the in-process analyzer will make, by the rule
+    safe_browsing.get_client() applies to the same settings (environment or
+    .env): "web_risk" with WEB_RISK_API_KEY, else "safe_browsing_v4" with
+    GOOGLE_SAFE_BROWSING_API_KEY or GOOGLE_SAFE_BROWSING_KEY, else "none"."""
+    _repo_on_path()
+    from api.config import get_settings  # noqa: E402
+
+    settings = get_settings()
+    if settings.web_risk_api_key:
+        return "web_risk"
+    if settings.google_safe_browsing_key:
+        return "safe_browsing_v4"
+    return "none"
 
 
 async def check_cleanway_local(client: httpx.AsyncClient, url: str) -> Verdict:
@@ -1043,10 +1085,11 @@ def render_md(report: dict) -> str:
                  "either correct or incorrect — it's reported separately.")
     if "virustotal" in resolvers:
         lines.append("- VirusTotal verdict is 'dangerous' iff ≥2 vendors out of 70+ flag the URL.")
-    asked = [f"{label} ({clause})" for name, (label, clause) in NON_COMMERCIAL_RESOLVERS.items()
-             if name in resolvers]
+    asked_names = non_commercial_asked(report)
+    asked = [f"{label}{'' if name in resolvers else ' through the in-process analyzer'} ({clause})"
+             for name, (label, clause) in NON_COMMERCIAL_RESOLVERS.items() if name in asked_names]
     left_out = [f"{label} ({clause})" for name, (label, clause) in NON_COMMERCIAL_RESOLVERS.items()
-                if name not in resolvers]
+                if name not in asked_names]
     if asked:
         lines.append(f"- This run also asked {' and '.join(asked)}. That makes it a non-commercial "
                      "rerun, not a Cleanway publication: it never becomes latest.json.")
@@ -1116,12 +1159,14 @@ def check_quality_gate(report: dict) -> QualityGateResult:
     dated file — we lose no history, we just don't poison the public
     pointer with junk.
 
-    A report that asked a NON_COMMERCIAL_RESOLVERS service fails first,
-    and main() honours that one even under --no-enforce-quality-gate:
-    latest.json is what the site publishes.
+    A report that asked a NON_COMMERCIAL_RESOLVERS service fails first
+    (non_commercial_asked, the --local-analyzer row included), and main()
+    honours that one even under --no-enforce-quality-gate: latest.json is
+    what the site publishes.
     """
-    asked = sorted(set(report.get("phishing") or {}) | set(report.get("safe") or {}))
-    non_commercial = [name for name in asked if name in NON_COMMERCIAL_RESOLVERS]
+    columns = set(report.get("phishing") or {}) | set(report.get("safe") or {})
+    non_commercial = [name if name in columns else f"{name} (through cleanway_local)"
+                      for name in non_commercial_asked(report)]
     if non_commercial:
         return QualityGateResult(
             passed=False,
@@ -1246,7 +1291,9 @@ async def main() -> int:
                         "Requires repo dependencies + free intel sources. "
                         "Doubles wall-clock but gives authed-endpoint baseline. "
                         "It is the server's own code: it asks Safe Browsing v4 when "
-                        "GOOGLE_SAFE_BROWSING_API_KEY/_KEY is set, Web Risk with WEB_RISK_API_KEY.")
+                        "GOOGLE_SAFE_BROWSING_API_KEY/_KEY is set, Web Risk with WEB_RISK_API_KEY. "
+                        "A run whose analyzer asked Safe Browsing v4 never becomes latest.json, "
+                        "like --gsb.")
     p.add_argument("--enforce-quality-gate", dest="enforce_quality_gate",
                    action="store_true", default=True,
                    help="Only update docs/benchmarks/latest.json if the run "
@@ -1309,8 +1356,15 @@ async def main() -> int:
                 resolvers.insert(1, name)
             else:
                 resolvers.append(name)
+    # Read before the run, so settings that do not load stop it before any lookup.
+    local_lookup: dict[str, str] = {}
     if args.local_analyzer:
         resolvers.insert(1, "cleanway_local")
+        local_lookup[LOCAL_GOOGLE_LOOKUP] = local_google_lookup()
+        if local_lookup[LOCAL_GOOGLE_LOOKUP] == "safe_browsing_v4":
+            log.warning("--local-analyzer asks Safe Browsing v4 (a v4 key is set, WEB_RISK_API_KEY "
+                        "is not): %s — a non-commercial rerun, it never becomes latest.json",
+                        NON_COMMERCIAL_RESOLVERS["gsb"][1])
 
     # Resolvers run side by side: each paces itself and talks to a different
     # service, so the run takes as long as the slowest one (Cleanway's paced
@@ -1343,6 +1397,7 @@ async def main() -> int:
             **legit_sources,
             "cleanway_api": CLEANWAY_API,
             "cleanway_identity": cleanway_identity_note(),
+            **local_lookup,
         },
         # When the Cleanway checks ran: the UTC day whose paid-source budgets
         # (IPQS, LLM judge) they could spend.

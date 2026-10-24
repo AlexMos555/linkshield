@@ -760,3 +760,89 @@ def test_the_gate_refuses_a_report_with_a_non_commercial_resolver():
         assert gate.passed is False
         assert gate.failed_gate == "non_commercial_resolver"
         assert name in gate.detail
+
+
+def _report_with_a_local_row(lookup: str | None) -> dict:
+    report = _healthy_report()
+    report["phishing"]["cleanway_local"] = dict(report["phishing"]["cleanway"])
+    report["safe"]["cleanway_local"] = dict(report["safe"]["cleanway"])
+    if lookup is not None:
+        report["sources"] = {"cleanway_local_google_lookup": lookup}
+    return report
+
+
+def test_the_gate_refuses_a_local_analyzer_row_that_asked_safe_browsing_v4():
+    """--local-analyzer runs the server's own code, which asks Safe Browsing
+    v4 whenever a v4 key is set and Web Risk's is not
+    (safe_browsing.get_client). That row is a GSB answer by another name."""
+    eval_module = _load_eval_module()
+    # No lookup recorded counts as v4: the gate fails closed.
+    for lookup in ("safe_browsing_v4", None):
+        gate = eval_module.check_quality_gate(_report_with_a_local_row(lookup))
+        assert gate.passed is False, lookup
+        assert gate.failed_gate == "non_commercial_resolver"
+        assert "gsb" in gate.detail and "cleanway_local" in gate.detail
+    for lookup in ("web_risk", "none"):
+        assert eval_module.check_quality_gate(_report_with_a_local_row(lookup)).passed is True, lookup
+
+
+@pytest.fixture
+def _fresh_settings(monkeypatch, tmp_path):
+    """No Google key from the shell or from a .env, and api.config's cached
+    Settings rebuilt before and after."""
+    from api.config import get_settings
+
+    for env in ("GOOGLE_SAFE_BROWSING_API_KEY", "GOOGLE_SAFE_BROWSING_KEY", "WEB_RISK_API_KEY"):
+        monkeypatch.delenv(env, raising=False)
+    monkeypatch.chdir(tmp_path)
+    get_settings.cache_clear()
+    yield monkeypatch
+    get_settings.cache_clear()
+
+
+def test_the_local_google_lookup_is_the_one_get_client_makes(_fresh_settings):
+    eval_module = _load_eval_module()
+    from api.config import get_settings
+
+    assert eval_module.local_google_lookup() == "none"
+    for env in ("GOOGLE_SAFE_BROWSING_API_KEY", "GOOGLE_SAFE_BROWSING_KEY"):
+        _fresh_settings.setenv(env, "stub")
+        get_settings.cache_clear()
+        assert eval_module.local_google_lookup() == "safe_browsing_v4", env
+        _fresh_settings.delenv(env)
+    _fresh_settings.setenv("GOOGLE_SAFE_BROWSING_KEY", "stub")
+    _fresh_settings.setenv("WEB_RISK_API_KEY", "stub")
+    get_settings.cache_clear()
+    assert eval_module.local_google_lookup() == "web_risk"
+
+
+@pytest.mark.asyncio
+async def test_a_local_analyzer_run_with_a_safe_browsing_key_never_becomes_latest_json(tmp_path, monkeypatch):
+    eval_module = _load_eval_module()
+    monkeypatch.setattr(eval_module, "local_google_lookup", lambda: "safe_browsing_v4")
+    report, md, calls = await _stub_run(eval_module, monkeypatch, tmp_path,
+                                        "--local-analyzer", "--no-enforce-quality-gate")
+    assert "cleanway_local" in calls and "gsb" not in calls
+    assert report["sources"]["cleanway_local_google_lookup"] == "safe_browsing_v4"
+    assert not (tmp_path / "latest.json").exists()
+    assert "This run also asked Google Safe Browsing" in md
+    assert "Not compared: VirusTotal" in md and "Google Safe Browsing (" not in md.split("Not compared:")[1]
+    # The control: no Safe Browsing v4 key, the pointer moves.
+    monkeypatch.setattr(eval_module, "local_google_lookup", lambda: "none")
+    report, md, _ = await _stub_run(eval_module, monkeypatch, tmp_path,
+                                    "--local-analyzer", "--no-enforce-quality-gate")
+    assert report["sources"]["cleanway_local_google_lookup"] == "none"
+    assert (tmp_path / "latest.json").exists()
+    assert "This run also asked" not in md
+
+
+@pytest.mark.asyncio
+async def test_a_run_without_the_local_analyzer_records_no_local_lookup(tmp_path, monkeypatch):
+    eval_module = _load_eval_module()
+
+    def _unexpected():
+        raise AssertionError("asked for the local analyzer's lookup without --local-analyzer")
+
+    monkeypatch.setattr(eval_module, "local_google_lookup", _unexpected)
+    report, _md, _calls = await _stub_run(eval_module, monkeypatch, tmp_path)
+    assert "cleanway_local_google_lookup" not in report["sources"]

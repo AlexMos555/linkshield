@@ -78,7 +78,7 @@ Skip if you have <100 GitHub stars or no public benchmark file. They'll Google-v
 
 ## If they reply with interest
 
-- Be ready to deliver the **dataset** (URLhaus + PhishTank dumps used in the last benchmark) within 1 hour.
+- Be ready to deliver the **dataset** (the PhishTank dump used in the last benchmark) within 1 hour.
 - Be ready to deliver **per-vendor reasoning** for any flagged finding (why did Cleanway say "dangerous" on this specific URL?).
 - Schedule a call same-day or next-day. Journalist enthusiasm is half-life ~24h.
 - Mention you're solo so they don't expect a marketing team. Some prefer this; others won't.
