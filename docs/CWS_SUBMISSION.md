@@ -144,13 +144,24 @@ content,"* and *"we never sell your data."* Both are true and on-brand. See
 
 ## 6. Screenshots and promo tiles
 
-Done (2026-10-21), EN and RU, 1280×800, real captures of the 0.2.1 build with
-live API verdicts: `store-assets/browser-extension/screenshots/{en,ru}/01…05.png`
-— link badges, popup verdict (composited over its tab, see the README there),
-block page, credential warning, Settings. Promo tiles 440×280 and 1400×560 in
-`store-assets/browser-extension/{en,ru}/`. Upload order and the rest:
-`docs/STORE_SUBMISSION_KIT.md` §2.3. Not captured: the webmail banner (needs a
-real mailbox) and the Privacy Audit panel.
+Ready, nothing to take by hand: EN and RU, 1280×800 PNG (RGB, no alpha), real
+captures of the 0.2.2 build in `store-assets/extension/{en,ru}/`, upload in this
+order:
+
+1. `01-block-page.png` — a scam page blocked (STOP + "Why we blocked this site")
+2. `02-popup-safe.png` — the toolbar popup on an ordinary page: safe
+3. `03-popup-caution.png` — the toolbar popup on a doubtful page: caution
+4. `04-link-badges.png` — badges on search results, the red one's tooltip open
+5. `05-settings.png` — the Settings page
+
+They are made by `scripts/store-screenshots/extension.mjs` (one command, no live
+API, no repo dependency; how to rerun after a UI change is in
+`store-assets/extension/README.md`, which also says exactly what each shot shows
+and what is staged: only the demo pages, and the popup placed over its tab).
+Promo tiles 440×280 and 1400×560 in `store-assets/browser-extension/{en,ru}/`.
+The rest of the images: `docs/STORE_SUBMISSION_KIT.md` §2.3. Not captured: the
+webmail banner (needs a real mailbox), the credential warning and the Privacy
+Audit panel.
 
 ---
 
@@ -173,7 +184,8 @@ real mailbox) and the Privacy Audit panel.
 5. [ ] Fill Privacy practices (§4): tick every category marked YES, add the
        justification text, tick the 3 certifications, add the privacy-policy URL.
 6. [ ] "Are you using remote code?" → **No**.
-7. [ ] Upload the screenshots and promo tiles (§6).
+7. [ ] Upload the screenshots (`store-assets/extension/en/01…05`, and `ru/` for the
+       Russian listing) and the promo tiles (§6).
 8. [ ] Submit. Chrome review is typically 1–3 business days.
 
 Then repeat for Edge/Opera with the same ZIP (Edge validator is pickier on
