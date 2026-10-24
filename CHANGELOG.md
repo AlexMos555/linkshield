@@ -41,6 +41,7 @@ release build without it, #277;
 (Google Play).
 
 **Что нового**
+- **Android: исправление безопасности.** Другое приложение на телефоне больше не может через «Поделиться» записать свой файл в приватную папку Cleanway (настройки, список «не мошенники») и так незаметно ослабить защиту. Для этого не требовалось ни разрешений, ни действий от человека. Ошибка была в сторонней библиотеке `expo-share-intent`, в приложение перенесено исправление её автора. Cleanway теперь появляется в меню «Поделиться» только для текста и ссылок: ничего другого он и раньше не проверял (#318). iPhone не затронут.
 - **Ссылка, которую приложение не может разобрать, больше его не закрывает.** Ссылка `cleanway://` с повторяющимся параметром (её может открыть любое приложение или сайт) роняла приложение, а на Android вместе с ним и защиту. Теперь берётся первое значение; если экран всё же не открылся — «Что-то пошло не так» и кнопка «На главный экран»; незнакомая ссылка показывает «Cleanway не может открыть эту ссылку» вместо английской страницы для разработчиков (#273).
 - **«Выйти» выходит только на этом телефоне.** Раньше выход завершал вход и на сайте, в расширении и на других телефонах. Если сервер входа отказал в продлении (вход отозван или истёк), приложение выходит из аккаунта, а не держит его вечно с ошибками; страница блокировки Cloudflare или прокси выходом не считается (#273).
 - **Язык — первый из языков телефона, который есть в приложении:** телефон на украинском, казахском или белорусском с русским вторым открывает приложение по-русски, а не по-английски (#273).
@@ -54,6 +55,7 @@ release build without it, #277;
 - **«Настройки» → «Источники данных»:** откуда эти данные и на каких условиях — ссылка на страницу методики на cleanway.ai (#291).
 
 **What's new**
+- **Android: security fix.** Another app on the phone can no longer use sharing to write its own file into Cleanway's private storage (settings, the "not a scam" list) and quietly weaken the protection. It needed no permission and nothing from the person. The bug was in the third-party `expo-share-intent` library; the app carries its author's fix. The share sheet now offers Cleanway for text and links only, the only things it ever checked (#318). iPhone was not affected.
 - A link the app cannot parse no longer closes it. A `cleanway://` link with a repeated parameter (any app or web page can open one) crashed the app, and on Android the shield with it. The first value is used now; if a screen still fails, "Something went wrong" offers "Go to the home screen"; an unknown link shows "Cleanway can't open this link" instead of the English developer page (#273).
 - Sign out signs out this phone only; it used to end the sign-in on the website, the extension and every other phone. A refresh token the sign-in server refuses (revoked or expired) ends the session instead of keeping it forever with errors; a Cloudflare or proxy block page does not count as one (#273).
 - The app starts in the first of the phone's languages it ships: a phone set to Ukrainian, Kazakh or Belarusian with Russian second opens in Russian, not English (#273).

@@ -229,7 +229,8 @@ fs.writeFileSync(m + "/package.json", JSON.stringify(p, null, 2) + "\n");' "$REP
 cp "$REPO/mobile/package-lock.json" "$M/package-lock.json"
 
 cd "$M"
-npm install
+npm install                # postinstall applies patches/ ("expo-share-intent@5.1.1 ✔"); a patch that fails stops here
+node scripts/check-share-intent.mjs   # 3× "ok:" — the shared-file path fix is in (docs/EXPO_UPGRADE_PLAN.md §1.2)
 npx expo install --check   # "Dependencies are up to date" (reanimated is excluded on purpose)
 
 # 3) The starter blocklist (1.0.2+): download + verify it into the module's
@@ -362,7 +363,8 @@ in place (no "App not installed"). That proves B2 is fixed end-to-end.
 > BundleConfig asks for `PAGE_ALIGNMENT_16K`. The merged manifest keeps the
 > VpnService (`foregroundServiceType="specialUse"` + the `vpn` subtype
 > property), BootReceiver in `:boot`, ShieldWatchdog, the alarm receiver, the
-> link-guard activity and the `text/*` share filter unchanged;
+> link-guard activity and the `text/*` share filter unchanged (since 1.0.6
+> it is `text/plain` only, #318);
 > `enableOnBackInvokedCallback="false"` is new (below), and the unused
 > `ai.cleanway.app://` deep-link scheme is gone (Expo SDK 53 stopped adding the
 > package name as a scheme; nothing links to it — `cleanway://` is the scheme).
