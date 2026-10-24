@@ -9,6 +9,10 @@
 Все внешние источники открыты и перепроверены **24 октября 2026**; ссылки в
 конце. Факты о нашем коде даны со ссылками на файлы в `main` (`4806479`).
 
+**Статус (25.10.2026):** обновление подготовлено в черновом PR
+[#327](https://github.com/AlexMos555/linkshield/pull/327) вместо #253; что
+проверено и где план пришлось поправить — раздел 10.
+
 ## Коротко
 
 | Вопрос | Ответ |
@@ -603,6 +607,99 @@ pre-launch нет новых падений.
 | 6 | TypeScript 6 или остаться на 5.9 | TS 6, как в #253: это выбор Expo для SDK 58, и CI с ним зелёный. Если предупреждения о TS 5 станут ошибками — откатиться на 5.9 через `expo.install.exclude` |
 | 7 | Отдельно, позже 1.1.0: `@expo/vector-icons` → `@react-native-vector-icons/*`; удаление `withXcode26Patches`; модернизация Gradle в модуле VPN; со временем `expo-sharing` (с SDK 55 умеет принимать «Поделиться») вместо стороннего `expo-share-intent` | Запланировать после 1.1.0 |
 | 8 | Когда выпустить исправление `expo-share-intent` на Android (1.2) | В 1.0.6 (#318): на Android она ещё не опубликована, ждать 1.1.0 не нужно. Сайт, RuStore и Play. Файлы 1.0.6 (107), собранные до слияния #318, удалить, все три пересобрать и проверить фильтр `text/plain` через `aapt2`. iPhone не затронут, его можно не пересобирать. Ту же правку держать в `release/1.0.x` |
+
+---
+
+## 10. Подготовка в черновом PR #327 (24–25.10.2026)
+
+Ветка `exp/expo-sdk-upgrade` от `main` (`9d37914`), черновой PR
+[#327](https://github.com/AlexMos555/linkshield/pull/327). #253 перенесён на
+текущий `main`, пункты 4.2.1–4.2.3 и 4.2.6 закрыты, 4.2.5 проверен локально
+без ключа. Не сливать, пока 1.0.6 не раскатана на 100% (раздел 8).
+
+### 10.1 Где план пришлось поправить
+
+1. **reanimated из `node_modules` не уходит.** `expo-router` 58 зависит от
+   `react-native-drawer-layout` обычной зависимостью, а у того
+   `react-native-gesture-handler` и `react-native-reanimated` — обязательные
+   peer. npm ставит их сам (в свежем lock — reanimated 4.7.1 и worklets
+   0.13.0). Убрать из `package.json` мало: автолинковка собрала бы их нативный
+   код в оба приложения (в #253 так и было, gesture-handler там тоже стоял).
+   Теперь `mobile/react-native.config.js` отключает их на обеих платформах,
+   `plugins.test.js` следит, чтобы код приложения их не импортировал.
+   Проверено: автолинковка их не видит, в APK нет их `.so` и классов, в
+   JS-бандле (по source map) нет ни их, ни `expo-router/drawer`.
+2. **`xcode` 4.0.0.** `@expo/config-plugins` 58.0.10 (вышел после #253)
+   требует `xcode ^4.0.0`, а в 4.0.0 уже есть наша правка `correctForPath`.
+   `patches/xcode+3.0.1.patch` и закрепление `xcode: 3.0.1` в корневом
+   `package.json` удалены; `mobile/patches/` пуст. Safari-расширение и
+   SMS-фильтр prebuild создаёт как раньше (4 цели, у всех 16.4).
+3. **TypeScript 5.9, а не 6 (запасной вариант решения 6).** С TS 6 чистый
+   `npm install` в зеркале падает с ERESOLVE: `react-i18next` 15 требует
+   `typescript ^5`. `typescript` в `expo.install.exclude`; `--ignoreConfig`
+   и `types: ["node"]` из #253 не понадобились. TS 6 — позже, вместе с
+   `react-i18next` 17.
+4. **`router.push` в SDK 58 всегда добавляет экран** (действие `PUSH`). В
+   SDK 54 повторный «Поделиться» при открытом экране проверки попадал в тот
+   же экран (report #5). `ShareIntentRouter` теперь вызывает
+   `router.navigate` — поведение как в 1.0.6. Тесты `test-domain-check-hook`
+   и `test-message-handoff` берут роутер самого expo-router 58
+   (`@react-navigation/*` в SDK 58 нет) и проверяют оба вызова. Остальные
+   `router.push` ведут на другой экран, там разницы нет; двойное нажатие
+   кнопки теперь может открыть экран дважды — посмотреть на телефоне.
+5. **`withAbiFilters` на новой архитектуре не работал молча** (риск 3).
+   Метка в `build.gradle` была, а release APK собирался со всеми четырьмя ABI
+   (117 МБ): плагин React Native кладёт `reactNativeArchitectures` в
+   `defaultConfig.ndk.abiFilters`, AGP объединяет их с фильтром release.
+   Исключение `lib/x86*` при упаковке не помогло (пересиливают `pickFirsts`
+   React Native, 86 МБ). Исправлено своим `finalizeDsl`: эти ABI переезжают из
+   `defaultConfig` в debug, release — только ARM, 62 МБ.
+6. **App group в entitlements дважды.** `expo-share-intent` 9 добавляет свою
+   группу перед уже добавленной нашими плагинами. `withIosAppStore` теперь
+   оставляет каждую группу один раз.
+7. **`react-native-get-random-values` 2.0.0** (решение шага А): TurboModule
+   через codegen, на Android codegen-задачи отработали, класс в dex есть.
+   `getEnforcing` вызывается при первом обращении, и `catch` в `device-id` /
+   `install-id` по-прежнему вернёт `null` молча — проверка 6.2 п. 14 нужна.
+8. **Шаг А отдельной сборкой не делался.** Его правки (новая архитектура,
+   reanimated, random-values) вошли в эту ветку. Контрольная сборка SDK 54 с
+   новой архитектурой нужна, только если на 58 найдётся ошибка, которую не
+   удаётся локализовать (2.2, п. 3).
+9. Мелочи: строгие типы RN 0.88 у `ref` поля пароля (`app/auth.tsx`,
+   появилось после #253); `File.write` в «Скачать мои данные» ждёт записи,
+   заглушка в тесте асинхронная и ловит пропущенный `await` (4.2.3).
+
+### 10.2 Что проверено локально
+
+| Что | Результат |
+|---|---|
+| CI в #327 | Все проверки зелёные (`mobile`: typecheck, i18n, тесты плагинов, все `test-*.mjs`; lock sync; CodeQL; Security) |
+| `npx expo-doctor` в зеркале | 20/20 |
+| `npx expo install --check` | «Dependencies are up to date» (`typescript` исключён) |
+| `scripts/check-prebuild-gradle.mjs` после каждого prebuild | Все шесть меток плагинов на месте (подпись, ABI, стартовый список, магазин, share-intent, тёмные панели) |
+| Android `assembleRelease`, сайт и RuStore | Собираются без ключа (debug-подпись). 62 МБ, armeabi-v7a + arm64-v8a. Первая сборка 14 мин, следующие 6–8 мин |
+| Android `bundleRelease` + `assembleRelease`, Play | AAB 49 МБ (ARM), APK 64 МБ; BILLING и RevenueCat только тут |
+| `aapt2` | targetSdk 36, compileSdk 37, minSdk 24; разрешения сайта совпадают с APK 1.0.6; фильтр «Поделиться» только `text/plain`; VPN `specialUse` + `vpn`; BootReceiver в `:boot`; правила бэкапа |
+| 16 КБ | `zipalign -c -P 16` проходит; все 27 `arm64-v8a` библиотек выровнены (APK и AAB) |
+| R8 | Включён; классы из манифеста сохранили имена; `mapping.txt` ~88 МБ на сборку |
+| `withDistributionGuard` | AAB с `site` и сборка для другого магазина падают в начале gradle, как на SDK 54 |
+| `:cleanway-vpn:testDebugUnitTest` | 341 из 343; два падения — те же бюджеты времени `MessageAnalyzerTest` на этом iMac (9,6 мс), что и на SDK 54 |
+| `withXcode26Patches` | `pod install` не напечатал ни одной строки `[Cleanway] patched`: на SDK 58 плагин ничего не делает, его можно удалять отдельным PR после сборки в EAS |
+| iOS prebuild | 4 цели, у всех 16.4; `SceneDelegate.swift` и `UIApplicationSceneManifest`; права: `dns-settings`, app group один раз, без `aps-environment` |
+| iOS `pod install` | 123 pod-а; `ExpoModulesCore` и ещё 5 модулей Expo SDK 58 приходят уже собранными (precompiled xcframework) |
+| iOS симулятор, Xcode 26.3 (по `docs/IOS.md` §1.1) | **Собирается.** `xcodebuild` Debug для симулятора: BUILD SUCCEEDED за 228 с (только x86_64, без индекса и dSYM: на диске было ~4 ГБ; первая попытка с обеими архитектурами остановлена из-за места, ошибок до остановки не было). Компилятор Swift 6.2.4 больше не падает, как в #253: `ExpoModulesCore` приходит готовым xcframework, и Xcode 26.3 его импортирует. `CleanwayVpn`, `CleanwaySafari`, `CleanwaySmsFilter`, все три расширения и приложение собрались без ошибок; предупреждения в нашем коде — только устаревшие API в сгенерированном `ShareViewController.swift`. Официально SDK 56+ требует Xcode 26.4+, так что для Release и App Store это не доказательство. На симуляторе не запускалась: единственный загруженный симулятор занят другой сессией |
+
+### 10.3 Что осталось
+
+- Проверка на телефонах — весь раздел 6.2 (ничего не ставилось ни на
+  телефон, ни в эмулятор).
+- iOS в EAS (`development`/`preview`, затем Release) — раздел 5, риск 5.
+- Перед слиянием: версия 1.1.0, новый `versionCode` и `buildNumber`;
+  подписанные сборки по `docs/RUSTORE_SUBMISSION.md` §2 с ключом;
+  `mapping.txt` каждого релиза — в Play.
+- Отдельными PR после 1.1.0 (решение 7): удалить `withXcode26Patches`;
+  `@expo/vector-icons` → `@react-native-vector-icons/*`; TS 6 вместе с
+  `react-i18next` 17; Gradle модуля VPN на `expo-module-gradle-plugin`.
 
 ---
 

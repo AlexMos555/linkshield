@@ -50,9 +50,21 @@ xcodebuild -workspace Cleanway.xcworkspace -scheme Cleanway -configuration Debug
 
 Debug loads JS from Metro (`npx expo start` in `$M`); Release embeds the bundle.
 Both configurations were built and run on the iOS 26.2 simulator with Xcode 26.3
-(2026-10-09). `plugins/withXcode26Patches.js` keeps fmt / Sentry /
-expo-localization compiling on Xcode 26. A full build is ~4 GB of DerivedData —
-delete the mirror and `build/` afterwards.
+(2026-10-09, Expo SDK 54). `plugins/withXcode26Patches.js` keeps fmt / Sentry /
+expo-localization compiling on Xcode 26 (SDK 54; on SDK 58 it patches nothing).
+A full build is ~4 GB of DerivedData — delete the mirror and `build/` afterwards.
+
+**Expo SDK 58 (1.1.0, #327, 2026-10-25):** the same recipe builds the Debug
+simulator app with Xcode 26.3 (BUILD SUCCEEDED; `pod install` 123 pods). Expo
+officially wants Xcode 26.4+ from SDK 56, and in #253 the Swift 6.2.4 compiler
+crashed on `expo-modules-core`; since `expo@58.0.19` `ExpoModulesCore` and five
+other Expo modules come as precompiled xcframeworks, and Xcode 26.3 imports
+them. Short on disk, build one architecture without the index or dSYMs (~2 GB
+of DerivedData instead of ~4 GB): add `ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES
+COMPILER_INDEX_STORE_ENABLE=NO DEBUG_INFORMATION_FORMAT=dwarf` to the
+`xcodebuild` line. Not yet tried on SDK 58: running it, a Release build, an
+archive — App Store builds go through EAS (docs/EXPO_UPGRADE_PLAN.md §5,
+risk 5).
 
 ### 1.2 For TestFlight / the App Store (EAS)
 

@@ -23,6 +23,25 @@
 ### Tests
 - 382 backend tests passing (was 373). Added 9 parameterized tests for `CheckoutRequest` URL validation.
 
+## [App 1.1.0] - draft (#327, not merged)
+
+Expo SDK 58 (React Native 0.88, React 19.3, the New Architecture only),
+prepared on `exp/expo-sdk-upgrade` by docs/EXPO_UPGRADE_PLAN.md (§10 has
+what was built and checked). Nothing else goes into 1.1.0. Merges only after
+1.0.6 is out at 100% in every store; version and build numbers are bumped then.
+
+**Что нового**
+- **Новая основа приложения: Expo SDK 58.** Без неё с апреля 2027 года нельзя выпускать обновления для iPhone. iPhone: нужна iOS 16.4 или новее (было 15.1).
+- **Android: «Поделиться» без собственной заплатки.** Исправление обхода пути из 1.0.6 теперь внутри самой библиотеки `expo-share-intent` 9; проверка перед каждой release-сборкой осталась.
+- **«Скачать мои данные»** ждёт, пока файл записан, и только потом открывает меню «Поделиться» (в SDK 58 запись стала асинхронной).
+- Повторный «Поделиться» при открытом экране проверки, как и раньше, попадает в этот экран, а не открывает ещё один.
+
+**What's new**
+- **The app moves to Expo SDK 58.** Without it no iPhone update can ship from April 2027. iPhone: iOS 16.4 or later (was 15.1).
+- **Android: sharing without our own patch.** 1.0.6's path-traversal fix now ships inside `expo-share-intent` 9 itself; the check before every release build stays.
+- **"Download my data"** waits until the file is written before opening the share sheet (writing became asynchronous in SDK 58).
+- A second share while a check screen is open still goes to that screen instead of opening another one.
+
 ## [App 1.0.6] - unreleased
 
 iOS build 6, Android versionCode 107. (iOS build 5, uploaded to TestFlight on

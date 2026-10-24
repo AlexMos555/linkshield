@@ -195,19 +195,25 @@ Turning the model back on = unset `SMS_TEXT_MODEL_ENABLED` (or `true`).
 
 > ⚠️ **Build from a mirror outside the monorepo, NOT from the repo checkout.**
 > npm workspaces hoist the app's packages to the repo root next to landing's
-> React (19.2 at the root, while the app pins **19.1.0** for Expo SDK 54), and
+> React (19.2 at the root, while the app pins **19.3.0** for Expo SDK 58), and
 > root-hoisted Expo/RN packages then resolve the wrong copies. A standalone copy
-> of `mobile/` with its own `node_modules` has exactly one `react-native@0.81.5`
-> and one `react@19.1.0`. (On SDK 52 the same hoisting put `react-native@0.86`
+> of `mobile/` with its own `node_modules` has exactly one `react-native@0.88.0`
+> and one `react@19.3.0`. (On SDK 52 the same hoisting put `react-native@0.86`
 > at the root and Metro died in `VirtualView.js`.) Fixing the hoisting is a
 > nice-to-have, not a launch blocker; the mirror is the proven path.
 >
-> **Toolchain (Expo SDK 54 / RN 0.81, verified 2026-10-08):** Node ≥ 20.19.4
-> (22 is fine), JDK 17+ (Android Studio's bundled JBR 21 works), the Android SDK
-> with platform **android-36** and build-tools **36.0.0**. Gradle 8.14.3, AGP
-> 8.11, Kotlin 2.1.20 and **NDK 27.1.12297006** come with the generated project;
-> Gradle downloads the NDK on the first build (≈2.5 GB, slow). The first full
-> build took ~22 min on the 6-core Intel Mac, later ones ~2 min.
+> **Toolchain (Expo SDK 58 / RN 0.88, 1.1.0+, verified 2026-10-24 in #327):**
+> Node ≥ 22.13 (22.14 here), JDK 17+ (Android Studio's bundled JBR 21 works),
+> the Android SDK with platform **android-37** and build-tools **37.0.0**
+> (compileSdk 37, targetSdk 36, minSdk 24). Gradle 9.4.1, AGP 9.2.1, Kotlin
+> 2.2 and **NDK 27.1.12297006** come with the generated project; Gradle
+> downloads what is missing on the first build. SDK 58 turns R8 on for release
+> builds (`android.enableMinifyInReleaseBuilds=true`): keep each release's
+> `android/app/build/outputs/mapping/release/mapping.txt` (Play wants it for
+> readable crash stacks). Expo SDK 54 (1.0.x, `release/1.0.x`) used Node ≥
+> 20.19.4, android-36 / build-tools 36.0.0, Gradle 8.14.3, AGP 8.11 and Kotlin
+> 2.1.20; the first full build took ~22 min on the 6-core Intel Mac, later ones
+> ~2 min.
 > `mobile/package-lock.json` is the lock of the verified mirror (its
 > `@cleanway/*` entries point at `vendor/`).
 
@@ -241,12 +247,12 @@ fs.writeFileSync(m + "/package.json", JSON.stringify(p, null, 2) + "\n");' "$REP
 cp "$REPO/mobile/package-lock.json" "$M/package-lock.json"
 
 cd "$M"
-npm install                # postinstall applies patches/ ("expo-share-intent@5.1.1 ✔"). Exit ≠ 0 = STOP, fix it first
-node scripts/check-share-intent.mjs   # 3× "ok:"; "CHECK FAILED" = STOP (docs/EXPO_UPGRADE_PLAN.md §1.2)
+npm install                # postinstall: mobile/patches/ is empty since SDK 58 (1.0.x: "expo-share-intent@5.1.1 ✔"). Exit ≠ 0 = STOP, fix it first
+node scripts/check-share-intent.mjs   # 4× "ok:" (1.0.x: 3×); "CHECK FAILED" = STOP (docs/EXPO_UPGRADE_PLAN.md §1.2)
 # (This block has no `set -e`, so the lines below would still run. A release
 # build refuses to start anyway without the fix — plugins/withShareIntentGuard.js
 # re-runs the check before compiling — but do not count on getting that far.)
-npx expo install --check   # "Dependencies are up to date" (reanimated is excluded on purpose)
+npx expo install --check   # "Dependencies are up to date" (typescript is excluded on purpose: 5.9, react-i18next 15 needs TS 5)
 
 # 3) The starter blocklist (1.0.2+): download + verify it into the module's
 #    assets, AFTER the rsync (its --delete removes the gitignored file). It
@@ -275,10 +281,10 @@ cw_build() {   # cw_build <site|rustore|play> <gradle task>...
   export EXPO_PUBLIC_DISTRIBUTION="$1"; shift
   cd "$M"
   CI=1 npx expo prebuild -p android --clean       # CI=1: the mirror is not a git repo
-  grep -n "cleanwayKeystoreProps" android/app/build.gradle          # release signing wired
-  grep -n "cleanway-seed-guard" android/app/build.gradle            # seed guard wired
-  grep -n "cleanway-share-intent-guard" android/app/build.gradle    # share-intent fix guard wired
-  grep -n "cleanwayPrebuildDistribution = '$EXPO_PUBLIC_DISTRIBUTION'" android/app/build.gradle
+  # Every gradle/Kotlin plugin landed (signing, ABI filters, seed, store and
+  # share-intent guards, dark system bars) and android/ is for this store.
+  # "PREBUILD CHECK FAILED" = STOP: a plugin found no anchor in this template.
+  node scripts/check-prebuild-gradle.mjs --distribution="$EXPO_PUBLIC_DISTRIBUTION" || return 1
   cp "$KEYS/keystore.properties" "$KEYS/cleanway-release.jks" android/
   (cd android && ./gradlew "$@")                  # prints "Cleanway: building the … build"
 }
@@ -292,11 +298,13 @@ AAB=android/app/build/outputs/bundle/release/app-release.aab
 export EXPO_PUBLIC_REVIEW_EMAILS="review@cleanway.ai"
 
 # A) Site APK — cleanway.ai/android and the GitHub release (web checkout,
-#    self-update banner). Do NOT pass -PreactNativeArchitectures: it does NOT
-#    slim the APK (it only feeds splits.abi.include, and splits are off by
-#    default). Slimming is handled by plugins/withAbiFilters.js, which drops the
-#    emulator-only x86/x86_64. Result: 56 MB with armeabi-v7a + arm64-v8a, i.e.
-#    every real phone. (arm64-only, ~20 MB smaller but excludes old 32-bit
+#    self-update banner). Do NOT pass -PreactNativeArchitectures: slimming is
+#    plugins/withAbiFilters.js's job, release builds only (debug keeps x86_64
+#    for emulators). It drops the emulator-only x86/x86_64: on the New
+#    Architecture (Expo SDK 58, 1.1.0) it also has to move React Native's own
+#    defaultConfig ABIs to debug, or the release APK keeps all four (117 MB).
+#    Result: 62 MB on SDK 58 (56–60 MB on SDK 54) with armeabi-v7a + arm64-v8a,
+#    i.e. every real phone. (arm64-only, ~20 MB smaller but excludes old 32-bit
 #    phones: also export CLEANWAY_ABIS=arm64-v8a before cw_build.)
 cw_build site assembleRelease
 cp "$APK" "$OUT/cleanway-$V-$VC-arm.apk"
@@ -306,7 +314,7 @@ cp "$APK" "$OUT/cleanway-$V-$VC-arm.apk"
 cw_build rustore assembleRelease
 cp "$APK" "$OUT/cleanway-$V-$VC-rustore.apk"
 
-# C) Google Play AAB (35 MB) — pays only through Google Play. Needs the public
+# C) Google Play AAB (35 MB on SDK 54, 49 MB on SDK 58) — pays only through Google Play. Needs the public
 #    RevenueCat key too (goog_…, docs/runbooks/revenuecat.md §5; never sk_):
 #    export it or put it in mobile/.env, else the paywall says "coming soon".
 #    The APK built next to it (same prebuild) is only for the checks below and
@@ -365,7 +373,8 @@ for each of the three APKs (the Play one stands in for its AAB):
 ```bash
 APK="$OUT/cleanway-$V-$VC-arm.apk"   # then -rustore.apk, then -play-check.apk
 
-# targetSdkVersion:'36' (Play's floor since 31 Aug 2026), compileSdkVersion='36'.
+# targetSdkVersion:'36' (Play's floor since 31 Aug 2026), compileSdkVersion='37'
+# since Expo SDK 58 (1.1.0; '36' on 1.0.x).
 "$BT/aapt2" dump badging "$APK" | grep -E "targetSdkVersion|compileSdkVersion"
 
 # Should show CN=Cleanway…, NOT "CN=Android Debug".
@@ -433,6 +442,30 @@ in place (no "App not installed"). That proves B2 is fixed end-to-end.
 > blocked site, the QR scanner (camera) and the after-call screen. No release
 > key was used and nothing was installed on the phone during the upgrade.
 
+> **Expo SDK 58 (1.1.0, #327, 2026-10-24) — compile check only.** Built in a
+> mirror exactly as above, without the release key (debug-signed), from the
+> branch's `app.json` (still 1.0.6 / 107): site and RuStore `assembleRelease`,
+> Play `bundleRelease assembleRelease`, each with its own prebuild. All succeed
+> (a cold first build ~15 min; later ones 6–8 min). `check-prebuild-gradle.mjs`
+> finds all six plugin markers in each prebuild. `aapt2`: `targetSdkVersion 36`,
+> `compileSdkVersion 37`, `minSdkVersion 24`; the site APK's permission list is
+> identical to the 1.0.6 site APK's; BILLING only in the Play build; the share
+> filter is `text/plain` only; VpnService `specialUse` + subtype `vpn`,
+> BootReceiver in `:boot`, the backup rules and
+> `enableOnBackInvokedCallback=false` are in the manifest. 16 KB: `zipalign -c
+> -P 16` passes and all 27 `arm64-v8a` libraries (APK and AAB) have 16 KB LOAD
+> alignment. ABIs: armeabi-v7a + arm64-v8a only, once `withAbiFilters` learnt
+> the New Architecture (above). No reanimated, worklets or gesture-handler code
+> or `.so` in any build, and none of them in the JS bundle (its source map).
+> The seed is in every build. Release builds are minified by R8 now: our
+> manifest classes keep their names; `mapping.txt` is ~88 MB per build. A
+> release for another store than android/ was generated for, and a site AAB,
+> both stop at the start of gradle as before. The VPN module's Kotlin tests:
+> 341 of 343 pass; the two that fail are the same `MessageAnalyzerTest`
+> wall-clock budgets as above (9.6 ms), and `MessageIosParityTest` needs
+> `CLEANWAY_REPO_ROOT=<checkout>` when run from the mirror. Nothing was run on a
+> phone or an emulator: everything in docs/EXPO_UPGRADE_PLAN.md §6.2 is still open.
+
 ### Android 15/16 behaviour (targetSdk 34 → 36) and what the app does about it
 
 - **Edge-to-edge is mandatory** (Android 15 enforces it at targetSdk 35; Android
@@ -463,10 +496,12 @@ in place (no "App not installed"). That proves B2 is fixed end-to-end.
 - **16 KB pages**: covered by React Native ≥ 0.77 and NDK r27/r28 builds; see
   the checks above. Play blocks non-compliant updates of apps targeting
   Android 15+ from 1 Feb 2027.
-- **Architecture**: the app stays on React Native's legacy architecture
-  (`newArchEnabled: false`, as on SDK 52; reanimated stays on 3.19 because 4.x
-  needs the New Architecture). Expo SDK 54 is the last SDK that allows this —
-  moving to SDK 55+ means switching to the New Architecture first.
+- **Architecture**: since Expo SDK 58 (1.1.0) the app runs on React Native's
+  New Architecture, the only one since SDK 55 (1.0.x stays on the legacy one,
+  `newArchEnabled: false`). react-native-reanimated is no longer a dependency;
+  npm still installs it with react-native-gesture-handler (and worklets), as
+  required peers of expo-router's drawer, but `react-native.config.js` keeps
+  their native code out of every build (docs/EXPO_UPGRADE_PLAN.md §2.2).
 
 ---
 

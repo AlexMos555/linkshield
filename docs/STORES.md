@@ -231,6 +231,13 @@ needed. Exact converter flags: docs/IOS.md §2.6.
 > `landing/lib/install-urls.ts` has no Google Play entry yet — the Android button
 > leads to `/android` (direct APK). Everything below is what Play Console asks
 > for, answered from the code.
+>
+> **1.1.0 (Expo SDK 58 / RN 0.88, draft #327, 2026-10-24):** the requirements in
+> §6.A still hold on a debug-signed compile check — `targetSdkVersion 36`,
+> `compileSdkVersion 37`, 16 KB alignment of all `arm64-v8a` libraries, the same
+> permissions; the AAB is 49 MB, ARM-only. R8 now minifies release builds:
+> upload each release's `mapping.txt` to Play (docs/RUSTORE_SUBMISSION.md §2,
+> docs/EXPO_UPGRADE_PLAN.md §10).
 
 Package `ai.cleanway.app`. Build and signing are shared with RuStore:
 `docs/RUSTORE_SUBMISSION.md` §1–2 (Play App Signing: upload the AAB signed with
