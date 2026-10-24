@@ -2,9 +2,11 @@ name: Weekly fresh-URL benchmark (recall transparency)
 
 # Once a week, fetch the latest PhishTank phishing feed (URLhaus too until
 # it closed anonymous downloads on 2026-10-21),
-# run them through cleanway.ai/api/v1/public/check + Cloudflare
-# 1.1.1.1 for Families + (when keys are configured) Google Safe
-# Browsing + VirusTotal aggregate, and publish the results.
+# run them through cleanway.ai/api/v1/public/check + PhishTank + Cloudflare
+# 1.1.1.1 for Families, and publish the results. Google Safe Browsing and
+# VirusTotal were in the comparison until 2026-10-24: their free APIs bar a
+# commercial product (scripts/eval_fresh_urls.py, NON_COMMERCIAL_RESOLVERS),
+# so this job hands the script neither key and turns both off by name.
 #
 # This is the credibility moat for go-to-market: every other vendor
 # publishes glossy threat reports. We publish the actual recall +
@@ -37,7 +39,7 @@ on:
   workflow_dispatch:
     inputs:
       sample:
-        description: 'URLs per side (phishing + legit). Resolvers run side by side; VirusTotal (16 s a lookup) is the slowest: sample=100 → ~55 min, sample=200 → ~110 min. Above 200 VirusTotal is skipped (free tier: 500 lookups a day, and the timeout).'
+        description: 'URLs per side (phishing + legit). Resolvers run side by side; Cleanway (~15 checks a minute without the bypass token) is the slowest: sample=100 → ~20 min, sample=200 → ~35 min, sample=1000 → ~140 min (the timeout is 150).'
         type: number
         default: 100
 
@@ -75,15 +77,12 @@ jobs:
     permissions:
       contents: write       # commit benchmark results
       pull-requests: write  # raise a PR on recall regression
-    # Sized for VirusTotal, the slowest resolver: 16 s a lookup, measured
-    # 15.75 s a URL (run 35589801520, 2026-09-21), so 2 x 200 URLs ≈ 105 min.
-    # The resolvers run side by side, so the run takes about as long as VT
-    # (Cleanway's 400 checks at ~15 a minute take ~27 min meanwhile), plus
-    # ~5 min of setup and the legit-sample check: ~110 min at sample=200.
-    # A cancelled run writes nothing — no dated file, no latest.json, no
-    # commit — so the ceiling keeps ~40 min of headroom. (90 min, the old
-    # value, cancelled every VT run above sample≈130: the resolvers used to
-    # run one after another.)
+    # Sized for VirusTotal until 2026-10-24 (16 s a lookup: ~110 min at
+    # sample=200). Without it Cleanway sets the pace: its 400 checks at ~15 a
+    # minute take ~27 min, plus ~5 min of setup and the legit-sample check.
+    # The ceiling stays: a cancelled run writes nothing — no dated file, no
+    # latest.json, no commit — and 150 min still fits a dispatched
+    # sample=1000 (2,000 checks, ~140 min).
     timeout-minutes: 150
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -117,10 +116,9 @@ jobs:
 
       - name: Run benchmark
         env:
-          # Public endpoints don't need keys but secrets are honoured.
-          GOOGLE_SAFE_BROWSING_KEY: ${{ secrets.GOOGLE_SAFE_BROWSING_KEY }}
+          # Public endpoints don't need keys but secrets are honoured. No
+          # VirusTotal or Safe Browsing key, on purpose: see the header.
           PHISHTANK_API_KEY: ${{ secrets.PHISHTANK_API_KEY }}
-          VT_API_KEY: ${{ secrets.VT_API_KEY }}
           # Optional. When set, eval_fresh_urls.py sends it as
           # X-Cleanway-Benchmark and the server skips its per-IP limits.
           # Without it the script identifies as a few rotating app installs
@@ -138,24 +136,21 @@ jobs:
           #
           # Sample sizing: dispatch honours the input; the schedule runs 200
           # per side (the gate needs >= 100 phishing). Without the token that
-          # is ~400 Cleanway checks at ~15 a minute (~27 min); VirusTotal, run
-          # alongside, sets the wall time: ~105 min for 400 lookups (see
-          # timeout-minutes). Above 200 per side VT is skipped: 2 x sample
-          # lookups would pass both its 500-a-day free quota and the timeout.
+          # is ~400 Cleanway checks at ~15 a minute (~27 min; see
+          # timeout-minutes).
+          #
+          # --no-virustotal --no-gsb: the script's default since 2026-10-24,
+          # said again here so a change of that default cannot bring either
+          # back into the published run (tests/test_weekly_benchmark_workflow.py).
           if [ -n "$SAMPLE_INPUT" ]; then
             SAMPLE="$SAMPLE_INPUT"
           else
             SAMPLE=200
           fi
-          VT_FLAG=""
-          if [ "$SAMPLE" -gt 200 ]; then
-            VT_FLAG="--no-virustotal"
-            echo "::notice::sample=$SAMPLE > 200: VirusTotal skipped (500 lookups a day, 16 s each)."
-          fi
           echo "Running benchmark with sample=$SAMPLE (bypass token $([ -n "${BENCHMARK_BYPASS_TOKEN}" ] && echo present || echo absent))"
           python scripts/eval_fresh_urls.py \
             --sample "$SAMPLE" \
-            $VT_FLAG \
+            --no-virustotal --no-gsb \
             --out-tag "$(date -u +%Y-%m-%d)"
 
       - name: Show latest pointer state

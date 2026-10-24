@@ -550,8 +550,9 @@ async def test_latency_is_the_servers_not_our_own_pacing(monkeypatch):
 @pytest.mark.asyncio
 async def test_a_run_checks_resolvers_side_by_side_and_records_when_cleanway_ran(tmp_path, monkeypatch):
     """VirusTotal alone needs ~105 min for 2 x 200 URLs; run after the others
-    it pushed the weekly job past its timeout, which writes nothing. Offline:
-    every feed and adapter is a stub."""
+    it pushed the weekly job past its timeout, which writes nothing. (Since
+    2026-10-24 it runs only when asked for by name — see the licensing tests
+    below.) Offline: every feed and adapter is a stub."""
     import asyncio
 
     eval_module = _load_eval_module()
@@ -574,7 +575,7 @@ async def test_a_run_checks_resolvers_side_by_side_and_records_when_cleanway_ran
         monkeypatch.setitem(eval_module.ADAPTERS, name, fake_adapter(name))
         monkeypatch.setitem(eval_module.MIN_INTERVAL_S, name, 0.0)
     monkeypatch.setattr(sys, "argv", ["eval_fresh_urls.py", "--sample", "3", "--out-tag", "t",
-                                      "--out-dir", str(tmp_path)])
+                                      "--out-dir", str(tmp_path), "--virustotal"])
 
     assert await eval_module.main() == 0
     report = json.loads((tmp_path / "t-fresh-urls.json").read_text(encoding="utf-8"))
@@ -673,3 +674,175 @@ def test_report_markdown_says_what_the_legit_sample_is():
     assert "The Cleanway checks ran 2026-10-04T15:16:02Z – 2026-10-04T15:44:10Z." in md
     report["sources"]["legit_outside_allowlist"] = False
     assert "NOT a measurement" in eval_module.render_md(report)
+
+
+# ─────────────────────────────────────────────────────────────────
+# Licensing: the published run asks no service whose free API bars a
+# commercial product (2026-10-24)
+# ─────────────────────────────────────────────────────────────────
+
+async def _stub_run(eval_module, monkeypatch, tmp_path, *flags: str) -> tuple[dict, str, list[str]]:
+    """One offline main() over one phishing URL and one legit site, every
+    adapter a stub and BOTH keys in the environment, as the weekly job had
+    them. Returns (report, markdown, the resolvers that were called)."""
+    calls: list[str] = []
+
+    async def fake_feed(_limit):
+        return ["https://phish0.example/login"]
+
+    def stub(name):
+        async def _check(_client, url):
+            calls.append(name)
+            return eval_module.Verdict(name, "dangerous" if "phish" in url else "safe")
+        return _check
+
+    monkeypatch.setattr(eval_module, "fetch_phishtank_recent", fake_feed)
+    monkeypatch.setattr(eval_module, "VT_KEY", "stub")
+    monkeypatch.setattr(eval_module, "GSB_KEY", "stub")
+    for name in list(eval_module.ADAPTERS):
+        monkeypatch.setitem(eval_module.ADAPTERS, name, stub(name))
+        monkeypatch.setitem(eval_module.MIN_INTERVAL_S, name, 0.0)
+    monkeypatch.setattr(sys, "argv", ["eval_fresh_urls.py", "--sample", "1", "--out-tag", "t",
+                                      "--out-dir", str(tmp_path), *flags])
+    assert await eval_module.main() == 0
+    report = json.loads((tmp_path / "t-fresh-urls.json").read_text(encoding="utf-8"))
+    return report, (tmp_path / "t-fresh-urls.md").read_text(encoding="utf-8"), calls
+
+
+@pytest.mark.asyncio
+async def test_keys_alone_no_longer_bring_in_virustotal_or_safe_browsing(tmp_path, monkeypatch):
+    """VirusTotal's public API "must not be used in commercial products or
+    services" (docs.virustotal.com/reference/public-vs-premium-api) and the
+    Safe Browsing v4 API is "for non-commercial use only"
+    (developers.google.com/safe-browsing/v4), both read 2026-10-24. Until
+    then a key in the environment was all it took for the weekly run to ask
+    them and publish their columns."""
+    report, md, calls = await _stub_run(_load_eval_module(), monkeypatch, tmp_path)
+    compared = {"cleanway", "phishtank", "cloudflare_families"}
+    assert set(report["phishing"]) == set(report["safe"]) == compared
+    assert set(report["raw"]["phishing"]) == compared
+    assert not {"gsb", "virustotal"} & set(calls), calls
+    # The report says why they are gone, and nothing about them as if they ran.
+    assert "Not compared: VirusTotal" in md and "Google Safe Browsing" in md
+    assert "VirusTotal verdict" not in md
+    assert "VT_API_KEY" not in md
+    assert "GSB / PhishTank / VT" not in md
+
+
+@pytest.mark.asyncio
+async def test_a_non_commercial_rerun_asks_them_by_name(tmp_path, monkeypatch):
+    report, md, calls = await _stub_run(_load_eval_module(), monkeypatch, tmp_path, "--virustotal", "--gsb")
+    assert {"gsb", "virustotal"} <= set(report["phishing"])
+    assert {"gsb", "virustotal"} <= set(calls)
+    assert "VirusTotal verdict is 'dangerous' iff ≥2 vendors" in md
+    assert "for non-commercial use only" in md
+    assert "Not compared:" not in md
+
+
+@pytest.mark.asyncio
+async def test_a_run_that_asked_them_never_becomes_latest_json(tmp_path, monkeypatch):
+    """Not even with the quality gate switched off: latest.json is what the
+    site publishes."""
+    eval_module = _load_eval_module()
+    await _stub_run(eval_module, monkeypatch, tmp_path, "--gsb", "--no-enforce-quality-gate")
+    assert not (tmp_path / "latest.json").exists()
+    # The control: the same run without them does move the pointer.
+    await _stub_run(eval_module, monkeypatch, tmp_path, "--no-enforce-quality-gate")
+    assert (tmp_path / "latest.json").exists()
+
+
+def test_the_gate_refuses_a_report_with_a_non_commercial_resolver():
+    eval_module = _load_eval_module()
+    for name in ("gsb", "virustotal"):
+        report = _healthy_report()
+        report["safe"][name] = dict(report["safe"]["cleanway"])
+        gate = eval_module.check_quality_gate(report)
+        assert gate.passed is False
+        assert gate.failed_gate == "non_commercial_resolver"
+        assert name in gate.detail
+
+
+def _report_with_a_local_row(lookup: str | None) -> dict:
+    report = _healthy_report()
+    report["phishing"]["cleanway_local"] = dict(report["phishing"]["cleanway"])
+    report["safe"]["cleanway_local"] = dict(report["safe"]["cleanway"])
+    if lookup is not None:
+        report["sources"] = {"cleanway_local_google_lookup": lookup}
+    return report
+
+
+def test_the_gate_refuses_a_local_analyzer_row_that_asked_safe_browsing_v4():
+    """--local-analyzer runs the server's own code, which asks Safe Browsing
+    v4 whenever a v4 key is set and Web Risk's is not
+    (safe_browsing.get_client). That row is a GSB answer by another name."""
+    eval_module = _load_eval_module()
+    # No lookup recorded counts as v4: the gate fails closed.
+    for lookup in ("safe_browsing_v4", None):
+        gate = eval_module.check_quality_gate(_report_with_a_local_row(lookup))
+        assert gate.passed is False, lookup
+        assert gate.failed_gate == "non_commercial_resolver"
+        assert "gsb" in gate.detail and "cleanway_local" in gate.detail
+    for lookup in ("web_risk", "none"):
+        assert eval_module.check_quality_gate(_report_with_a_local_row(lookup)).passed is True, lookup
+
+
+@pytest.fixture
+def _fresh_settings(monkeypatch, tmp_path):
+    """No Google key from the shell or from a .env, and api.config's cached
+    Settings rebuilt before and after."""
+    from api.config import get_settings
+
+    for env in ("GOOGLE_SAFE_BROWSING_API_KEY", "GOOGLE_SAFE_BROWSING_KEY", "WEB_RISK_API_KEY"):
+        monkeypatch.delenv(env, raising=False)
+    monkeypatch.chdir(tmp_path)
+    get_settings.cache_clear()
+    yield monkeypatch
+    get_settings.cache_clear()
+
+
+def test_the_local_google_lookup_is_the_one_get_client_makes(_fresh_settings):
+    eval_module = _load_eval_module()
+    from api.config import get_settings
+
+    assert eval_module.local_google_lookup() == "none"
+    for env in ("GOOGLE_SAFE_BROWSING_API_KEY", "GOOGLE_SAFE_BROWSING_KEY"):
+        _fresh_settings.setenv(env, "stub")
+        get_settings.cache_clear()
+        assert eval_module.local_google_lookup() == "safe_browsing_v4", env
+        _fresh_settings.delenv(env)
+    _fresh_settings.setenv("GOOGLE_SAFE_BROWSING_KEY", "stub")
+    _fresh_settings.setenv("WEB_RISK_API_KEY", "stub")
+    get_settings.cache_clear()
+    assert eval_module.local_google_lookup() == "web_risk"
+
+
+@pytest.mark.asyncio
+async def test_a_local_analyzer_run_with_a_safe_browsing_key_never_becomes_latest_json(tmp_path, monkeypatch):
+    eval_module = _load_eval_module()
+    monkeypatch.setattr(eval_module, "local_google_lookup", lambda: "safe_browsing_v4")
+    report, md, calls = await _stub_run(eval_module, monkeypatch, tmp_path,
+                                        "--local-analyzer", "--no-enforce-quality-gate")
+    assert "cleanway_local" in calls and "gsb" not in calls
+    assert report["sources"]["cleanway_local_google_lookup"] == "safe_browsing_v4"
+    assert not (tmp_path / "latest.json").exists()
+    assert "This run also asked Google Safe Browsing" in md
+    assert "Not compared: VirusTotal" in md and "Google Safe Browsing (" not in md.split("Not compared:")[1]
+    # The control: no Safe Browsing v4 key, the pointer moves.
+    monkeypatch.setattr(eval_module, "local_google_lookup", lambda: "none")
+    report, md, _ = await _stub_run(eval_module, monkeypatch, tmp_path,
+                                    "--local-analyzer", "--no-enforce-quality-gate")
+    assert report["sources"]["cleanway_local_google_lookup"] == "none"
+    assert (tmp_path / "latest.json").exists()
+    assert "This run also asked" not in md
+
+
+@pytest.mark.asyncio
+async def test_a_run_without_the_local_analyzer_records_no_local_lookup(tmp_path, monkeypatch):
+    eval_module = _load_eval_module()
+
+    def _unexpected():
+        raise AssertionError("asked for the local analyzer's lookup without --local-analyzer")
+
+    monkeypatch.setattr(eval_module, "local_google_lookup", _unexpected)
+    report, _md, _calls = await _stub_run(eval_module, monkeypatch, tmp_path)
+    assert "cleanway_local_google_lookup" not in report["sources"]

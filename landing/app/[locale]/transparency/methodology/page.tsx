@@ -4,7 +4,10 @@
  * Reads docs/benchmarks/latest.json (moved forward by
  * .github/workflows/weekly-benchmark.yml only when a run clears the script's
  * quality gate) and renders the head-to-head tables: Cleanway vs Cloudflare
- * 1.1.1.1 for Families vs Google Safe Browsing vs PhishTank vs VirusTotal.
+ * 1.1.1.1 for Families vs PhishTank. Google Safe Browsing and VirusTotal left
+ * the comparison on 2026-10-24 (their free APIs bar a commercial product):
+ * an older snapshot's rows for them are not shown (lib/benchmark.ts
+ * comparedRows), and neither is the text that described them.
  *
  * The tables appear only when the snapshot clears the same gate the site uses
  * everywhere (lib/benchmark.ts). Otherwise the page says how small the last
@@ -20,6 +23,7 @@ import { routing, type Locale } from "@/i18n/routing";
 import {
   MIN_PHISHING_CLASSIFIED,
   MIN_PHISHING_SAMPLE,
+  comparedRows,
   falsePositiveRateIsPublishable,
   loadLatestBenchmark,
   recallIsPublishable,
@@ -36,10 +40,8 @@ const REPO_URL = "https://github.com/AlexMos555/linkshield";
 const RESOLVER_LABELS: Record<string, string> = {
   cleanway: "Cleanway",
   cleanway_local: "Cleanway (full local)",
-  gsb: "Google Safe Browsing",
   phishtank: "PhishTank",
   cloudflare_families: "Cloudflare 1.1.1.1 for Families",
-  virustotal: "VirusTotal",
 };
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
@@ -114,7 +116,7 @@ function PhishingTable({ data, t, locale }: { data: BenchmarkSnapshot; t: Transl
           </tr>
         </thead>
         <tbody>
-          {Object.entries(data.phishing).map(([name, m]: [string, ResolverStats]) => (
+          {comparedRows(data.phishing).map(([name, m]: [string, ResolverStats]) => (
             <tr key={name} style={rowStyle(name)}>
               <td style={_td}><strong>{RESOLVER_LABELS[name] || name}</strong></td>
               <td style={_tdNum}>{pct(m.recall, locale)}</td>
@@ -147,7 +149,7 @@ function SafeTable({ data, t, locale }: { data: BenchmarkSnapshot; t: Translate;
           </tr>
         </thead>
         <tbody>
-          {Object.entries(data.safe).map(([name, m]: [string, ResolverStats]) => (
+          {comparedRows(data.safe).map(([name, m]: [string, ResolverStats]) => (
             <tr key={name} style={rowStyle(name)}>
               <td style={_td}><strong>{RESOLVER_LABELS[name] || name}</strong></td>
               <td style={_tdNum}>{pct(m.fpr, locale, 2)}</td>
@@ -216,7 +218,6 @@ export default async function MethodologyPage({
     t(curatedLegit ? "caveat_allowlist_curated" : "caveat_allowlist"),
     ...(curatedLegit ? [] : [t("caveat_rate_limit")]),
     t("caveat_phishtank"),
-    t("caveat_gsb"),
     t("caveat_nxdomain"),
     t("caveat_latency"),
   ];
@@ -289,7 +290,6 @@ export default async function MethodologyPage({
         <ul style={_ul}>
           <li>{t("mapping_cleanway")}</li>
           <li>{t("mapping_cloudflare")}</li>
-          <li>{t("mapping_virustotal")}</li>
         </ul>
       </section>
 

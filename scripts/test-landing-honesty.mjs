@@ -39,6 +39,10 @@
  *      licence text, the CC BY ones with the licence the ranking build
  *      recorded, a TLP marking is never shown as a licence, and the app's
  *      Settings link lands on that section.
+ *  19. The benchmark page never presents VirusTotal or Google Safe Browsing
+ *      as compared services — their free APIs bar a commercial product, and
+ *      the weekly run stopped asking them on 2026-10-24 — in any language,
+ *      even while latest.json is an older snapshot that still has their rows.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -49,6 +53,8 @@ import { fileURLToPath } from "node:url";
 import {
   MIN_PHISHING_CLASSIFIED,
   MIN_PHISHING_SAMPLE,
+  RETIRED_RESOLVERS,
+  comparedRows,
   falsePositiveRateIsPublishable,
   recallIsPublishable,
   MIN_SAFE_CLASSIFIED,
@@ -199,6 +205,30 @@ check("committed latest.json: false-positive rate is shown only by its own numbe
   if (expected) {
     // A shown rate rests on a stated, allowlist-free sample.
     assert.equal(typeof committed.sources.legit, "string");
+  }
+});
+
+console.log("benchmark comparison (no service whose free API bars a commercial product)");
+check("an older snapshot's VirusTotal and Safe Browsing rows are left out, the rest keep their order", () => {
+  const batch = Object.fromEntries(
+    ["cleanway", "gsb", "phishtank", "cloudflare_families", "virustotal"].map((name) => [name, stats({})]),
+  );
+  assert.deepEqual(comparedRows(batch).map(([name]) => name), ["cleanway", "phishtank", "cloudflare_families"]);
+  assert.deepEqual(comparedRows(undefined), []);
+  assert.deepEqual([...RETIRED_RESOLVERS].sort(), ["gsb", "virustotal"]);
+});
+check("the methodology page names neither as a compared service, in any language", () => {
+  // Every Methodology string the page (and its Data sources section) renders.
+  const dir = path.join(ROOT, "landing", "app", "[locale]", "transparency", "methodology");
+  const code = ["page.tsx", "DataSources.tsx"].map((f) => fs.readFileSync(path.join(dir, f), "utf-8")).join("\n");
+  assert.doesNotMatch(code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, ""), /VirusTotal|Safe Browsing/);
+  for (const locale of LOCALES) {
+    const methodology = landingSource(locale).methodology;
+    const used = [...code.matchAll(/"([a-z][a-z0-9_]*)"/g)].map((m) => m[1]).filter((key) => key in methodology);
+    assert.ok(used.includes("caveat_phishtank") && used.includes("mapping_cloudflare"), "the scan finds the page's keys");
+    for (const key of used) {
+      assert.doesNotMatch(String(methodology[key]), /VirusTotal|Safe Browsing/, `${locale} methodology.${key}`);
+    }
   }
 });
 

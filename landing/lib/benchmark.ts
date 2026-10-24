@@ -55,6 +55,22 @@ export const MAX_UNKNOWN_RATE = 0.3;
 
 const OURS = "cleanway";
 
+/**
+ * Services the weekly run stopped comparing on 2026-10-24: their free APIs
+ * bar a commercial product — VirusTotal's public API "must not be used in
+ * commercial products or services", Safe Browsing v4 is "for non-commercial
+ * use only" (scripts/eval_fresh_urls.py, NON_COMMERCIAL_RESOLVERS). Snapshots
+ * from before still hold their rows; the site leaves those rows out rather
+ * than show a comparison the weekly run no longer makes. The raw files on
+ * GitHub keep them.
+ */
+export const RETIRED_RESOLVERS: ReadonlySet<string> = new Set(["gsb", "virustotal"]);
+
+/** One batch's rows as the site shows them: the services still compared, in the snapshot's order. */
+export function comparedRows(batch: Record<string, ResolverStats> | undefined): [string, ResolverStats][] {
+  return Object.entries(batch ?? {}).filter(([name]) => !RETIRED_RESOLVERS.has(name));
+}
+
 function count(value: number | undefined): number {
   return typeof value === "number" ? value : 0;
 }
