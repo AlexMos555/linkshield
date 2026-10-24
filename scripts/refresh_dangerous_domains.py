@@ -9,7 +9,10 @@ so DNS-level blocking actually works.
 Sources (bulk, no API key unless said). The licence of each is quoted beside
 its URL constant below and in docs/THIRD_PARTY_FEEDS.md:
   * OpenPhish        — community phishing feed          (non-commercial terms)
-  * Phishing.Database — mitchellkrogza phishing-domains-ACTIVE (MIT)
+  * Phishing.Database — mitchellkrogza phishing-domains-ACTIVE (MIT on the
+                       compilation; built from upstream feeds it does not
+                       name — left out under BLOCKLIST_LICENSED_ONLY since
+                       2026-10-24)
   * phishing.army    — extended blocklist               (CC BY-NC 4.0)
   * Phishunt.io      — hourly phishing URL feed (CC0 1.0)
   * TweetFeed.live   — 365-day OSINT window from reporting accounts (CC0 1.0)
@@ -28,8 +31,9 @@ rather than keyed (see RETIRED_FEEDS). The published names only it backed
 leave on the first publish without it, exactly like a switched-off feed.
 
 Licence switch (docs/THIRD_PARTY_FEEDS.md): the feeds whose terms bar
-commercial use (OpenPhish, phishing.army, and since 2026-10-23 CSIRT
-Italia) were fine while the product was free and are not once it
+commercial use (OpenPhish, phishing.army, since 2026-10-23 CSIRT Italia)
+or do not clearly allow it (since 2026-10-24 Phishing.Database) were fine
+while the product was free and are not once it
 charges. BLOCKLIST_LICENSED_ONLY=1 leaves them out of the build entirely —
 not downloaded, not consulted, so they are not an outage either: their
 stored health state is forgotten, nothing is carried for them, and the
@@ -41,7 +45,11 @@ scripts/eval_day_one_coverage.py, never for production. Flipping either
 changes the set by more than the churn gate allows: publish once with
 --force. CSIRT Italia joining the switch while it was already on moves only
 its own exact hosts (184 distinct on 2026-10-23, ~0.03% of the set): no
---force.
+--force. Phishing.Database joining it does need one: it alone backs most of
+the list (2026-10-24: 381,804 of a licensed build's 675,263 names, 56.5%;
+58% of the live artifact), so the first scheduled run after the change is
+refused by the churn gate (exit 4, the live set stays) until one run with
+--force. The set's 3-day TTL is not refreshed by a refused run.
 
 Exact-host-only sources: CERT Polska and CSIRT Italia name the precise host
 and say so — CERT Polska's API spec is explicit that listing `a.example.com`
@@ -102,7 +110,8 @@ Env:
     REDIS_URL                  — connection string (required unless --dry-run)
     BLOCKLIST_RETAIN_DAYS      — retention window in days, 0 disables (default 14)
     PUBLISH_CONFIRMED_THREATS  — 1/true to publish server-confirmed hosts (default off)
-    BLOCKLIST_LICENSED_ONLY    — 1/true to leave out OpenPhish, phishing.army, CSIRT Italia (default off)
+    BLOCKLIST_LICENSED_ONLY    — 1/true to leave out OpenPhish, phishing.army, CSIRT Italia,
+                                 Phishing.Database (default off)
     BLOCKLIST_EXCLUDE_FEEDS    — comma-separated feed names to leave out (measurements only)
     PHISHTANK_API_KEY          — set: PhishTank joins the feeds, one cached download a day
 """
@@ -287,6 +296,15 @@ OPENPHISH_FEED = "https://openphish.com/feed.txt"
 # hostnames a domain blocklist can cover at all, with zero Tranco top-10k
 # false positives after the guards. That is the difference between a product
 # and a demo.
+#
+# Phishing.Database's MIT licence covers the maintainers' compilation. The
+# data comes from upstream feeds the project does not name ("multiple
+# sources", "partners", "trusted third party sources"; PhishTank and
+# PhishStats named as likely origins; docs/THIRD_PARTY_FEEDS.md §1 cites
+# each statement), and an MIT notice cannot relicense data its authors did
+# not own — so it is in NON_COMMERCIAL_FEEDS since 2026-10-24. Its GitHub copy
+# has not changed since 2026-10-02 and phish.co.za, the official download,
+# has been down since 2026-10-03 (the project's issue #2325).
 PHISHING_DATABASE = ("https://raw.githubusercontent.com/mitchellkrogza/"
                      "Phishing.Database/master/phishing-domains-ACTIVE.txt")
 PHISHING_ARMY = "https://phishing.army/download/phishing_army_blocklist_extended.txt"
@@ -366,9 +384,16 @@ TTL_SECONDS = 60 * 60 * 24 * 3  # 3-day safety TTL: if the cron dies, the set ex
 # data included, ACN's and bar commercial use without ACN's prior written
 # authorisation, and the MISP feed states no licence of its own (TLP:CLEAR is
 # a sharing label, not a licence). Policy: commercially licensed sources
-# only, so it waits for ACN's written permission. BLOCKLIST_LICENSED_ONLY=1
-# leaves all three out; unset, they are built in exactly as before.
-NON_COMMERCIAL_FEEDS = frozenset({"OpenPhish", "phishing.army", "CSIRT Italia"})
+# only, so it waits for ACN's written permission. Added 2026-10-24:
+# Phishing.Database — MIT on the compilation, but the maintainers say the
+# data comes from third-party feeds they do not name and cannot attribute
+# entry by entry; the likely origins they did name are PhishTank and
+# PhishStats, whose terms bar redistributing its feeds without written
+# permission (docs/THIRD_PARTY_FEEDS.md §1). Not clearly licensed for a paid
+# product, so out until the maintainers say in writing which sources are in
+# it and under what terms. BLOCKLIST_LICENSED_ONLY=1 leaves all four out;
+# unset, they are built in exactly as before.
+NON_COMMERCIAL_FEEDS = frozenset({"OpenPhish", "phishing.army", "CSIRT Italia", "Phishing.Database"})
 # Former sources, never fetched again. A name one of them backed on its last
 # healthy run (blocklist_feed_backing) leaves with the next publish instead
 # of being carried as an outage or held in retention — the same path as a

@@ -22,8 +22,8 @@ Pinned here:
     runs it) and the model are built from is listed in
     landing/lib/data-sources.ts, so a new source cannot ship uncredited;
   * and only those: a feed production leaves out (OpenPhish, phishing.army,
-    since 2026-10-23 CSIRT Italia) or has retired (URLhaus) is not on the
-    page as a source we use.
+    since 2026-10-23 CSIRT Italia, since 2026-10-24 Phishing.Database) or
+    has retired (URLhaus) is not on the page as a source we use.
 
 What each listed source links to, and that the app's link lands on the
 section the page renders, is in scripts/test-landing-honesty.mjs, which can
@@ -168,6 +168,8 @@ def test_the_page_credits_no_feed_production_leaves_out():
     listed = _attributed_ids("PHISHING_SOURCES")
     assert listed, "no phishing sources parsed from the page"
     assert "CSIRT Italia" not in _attributed_ids(), "left out since 2026-10-23 (ACN's terms bar commercial use)"
+    assert "Phishing.Database" not in _attributed_ids(), (
+        "left out since 2026-10-24 (MIT on the compilation; the upstream feeds are unnamed third parties)")
     assert not listed & (rdd.NON_COMMERCIAL_FEEDS | rdd.RETIRED_FEEDS)
     assert listed <= licensed | trained, f"credited but not used: {sorted(listed - licensed - trained)}"
 

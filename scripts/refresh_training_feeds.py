@@ -17,11 +17,15 @@ corpus is interleaved, so no single feed decides what "phishing" looks like:
 PhishDestroy alone is mostly English crypto drainers, CERT Polska Polish
 parcel/bank lures, TweetFeed and Phishunt what researchers report.
 
-Phishing.Database is NOT read here although the blocklist uses it: MIT
-covers the compilation, its README does not say where the names come from,
-and a model trained on them would be a derivative of whatever that is
-(PhishTank/OpenPhish terms do not survive an MIT re-licence). It joins when
-the provenance question in docs/THIRD_PARTY_FEEDS.md §1 is answered.
+Phishing.Database is NOT read here, and since 2026-10-24 the licensed
+blocklist does not read it either: MIT covers the compilation, and the
+maintainers say the names come from third-party feeds they do not name and
+cannot attribute entry by entry (PhishTank and PhishStats are the likely
+origins they did name; docs/THIRD_PARTY_FEEDS.md §1). A model trained on
+them would be a derivative of whatever that is — upstream terms do not
+survive an MIT re-licence. The provenance question is answered: it stays out of training
+until the maintainers say in writing which sources are in it and under what
+terms. Nothing changes for the weekly retrain, which never read it.
 
 The corpus is all names now (URLhaus was mostly bare IPs), and on
 2026-10-21 a model trained on it flagged far more real sites than the served

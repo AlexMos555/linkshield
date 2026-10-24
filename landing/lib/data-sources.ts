@@ -92,14 +92,12 @@ export const PHISHING_SOURCES: readonly DataSource[] = [
     licence: "CC0 1.0",
     licenceUrl: CC0,
   },
-  {
-    id: "Phishing.Database",
-    name: "Phishing.Database",
-    by: "© Mitchell Krog, Nissar Chababy, Phishing.Database Contributors",
-    url: "https://github.com/Phishing-Database/Phishing.Database",
-    licence: "MIT",
-    licenceUrl: "https://github.com/Phishing-Database/Phishing.Database/blob/master/LICENSE",
-  },
+  // Not listed: Phishing.Database. MIT covers the maintainers' compilation,
+  // but its data comes from upstream feeds they do not name (PhishStats, whose
+  // terms bar redistribution, is one of the likely ones they did), so since
+  // 2026-10-24 production builds without it (BLOCKLIST_LICENSED_ONLY;
+  // docs/THIRD_PARTY_FEEDS.md §1). Back here only once its sources and their
+  // terms are known in writing.
   // Not listed: CSIRT Italia (ACN). Its MISP feed states no licence (TLP:CLEAR
   // is a sharing label, not one) and ACN's Note legali bar commercial use, so
   // since 2026-10-23 production builds without it (BLOCKLIST_LICENSED_ONLY;

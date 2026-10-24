@@ -1,8 +1,8 @@
 """The blocklist's licence switches (plan §4): prepared, not flipped.
 
-  * BLOCKLIST_LICENSED_ONLY=1 leaves OpenPhish, phishing.army and (since
-    2026-10-23) CSIRT Italia out of the build; unset, every feed is fetched
-    exactly as before.
+  * BLOCKLIST_LICENSED_ONLY=1 leaves OpenPhish, phishing.army, (since
+    2026-10-23) CSIRT Italia and (since 2026-10-24) Phishing.Database out of
+    the build; unset, every feed is fetched exactly as before.
   * URLhaus is retired for good (2026-10-21: abuse.ch answers 410 Gone without
     a personal key, and its terms are not-for-profit only): never fetched,
     and the published names only it backed leave on the next publish.
@@ -32,6 +32,12 @@ from api.services import blocklist_retention as retention
 from api.services import phishtank_feed
 
 ARMY = [f"army{i}.top" for i in range(165)]
+# BASE is the Phishing.Database body (test_refresh_dangerous_domains), so
+# under the switch it leaves too. This is the stable aggregate a licensed
+# build keeps: PhishDestroy, enough names alone to pass the publish gate's
+# MIN_ENTRIES, and fewer than BASE — as in production, where
+# Phishing.Database backs most of the list.
+LICENSED_BASE = [f"destroy{i}.xyz" for i in range(350)]
 ENV_KEYS = (rdd.LICENSED_ONLY_ENV, rdd.EXCLUDE_FEEDS_ENV, phishtank_feed.KEY_ENV)
 PHISHTANK_CSV = (
     "phish_id,url,phish_detail_url,submission_time,verified,verification_time,online,target\n"
@@ -44,7 +50,8 @@ PHISHTANK_CSV = (
 
 
 def _world(monkeypatch, fake, extra=None, env=None) -> None:
-    _stub_world(monkeypatch, fake, [], frozenset(), extra)
+    bodies = {rdd.PHISHDESTROY_ACTIVE: json.dumps(LICENSED_BASE), **(extra or {})}
+    _stub_world(monkeypatch, fake, [], frozenset(), bodies)
     for key in ENV_KEYS:
         monkeypatch.delenv(key, raising=False)
     for key, value in (env or {}).items():
@@ -101,7 +108,7 @@ def test_exclude_env_takes_feed_names_and_ignores_typos(caplog):
 
 
 @pytest.mark.asyncio
-async def test_by_default_the_three_feeds_are_fetched_as_before(monkeypatch):
+async def test_by_default_the_four_feeds_are_fetched_as_before(monkeypatch):
     fake = _FakeRedis()
     _world(monkeypatch, fake, extra={rdd.PHISHING_ARMY: "\n".join(ARMY)})
     seen = _requested(monkeypatch)
@@ -111,23 +118,24 @@ async def test_by_default_the_three_feeds_are_fetched_as_before(monkeypatch):
 
     monkeypatch.setattr(rdd, "_fetch_conditional", _never)
     assert await rdd.refresh("redis://fake", dry_run=False, now=T0) == 0
-    assert {rdd.OPENPHISH_FEED, rdd.PHISHING_ARMY, rdd.CSIRT_IT_MANIFEST} <= set(seen)
+    assert {rdd.OPENPHISH_FEED, rdd.PHISHING_ARMY, rdd.CSIRT_IT_MANIFEST, rdd.PHISHING_DATABASE} <= set(seen)
     assert not any("abuse.ch" in url for url in seen), "URLhaus is retired"
-    assert set(ARMY) <= _published(fake)
+    assert set(ARMY) | set(BASE) | set(LICENSED_BASE) <= _published(fake)
 
 
 @pytest.mark.asyncio
-async def test_licensed_only_leaves_the_three_feeds_out_of_the_build(monkeypatch, caplog):
+async def test_licensed_only_leaves_the_four_feeds_out_of_the_build(monkeypatch, caplog):
     caplog.set_level(logging.INFO)
     fake = _FakeRedis()
     _world(monkeypatch, fake, extra={rdd.PHISHING_ARMY: "\n".join(ARMY)}, env={rdd.LICENSED_ONLY_ENV: "1"})
     seen = _requested(monkeypatch)
     assert await rdd.refresh("redis://fake", dry_run=False, now=T0) == 0
-    assert not {rdd.OPENPHISH_FEED, rdd.PHISHING_ARMY, rdd.CSIRT_IT_MANIFEST} & set(seen)
+    assert not {rdd.OPENPHISH_FEED, rdd.PHISHING_ARMY, rdd.CSIRT_IT_MANIFEST, rdd.PHISHING_DATABASE} & set(seen)
     assert not any("csirt.gov.it" in url for url in seen), "no MISP event is fetched either"
-    assert "licence switch: leaving out CSIRT Italia, OpenPhish, phishing.army" in caplog.text
-    assert set(BASE) <= _published(fake)
+    assert "licence switch: leaving out CSIRT Italia, OpenPhish, Phishing.Database, phishing.army" in caplog.text
+    assert set(LICENSED_BASE) <= _published(fake)
     assert not set(ARMY) & _published(fake)
+    assert not set(BASE) & _published(fake)
     assert "FEED DEGRADED" not in caplog.text
 
 
@@ -171,12 +179,14 @@ async def test_an_excluded_feed_is_not_an_outage_and_takes_its_names_with_it(mon
                           force=True)
     assert code == 0
     assert "FEED DEGRADED" not in caplog.text
-    assert "CSIRT Italia, OpenPhish, phishing.army not a source this run — forgetting their state" in caplog.text
+    assert ("CSIRT Italia, OpenPhish, Phishing.Database, phishing.army not a source this run — "
+            "forgetting their state") in caplog.text
     assert "phishing.army" not in fake.data.get(feed_health.FEED_DOWN_SINCE_KEY, {})
     assert "phishing.army" not in fake.data.get(feed_health.FEED_COUNTS_KEY, {})
     assert not set(ARMY) & _published(fake)
     assert not _phone_blocks(fake, ARMY[0])
-    assert set(BASE) <= _published(fake)
+    assert not set(BASE) & _published(fake)
+    assert set(LICENSED_BASE) <= _published(fake)
 
 
 @pytest.mark.asyncio
@@ -194,7 +204,9 @@ async def test_excluded_feed_names_leave_at_once_while_ordinary_departures_are_r
     assert "phishunt-phish.com" in _published(fake), "an ordinary departure is still retained"
     assert not set(ARMY) & _published(fake), "the switched-off feed's names leave now"
     assert not set(ARMY) & set(fake.data.get(retention.LAST_SEEN_KEY, {})), "…and are not recorded as departures"
-    assert "165 published names only phishing.army backed leave with this publish" in caplog.text
+    assert not set(BASE) & set(fake.data.get(retention.LAST_SEEN_KEY, {}))
+    # 165 phishing.army names and Phishing.Database's 400 (BASE).
+    assert "565 published names only Phishing.Database, phishing.army backed leave with this publish" in caplog.text
 
 
 async def _phishunt_down(monkeypatch) -> None:
@@ -227,9 +239,10 @@ async def test_a_blind_outage_of_another_feed_does_not_carry_the_leaving_names_b
     await _phishunt_down(monkeypatch)
     assert await rdd.refresh("redis://fake", dry_run=False, now=T0 + 6 * 3600, force=True) == 0
     assert "Phishunt: no record of which names it backed" in caplog.text
-    assert "165 published names only phishing.army backed leave with this publish" in caplog.text
+    assert "565 published names only Phishing.Database, phishing.army backed leave with this publish" in caplog.text
     assert "phishunt-phish.com" in _published(fake), "the blind carry keeps what no live source lists"
     assert not set(ARMY) & _published(fake), "…but not the switched-off feed's names"
+    assert not set(BASE) & _published(fake)
     assert not _phone_blocks(fake, ARMY[0])
     assert not set(ARMY) & set(fake.data.get(retention.LAST_SEEN_KEY, {}))
 
@@ -252,7 +265,7 @@ async def test_a_name_a_degraded_live_feed_also_backed_stays_carried(monkeypatch
     assert "outage guard: keeping 1 published names Phishunt backed" in caplog.text
     assert shared in _published(fake), "carried for Phishunt, whatever phishing.army's record says"
     assert not set(ARMY) & _published(fake)
-    assert "165 published names only phishing.army backed leave with this publish" in caplog.text
+    assert "565 published names only Phishing.Database, phishing.army backed leave with this publish" in caplog.text
 
 
 def test_run_sources_says_what_a_run_fetches_without_fetching():
@@ -274,6 +287,7 @@ async def test_run_sources_matches_the_sources_fetch_feeds_has(monkeypatch):
     run = await rdd._fetch_feeds(fake, excluded, T0, dry_run=True)
     assert set(run.fetched) == rdd.run_sources(excluded)
     assert phishtank_feed.SOURCE_NAME in run.fetched and "OpenPhish" not in run.fetched
+    assert "Phishing.Database" not in run.fetched
 
 
 def test_plan_retention_lets_leaving_names_go_without_a_window():
@@ -543,7 +557,7 @@ CSIRT_HOSTS = {"anarchy10.duckdns.org", "c2.bioscolombia.com.co", "evil-loader.e
 
 
 def test_csirt_italia_is_left_out_under_the_licence_switch_and_only_there():
-    assert rdd.NON_COMMERCIAL_FEEDS == frozenset({"OpenPhish", "phishing.army", "CSIRT Italia"})
+    assert "CSIRT Italia" in rdd.NON_COMMERCIAL_FEEDS
     assert "CSIRT Italia" in rdd.excluded_feeds({rdd.LICENSED_ONLY_ENV: "1"})
     assert "CSIRT Italia" not in rdd.excluded_feeds({})
     # Switched, not retired: with the switch off it is a source as before.
@@ -566,14 +580,18 @@ async def test_with_the_switch_off_csirt_italia_still_reaches_the_list(monkeypat
 
 @pytest.mark.asyncio
 async def test_switching_on_takes_csirt_italias_names_out_without_force_or_an_outage(monkeypatch, caplog):
-    """Production's first run after this change: CSIRT Italia's window held
-    184 distinct exact hosts on 2026-10-23, ~0.03% of the ~700k live set, so the run
-    publishes without --force (the churn gate does not trip), is not red,
-    carries nothing for it and holds none of its names in retention."""
+    """Production's first run after #296: CSIRT Italia's window held 184
+    distinct exact hosts on 2026-10-23, ~0.03% of the ~700k live set, so the
+    run publishes without --force (the churn gate does not trip), is not red,
+    carries nothing for it and holds none of its names in retention. The
+    run before it is built without Phishing.Database (BLOCKLIST_EXCLUDE_FEEDS),
+    which has joined the switch since: its own departure needs one forced
+    publish (below), and this test is about CSIRT Italia's hosts alone."""
     caplog.set_level(logging.INFO)
     fake = _FakeRedis()
     monkeypatch.setattr(rdd, "MISP_EVENT_PAUSE", 0)
-    assert await _refresh(monkeypatch, fake, T0, extra=CSIRT_FEED) == 0
+    assert await _refresh(monkeypatch, fake, T0, extra=CSIRT_FEED,
+                          env={rdd.EXCLUDE_FEEDS_ENV: "Phishing.Database"}) == 0
     assert CSIRT_HOSTS <= _published(fake)
     assert "CSIRT Italia" in fake.data[feed_health.FEED_COUNTS_KEY]
 
@@ -591,5 +609,90 @@ async def test_switching_on_takes_csirt_italias_names_out_without_force_or_an_ou
     assert not CSIRT_HOSTS & _published(fake), "not carried, not retained"
     assert not CSIRT_HOSTS & set(fake.data.get(retention.LAST_SEEN_KEY, {})), "…and not recorded as departures"
     assert not _phone_blocks(fake, "anarchy10.duckdns.org")
-    assert set(BASE) <= _published(fake)
+    assert set(LICENSED_BASE) <= _published(fake)
     assert "CSIRT Italia" not in fake.data.get(feed_backing.BACKING_KEY, {}), "its record goes with the publish"
+
+
+# ── Phishing.Database, left out under the switch since 2026-10-24 ────────────
+#
+# Its MIT licence covers the maintainers' compilation, not the data in it.
+# The data comes from upstream feeds the project does not name: the
+# maintainers call them "multiple sources" and "partners", named PhishTank
+# and PhishStats as likely origins, and say they cannot tell which provider
+# an entry came from (docs/THIRD_PARTY_FEEDS.md §1 has the citations).
+# PhishStats' terms bar redistributing its feeds without written permission,
+# and an MIT notice cannot relicense data its authors did not own. Use in a
+# paid product is not clearly permitted, so it goes the way of OpenPhish,
+# phishing.army and CSIRT Italia: out while BLOCKLIST_LICENSED_ONLY is on.
+#
+# It backs most of the list — on 2026-10-24, 381,804 of the 675,263 names a
+# licensed build held (56.5 %), 58.3 % of the live artifact's hashes — so,
+# unlike CSIRT Italia, the first publish without it trips the 50 % churn gate
+# and needs --force once.
+
+PDB = "Phishing.Database"
+
+
+def test_phishing_database_is_left_out_under_the_licence_switch_and_only_there():
+    assert rdd.NON_COMMERCIAL_FEEDS == frozenset({"OpenPhish", "phishing.army", "CSIRT Italia", PDB})
+    on = {rdd.LICENSED_ONLY_ENV: "1"}
+    assert PDB in rdd.excluded_feeds(on)
+    assert PDB not in rdd.excluded_feeds({})
+    # Switched, not retired: with the switch off it is a source as before.
+    assert PDB in rdd.FEED_NAMES and PDB not in rdd.RETIRED_FEEDS
+    assert PDB in rdd.run_sources(frozenset(), {})
+    assert PDB not in rdd.run_sources(rdd.excluded_feeds(on), {})
+    assert PDB in {spec[0] for spec in rdd._feed_specs()}
+    assert PDB not in {spec[0] for spec in rdd._feed_specs(rdd.excluded_feeds(on))}
+
+
+@pytest.mark.asyncio
+async def test_switching_phishing_database_off_needs_one_forced_publish(monkeypatch, caplog):
+    """Production's first runs after this change. Until now it built with
+    the switch on and Phishing.Database in; BASE (Phishing.Database) is more
+    than half of that list, as in production. The scheduled run refuses the
+    publish (exit 4, the live set stays, nothing it held is lost); one run
+    with --force then takes Phishing.Database's names out — not carried, not
+    retained, not an outage — and keeps every name a licensed feed lists."""
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    _world(monkeypatch, fake)
+    before = rdd.NON_COMMERCIAL_FEEDS - {PDB}
+    assert await rdd.refresh("redis://fake", dry_run=False, now=T0, excluded=before) == 0
+    assert set(BASE) | set(LICENSED_BASE) <= _published(fake)
+    assert PDB in fake.data[feed_health.FEED_COUNTS_KEY]
+
+    caplog.clear()
+    code = await _refresh(monkeypatch, fake, T0 + 6 * 3600, env={rdd.LICENSED_ONLY_ENV: "1"})
+    assert code == 4, "the churn gate refuses a publish that drops more than half the list"
+    assert "PUBLISH GATE: churn" in caplog.text and "use --force if intended" in caplog.text
+    assert set(BASE) | set(LICENSED_BASE) <= _published(fake), "the previous set stays live"
+    assert _phone_blocks(fake, BASE[0])
+
+    caplog.clear()
+    code = await _refresh(monkeypatch, fake, T0 + 12 * 3600, env={rdd.LICENSED_ONLY_ENV: "1"}, force=True)
+    assert code == 0
+    assert f"{len(BASE)} published names only Phishing.Database backed leave with this publish" in caplog.text
+    assert "FEED DEGRADED" not in caplog.text
+    assert not set(BASE) & _published(fake), "not carried, not retained"
+    assert not set(BASE) & set(fake.data.get(retention.LAST_SEEN_KEY, {})), "…and not recorded as departures"
+    assert not _phone_blocks(fake, BASE[0])
+    assert set(LICENSED_BASE) <= _published(fake)
+    assert PDB not in fake.data.get(feed_health.FEED_COUNTS_KEY, {}), "its health state is forgotten"
+    assert PDB not in fake.data.get(feed_health.FEED_DOWN_SINCE_KEY, {})
+    assert PDB not in fake.data.get(feed_backing.BACKING_KEY, {}), "its record goes with the publish"
+
+    # The next scheduled run is ordinary again: no --force.
+    assert await _refresh(monkeypatch, fake, T0 + 18 * 3600, env={rdd.LICENSED_ONLY_ENV: "1"}) == 0
+    assert set(LICENSED_BASE) <= _published(fake)
+
+
+@pytest.mark.asyncio
+async def test_with_the_switch_off_phishing_database_still_reaches_the_list(monkeypatch):
+    fake = _FakeRedis()
+    _world(monkeypatch, fake)
+    seen = _requested(monkeypatch)
+    assert await rdd.refresh("redis://fake", dry_run=False, now=T0) == 0
+    assert rdd.PHISHING_DATABASE in seen
+    assert set(BASE) <= _published(fake)
+    assert _phone_blocks(fake, BASE[0])

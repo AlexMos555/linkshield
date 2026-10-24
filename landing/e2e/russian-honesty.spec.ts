@@ -105,9 +105,13 @@ test("/ru/transparency/methodology credits its open data and links the licences"
   await expect(sources).toContainText("Чтобы составить этот рейтинг, мы их изменили");
   await expect(sources).toContainText("со следующих версий");
   await expect(sources).toContainText("примеры для обучения");
-  for (const feed of ["PhishDestroy", "CERT Polska", "TweetFeed", "Phishunt", "Phishing.Database"]) {
+  for (const feed of ["PhishDestroy", "CERT Polska", "TweetFeed", "Phishunt"]) {
     await expect(sources).toContainText(feed);
   }
+  // Left out of the blocklist since 2026-10-24: MIT covers the compilation,
+  // its upstream feeds are unnamed third parties — so not credited as a source.
+  await expect(sources).not.toContainText("Phishing.Database");
+  await expect(sources.locator('a[href^="https://github.com/Phishing-Database/"]')).toHaveCount(0);
   // A feed with no standard licence links its publisher's own terms.
   const certPl = sources.locator("li", { hasText: "CERT Polska" });
   await expect(certPl.locator('a[href="https://hole.cert.pl/schema/certpl_lista_ostrzezen_api_v2.pdf"]')).toHaveText("условия использования");
