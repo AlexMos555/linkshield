@@ -146,6 +146,18 @@ changes reach phones with 1.0.6 (`CHANGELOG.md`). Asset names for 1.0.6:
 | B — RuStore | `cleanway-1.0.6-107-rustore.apk` | RuStore console only |
 | C — Google Play | `cleanway-1.0.6-107-play.aab` | Play Console only |
 
+> ⛔ **Never upload a 1.0.6 (107) file built before #318 was merged — delete
+> it and rebuild.** The site and RuStore APKs built on 2026-10-24 at
+> 00:29–00:33 (and their `SHA256SUMS-1.0.6.txt`, `9ae6396b…` / `bdb2ce33…`)
+> carry the unpatched `expo-share-intent` 5.1.1: any app on the phone can
+> write into Cleanway's private files through them
+> (docs/EXPO_UPGRADE_PLAN.md §1.2). Their names and versionCode are exactly
+> the ones above, so by version a fixed and an unfixed 1.0.6 look the same,
+> and the CHANGELOG already announces the fix. Rebuild all three (site,
+> RuStore, Play AAB) from `main` after #318, regenerate the checksums
+> (`NEXT_PUBLIC_APK_SHA256` too), and run the share-filter check below on
+> every APK before uploading it.
+
 Change the server **only after** the signed site APK (A) is attached to the
 GitHub release `v1.0.6` — announcing a version nobody can download sends every
 phone to a 404. Then, in Railway (API service → Variables), set:
@@ -229,7 +241,11 @@ fs.writeFileSync(m + "/package.json", JSON.stringify(p, null, 2) + "\n");' "$REP
 cp "$REPO/mobile/package-lock.json" "$M/package-lock.json"
 
 cd "$M"
-npm install
+npm install                # postinstall applies patches/ ("expo-share-intent@5.1.1 ✔"). Exit ≠ 0 = STOP, fix it first
+node scripts/check-share-intent.mjs   # 3× "ok:"; "CHECK FAILED" = STOP (docs/EXPO_UPGRADE_PLAN.md §1.2)
+# (This block has no `set -e`, so the lines below would still run. A release
+# build refuses to start anyway without the fix — plugins/withShareIntentGuard.js
+# re-runs the check before compiling — but do not count on getting that far.)
 npx expo install --check   # "Dependencies are up to date" (reanimated is excluded on purpose)
 
 # 3) The starter blocklist (1.0.2+): download + verify it into the module's
@@ -261,6 +277,7 @@ cw_build() {   # cw_build <site|rustore|play> <gradle task>...
   CI=1 npx expo prebuild -p android --clean       # CI=1: the mirror is not a git repo
   grep -n "cleanwayKeystoreProps" android/app/build.gradle          # release signing wired
   grep -n "cleanway-seed-guard" android/app/build.gradle            # seed guard wired
+  grep -n "cleanway-share-intent-guard" android/app/build.gradle    # share-intent fix guard wired
   grep -n "cleanwayPrebuildDistribution = '$EXPO_PUBLIC_DISTRIBUTION'" android/app/build.gradle
   cp "$KEYS/keystore.properties" "$KEYS/cleanway-release.jks" android/
   (cd android && ./gradlew "$@")                  # prints "Cleanway: building the … build"
@@ -321,6 +338,27 @@ A `1` for the site or RuStore APK, or a `0` for the Play one, means that build
 is not what its name says: rebuild it with `cw_build` (never re-run gradle in an
 `android/` generated for another store — the guard refuses that too).
 
+**The share filter is `text/plain` only (1.0.6+, #318)** — the visible sign
+that the APK was built with the `expo-share-intent` fix:
+
+```bash
+for f in cleanway-$V-$VC-arm.apk cleanway-$V-$VC-rustore.apk cleanway-$V-$VC-play-check.apk; do
+  x=$("$BT/aapt2" dump xmltree --file AndroidManifest.xml "$f")
+  echo "$f  text/*: $(grep -c 'mimeType.*"text/\*"' <<<"$x")  text/plain: $(grep -c 'mimeType.*"text/plain"' <<<"$x")"
+done   # → text/*: 0  text/plain: 1, for each
+```
+
+A `text/*` means the file was built without the fix (a 1.0.6 from before #318
+merged): delete it, and rebuild with `cw_build`. The `*/*` line in the
+manifest is the `<queries>` block, not a filter; it was always there.
+
+Checksums of exactly the files you upload (the site line is
+`NEXT_PUBLIC_APK_SHA256`, `.env.example`), regenerated after every rebuild:
+
+```bash
+shasum -a 256 cleanway-$V-$VC-arm.apk cleanway-$V-$VC-rustore.apk cleanway-$V-$VC-play.aab > "SHA256SUMS-$V.txt"
+```
+
 Confirm the **target API, the signer and 16 KB alignment** before uploading —
 for each of the three APKs (the Play one stands in for its AAB):
 
@@ -362,7 +400,8 @@ in place (no "App not installed"). That proves B2 is fixed end-to-end.
 > BundleConfig asks for `PAGE_ALIGNMENT_16K`. The merged manifest keeps the
 > VpnService (`foregroundServiceType="specialUse"` + the `vpn` subtype
 > property), BootReceiver in `:boot`, ShieldWatchdog, the alarm receiver, the
-> link-guard activity and the `text/*` share filter unchanged;
+> link-guard activity and the `text/*` share filter unchanged (since 1.0.6
+> it is `text/plain` only, #318);
 > `enableOnBackInvokedCallback="false"` is new (below), and the unused
 > `ai.cleanway.app://` deep-link scheme is gone (Expo SDK 53 stopped adding the
 > package name as a scheme; nothing links to it — `cleanway://` is the scheme).
