@@ -26,12 +26,12 @@
     }
   },
   "status_warning_title": {
-    "message": "Alguns links parecem suspeitos"
+    "message": "Este site parece suspeito"
   },
   "status_warning_subtitle": {
-    "message": "$N$ links nesta página precisam de uma análise mais cuidadosa",
+    "message": "$DOMAIN$ mostra alguns sinais de fraude. Não digite senhas nem dados do cartão aqui se não confiar neste site.",
     "placeholders": {
-      "n": {
+      "domain": {
         "content": "$1"
       }
     }

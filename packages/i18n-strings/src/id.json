@@ -30,12 +30,12 @@
         }
       },
       "status_warning_title": {
-        "text": "Beberapa tautan terlihat mencurigakan"
+        "text": "Situs ini terlihat mencurigakan"
       },
       "status_warning_subtitle": {
-        "text": "$N$ tautan di halaman ini perlu diperiksa lebih teliti",
+        "text": "$DOMAIN$ menunjukkan beberapa tanda penipuan. Jangan masukkan kata sandi atau data kartu di sini jika Anda tidak memercayai situs ini.",
         "placeholders": {
-          "n": {
+          "domain": {
             "content": "$1"
           }
         }

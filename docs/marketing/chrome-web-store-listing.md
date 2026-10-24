@@ -124,9 +124,8 @@ badges, the methodology page, Family Hub). The screenshots are ready in
 `store-assets/extension/{en,ru}/` (1280×800, real captures of 0.2.2, made by
 `scripts/store-screenshots/extension.mjs`): `01-block-page.png`,
 `02-popup-safe.png`, `03-popup-caution.png`, `04-link-badges.png`,
-`05-settings.png`. The English listing takes 01, 02, 04 and 05 (not 03, whose
-popup line reads "1 links on this page need a closer look"); the Russian one all
-five. What each shows and the upload order: `store-assets/extension/README.md`.
+`05-settings.png`. Both listings take all five. What each shows and the upload
+order: `store-assets/extension/README.md`.
 
 ---
 
@@ -172,7 +171,7 @@ five. What each shows and the upload order: `store-assets/extension/README.md`.
 - [ ] ZIP is `dist/store-artifacts/cleanway-0.2.2-chrome.zip`, rebuilt clean via `bash scripts/build-extensions.sh && bash scripts/build-store-artifacts.sh`
 - [ ] Privacy policy URL works: https://cleanway.ai/privacy-policy
 - [ ] Permissions justifications match what manifest.json actually requests
-- [ ] Screenshots uploaded from `store-assets/extension/` (EN: 01, 02, 04, 05; RU: 01–05)
+- [ ] Screenshots uploaded from `store-assets/extension/` (EN: 01–05; RU: 01–05)
 - [ ] Promo tile uploaded (440×280)
 - [ ] Detailed description ≤ 16000 chars
 - [ ] No competitor names in detailed description

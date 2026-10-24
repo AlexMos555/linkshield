@@ -30,12 +30,12 @@
         }
       },
       "status_warning_title": {
-        "text": "Einige Links wirken verdächtig"
+        "text": "Diese Seite wirkt verdächtig"
       },
       "status_warning_subtitle": {
-        "text": "$N$ Links auf dieser Seite sollten genauer geprüft werden",
+        "text": "$DOMAIN$ zeigt einige Anzeichen von Betrug. Geben Sie hier keine Passwörter oder Kartendaten ein, wenn Sie dieser Seite nicht vertrauen.",
         "placeholders": {
-          "n": {
+          "domain": {
             "content": "$1"
           }
         }

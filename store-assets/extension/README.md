@@ -11,7 +11,7 @@ same run.
 |------|---------------|
 | `01-block-page.png` | The block page for `parcel-redelivery-payment-verify.xyz`, opened from the red search result of 04: STOP, the site's name and the "Why we blocked this site" cards for the four signs the rules found. The tab was taken to the extension's own `src/blocked/blocked.html` when it opened that address, so the scam page never stays on screen. The page goes on below the 800 px window ("How scammers use sites like this", then "Go back to safety" and the "open anyway" button, captured after its 5-second countdown). |
 | `02-popup-safe.png` | The toolbar popup on an ordinary recipe page (`recipes.example`): "This page is safe". The two Wikipedia links in the text carry green ticks. The welcome tip had been closed with its × button, as a person would. |
-| `03-popup-caution.png` | The toolbar popup on a doubtful "pay the redelivery fee" page (`redelivery-payment-confirm.top`): the yellow "Some links look suspicious" state. A caution verdict does not block the page. In English the second line reads "1 links on this page need a closer look": that is the popup's own 0.2.2 wording, whose count is always 1 for the page itself (see "Upload order"). |
+| `03-popup-caution.png` | The toolbar popup on a doubtful "pay the redelivery fee" page (`redelivery-payment-confirm.top`): the yellow "This site looks suspicious" state. Its second line names the site, says it shows some signs of a scam and advises against entering passwords or card details there. A caution verdict does not block the page. |
 | `04-link-badges.png` | A search-results page (`search.example`) with a badge after every result: green ticks for Wikipedia and `help.parcel-service.example`, yellow marks for `redelivery-payment-confirm.top` and `track-parcel-update.xyz`, a red cross for `parcel-redelivery-payment-verify.xyz`. The red badge is hovered, so its tooltip shows the first three reasons. |
 | `05-settings.png` | The top of the Settings page with its defaults: not signed in, the "Who uses this browser" choice, and email scanning off. |
 
@@ -19,16 +19,12 @@ same run.
 
 | Listing | Upload, in this order |
 |---------|-----------------------|
-| `en/` | `01-block-page.png`, `02-popup-safe.png`, `04-link-badges.png`, `05-settings.png` |
+| `en/` | `01-block-page.png`, `02-popup-safe.png`, `03-popup-caution.png`, `04-link-badges.png`, `05-settings.png` |
 | `ru/` | `01-block-page.png`, `02-popup-safe.png`, `03-popup-caution.png`, `04-link-badges.png`, `05-settings.png` |
-
-The Chrome Web Store needs at least one screenshot and takes up to five, so a listing with four is complete.
-
-**Not uploaded: `en/03-popup-caution.png`.** It is true to the build, but its second line reads "1 links on this page need a closer look": the 0.2.2 popup builds that line from a link count the background never sends, so it always says 1, and the English text has no singular form. It stays in the folder; when a later version fixes the wording, rerun the script: it reads the popup's text and puts the shot back into this order by itself.
 
 ## What is real and what is staged
 
-- **The extension is the real build, unmodified.** `extension/` at version 0.2.2 (last changed in commit `e7d532bc`), loaded unpacked with `--load-extension` exactly as a person would load it. Compared with the store package `dist/store-artifacts/cleanway-0.2.2-chrome.zip`, these files differ: `src/utils/name-rules.js`, `src/utils/scorer-data.js`. They hold the offline rules, not the interface, and the package's rules give every demo host below the same verdict.
+- **The extension is the real build, unmodified.** `extension/` at version 0.2.2 (git tree `1c8b2ba5` from `git rev-parse --short HEAD:extension`), loaded unpacked with `--load-extension` exactly as a person would load it. It is byte-identical to the store package `dist/store-artifacts/cleanway-0.2.2-chrome.zip`.
 - **The pages are demo pages.** The script serves the search results, the recipe and the two parcel pages itself, on made-up hosts (`.example` for the ordinary sites, scam-shaped `.xyz`/`.top` names for the bad ones). No real brand is imitated; Wikipedia only appears as a link.
 - **Every verdict comes from the extension's own rules.** The server is replaced by a stub inside the script, as in the browser test (`scripts/test-extension-sw.mjs`): it answers each site check with exactly the verdict the extension's offline rules (`src/utils/local-scorer.js`, read from the same build) give that host, and `GET /health` with 200 so the popup does not show its offline banner. With no server at all the extension shows the same badges and blocks the same page, because its content script scores every host itself first. Nothing the extension shows was invented by the script: no verdict, reason, count or score. The production server, which also uses blocklists, DNS, page checks and an ML model, may say more about real sites.
 - **Not shown because the stub does not answer it:** the block page's "What kind of scam is this?" paragraph (`POST /api/v1/explain`). Without it the block page looks exactly as in 01, which is what a person sees when that answer does not arrive. The offline rules give no confidence figure, so no confidence chip appears either. The popup's statistics stay folded under "More".

@@ -18,10 +18,9 @@ export const SHOTS = [
     `The toolbar popup on an ordinary recipe page (\`${HOSTS.recipes}\`): "This page is safe". The two Wikipedia links in the ` +
     "text carry green ticks. The welcome tip had been closed with its × button, as a person would."],
   ["03-popup-caution.png",
-    `The toolbar popup on a doubtful "pay the redelivery fee" page (\`${HOSTS.caution}\`): the yellow "Some links look ` +
-    "suspicious\" state. A caution verdict does not block the page. In English the second line reads \"1 links on this page " +
-    "need a closer look\": that is the popup's own 0.2.2 wording, whose count is always 1 for the page itself (see " +
-    "\"Upload order\")."],
+    `The toolbar popup on a doubtful "pay the redelivery fee" page (\`${HOSTS.caution}\`): the yellow "This site looks ` +
+    "suspicious\" state. Its second line names the site, says it shows some signs of a scam and advises against entering " +
+    "passwords or card details there. A caution verdict does not block the page."],
   ["04-link-badges.png",
     `A search-results page (\`${HOSTS.search}\`) with a badge after every result: green ticks for Wikipedia and ` +
     `\`${HOSTS.help}\`, yellow marks for \`${HOSTS.caution}\` and \`${HOSTS.tracking}\`, a red cross for \`${HOSTS.scam}\`. ` +
@@ -32,16 +31,13 @@ export const SHOTS = [
 ];
 
 // Captured but kept out of one language's upload order while the popup in it
-// shows `text`. 0.2.2's English caution line is built from a link count the
-// background never sends (popup.js, status_warning_subtitle), so it always
-// reads "1 links on this page need a closer look": true to the build, but a
-// grammar slip on the listing. The run checks the popup's text, so once a
-// later version fixes the wording the shot goes back into the order by itself.
-export const HOLD_BACK = [
-  { lang: "en", file: "03-popup-caution.png", text: /^1 links\b/,
-    why: "its second line reads \"1 links on this page need a closer look\": the 0.2.2 popup builds that line from a " +
-      "link count the background never sends, so it always says 1, and the English text has no singular form" },
-];
+// shows `text`: { lang, file, text: RegExp, why }, for a line that is true to
+// the build but a slip on a listing. The run checks the popup's text, so once
+// a later version fixes the wording the shot goes back into the order by
+// itself. Empty since the caution line stopped printing a link count the
+// background never sends (it read "1 links on this page need a closer look"
+// on every caution page); en/03 is uploaded again.
+export const HOLD_BACK = [];
 
 /** HOLD_BACK entries that still apply to what this run's popups showed. */
 export const heldBack = (locales) => HOLD_BACK.filter((h) => {
@@ -77,7 +73,8 @@ export function writeReadme(outDir, run) {
     ? run.refused.map((u) => `- ${code(u)}`).join("\n")
     : "- none";
   const build = `${code(run.extRel)} at version ${run.version}` +
-    (run.commit ? ` (last changed in commit ${code(run.commit)}${run.dirty ? ", plus local changes" : ""})` : "");
+    (run.tree ? ` (git tree ${code(run.tree)} from ${code(`git rev-parse --short HEAD:${run.extRel.replace(/\/$/, "")}`)}` +
+      `${run.dirty ? ", plus local changes" : ""})` : "");
   let vsZip = "";
   if (run.zip && run.zipDiff.length === 0) {
     vsZip = ` It is byte-identical to the store package ${code(run.zip)}.`;

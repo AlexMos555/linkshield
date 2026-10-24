@@ -26,12 +26,12 @@
     }
   },
   "status_warning_title": {
-    "message": "Beberapa tautan terlihat mencurigakan"
+    "message": "Situs ini terlihat mencurigakan"
   },
   "status_warning_subtitle": {
-    "message": "$N$ tautan di halaman ini perlu diperiksa lebih teliti",
+    "message": "$DOMAIN$ menunjukkan beberapa tanda penipuan. Jangan masukkan kata sandi atau data kartu di sini jika Anda tidak memercayai situs ini.",
     "placeholders": {
-      "n": {
+      "domain": {
         "content": "$1"
       }
     }
