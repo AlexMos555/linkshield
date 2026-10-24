@@ -39,10 +39,11 @@
  *     CSP refusals and console.error of its pages, background and content
  *     scripts). One planted error per kind proves the console is being read.
  * Screenshots (PNG) and summary.json go to --out (default: a folder in the
- * system temp dir, printed at the end). Exit code 1 when a check failed.
+ * system temp dir, printed at the end); a run replaces only its own files
+ * there (OUTPUTS below). Exit code 1 when a check failed.
  */
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -59,6 +60,7 @@ import { EXPECTED, HOSTS, URLS } from "./store-screenshots/fixtures.mjs";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TREE = join(ROOT, "extension-firefox");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const LANG = "en"; // the demo pages' language (store-screenshots/fixtures.mjs)
 
 // ── arguments ──
 const argv = process.argv.slice(2);
@@ -98,9 +100,16 @@ async function until(fn, timeoutMs = 15000, stepMs = 200) {
   }
   return last;
 }
+// Everything this script writes to --out. Only these names are cleared before
+// a run (so no stale picture passes for a new one): --out may be any folder —
+// the repository root, store-assets/, the Desktop — and nothing else in it is
+// touched.
+const OUTPUTS = ["00-welcome.png", "01-link-badges.png", "02-popup-safe.png", "03-popup-caution.png",
+  "04-block-page.png", "04-popup-on-block-page.png", "05-settings.png", "06-block-preview.png", "summary.json"];
 mkdirSync(OUT, { recursive: true });
-for (const f of readdirSync(OUT)) if (/\.(png|json)$/.test(f)) rmSync(join(OUT, f));
+for (const f of OUTPUTS) rmSync(join(OUT, f), { force: true });
 function shot(file, png) {
+  if (!OUTPUTS.includes(file)) throw new Error(`${file}: add it to OUTPUTS, the files cleared before a run`);
   writeFileSync(join(OUT, file), png);
   console.log(`        ${join(OUT, file)}`);
 }
@@ -135,7 +144,7 @@ const work = mkdtempSync(join(tmpdir(), "cleanway-ff-smoke-")); // the certifica
 const summary = { date: new Date().toISOString(), loaded: pkg.label, version, popupHeights: {} };
 let proxy = null, driver = null, s = null;
 try {
-  proxy = await startStubProxy({ dir: work, lang: "en", score });
+  proxy = await startStubProxy({ dir: work, lang: LANG, score });
   driver = await startGeckodriver(GECKODRIVER, work);
   s = await Session.create(driver.base, {
     acceptInsecureCerts: true, // the stub's self-signed certificate
@@ -157,7 +166,7 @@ try {
   console.log(`${summary.firefox}, stub proxy on 127.0.0.1:${proxy.port}`);
   await watchErrorConsole(s);
   await s.setRect(1280, 800);
-  const ctx = { s, base, check, shot, until, sleep, popupHeights: summary.popupHeights };
+  const ctx = { s, base, lang: LANG, check, shot, until, sleep, popupHeights: summary.popupHeights };
   const tabA = await s.currentHandle();
 
   const welcome = await installAndWelcome(ctx, EXT_DIR || ZIP, tabA, async () => {

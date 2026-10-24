@@ -2,14 +2,15 @@
  * What the smoke test does in Firefox, step by step, as a person would.
  *
  * Every step gets the same context: `s` (the WebDriver session), `base`
- * (the add-on's moz-extension://<uuid>/), `check(name, ok, detail)`,
+ * (the add-on's moz-extension://<uuid>/), `lang` (of the demo pages the stub
+ * serves), `check(name, ok, detail)`,
  * `shot(file, png)`, `until(fn)` (retry until fn returns something without
  * `pending`/`error`) and `sleep(ms)`. Two windows: the first shows the web
  * pages; the second holds Settings, from where the open popup is read
  * (browser.extension.getViews) without taking focus from the first.
  */
 import { clickToolbarButton, closePopup, popupPng } from "./geckodriver.mjs";
-import { EXPECTED, HOSTS, URLS } from "../store-screenshots/fixtures.mjs";
+import { EXPECTED, HOSTS, URLS, pageFor } from "../store-screenshots/fixtures.mjs";
 
 export const ADDON_ID = "cleanway@cleanway.ai";
 
@@ -43,7 +44,11 @@ export async function installAndWelcome(ctx, addonPath, tabA, canary) {
 
 /** The link marks on the search page: green, yellow, red, as the offline rules say. */
 export async function linkMarks(ctx) {
-  const { s, check, shot, until } = ctx;
+  const { s, check, shot, until, lang } = ctx;
+  // The links of the page the stub serves, in order: each must be found and
+  // marked (an empty or short list must not pass as "every link").
+  const served = [...pageFor(URLS.search, lang).matchAll(/<a href="([^"]+)"/g)].map((m) => new URL(m[1]).hostname);
+  const sameLinks = (got) => got.length === served.length && got.every(([host], i) => host === served[i]);
   await s.go(URLS.search);
   const marks = await until(async () => {
     const got = await s.content(`return [...document.querySelectorAll("main a")].map((a) => {
@@ -52,12 +57,14 @@ export async function linkMarks(ctx) {
         (["safe", "caution", "dangerous"].find((l) => b.classList.contains("ls-" + l)) || "other") : null;
       return [new URL(a.href).hostname, level];
     });`);
-    return got.every(([, level]) => level) ? got : { pending: true, got };
+    return sameLinks(got) && got.every(([, level]) => level) ? got : { pending: true, got };
   });
   const list = Array.isArray(marks) ? marks : (marks && marks.got) || [];
   const wrong = list.filter(([host, level]) => level !== (EXPECTED[host] || "safe"));
-  check("content scripts mark every link with its verdict", Array.isArray(marks) && wrong.length === 0,
-    list.map(([h, l]) => `${h} ${l}`).join(", ") || JSON.stringify(marks));
+  check("content scripts mark every link with its verdict",
+    served.length > 0 && Array.isArray(marks) && sameLinks(list) && wrong.length === 0,
+    `${list.map(([h, l]) => `${h} ${l}`).join(", ") || (marks && marks.error) || "no links found"}` +
+    `${sameLinks(list) ? "" : ` — the page has ${served.length}: ${served.join(", ")}`}`);
   shot("01-link-badges.png", await s.screenshot());
 }
 
