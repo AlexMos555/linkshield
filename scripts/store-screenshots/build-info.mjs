@@ -1,5 +1,5 @@
 /**
- * What was loaded, for the README: the build's version and commit, and how it
+ * What was loaded, for the README: the build's version and git tree, and how it
  * differs from the store ZIP in dist/store-artifacts (read here with a tiny
  * ZIP reader, so nothing has to be unpacked).
  */
@@ -61,18 +61,19 @@ function git(root, args) {
 }
 
 /**
- * @returns {{version, commit, dirty, zip, zipDiff, zipScore}} zip/zipDiff/zipScore are null without the ZIP.
+ * @returns {{version, tree, dirty, zip, zipDiff, zipScore}} zip/zipDiff/zipScore are null without the ZIP.
  */
 export function buildInfo(root, extDir) {
   const version = JSON.parse(readFileSync(join(extDir, "manifest.json"), "utf8")).version;
   const relExt = relative(root, extDir);
   const inRepo = relExt && !relExt.startsWith("..");
-  // The last commit that changed the build, not HEAD: it names the same files
-  // and stays valid when the commit carrying a new set of shots is rebased.
-  const commit = inRepo ? git(root, ["log", "-1", "--format=%h", "--", relExt]) : "";
+  // The build's git tree, not a commit: it names exactly these files and stays
+  // the same when the branch carrying a new set of shots is rebased or
+  // squash-merged, which gives the files a new commit but never a new tree.
+  const tree = inRepo ? git(root, ["rev-parse", "--short", `HEAD:${relExt.split("\\").join("/")}`]) : "";
   const dirty = inRepo ? git(root, ["status", "--porcelain", "--", relExt]) !== "" : false;
   const zipPath = join(root, "dist", "store-artifacts", `cleanway-${version}-chrome.zip`);
-  if (!existsSync(zipPath)) return { version, commit, dirty, zip: null, zipDiff: null, zipScore: null };
+  if (!existsSync(zipPath)) return { version, tree, dirty, zip: null, zipDiff: null, zipScore: null };
   const entries = readZip(zipPath);
   const local = new Set(listFiles(extDir));
   const zipDiff = [];
@@ -83,5 +84,5 @@ export function buildInfo(root, extDir) {
   }
   for (const name of local) if (name !== "STORE_LISTING.md") zipDiff.push(`${name} (not in the ZIP)`);
   const zipScore = scorerFrom((rel) => entries.get(rel).toString("utf8"));
-  return { version, commit, dirty, zip: relative(root, zipPath), zipDiff: zipDiff.sort(), zipScore };
+  return { version, tree, dirty, zip: relative(root, zipPath), zipDiff: zipDiff.sort(), zipScore };
 }

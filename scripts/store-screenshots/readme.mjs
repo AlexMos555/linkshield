@@ -73,7 +73,8 @@ export function writeReadme(outDir, run) {
     ? run.refused.map((u) => `- ${code(u)}`).join("\n")
     : "- none";
   const build = `${code(run.extRel)} at version ${run.version}` +
-    (run.commit ? ` (last changed in commit ${code(run.commit)}${run.dirty ? ", plus local changes" : ""})` : "");
+    (run.tree ? ` (git tree ${code(run.tree)} from ${code(`git rev-parse --short HEAD:${run.extRel.replace(/\/$/, "")}`)}` +
+      `${run.dirty ? ", plus local changes" : ""})` : "");
   let vsZip = "";
   if (run.zip && run.zipDiff.length === 0) {
     vsZip = ` It is byte-identical to the store package ${code(run.zip)}.`;

@@ -335,7 +335,7 @@ for (const [host, level] of Object.entries(EXPECTED)) {
   }
   verdicts.push({ host, level: v.level, reasons: v.reasons.map((r) => r.signal), where: WHERE[host] });
 }
-console.log(`extension ${info.version} from ${relative(ROOT, EXT) || EXT}${info.commit ? ` @ ${info.commit}` : ""}` +
+console.log(`extension ${info.version} from ${relative(ROOT, EXT) || EXT}${info.tree ? ` (git tree ${info.tree})` : ""}` +
   (info.zip ? `; differs from ${info.zip} in: ${info.zipDiff.join(", ") || "nothing"}` : ""));
 
 const log = { api: new Set(), refused: new Set() };
