@@ -1,0 +1,5 @@
+out/
+raw/
+*.apk
+*.apk.idsig
+keystore.jks
