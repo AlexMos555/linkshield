@@ -200,7 +200,11 @@ service. In order of value per effort:
    };
    ```
    Notes: the Worker must not log (no `console.log` of the request; Workers
-   Logs off for this route). Behind the proxy the client IP comes from
+   Logs off for this route). Once DNS runs in a Railway service of its own
+   (`docs/runbooks/dns-service-split.md`), the origin is that service's
+   `*.up.railway.app` domain, not `api.cleanway.ai`: with `SERVICE_ROLE=api`
+   that answers `/dns-query` with 404, which the sketch (`< 500`) would hand
+   to every phone. Behind the proxy the client IP comes from
    `CF-Connecting-IP`, which the API believes only when the hop in front of
    Railway's edge is a Cloudflare address (vendored ranges,
    `api/data/cloudflare_ips.txt`) — `TRUSTED_PROXY_CIDRS` stays

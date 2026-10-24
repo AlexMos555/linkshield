@@ -136,7 +136,22 @@ from api.services import confirmed_threats  # noqa: E402
 from api.services import own_sources  # noqa: E402
 from api.services import phishtank_feed  # noqa: E402
 
-API_BASE = os.environ.get("CLEANWAY_API_BASE", "https://api.cleanway.ai")
+DEFAULT_API_BASE = "https://api.cleanway.ai"
+# Where phones send their DNS questions, so where the post-publish check asks
+# (verify_published). Since DNS can run in a Railway service of its own, whose
+# API-only twin answers /dns-query with 404 (docs/runbooks/dns-service-split.md),
+# only this name reaches the process phones use. Another CLEANWAY_API_BASE
+# (staging: one service) keeps the check there; CLEANWAY_DNS_BASE overrides.
+# Same rule as scripts/dns_canary.py.
+DEFAULT_DNS_BASE = "https://dns.cleanway.ai"
+
+
+def _dns_base(env=os.environ) -> str:
+    api = env.get("CLEANWAY_API_BASE", DEFAULT_API_BASE).rstrip("/")
+    return (env.get("CLEANWAY_DNS_BASE") or (DEFAULT_DNS_BASE if api == DEFAULT_API_BASE else api)).rstrip("/")
+
+
+DNS_BASE = _dns_base()
 # The analyzer's Safe-Browsing-confirmed hosts, one more source when
 # publishing them is switched on (confirmed_threats.enabled).
 CONFIRMED_SOURCE = "Cleanway checks"
@@ -159,7 +174,7 @@ async def _live_rcode(client: "httpx.AsyncClient", name: str) -> int | None:
     import base64
     q = base64.urlsafe_b64encode(_wire_query(name)).decode().rstrip("=")
     try:
-        r = await client.get(f"{API_BASE}/dns-query", params={"dns": q},
+        r = await client.get(f"{DNS_BASE}/dns-query", params={"dns": q},
                              headers={"accept": "application/dns-message"})
         if r.status_code != 200 or len(r.content) < 12:
             return None

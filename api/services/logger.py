@@ -45,7 +45,7 @@ ALLOWED_EXTRAS = frozenset({
     # startup
     "environment", "strict_config", "has_supabase", "has_stripe",
     "has_revenuecat", "has_sentry", "supabase_server_key_kind", "role",
-    "enabled", "migration", "release",
+    "enabled", "migration", "release", "service_role",
     # accounts, families, orgs (our own ids)
     "account_id", "uid", "caller", "owner", "redeemer", "invite_id",
     "family_id", "org", "org_id", "admin_user_id", "platform", "targets",

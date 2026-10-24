@@ -96,16 +96,22 @@ async def lifespan(app: FastAPI):
             "environment": settings.environment,
             "origins": settings.get_allowed_origins(),
             "strict_config": settings.strict_config,
+            "service_role": settings.service_role,
         },
     )
-    await _warm_ml_model()
+    # Per SERVICE_ROLE (docs/runbooks/dns-service-split.md): a DNS-only
+    # process never scores a site and never deletes data; an API-only one
+    # needs no blocklist in memory.
+    if settings.serves_api():
+        await _warm_ml_model()
     # DoH gateway: load the blocklist artifact into memory (and keep it
     # fresh) so DNS queries stop paying a Redis round trip each.
     from api.routers.doh import startup as doh_startup
-    await doh_startup()
+    await doh_startup(load_filter=settings.serves_dns())
     # Retention purge loop — only when RETENTION_PURGE is dry_run / on.
     from api.services import retention
-    retention.start_background()
+    if settings.serves_api():
+        retention.start_background()
     yield
     await retention.stop_background()
     # ── Shutdown ──
@@ -210,18 +216,21 @@ async def request_logging_middleware(request: Request, call_next):
     return response
 
 
-# Before routing, auth and body parsing: dns.cleanway.ai serves DNS only, and
-# every request body is capped (api/services/request_guards.py).
-from api.services.request_guards import BodySizeLimit, DnsHostOnly  # noqa: E402
+# Before routing, auth and body parsing: every request body is capped
+# (api/services/request_guards.py).
+from api.services.request_guards import BodySizeLimit, DnsRouting  # noqa: E402
 
 app.add_middleware(BodySizeLimit)
-app.add_middleware(DnsHostOnly)
 
 # Answers /dns-query before any of the middleware above runs
 # (api/services/doh_fastpath.py).
 from api.services.doh_fastpath import DohFastPath  # noqa: E402
 
 app.add_middleware(DohFastPath)
+
+# Outside the fast path, so it decides for /dns-query too: dns.cleanway.ai
+# serves DNS only, and SERVICE_ROLE picks what else this process answers.
+app.add_middleware(DnsRouting)
 
 # Outermost: a bounded number of requests in flight per class (DNS, each
 # health probe, the rest) per worker — past it an immediate 503 +
@@ -347,13 +356,19 @@ async def health_check():
     # Breaker states stay out of the body: their names listed which paid
     # threat-intel sources this deployment has keys for. They still turn
     # `status` to "degraded" above.
-    return {
+    body = {
         "status": status,
         "version": __version__,
         "redis": "ok" if redis_ok else "down",
         "blocklist_version": blocklist_version,
         "blocklist_age_s": blocklist_age_s,
     }
+    # Which service answered, once DNS runs in a service of its own
+    # (docs/runbooks/dns-service-split.md). Absent with the default role.
+    role = get_settings().service_role
+    if role != "all":
+        body["service_role"] = role
+    return body
 
 
 @app.get("/health/deep")
