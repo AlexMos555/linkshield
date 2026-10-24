@@ -2447,6 +2447,126 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
   });
 }
 
+// ── Group 13: the caution popup says nothing it does not know ──
+// A caution verdict in the popup is about the tab's own site, not its links.
+// The line under it was "$N$ links on this page need a closer look", filled
+// with String((r.suspicious_links_count || 0) || 1), a field the background
+// never sends: every caution page read "1 links on this page…", even one
+// with no links at all. The popup is run here against each tree's real
+// locale files, with chrome.i18n's own placeholder rules.
+
+/** chrome.i18n.getMessage over one messages.json: $NAME$ placeholders, $1… substitutions, $$. */
+function i18nFrom(messages, locale) {
+  return {
+    getUILanguage: () => locale,
+    getMessage(key, subs) {
+      const entry = messages[key];
+      if (!entry || typeof entry.message !== "string") return "";
+      const list = subs == null ? [] : Array.isArray(subs) ? subs : [subs];
+      const fill = (s) => String(s).replace(/\$(\d)/g, (_, n) => (list[n - 1] == null ? "" : String(list[n - 1])));
+      const named = {};
+      for (const [name, p] of Object.entries(entry.placeholders || {})) named[name.toLowerCase()] = fill(p.content);
+      return entry.message
+        .replace(/\$([A-Za-z0-9_@]+)\$/g, (whole, name) => (name.toLowerCase() in named ? named[name.toLowerCase()] : whole))
+        .replace(/\$\$/g, "$");
+    },
+  };
+}
+
+/** popup.js with a fake page and a background that answers the tab's check with `verdict`. */
+function loadPopupPage(tree, locale, { tabUrl, verdict, search = "" }) {
+  const elements = new Map();
+  const element = (id) => {
+    if (!elements.has(id)) {
+      const attrs = {};
+      elements.set(id, {
+        id, hidden: id === "confidence-chip", textContent: "", innerHTML: "", title: "", disabled: false, dataset: {}, style: {},
+        classList: { add() {}, remove() {}, contains: () => false },
+        setAttribute(k, v) { attrs[k] = String(v); },
+        getAttribute: (k) => attrs[k],
+        addEventListener() {},
+      });
+    }
+    return elements.get(id);
+  };
+  const localeTree = tree === SOURCE_TREE ? BROWSER_TREES[0] : tree; // extension-core has no _locales of its own
+  const messages = readJson(join(localeTree, "_locales", locale, "messages.json"));
+  const chrome = {
+    i18n: i18nFrom(messages, locale),
+    tabs: { query: async () => [{ id: 7, url: tabUrl }] },
+    runtime: {
+      getURL: (p) => `chrome-extension://abcdefghijklmnopabcdefghijklmnop/${p || ""}`,
+      sendMessage: async (msg) => (msg && msg.type === "CHECK_DOMAINS" ? { results: [verdict] } : null),
+    },
+    storage: { local: { get: async () => ({}) } },
+  };
+  const ctx = vm.createContext({
+    self: {},
+    chrome,
+    window: { location: { search } },
+    document: {
+      addEventListener() {},
+      querySelectorAll: () => [],
+      getElementById: element,
+      documentElement: { style: { setProperty() {} } },
+    },
+    URL,
+    URLSearchParams,
+  });
+  vm.runInContext(readFileSync(join(ROOT, tree, "src/popup/popup.js"), "utf8"), ctx);
+  return { ctx, element };
+}
+
+// A host with no digits in it, so any digit on the card came from somewhere else.
+const CAUTION_HOST = "parcel-redelivery-fee.example";
+// Exactly what the background answers for the tab's own site: no link count.
+const CAUTION_VERDICT = {
+  domain: CAUTION_HOST, level: "caution", score: 35, source: "local",
+  reasons: [{ signal: "brand_keyword", detail: "Mentions a delivery fee", weight: 20 }],
+};
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] the caution popup names the site and shows no made-up count, in all ${LOCALES.length} locales`, async () => {
+    for (const locale of LOCALES) {
+      const { ctx, element } = loadPopupPage(tree, locale, {
+        tabUrl: `https://${CAUTION_HOST}/pay?parcel=1`, verdict: { ...CAUTION_VERDICT },
+      });
+      await ctx.loadPageStatus();
+      const card = element("status-card").getAttribute("data-state");
+      const title = element("status-title").textContent;
+      const sub = element("status-subtitle").textContent;
+      assert.equal(card, "warning", `${locale}: caution is not the warning card`);
+      assert.ok(title && sub, `${locale}: empty caution title or line`);
+      assert.ok(!/\d/.test(title + " " + sub), `${locale}: the caution card shows a number nobody counted: ${title} / ${sub}`);
+      assert.ok(sub.includes(CAUTION_HOST), `${locale}: the caution line does not name the site it is about: ${sub}`);
+      assert.ok(!/\$/.test(title + sub), `${locale}: an unfilled placeholder: ${title} / ${sub}`);
+    }
+  });
+
+  await check(`[${tree}] the caution strings take only the site's name, never a count`, () => {
+    const localeTree = tree === SOURCE_TREE ? BROWSER_TREES[0] : tree;
+    for (const locale of LOCALES) {
+      const messages = readJson(join(localeTree, "_locales", locale, "messages.json"));
+      const title = messages.status_warning_title;
+      const sub = messages.status_warning_subtitle;
+      assert.ok(!title.placeholders, `${locale}: the caution title takes a placeholder`);
+      assert.deepEqual(Object.keys(sub.placeholders || {}), ["domain"], `${locale}: the caution line's placeholders`);
+      assert.ok(!/\d/.test(title.message + sub.message), `${locale}: a number written into the caution text`);
+    }
+    // No code path reads a link count for the card; the field never existed.
+    const js = stripComments(readFileSync(join(ROOT, tree, "src/popup/popup.js"), "utf8"));
+    assert.ok(!/suspicious_links_count/.test(js), "the popup still reads suspicious_links_count");
+  });
+
+  await check(`[${tree}] the popup's preview of the caution card shows no count either`, () => {
+    const { ctx, element } = loadPopupPage(tree, "en", { tabUrl: "", verdict: null, search: "?state=warning" });
+    ctx.runPreviewDemo();
+    const sub = element("status-subtitle").textContent;
+    assert.equal(element("status-card").getAttribute("data-state"), "warning");
+    assert.ok(sub && !/\d/.test(sub), `preview caution line: ${sub}`);
+  });
+}
+
 console.log(
   failed === 0
     ? `\n${passed} checks passed (source + ${BROWSER_TREES.length} browser trees)`

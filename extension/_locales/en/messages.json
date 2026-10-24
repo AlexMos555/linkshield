@@ -28,12 +28,12 @@
     }
   },
   "status_warning_title": {
-    "message": "Some links look suspicious"
+    "message": "This site looks suspicious"
   },
   "status_warning_subtitle": {
-    "message": "$N$ links on this page need a closer look",
+    "message": "$DOMAIN$ shows some signs of a scam. Don't enter passwords or card details here unless you trust this site.",
     "placeholders": {
-      "n": {
+      "domain": {
         "content": "$1"
       }
     }

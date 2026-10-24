@@ -18,8 +18,8 @@ var FALLBACK_EN = {
   status_scanning: "Checking this page…",
   status_safe_title: "This page is safe",
   status_safe_subtitle: "No scam links found on $1",
-  status_warning_title: "Some links look suspicious",
-  status_warning_subtitle: "$1 links on this page need a closer look",
+  status_warning_title: "This site looks suspicious",
+  status_warning_subtitle: "$1 shows some signs of a scam. Don't enter passwords or card details here unless you trust this site.",
   status_danger_title: "This is a scam site",
   status_danger_subtitle: "$1 is pretending to be someone else to steal your information",
   status_unknown_title: "Couldn't check this page",
@@ -306,8 +306,12 @@ async function loadPageStatus() {
       title = t("status_safe_title");
       subtitle = t("status_safe_subtitle", [domain]);
     } else if (state === "warning") {
+      // Like the other verdicts, caution is about this tab's own site, not
+      // the links on it: the line names the site. It used to say "$N links
+      // on this page need a closer look" with a count the background never
+      // sends, so every caution page read "1 links…", links or not.
       title = t("status_warning_title");
-      subtitle = t("status_warning_subtitle", [String((r.suspicious_links_count || 0) || 1)]);
+      subtitle = t("status_warning_subtitle", [domain]);
     } else if (state === "danger") {
       title = t("status_danger_title");
       subtitle = t("status_danger_subtitle", [domain]);
@@ -613,7 +617,7 @@ function runPreviewDemo() {
   var demos = {
     scanning: { title: t("status_scanning"), subtitle: "" },
     safe: { title: t("status_safe_title"), subtitle: t("status_safe_subtitle", ["example.com"]) },
-    warning: { title: t("status_warning_title"), subtitle: t("status_warning_subtitle", ["3"]) },
+    warning: { title: t("status_warning_title"), subtitle: t("status_warning_subtitle", ["parcel-fee.example"]) },
     danger: { title: t("status_danger_title"), subtitle: t("status_danger_subtitle", ["fake-bank.com"]) },
   };
   var d = demos[state] || demos.safe;

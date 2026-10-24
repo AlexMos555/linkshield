@@ -26,12 +26,12 @@
     }
   },
   "status_warning_title": {
-    "message": "Algunos enlaces parecen sospechosos"
+    "message": "Este sitio parece sospechoso"
   },
   "status_warning_subtitle": {
-    "message": "$N$ enlaces en esta página necesitan una revisión más cuidadosa",
+    "message": "$DOMAIN$ muestra algunas señales de fraude. No introduzcas contraseñas ni datos de tarjeta aquí si no confías en este sitio.",
     "placeholders": {
-      "n": {
+      "domain": {
         "content": "$1"
       }
     }
