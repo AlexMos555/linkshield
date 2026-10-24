@@ -118,7 +118,7 @@
 - Don't astroturf. Same.
 - Don't argue with bad-faith commenters. Save your energy for the curious ones.
 - Don't drop product roadmap on launch day. Focus on what's shipped.
-- Don't compare yourself to Norton/Bitdefender by name in copy. Stick to defaults (Cloudflare 1.1.1.1 for Families, Safe Browsing) — those are reproducible.
+- Don't compare yourself to Norton/Bitdefender by name in copy. Stick to the defaults the benchmark measures (Cloudflare 1.1.1.1 for Families, PhishTank) — those are reproducible.
 
 ---
 

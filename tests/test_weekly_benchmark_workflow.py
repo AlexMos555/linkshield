@@ -77,3 +77,16 @@ def test_the_first_fresh_run_has_nothing_to_compare(tmp_path):
     })
     assert proc.returncode == 0, proc.stderr
     assert output.strip() == "regression=false"
+
+
+def test_the_weekly_run_asks_neither_virustotal_nor_safe_browsing():
+    """Both free APIs bar a commercial product (scripts/eval_fresh_urls.py,
+    NON_COMMERCIAL_RESOLVERS). The job hands the script neither key and says
+    so in the command, so a later change of the script's default cannot bring
+    them back unnoticed."""
+    text = WORKFLOW.read_text(encoding="utf-8")
+    for secret in ("VT_API_KEY", "GOOGLE_SAFE_BROWSING_KEY", "GOOGLE_SAFE_BROWSING_API_KEY", "WEB_RISK_API_KEY"):
+        assert f"secrets.{secret}" not in text, secret
+    run = text.split("- name: Run benchmark", 1)[1].split("\n      - name:", 1)[0]
+    assert "--no-virustotal" in run and "--no-gsb" in run
+    assert not re.search(r"--(virustotal|gsb)\b", run), "asks one of them by name"

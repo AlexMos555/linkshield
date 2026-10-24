@@ -17,8 +17,9 @@ as before); `LICENSED_INTEL=licensed` is the analyzer's default since
 not asked (§2); URLhaus is retired from the blocklist and from training
 since 2026-10-21 (§1, §3); Tranco left training on 2026-10-22 and the
 popularity ranking on 2026-10-23 (§2a, §3), though installed app and
-extension copies keep its lists until their next releases (§2a). Still
-open: Phishing.Database's provenance (§1). CSIRT Italia's terms were
+extension copies keep its lists until their next releases (§2a); the
+weekly benchmark compares neither VirusTotal nor Google Safe Browsing since
+2026-10-24 (§2b). Still open: Phishing.Database's provenance (§1). CSIRT Italia's terms were
 settled on 2026-10-23 by leaving it out under the switch until ACN grants
 written permission (§1). The order of flipping, the numbers it cost and
 what replaced the loss are in the PR that added this file and in
@@ -134,7 +135,7 @@ PhishTank can be ingested and the public number stays measurable.
 | **crt.sh** (Watchtower) | `crt.sh/?q=…` | Sectigo's public CT log search, no terms beyond politeness | On |
 | **Anthropic Claude** (LLM judge, explainer) | `api.anthropic.com` | Commercial API terms; only a domain-free feature vector is sent | On with `ANTHROPIC_API_KEY`, daily budget |
 | **Have I Been Pwned** Pwned Passwords | `api.pwnedpasswords.com/range/…` | Free, k-anonymity range API; no key | On |
-| **Cloudflare DNS** (DoH gateway upstream; 1.1.1.1 for Families in the public comparison) | `cloudflare-dns.com/dns-query`, `family.cloudflare-dns.com` | Cloudflare public resolver terms | On |
+| **Cloudflare DNS** (DoH gateway upstream; 1.1.1.1 for Families in the public comparison) | `cloudflare-dns.com/dns-query`, `family.cloudflare-dns.com` | Cloudflare Website and Online Services Terms of Use (cloudflare.com/website-terms, effective 2025-08-01), which name the 1.1.1.1 resolver an Online Service; no non-commercial clause (read 2026-10-24, §2b) | On |
 
 ### What `LICENSED_INTEL=licensed` does, exactly
 
@@ -150,6 +151,14 @@ The six sources (SURBL, Spamhaus DBL, URLhaus, ThreatFox, MalwareBazaar,
 Feodo Tracker) are not in the analyzer's plan at all: not asked, so never
 "not listed", and they leave the total a verdict is measured against — an
 analysis is 13 checks of 13, not 13 of 19 with six that were never asked.
+
+Google Safe Browsing is not one of the six. Under the default the analyzer
+(and `POST /api/v1/email/analyze`) still asks it: `safe_browsing.get_client()`
+hands out the Web Risk client when `WEB_RISK_API_KEY` is set, and otherwise
+the Safe Browsing v4 client, which calls `threatMatches:find` whenever
+`GOOGLE_SAFE_BROWSING_API_KEY` (or `GOOGLE_SAFE_BROWSING_KEY`) is set and
+answers "unavailable" without a call when neither is. Moving to Web Risk is
+the founder's decision (§2, Web Risk row).
 Scores, levels and `confidence_pct` for the same evidence are identical
 with the switch on or off (pinned in `tests/test_licensed_intel.py`).
 
@@ -329,6 +338,32 @@ Tranco's DNS tail (199 "dangerous"); the visible cost is ~190 brand-owned
 alternates (googlemail.com, outlook.de, yahoo.de, santander.pl,
 protonmail.ch, adobelogin.com, office365.us) that the typosquat rule now
 flags "caution" — they were exempt only because Tranco listed them.
+
+### 2b. The weekly public benchmark (since 2026-10-24)
+
+`scripts/eval_fresh_urls.py`, run every Sunday by
+`.github/workflows/weekly-benchmark.yml`, publishes each service's recall in
+`docs/benchmarks/` and on cleanway.ai/transparency/methodology. What it
+compares, under which terms (read 2026-10-24):
+
+| Service | Terms | In the published run |
+|---|---|---|
+| **PhishTank** checkurl (its online-valid dump is also the phishing sample) | FAQ: commercial use OK (read 2026-09-29, §2) | Yes |
+| **Cloudflare 1.1.1.1 for Families** (`family.cloudflare-dns.com`; the unfiltered `cloudflare-dns.com` tells a block from a dead domain) | developers.cloudflare.com/1.1.1.1/terms-of-use: using the resolver is agreeing to the Website and Online Services Terms of Use (cloudflare.com/website-terms, effective 2025-08-01), whose Online Services are the products "publicly available without a subscription or a Cloudflare account", the 1.1.1.1 resolver named. No personal-use or non-commercial clause. §7 bars exceeding limits or overburdening the service (a run is a few hundred lookups a week); the §8 bot clause is about training AI on the website's content. Benchmarks and published comparisons are not mentioned either way (*likely* allowed) | Yes |
+| **VirusTotal** public API | docs.virustotal.com/reference/public-vs-premium-api: it "must not be used in commercial products or services" | **No.** `--virustotal` asks it in a non-commercial rerun with your own key |
+| **Google Safe Browsing v4** Lookup | developers.google.com/safe-browsing/v4: "for non-commercial use only"; commercial users are sent to Web Risk | **No.** `--gsb` likewise |
+
+Until 2026-10-24 a key in the environment was enough for the script to ask
+the last two, and the workflow passed both. Now a report that asked either
+never becomes `docs/benchmarks/latest.json`, not even with
+`--no-enforce-quality-gate` (`check_quality_gate`), and the workflow passes
+neither key (`tests/test_weekly_benchmark_workflow.py`). Runs up to
+2026-10-18 keep their columns; the methodology page leaves those rows out
+(`comparedRows` in `landing/lib/benchmark.ts`). The repository secrets
+`VT_API_KEY` and `GOOGLE_SAFE_BROWSING_KEY` are read by no workflow any more.
+Web Risk is not added in Safe Browsing's place: its terms restrict passing
+its results on (§2), and whether a published recall figure does that is
+unread (*uncertain*).
 
 ## 3. ML training data (`scripts/refresh_training_feeds.py`, weekly)
 
@@ -544,8 +579,9 @@ its own.
 
 Bank of Russia warning list (non-commercial, and a licensing-perimeter list,
 not a fraud list), Maltrail (Community Data License, written agreement
-needed), Yandex Safe Browsing, VirusTotal (benchmark only, `VT_API_KEY`,
-never in the list), Google Safe Browsing hash prefixes for the phone,
+needed), Yandex Safe Browsing, VirusTotal (never in the list; its public API
+bars commercial products, so it left the benchmark on 2026-10-24, §2b),
+Google Safe Browsing hash prefixes for the phone,
 SI-CERT, USOM Turkey, CERT-AgID, NCSC-UK PDNS, ruSpamModels / RUSpam
 datasets (CC BY-NC 4.0). Commercial feeds (Kaspersky Phishing URL Data Feed
 OEM, F6) are priced for later.
