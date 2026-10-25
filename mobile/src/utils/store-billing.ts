@@ -326,21 +326,40 @@ export const STORE_PLAN_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** The parts of the SDK's CustomerInfo read below. */
 export interface CustomerInfoLike {
+  /**
+   * When RevenueCat's server produced this answer (ISO). An answer from the
+   * SDK's cache keeps the date it was fetched (customer info is cached for
+   * 5 minutes, and offline for as long as it is offline).
+   */
+  requestDate?: string | null;
   entitlements?: {
-    active?: Record<string, { isActive?: boolean; expirationDate?: string | null } | undefined>;
+    active?: Record<
+      string,
+      { isActive?: boolean; expirationDate?: string | null; store?: string | null } | undefined
+    >;
   };
 }
 
 /**
+ * RevenueCat's `store` of an entitlement this phone counts as its own. A
+ * signed-in iPhone's RevenueCat customer is the account's, with whatever
+ * the account pays through: a Google Play plan there is the server's to
+ * count (with the device seats), never "paid in the App Store on this phone".
+ */
+const APP_STORE_STORES: ReadonlySet<string> = new Set(["APP_STORE", "MAC_APP_STORE"]);
+
+/**
  * This phone's plan from a CustomerInfo the SDK just gave (purchase,
- * restore, logIn, a read). An end date already past is not paid, whatever
- * isActive says: offline the SDK answers from its cache, and in a billing
- * grace period RevenueCat moves the end date to the end of the grace.
+ * restore, logIn, a read): the `unlimited` entitlement, from the App Store
+ * only. An end date already past is not paid, whatever isActive says:
+ * offline the SDK answers from its cache, and in a billing grace period
+ * RevenueCat moves the end date to the end of the grace (nextStorePlan
+ * decides whether such an answer may replace a paid one).
  */
 export function storePlanFromInfo(info: CustomerInfoLike | null | undefined, nowMs: number): StorePlanCache {
   const unpaid = { paid: false, expiresAt: null, checkedAt: nowMs };
   const ent = info?.entitlements?.active?.[PLAN_ENTITLEMENT_ID];
-  if (ent?.isActive !== true) return unpaid;
+  if (ent?.isActive !== true || !APP_STORE_STORES.has(String(ent.store ?? ""))) return unpaid;
   const ends = typeof ent.expirationDate === "string" ? Date.parse(ent.expirationDate) : NaN;
   if (!Number.isFinite(ends)) return { paid: true, expiresAt: null, checkedAt: nowMs };
   return ends > nowMs ? { paid: true, expiresAt: ends, checkedAt: nowMs } : unpaid;
@@ -376,15 +395,134 @@ export function storePlanStale(cache: StorePlanCache | null, nowMs: number): boo
   return cache.paid && cache.expiresAt !== null && cache.checkedAt < cache.expiresAt && nowMs >= cache.expiresAt;
 }
 
+/** Has a paid plan's end date passed? Then the SDK's cached answer is dropped before it is asked again. */
+export function storePlanPastEnd(cache: StorePlanCache | null, nowMs: number): boolean {
+  return Boolean(cache && cache.paid && cache.expiresAt !== null && nowMs >= cache.expiresAt);
+}
+
+/** The answer was requested before [stored]'s end date, which has passed since: it cannot know of a renewal. */
+function answerPredatesEnd(stored: StorePlanCache, info: CustomerInfoLike | null | undefined, nowMs: number): boolean {
+  if (stored.expiresAt === null || nowMs < stored.expiresAt) return false;
+  const requested = typeof info?.requestDate === "string" ? Date.parse(info.requestDate) : NaN;
+  // Both dates are RevenueCat's / Apple's clock, not the phone's.
+  return Number.isFinite(requested) && requested < stored.expiresAt;
+}
+
+/**
+ * This phone's plan after RevenueCat answered [info]. A paid answer always
+ * replaces it, and so does any answer when nothing counts now. An unpaid
+ * answer leaves a plan that still counts (storePlanActive) when:
+ *   • it predates the plan's end: the end date has passed and the answer
+ *     was requested before it — the SDK's cache (offline, or under 5
+ *     minutes old) cannot know of a renewal; the 7-day grace then runs
+ *     from the last paid answer, as the docs promise;
+ *   • [held]: the plan bought here signed out has not reached the account
+ *     yet (sign-in did not merge, syncPurchases could not move it) — the
+ *     account's own unpaid answer says nothing about it; it counts until
+ *     its own end, and "Restore purchases" moves it.
+ * Before the end date a fresh unpaid answer is the truth (a refund, the
+ * plan transferred away).
+ */
+export function nextStorePlan(
+  stored: StorePlanCache | null,
+  info: CustomerInfoLike | null | undefined,
+  nowMs: number,
+  held: boolean = false,
+): StorePlanCache {
+  const incoming = storePlanFromInfo(info, nowMs);
+  if (incoming.paid || !stored || !storePlanActive(stored, nowMs)) return incoming;
+  if (held || answerPredatesEnd(stored, info, nowMs)) return stored;
+  return incoming;
+}
+
+/**
+ * Is a CustomerInfo the SDK gave about whoever is here, so it may become
+ * this phone's plan? [sdkAs]: who the SDK was when it answered — an account
+ * id, null for RevenueCat's anonymous id, undefined when not known.
+ * [here]: the session — the account id, null signed out, undefined signed
+ * in but unreadable (offline). Signed out only the anonymous id counts:
+ * configure({appUserID: null}) reuses an account id the SDK kept from an
+ * earlier run, and that account's plan is not this phone's.
+ */
+export function storeInfoIsAbout(sdkAs: string | null | undefined, here: string | null | undefined): boolean {
+  return sdkAs !== undefined && here !== undefined && sdkAs === here;
+}
+
 /**
  * Signed in, and the plan this phone bought signed out did not come along?
  * Purchases.logIn merges the anonymous buyer into the account — unless the
  * account already has an anonymous alias of its own (RevenueCat
- * "Identifying customers"). Then only "Restore purchases" moves it, and the
- * app says so.
+ * "Identifying customers": "No merge or purchase transfer occurs"). Then
+ * syncPurchases moves it (settleLogIn); when that fails too, the app says
+ * "Restore purchases".
  */
 export function restoreSuggested(before: StorePlanCache | null, after: StorePlanCache, nowMs: number): boolean {
   return storePlanActive(before, nowMs) && !after.paid;
+}
+
+export interface LogInSettled {
+  /** This phone's plan from now on (nextStorePlan; held while restoreHint). */
+  plan: StorePlanCache;
+  /** The plan bought here is still not in the account: say "Restore purchases". */
+  restoreHint: boolean;
+  /** RevenueCat says the account has the plan: our server must re-read it (no webhook says "merged"). */
+  serverSync: boolean;
+  /** The last CustomerInfo — logIn's, or syncPurchases'. */
+  info: CustomerInfoLike;
+}
+
+/**
+ * After Purchases.logIn in the iPhone app. [before]: this phone's plan just
+ * before; [info]: logIn's answer about the account. Not merged, though the
+ * SDK was RevenueCat's anonymous id and this phone has a plan of its own:
+ * [syncPurchases] (Purchases.syncPurchasesForResult — "programmatically
+ * trigger a restore", no OS sign-in prompt) moves this Apple ID's purchase
+ * to the account under the transfer behaviour. Never from another account
+ * ([fromAnonymous] false): that would take the plan from it.
+ */
+export async function settleLogIn(input: {
+  fromAnonymous: boolean;
+  before: StorePlanCache | null;
+  info: CustomerInfoLike;
+  nowMs: number;
+  syncPurchases: () => Promise<CustomerInfoLike>;
+}): Promise<LogInSettled> {
+  const { fromAnonymous, before, nowMs } = input;
+  let info = input.info;
+  let after = storePlanFromInfo(info, nowMs);
+  if (fromAnonymous && restoreSuggested(before, after, nowMs)) {
+    try {
+      info = await input.syncPurchases();
+      after = storePlanFromInfo(info, nowMs);
+    } catch {
+      // Offline, or the store refused: the phone keeps its plan and says Restore.
+    }
+  }
+  const restoreHint = fromAnonymous && restoreSuggested(before, after, nowMs);
+  return { plan: nextStorePlan(before, info, nowMs, restoreHint), restoreHint, serverSync: after.paid, info };
+}
+
+/**
+ * Does our server still have to re-read [accountId] (POST
+ * /me/entitlement/refresh)? [pendingFor]: the account a plan reached on
+ * sign-in while the refresh had not answered yet. Retried at start, on
+ * foreground and on the Account screen until one answers — after the
+ * merge no webhook comes until the next renewal (up to a year).
+ */
+export function serverSyncDue(pendingFor: string | null | undefined, accountId: string | null | undefined): boolean {
+  return typeof accountId === "string" && accountId !== "" && pendingFor === accountId;
+}
+
+/**
+ * Warn before a signed-out purchase or "Restore purchases" in the iPhone
+ * app ([withoutAccount])? On a phone where someone has signed in before: a
+ * subscription this Apple ID already pays in their account would move to
+ * the anonymous id (RevenueCat "Transfer to new App User ID": the previous
+ * owner loses it) and stop on Android and in the extension. Signing in is
+ * offered first; going on without it stays possible (App Review 5.1.1).
+ */
+export function warnBeforeWithoutAccount(input: { withoutAccount: boolean; signedIn: boolean; hadAccount: boolean }): boolean {
+  return input.withoutAccount && !input.signedIn && input.hadAccount;
 }
 
 // ── When it goes wrong ────────────────────────────────────────────────

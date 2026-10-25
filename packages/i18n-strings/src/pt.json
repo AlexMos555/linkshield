@@ -3695,6 +3695,7 @@
       "sign_out": "Sair",
       "sign_out_confirm_title": "Sair da conta?",
       "sign_out_confirm_body": "As verificações e o histórico ficam neste telefone. As configurações param de sincronizar até você entrar de novo.",
+      "sign_out_confirm_body_appstore": "As verificações e o histórico ficam neste telefone. As configurações param de sincronizar até você entrar de novo. A assinatura fica na sua conta: entre de novo para usá-la neste iPhone.",
       "plan": "Plano",
       "plan_desc": "A proteção neste celular é gratuita",
       "upgrade": "Fazer upgrade",
@@ -4093,7 +4094,13 @@
       "err_store_appstore": "A App Store não conseguiu concluir a compra. Tente de novo.",
       "note_restore_none_appstore": "Este Apple ID não tem assinatura ativa.",
       "sync_offer": "Ativa neste iPhone. Entrar é opcional: assim a mesma assinatura funciona no app Cleanway para Android e na extensão do navegador, em até {{n}} dispositivos.",
-      "note_restore_here_appstore": "A assinatura comprada neste iPhone ainda não está na sua conta. Toque em Restaurar para adicioná-la."
+      "note_restore_here_appstore": "A assinatura comprada neste iPhone ainda não está na sua conta. Toque em Restaurar para adicioná-la.",
+      "sign_in_account": "Tem uma conta Cleanway? Entrar",
+      "note_restore_none_signed_out_appstore": "Este Apple ID não tem assinatura ativa. Se você já paga o Cleanway em outro dispositivo, entre na sua conta.",
+      "without_account_title": "Continuar sem entrar?",
+      "without_account_body": "Alguém já entrou numa conta neste iPhone. Se este Apple ID já paga o Cleanway em uma conta, continuar sem entrar move a assinatura só para este iPhone: ela para de funcionar nessa conta, no Android e na extensão do navegador até você entrar e tocar em Restaurar.",
+      "without_account_continue": "Continuar sem entrar",
+      "sync_offer_back": "Ativa neste iPhone. Se esta assinatura estava na sua conta Cleanway, agora ela funciona só neste iPhone: entre e toque em Restaurar para usá-la de novo no Android e na extensão do navegador."
     },
     "ios_sms": {
       "line_ready": "Move SMS de golpe de remetentes desconhecidos para Lixo, no próprio iPhone. Funciona depois que você o ativa nos Ajustes.",

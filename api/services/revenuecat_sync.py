@@ -5,7 +5,11 @@ webhook's TRANSFER handling call `sync_account`: GET /v1/subscribers/{id}
 (https://www.revenuecat.com/docs/api-v1/customers) is RevenueCat's current
 view of the customer, so the google_play / app_store rows are rewritten from
 it — whatever webhooks were missed or arrived out of order. Row semantics
-are those of api/services/revenuecat.py.
+are those of api/services/revenuecat.py. A Family Sharing subscription
+(`ownership_type` FAMILY_SHARED) is never an account plan. A purchase this
+sync files first on an account that pays another way is flagged as a
+double payment (bought on the iPhone without an account, its
+INITIAL_PURCHASE had nobody to check).
 """
 from __future__ import annotations
 
@@ -22,6 +26,7 @@ from api.services.revenuecat import (
     STORE_SOURCES,
     RevenueCatError,
     RevenueCatNotConfigured,
+    flag_double_payment,
     invalidate_tier_cache,
     original_purchase_id,
     parse_ts,
@@ -130,7 +135,12 @@ async def sync_account(account_id: str) -> dict:
 
     now = datetime.now(timezone.utc)
     now_iso = now.isoformat()
-    subscriptions = subscriber.get("subscriptions") or {}
+    subscriptions = {
+        k: v for k, v in (subscriber.get("subscriptions") or {}).items()
+        # Shared by a family member: Apple's to honour on their iPhone, not a
+        # plan with device seats here (Family Sharing stays off, runbook §9).
+        if not (isinstance(v, dict) and v.get("ownership_type") == "FAMILY_SHARED")
+    }
     seen: set[tuple[str, str]] = set()
     applied = 0
     for key, sub in subscriptions.items():
@@ -154,6 +164,8 @@ async def sync_account(account_id: str) -> dict:
             continue
         status, period_end = _rest_status(sub, now)
         plan, device_limit = plan_fields(product)
+        if row is None and status in ACTIVE_STATUSES and not product.is_addon:
+            await flag_double_payment(account_id, source, external_id)
         try:
             await record_entitlement(
                 account_id=account_id, source=source, external_id=external_id, status=status,

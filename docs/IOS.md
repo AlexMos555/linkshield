@@ -392,10 +392,21 @@ own App Store plan from RevenueCat (`storePlanActive`,
 `mobile/src/utils/store-billing.ts`). It counts that plan signed in too, so
 the iPhone that paid stays unlimited even when the account's 3 device seats
 are taken (3.1.2(a)). After the purchase the paywall offers sign-in as
-optional, to use the plan in the Android app and the browser extension. On
-sign-in `Purchases.logIn` merges the anonymous buyer into the account, and the
-app asks the server to re-read it (`/me/entitlement/refresh`). Android is
-unchanged (sign in first). Details and edge cases: runbook §9.1.
+optional, to use the plan in the Android app and the browser extension, and a
+"Have a Cleanway account? Sign in" link stays under Restore so someone paying
+elsewhere does not buy twice. On sign-in `Purchases.logIn` merges the
+anonymous buyer into the account. When it does not (the account already has
+an anonymous alias of its own — nearly every account, the review account
+included), the app calls `Purchases.syncPurchasesForResult()`, a restore
+without an Apple ID prompt, so the plan follows the account; if even that
+fails, the phone keeps the plan it paid for and suggests "Restore purchases".
+The app then asks the server to re-read the account (`/me/entitlement/refresh`,
+retried until it answers — the server needs `REVENUECAT_SECRET_API_KEY`).
+Signed out, a purchase or restore on an iPhone where someone signed in before
+first asks whether to continue without signing in (it would move the
+subscription off that account), and signing out says the plan stays in the
+account. Family Sharing stays off for these subscriptions. Android is
+unchanged (sign in first). Details and edge cases: runbook §9 and §9.1.
 
 Sandbox testing: App Store Connect → Users and Access → Sandbox testers; sign
 in on the device under Settings → App Store → Sandbox Account. The simulator
@@ -403,8 +414,9 @@ can use a StoreKit configuration file, but RevenueCat needs real sandbox
 receipts for the server webhook — test on a device via TestFlight. The
 TestFlight checklist for buying without an account (buy signed out; reinstall
 and restore signed out; sign in and see the plan on Android and in the
-extension; sign out and restore; a full device list) is in
-`docs/runbooks/revenuecat.md` §9.1.
+extension; the same with an account that does not merge, such as the review
+account; sign out and restore; a full device list; offline right after
+sign-in) is in `docs/runbooks/revenuecat.md` §9.1.
 
 ### 3.5 App Privacy ("nutrition labels")
 
@@ -500,11 +512,16 @@ no in-app purchases: …" with the sentence for that build:
 - built from `feat/iap-without-account` (buying without an account, §3.4 —
   after the founder's "Б"; `docs/STORE_DECISIONS_2026-10.md` §3.7):
 
-  > Subscriptions are sold only through In-App Purchase and can be bought and
-  > restored without an account. Signing in (a one-time code by email) is
-  > optional: it lets the same subscription work in the Cleanway Android app
-  > and browser extension and manage up to 3 devices. "Restore purchases" is
-  > on the paywall and on the Account screen.
+  > Subscriptions are sold only through In-App Purchase and can be bought
+  > and restored without an account. Signing in (a one-time code by email)
+  > is optional: it lets the same subscription work in the Cleanway Android
+  > app and browser extension and manage up to 3 devices. A subscription
+  > bought without an account moves to the account when you sign in, the
+  > demo account in Sign-In Information included. "Restore purchases" is on
+  > the paywall and on the Account screen. On an iPhone where an account was
+  > used before, buying or restoring while signed out first asks whether to
+  > continue without signing in, because the subscription would then leave
+  > that account.
 
 - built before it (the paywall still asks to sign in first — answer "А" or
   "В"):

@@ -13,7 +13,11 @@ https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields
 One row per purchase: source google_play / app_store (from `store`),
 external_id = `original_transaction_id` (stable across renewals), plan and
 device_limit from the product (api/services/store_products.py), period_end
-= `expiration_at_ms`. What each event does:
+= `expiration_at_ms`. An App Store purchase made without an account and
+filed later by a sync is keyed by its LATEST transaction id (the REST API
+has no original one): a later event of it finds that row by the product
+(_app_store_row_by_product), so a refund ends it. A Family Sharing purchase
+(`is_family_share`) is never an account plan. What each event does:
 
   INITIAL_PURCHASE, RENEWAL, UNCANCELLATION, SUBSCRIPTION_EXTENDED,
   REFUND_REVERSED       → active (trialing while period_type = TRIAL)
@@ -50,6 +54,7 @@ from api.config import get_settings
 from api.services import account_store, store_products
 from api.services.account_store import AccountStoreError
 from api.services.entitlements import (
+    ACTIVE_STATUSES,
     ADDON_PLAN,
     EntitlementError,
     get_effective_entitlement,
@@ -211,9 +216,12 @@ def _event_status(event_type: str, event: dict) -> tuple[str, Optional[str]]:
     return ("paused" if event.get("expiration_reason") == "SUBSCRIPTION_PAUSED" else "expired"), period_end
 
 
-async def _flag_double_payment(account_id: str, source: str, external_id: str) -> None:
+async def flag_double_payment(account_id: str, source: str, external_id: str) -> None:
     """A store purchase on an account that already pays another way. The
-    store sold it and we can't refuse it — flag it for a refund."""
+    store sold it and we can't refuse it — flag it for a refund. Called for
+    an INITIAL_PURCHASE here, and by a sync for a purchase it files first
+    (bought on the iPhone without an account: that INITIAL_PURCHASE had no
+    account to check)."""
     try:
         current = await get_effective_entitlement(account_id)
     except EntitlementError as e:
@@ -229,6 +237,24 @@ async def _flag_double_payment(account_id: str, source: str, external_id: str) -
             {"existing_source": current.source, "existing_id": current.external_id,
              "new_source": source, "new_id": external_id},
         )
+
+
+async def _app_store_row_by_product(store, account_id: str, product_id: str) -> Optional[dict]:
+    """This account's active App Store row of [product_id], for an event
+    whose original transaction id has no row. A sync files a purchase made
+    without an account under its LATEST transaction id (the REST API has no
+    original one — api/services/revenuecat_sync.py _match_row), while every
+    later webhook carries the original: without this a renewal would add a
+    second row, and a refund would leave the synced row paid on Android and
+    in the extension until its period end (up to a year). Not for
+    INITIAL_PURCHASE: a new subscription keeps its own row (and the
+    double-payment check)."""
+    rows = await store.list_entitlements(account_id)
+    same = [
+        r for r in rows
+        if r.get("source") == "app_store" and r.get("product_id") == product_id and r.get("status") in ACTIVE_STATUSES
+    ]
+    return max(same, key=lambda r: r.get("period_end") or "") if same else None
 
 
 async def apply_event(event: dict) -> Outcome:
@@ -249,6 +275,12 @@ async def apply_event(event: dict) -> Outcome:
         return Outcome("ignored", "store")
     if event.get("environment") == "SANDBOX" and not sandbox_accepted():
         return Outcome("ignored", "sandbox")
+    if event.get("is_family_share") is True:
+        # Family Sharing stays off for these subscriptions (runbook §9). If it
+        # is ever turned on, a family member's share is Apple's to honour on
+        # their iPhone — not a plan with device seats on their own account.
+        logger.info("revenuecat_family_share_ignored", extra={"type": event_type, "event_id": event.get("id")})
+        return Outcome("ignored", "family_share")
 
     account_id = resolve_account(event)
     if account_id is None:
@@ -284,6 +316,10 @@ async def apply_event(event: dict) -> Outcome:
     event_at = _ms_to_iso(event.get("event_timestamp_ms")) or datetime.now(timezone.utc).isoformat()
     try:
         existing = await store.get_entitlement(source=source, external_id=external_id)
+        if existing is None and source == "app_store" and event_type != "INITIAL_PURCHASE":
+            existing = await _app_store_row_by_product(store, account_id, str(product_id))
+            if existing is not None:
+                external_id = str(existing["external_id"])
     except AccountStoreError as e:
         raise RevenueCatError(str(e)) from e
     seen_at = parse_ts((existing or {}).get("source_event_at"))
@@ -296,7 +332,7 @@ async def apply_event(event: dict) -> Outcome:
     status, period_end = _event_status(event_type, event)
     plan, device_limit = plan_fields(product)
     if event_type == "INITIAL_PURCHASE" and not product.is_addon:
-        await _flag_double_payment(account_id, source, external_id)
+        await flag_double_payment(account_id, source, external_id)
     try:
         await record_entitlement(
             account_id=account_id, source=source, external_id=external_id, status=status,

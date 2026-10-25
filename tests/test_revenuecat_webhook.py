@@ -334,6 +334,89 @@ def test_app_store_renewal_after_sign_in_finds_the_account_through_aliases(clien
     assert r["account_id"] == ACCOUNT and r["status"] == "active"
 
 
+APPLE_ORIGINAL = "2000000912345678"
+APPLE_LATEST = "2000000998765432"
+
+
+def _synced_app_store_row(account_store, **kw):
+    """The row "Restore purchases" / the sign-in refresh writes when the
+    first purchase was made without an account: keyed by the LATEST App
+    Store transaction id (the REST API has no original one)."""
+    fields = {"product_id": "cleanway.devices.yearly", "status": "active",
+              "source_event_at": "2020-01-01T00:00:00+00:00", **kw}
+    return account_store.add_entitlement(ACCOUNT, source="app_store", external_id=APPLE_LATEST, **fields)
+
+
+def test_app_store_refund_after_a_late_sign_in_ends_the_synced_row(client, account_store):
+    """Bought without an account, signed in after the first renewal: the
+    synced row has the latest transaction id, the refund webhook the
+    original. It must end that row, not file a second one beside it (the
+    plan would stay paid on Android and in the extension for up to a year)."""
+    _synced_app_store_row(account_store)
+    resp = post(client, load("initial_purchase_app_store", type="CANCELLATION", cancel_reason="CUSTOMER_SUPPORT",
+                             period_type="NORMAL", id="apple-refund-1"))
+    assert resp.status_code == 200 and resp.json()["reason"] == "refunded"
+    [r] = [x for x in account_store.entitlements if x["source"] == "app_store"]
+    assert r["external_id"] == APPLE_LATEST and r["status"] == "refunded"
+    assert not effective().is_paid
+
+
+def test_app_store_renewal_after_a_late_sign_in_updates_the_synced_row(client, account_store):
+    _synced_app_store_row(account_store)
+    post(client, load("initial_purchase_app_store", type="RENEWAL", period_type="NORMAL", id="apple-renewal-2"))
+    [r] = [x for x in account_store.entitlements if x["source"] == "app_store"]
+    assert r["external_id"] == APPLE_LATEST and r["status"] == "active"
+
+
+def test_app_store_purchase_after_an_ended_row_of_the_same_product_is_a_new_row(client, account_store):
+    """Only an active row is taken for the webhook's purchase: a new
+    subscription after the old one ended keeps its own row."""
+    _synced_app_store_row(account_store, status="expired")
+    post(client, load("initial_purchase_app_store", period_type="NORMAL"))
+    rows = {x["external_id"]: x["status"] for x in account_store.entitlements if x["source"] == "app_store"}
+    assert rows == {APPLE_LATEST: "expired", APPLE_ORIGINAL: "active"}
+
+
+def test_play_rows_are_never_matched_by_product(client, account_store):
+    """Play's original order id is derivable from any renewal's: no guessing there."""
+    account_store.add_entitlement(ACCOUNT, source="google_play", external_id="GPA.0000-0000-0000-00000",
+                                  product_id="cleanway.devices:monthly", status="active")
+    post(client, load("initial_purchase"))
+    assert {x["external_id"] for x in account_store.entitlements} == {"GPA.0000-0000-0000-00000", GPA}
+
+
+def test_family_shared_purchase_is_not_an_account_plan(client, account_store, caplog):
+    """Family Sharing stays off for these subscriptions (runbook §9). If it
+    were turned on, a family member's purchase must not become a full plan
+    with 3 device seats on another person's Cleanway account."""
+    caplog.set_level(logging.INFO, logger="cleanway.revenuecat")
+    resp = post(client, load("initial_purchase_app_store", is_family_share=True))
+    assert resp.status_code == 200 and resp.json()["reason"] == "family_share"
+    assert account_store.entitlements == []
+    assert [r for r in caplog.records if r.message == "revenuecat_family_share_ignored"]
+
+
+def test_transfer_from_the_anonymous_buyer_to_the_account_syncs_it(client, account_store, settings, monkeypatch):
+    """Signed in without a merge, the app calls syncPurchases: RevenueCat
+    moves the receipt from the phone's anonymous id to the account
+    ("Transfer to new App User ID"). The anonymous purchase never had a row,
+    so only a sync with the secret key gives the account its plan."""
+    synced: list[str] = []
+
+    async def fake_sync(account_id):
+        synced.append(account_id)
+        return {"applied": 1, "ended": 0}
+
+    monkeypatch.setattr("api.services.revenuecat_sync.sync_account", fake_sync)
+    monkeypatch.setattr(settings, "revenuecat_secret_api_key", "sk_test")
+    body = load("transfer", store="APP_STORE")
+    body["event"]["transferred_from"] = ["$RCAnonymousID:2f6e0b9d4c8a4e1f9b3a7c5d1e0f2a4b"]
+    body["event"]["transferred_to"] = [ACCOUNT]
+    resp = post(client, body)
+    assert resp.status_code == 200 and resp.json()["reason"] == "transfer"
+    assert synced == [ACCOUNT]
+
+
 def test_account_found_through_aliases(client, account_store):
     anon = "$RCAnonymousID:abc"
     post(client, load("initial_purchase", app_user_id=anon, original_app_user_id=anon, aliases=[anon, ACCOUNT]))

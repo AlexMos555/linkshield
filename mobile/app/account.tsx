@@ -14,7 +14,8 @@ import { getEntitlement, unlinkDevice, type AccountDevice, type EntitlementRespo
 import { linkThisDevice, signOutUnlinkedDevice } from "../src/services/account";
 import { FREEMIUM, PAID_PLANS_OFFERED, rememberEntitlement } from "../src/services/freemium";
 import {
-  BILLING_STORE, restoreStorePurchases, storeBillingOn, storeRestoreSuggested,
+  BILLING_STORE, STORE_PURCHASE_WITHOUT_ACCOUNT, restoreStorePurchases, settlePendingServerSync, storeBillingOn,
+  storeRestoreSuggested,
 } from "../src/services/store-billing";
 import { manageSubscriptionUrl, storeCopyKeys, storeErrorNoteKey } from "../src/utils/store-billing";
 import { confirmDeleteAccount, signOutEverywhereLocal } from "../src/services/account-actions";
@@ -75,11 +76,16 @@ export default function AccountScreen() {
       return;
     }
     const email = st.kind === "ok" ? st.session.email : st.email ?? "";
+    // The iPhone app: a plan the store gave this account on sign-in whose
+    // first refresh failed is re-read on our server now (no webhook comes
+    // until the next renewal).
+    const syncPending = await settlePendingServerSync().catch(() => false);
     const { data, error } = await getEntitlement();
     if (data) {
       setLoad({ kind: "ready", email, ent: data });
       void rememberEntitlement(data);
-      setRestoreHere(data.plan === "free" && (await storeRestoreSuggested()));
+      // Still free: "Restore purchases" moves the plan bought on this iPhone (and re-reads the server).
+      setRestoreHere(data.plan === "free" && (syncPending || (await storeRestoreSuggested())));
     } else if (accountFailure(error) === "signed_out") {
       setLoad({ kind: "signed_out" });
     } else if (accountFailure(error) !== "revoked") {
@@ -172,6 +178,22 @@ export default function AccountScreen() {
   async function signOutHere(): Promise<void> {
     await signOutEverywhereLocal();
     leave();
+  }
+
+  /**
+   * The iPhone app says first that the subscription stays in the account:
+   * signed out, this iPhone counts it again only after signing in (a
+   * signed-out "Restore purchases" would move it off the account).
+   */
+  function confirmSignOut(): void {
+    if (!STORE_PURCHASE_WITHOUT_ACCOUNT) {
+      void signOutHere();
+      return;
+    }
+    Alert.alert(t("mobile.settings.sign_out_confirm_title"), t("mobile.settings.sign_out_confirm_body_appstore"), [
+      { text: t("mobile.settings.clear_cancel"), style: "cancel" },
+      { text: t("mobile.settings.sign_out"), style: "destructive", onPress: () => void signOutHere() },
+    ]);
   }
 
   if (load.kind === "loading") {
@@ -328,7 +350,7 @@ export default function AccountScreen() {
           right={exporting ? <ActivityIndicator color={colors.textSecondary} /> : undefined}
           onPress={exporting ? undefined : () => void exportData()}
         />
-        <Row icon="log-out-outline" label={t("mobile.settings.sign_out")} onPress={() => void signOutHere()} />
+        <Row icon="log-out-outline" label={t("mobile.settings.sign_out")} onPress={confirmSignOut} />
         <Row
           icon="trash-outline"
           iconColor={colors.danger}

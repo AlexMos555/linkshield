@@ -3695,6 +3695,7 @@
       "sign_out": "Esci",
       "sign_out_confirm_title": "Uscire dall'account?",
       "sign_out_confirm_body": "I controlli e la cronologia restano su questo telefono. Le impostazioni smettono di sincronizzarsi finché non accedi di nuovo.",
+      "sign_out_confirm_body_appstore": "I controlli e la cronologia restano su questo telefono. Le impostazioni smettono di sincronizzarsi finché non accedi di nuovo. L'abbonamento resta nel tuo account: accedi di nuovo per usarlo su questo iPhone.",
       "plan": "Piano",
       "plan_desc": "La protezione su questo telefono è gratuita",
       "upgrade": "Fai l'upgrade",
@@ -4093,7 +4094,13 @@
       "err_store_appstore": "L'App Store non è riuscito a completare l'acquisto. Riprova.",
       "note_restore_none_appstore": "Nessun abbonamento attivo su questo ID Apple.",
       "sync_offer": "Attivo su questo iPhone. L'accesso è facoltativo: con l'accesso lo stesso abbonamento funziona nell'app Cleanway per Android e nell'estensione del browser, su un massimo di {{n}} dispositivi.",
-      "note_restore_here_appstore": "L'abbonamento acquistato su questo iPhone non è ancora nel tuo account. Tocca Ripristina per aggiungerlo."
+      "note_restore_here_appstore": "L'abbonamento acquistato su questo iPhone non è ancora nel tuo account. Tocca Ripristina per aggiungerlo.",
+      "sign_in_account": "Hai un account Cleanway? Accedi",
+      "note_restore_none_signed_out_appstore": "Nessun abbonamento attivo su questo ID Apple. Se paghi già Cleanway su un altro dispositivo, accedi al tuo account.",
+      "without_account_title": "Continuare senza accedere?",
+      "without_account_body": "Su questo iPhone qualcuno ha già effettuato l'accesso. Se questo ID Apple paga già Cleanway in un account, continuando senza accedere l'abbonamento passa solo a questo iPhone: smette di funzionare in quell'account, su Android e nell'estensione del browser finché non accedi e tocchi Ripristina.",
+      "without_account_continue": "Continua senza accedere",
+      "sync_offer_back": "Attivo su questo iPhone. Se questo abbonamento era nel tuo account Cleanway, ora funziona solo su questo iPhone: accedi e tocca Ripristina per usarlo di nuovo su Android e nell'estensione del browser."
     },
     "ios_sms": {
       "line_ready": "Sposta gli SMS truffa di mittenti sconosciuti in Indesiderata, direttamente su questo iPhone. Funziona dopo che lo attivi in Impostazioni.",
