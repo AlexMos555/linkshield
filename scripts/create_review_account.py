@@ -436,7 +436,9 @@ class RespClient:
         host = parts.hostname or ""
         sock = socket.create_connection((host, parts.port or 6379), timeout=timeout)
         if parts.scheme == "rediss":
-            sock = ssl.create_default_context().wrap_socket(sock, server_hostname=host)
+            context = ssl.create_default_context()
+            context.minimum_version = ssl.TLSVersion.TLSv1_2
+            sock = context.wrap_socket(sock, server_hostname=host)
         self._sock = sock
         self._reader = sock.makefile("rb")
         password = urllib.parse.unquote(parts.password or "")

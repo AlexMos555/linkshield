@@ -603,7 +603,7 @@ def test_an_unreachable_redis_stops_before_any_write(env_file, capsys):
     assert _run(env_file, gotrue=gotrue, security=security, redis=FakeRedis(down=True)) == 4
     assert gotrue.writes() == [] and security.calls == []
     err = capsys.readouterr().err
-    assert "ConnectionRefusedError" in err and "proxy.example.net" in err
+    assert "ConnectionRefusedError" in err and f"Redis API ({cra.redis_host(REDIS_URL)})" in err
     assert REDIS_PASSWORD not in err
 
 
@@ -759,6 +759,29 @@ def test_the_resp_client_authenticates_selects_pings_and_deletes():
         server.close()
     assert server.commands == [["AUTH", "pw"], ["SELECT", "2"], ["PING"],
                                ["DEL", "deleted:u-1", "notdeleted:u-1", "tier:u-1"]]
+
+
+def test_rediss_verifies_the_host_and_refuses_old_tls(monkeypatch):
+    import ssl
+
+    class Context:
+        minimum_version = None
+
+        def wrap_socket(self, sock, server_hostname=None):
+            self.server_hostname = server_hostname
+            return sock  # the stand-in server speaks plain RESP
+
+    context = Context()
+    monkeypatch.setattr(cra.ssl, "create_default_context", lambda: context)
+    server = _RespServer(password="")
+    client = cra.open_redis(f"rediss://127.0.0.1:{server.port}")
+    try:
+        assert client.ping() == "PONG"
+    finally:
+        client.close()
+        server.close()
+    assert context.minimum_version == ssl.TLSVersion.TLSv1_2
+    assert context.server_hostname == "127.0.0.1"
 
 
 def test_a_wrong_redis_password_is_named_by_its_code_only(env_file, capsys):
