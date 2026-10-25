@@ -16,7 +16,12 @@ Payments (server side, RevenueCat): `docs/runbooks/revenuecat.md`.
 
 The monorepo hoists a different `react-native` to the repo root, which breaks
 `expo prebuild` / `pod install` inside the workspace. Build from a mirror
-outside the repo:
+outside the repo. The rsync takes `mobile/.env` along (not in the repo,
+`mobile/.env.example`); for any build you upload it must hold
+`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+(`sb_publishable_…`), the legacy `EXPO_PUBLIC_SUPABASE_ANON_KEY`,
+`EXPO_PUBLIC_CAPTCHA_URL` and `EXPO_PUBLIC_REVIEW_EMAILS` — and
+`EXPO_PUBLIC_REVENUECAT_IOS_KEY` only for a build that sells (§3.6):
 
 ```bash
 M=/tmp/cleanway-ios            # any scratch dir outside the repo
@@ -37,7 +42,8 @@ fs.writeFileSync("package.json",JSON.stringify(p,null,2)+"\n");
 const c=JSON.parse(fs.readFileSync("vendor/api-client/package.json"));
 c.dependencies["@cleanway/api-types"]="file:../api-types";
 fs.writeFileSync("vendor/api-client/package.json",JSON.stringify(c,null,2)+"\n");'
-npm install                                    # mobile/package-lock.json comes along
+node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"; "out of step" = regenerate mobile/package-lock.json first (docs/RUSTORE_SUBMISSION.md §2)
+npm install                                    # installs mobile/package-lock.json, which came along
 # The Safari extension target bundles the repo's built extension-safari/
 # (plugins/withSafariExtension.js); outside the repo it must be told where.
 bash "$REPO/scripts/build-extensions.sh" > /dev/null
@@ -54,6 +60,48 @@ Both configurations were built and run on the iOS 26.2 simulator with Xcode 26.3
 expo-localization compiling on Xcode 26. A full build is ~4 GB of DerivedData —
 delete the mirror and `build/` afterwards.
 
+**For App Store Connect** (how 1.0.6 builds 5 and 6 were made), archive Release
+from the same mirror, then check what the bundle carries **before** uploading
+(Xcode Organizer, or `xcodebuild -exportArchive` with an `ExportOptions.plist`
+of method `app-store-connect`, destination `upload`). The checks print no key:
+
+```bash
+cd "$M/ios"
+xcodebuild -workspace Cleanway.xcworkspace -scheme Cleanway -configuration Release \
+  -destination generic/platform=iOS -archivePath "$M/Cleanway.xcarchive" \
+  -derivedDataPath ../build -allowProvisioningUpdates \
+  DEVELOPMENT_TEAM=29LQWL23VQ CODE_SIGN_STYLE=Automatic archive
+B="$M/Cleanway.xcarchive/Products/Applications/Cleanway.app/main.jsbundle"
+LC_ALL=C grep -ac bpyqgzzclsbfvxthyfsf.supabase.co "$B"   # ≥ 1
+LC_ALL=C grep -ac review@cleanway.ai "$B"                 # ≥ 1: the reviewers' password sign-in (§3.6)
+# The publishable key from .env — not a bare `grep sb_publishable_`: the app's
+# prefix check puts that string in every bundle, so 1.0.6 (6), which has no
+# key, matches it too.
+PK=${EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-$(sed -n 's/^EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=//p' "$M/.env")}
+case "$PK" in
+  *REPLACE*) echo "STOP: $M/.env has the .env.example placeholder, not the key" ;;
+  sb_publishable_?*) LC_ALL=C grep -aqF "$PK" "$B" && echo "publishable key ok" || echo "STOP, no publishable key" ;;
+  *) echo "STOP: no EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY in $M/.env" ;;
+esac
+# Does this build sell? Decides the review notes (§3.6). Read from the bundle,
+# not from .env: Expo also loads .env.local / .env.production and strips quotes
+# and `export`, so a key the .env text seems to lack can still be built in —
+# and on iOS that turns App Store billing on. A real key is appl_ + letters and
+# digits; the bare "appl_" of the app's own key check (in every bundle) and the
+# .env.example placeholder (appl_REPLACE_…) do not match.
+LC_ALL=C grep -aqE 'appl_[A-Za-z0-9]{8,}' "$B"
+case $? in
+  0) echo "sells: §3.6 with the In-App Purchase sentence" ;;
+  1) echo "no in-app purchases: §3.6 as written" ;;
+  *) echo "STOP: cannot read $B" ;;
+esac
+```
+
+A `STOP` on the publishable key means the build would sign everyone out once the
+legacy Supabase keys are disabled (docs/MOBILE_AUTH.md §1) — add the key to
+`mobile/.env`, rsync again and rebuild. Every iPhone build up to and including
+1.0.6 (6) fails it: `mobile/.env` had no publishable key before 2026-10-25.
+
 ### 1.2 For TestFlight / the App Store (EAS)
 
 `eas build -p ios --profile production` (or `preview` for TestFlight testers).
@@ -63,7 +111,8 @@ EAS manages certificates, provisioning profiles and the build number
 
 | Variable | Value | Without it |
 |---|---|---|
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | Sign-in does not work |
+| `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key, `sb_publishable_…` (preferred over the anon key when both are set, `src/utils/supabase-key.ts`) | Sign-in works on the anon key until the legacy keys are disabled, then signs everyone out (docs/MOBILE_AUTH.md §1) |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key (legacy JWT; fallback) | With neither key, sign-in does not work |
 | `EXPO_PUBLIC_REVENUECAT_IOS_KEY` | RevenueCat **public** App Store key, `appl_…` | No paid plans anywhere (no Plan/Upgrade row, no paywall, no prices) and no daily check limit — the build has no in-app purchases; no crash |
 | `EXPO_PUBLIC_SENTRY_DSN` | optional | No crash reports |
 
@@ -324,8 +373,10 @@ agreement**, banking and tax in App Store Connect first — products stay
 "Missing Metadata" without it. Each subscription needs a review screenshot of
 the paywall.
 
-What the app already does for review: prices only from StoreKit, "Restore
-purchases" on the paywall and the account screen, "Manage subscription" opens
+What the app already does for review — **in a build made with the `appl_…`
+key only**; without it the app has no paywall, no prices and no "Restore
+purchases" at all (`PAID_PLANS_OFFERED`, §3.6): prices only from StoreKit,
+"Restore purchases" on the paywall and the account screen, "Manage subscription" opens
 Apple's subscriptions page, small print under the button (billed to Apple ID,
 auto-renews unless cancelled 24 h before the period ends, cancel in Settings),
 Terms + Privacy links, no link to the web checkout anywhere in the iOS build,
@@ -355,6 +406,22 @@ on the phone), audio, health, financial info, advertising data. No tracking,
 no ad SDKs, no ATT prompt. Re-check before submitting if the Family hub or the
 weekly report send anything new.
 
+**The sign-in captcha is now inside the app.** Since 1.0.6 (build 5) the
+on-demand "I'm not a robot" page (`https://cleanway.ai/auth/captcha`, Cloudflare
+Turnstile) opens in an in-app sheet (`ASWebAuthenticationSession`, ephemeral —
+`mobile/modules/cleanway-safari`), not in Safari. Apple: "Data collected via
+web traffic must be declared, unless you are enabling the user to navigate the
+open web" — this is our own page, so "it opens in the browser" no longer
+excuses it. Today it changes nothing: Supabase captcha is off, so the app never
+opens the page and Cloudflare gets nothing from the app. **Before switching
+captcha on** (docs/MOBILE_AUTH.md, captcha order step 4), decide the entry for
+what Turnstile sees — the IP address and browser signals, to tell a person from
+a bot. Apple says to declare an IP address by how it is used (coarse location,
+device ID, diagnostics…); the purpose is App Functionality ("prevent fraud,
+implement security measures"), not linked to the user, no tracking. The
+cautious answer is to add it (e.g. Other Data, Not linked, App Functionality)
+rather than to rely on Cloudflare not keeping it.
+
 ### 3.6 Review notes (paste into "Notes")
 
 > Cleanway checks links and text messages for scams. No account is needed:
@@ -365,8 +432,8 @@ weekly report send anything new.
 > Information: Settings → Sign in → type review@cleanway.ai — for this address
 > only, a Password field appears instead of the emailed code; enter the
 > password and tap Sign in. Account deletion: Settings → Delete account.
-> Subscriptions are sold only through In-App Purchase; "Restore purchases"
-> is on the paywall and in Account. The app
+> This version has no in-app purchases: no paywall, no prices and nothing
+> to buy in the app. The app
 > contains no VPN. All three "Protection on iPhone" items (Safari extension,
 > scam-text filter, DNS protection) work in this version; each needs a switch
 > the user turns on in Settings, which the app explains step by step.
@@ -398,6 +465,22 @@ weekly report send anything new.
 > any site in Safari (or the home screen's "Set up" → "Test it in Safari").
 > It sends only site names to api.cleanway.ai to check them; it has no
 > purchases or upsell of its own.
+
+**Purchases: which sentence.** The text above is for a build made **without**
+`EXPO_PUBLIC_REVENUECAT_IOS_KEY` — every iPhone build so far (1.0.6 builds 5
+and 6 checked on 2026-10-25: no `appl_` key in their bundles; check a new one
+with §1.1). `PAID_PLANS_OFFERED` is false there: the paywall sends anyone who
+reaches it home (`app/paywall.tsx`), Settings has no Plan row, Account shows
+the plan as "Free" with no Upgrade, and "Restore purchases" appears only when
+App Store billing is on (`storeBillingOn()`, `app/account.tsx`). Attach **no**
+in-app purchase or subscription to such a version in App Store Connect (the
+version page's "In-App Purchases and Subscriptions" section stays empty). Only
+for a build made with the public `appl_…` key (§1.2, §3.4) and with its
+subscriptions attached to the version, replace the sentence "This version has
+no in-app purchases: …" with:
+
+> Subscriptions are sold only through In-App Purchase; "Restore purchases"
+> is on the paywall and in Account.
 
 Sign-In Information (App Review Information → **Sign-in required**): user
 name `review@cleanway.ai`, password from the macOS Keychain — create the

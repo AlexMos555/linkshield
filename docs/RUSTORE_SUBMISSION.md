@@ -212,7 +212,16 @@ Turning the model back on = unset `SMS_TEXT_MODEL_ENABLED` (or `true`).
 > Gradle downloads the NDK on the first build (≈2.5 GB, slow). The first full
 > build took ~22 min on the 6-core Intel Mac, later ones ~2 min.
 > `mobile/package-lock.json` is the lock of the verified mirror (its
-> `@cleanway/*` entries point at `vendor/`).
+> `@cleanway/*` entries point at `vendor/`). npm workspaces and CI's `npm ci`
+> never touch it, and Dependabot's weekly version updates change only the root
+> lock — but Dependabot's **security** updates do open PRs against it (#329,
+> undici): made outside the mirror, they rewrite the `@cleanway/*` entries to
+> `"*"`. Do not merge such a PR; make the bump in the mirror and close it. CI
+> checks that the lock's root ranges match `mobile/package.json` and that every
+> direct dependency resolves to the same version as in the root lock CI tests
+> (`mobile/scripts/check-mirror-lock.mjs`). After any change to
+> `mobile/package.json` or to a mobile dependency in the root lock, regenerate
+> it ("When `mobile/package.json` changes", at the end of this section).
 
 ```bash
 # 1) Toolchain. (The older sandbox toolchain — $HOME/Library/Caches/cleanway-dev
@@ -224,7 +233,12 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 # 2) The mirror: a copy of mobile/ outside the repo with the two workspace
 #    packages vendored. Its node_modules/ survives between runs; everything
-#    else is overwritten from the repo.
+#    else is overwritten from the repo — mobile/.env included (not in the
+#    repo, mobile/.env.example). It must hold EXPO_PUBLIC_SUPABASE_URL,
+#    EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY (sb_publishable_…), the legacy
+#    EXPO_PUBLIC_SUPABASE_ANON_KEY and EXPO_PUBLIC_CAPTCHA_URL. A build
+#    without the publishable key signs everyone out once the legacy keys are
+#    turned off (docs/MOBILE_AUTH.md §1); the check after the builds catches it.
 REPO="$HOME/Desktop/linkshield"            # your checkout
 M="$HOME/Library/Caches/cleanway-dev/cwmobile"
 mkdir -p "$M/vendor"
@@ -242,9 +256,11 @@ p.dependencies["@cleanway/api-client"] = "file:./vendor/api-client";
 p.dependencies["@cleanway/api-types"] = "file:./vendor/api-types";
 fs.writeFileSync(m + "/package.json", JSON.stringify(p, null, 2) + "\n");' "$REPO" "$M"
 cp "$REPO/mobile/package-lock.json" "$M/package-lock.json"
+node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"; "out of step" = STOP, regenerate the lock (end of §2)
 
 cd "$M"
 npm install                # postinstall applies patches/ ("expo-share-intent@5.1.1 ✔"). Exit ≠ 0 = STOP, fix it first
+cmp "$REPO/mobile/package-lock.json" package-lock.json && echo "installed exactly the committed lock"   # a difference = STOP, regenerate the lock (end of §2)
 node scripts/check-share-intent.mjs   # 3× "ok:"; "CHECK FAILED" = STOP (docs/EXPO_UPGRADE_PLAN.md §1.2)
 # (This block has no `set -e`, so the lines below would still run. A release
 # build refuses to start anyway without the fix — plugins/withShareIntentGuard.js
@@ -325,7 +341,27 @@ unset EXPO_PUBLIC_DISTRIBUTION EXPO_PUBLIC_REVENUECAT_ANDROID_KEY EXPO_PUBLIC_RE
 
 # The seed is inside every build (≈2.8 MB):
 for f in "$OUT"/cleanway-$V-$VC-*.apk; do unzip -l "$f" | grep -c dns-blocklist-v2.seed.bin; done   # → 1 each
+
+# The Supabase publishable key is inside every build's JS bundle (prints no
+# key). Not a bare `grep sb_publishable_`: the app's own prefix check puts that
+# string into every bundle, key or no key — the 1.0.6 files built before
+# 2026-10-25 match it and still carry no key.
+PK=$(sed -n 's/^EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=//p' "$M/.env")
+for f in "$OUT"/cleanway-$V-$VC-*.apk "$OUT"/cleanway-$V-$VC-play.aab; do
+  e=assets/index.android.bundle; case "$f" in *.aab) e=base/$e ;; esac
+  case "$PK" in
+    *REPLACE*) echo "STOP: $M/.env has the .env.example placeholder, not the key" ;;
+    sb_publishable_?*) unzip -p "$f" "$e" | LC_ALL=C grep -aqF "$PK" && echo "$f: publishable key ok" || echo "$f: STOP, no publishable key" ;;
+    *) echo "STOP: no EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY in $M/.env" ;;
+  esac
+done   # → "publishable key ok" for each
 ```
+
+A `STOP` there means the file would sign everyone out once the legacy Supabase
+keys are disabled (docs/MOBILE_AUTH.md §1): add the key to `mobile/.env` and
+rebuild that file with `cw_build`. Every 1.0.6 (107) file built before
+2026-10-25 fails it (`mobile/.env` had no publishable key until then) — one
+more reason those are rebuilt, together with the #318 rebuild above.
 
 **Play Billing only in the Play build** — check before uploading anything:
 
@@ -470,6 +506,58 @@ in place (no "App not installed"). That proves B2 is fixed end-to-end.
   (`newArchEnabled: false`, as on SDK 52; reanimated stays on 3.19 because 4.x
   needs the New Architecture). Expo SDK 54 is the last SDK that allows this —
   moving to SDK 55+ means switching to the New Architecture first.
+
+### When `mobile/package.json` changes: regenerate the mirror lock
+
+Any dependency change in `mobile/package.json` — Dependabot's included, which
+updates only the root `package-lock.json` — needs `mobile/package-lock.json`
+regenerated in the mirror and committed in the same PR. Until then CI's "Build
+mirror lock matches mobile/package.json" is red, and every build resolves the
+new range afresh on its day: #303 bumped i18next to `^26.5.3` without it, and
+three 1.0.6 builds got 26.5.7, 26.5.8 and 26.5.10. Run the build block's steps
+1–2 up to and including the `cp …/package-lock.json` line (its check reports
+the mismatch), then:
+
+```bash
+cd "$M"
+npm install --package-lock-only --ignore-scripts   # or a plain `npm install` when you build anyway
+node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"
+cp "$M/package-lock.json" "$REPO/mobile/package-lock.json"     # and commit it
+```
+
+Only the ranges that changed are resolved again; everything else stays as
+locked. (Done this way on 2026-10-25 for #303's i18next and #230's
+react-native-web: i18next 26.5.10 and react-native-web 0.21.4, the same tree
+iOS 1.0.6 (6) was built with.)
+
+**The check names a version, not a range** (`<name>: mirror lock X, root
+package-lock.json Y`): the ranges match, but CI tests one release and the store
+builds ship another. Bring the older lock up to the newer release with
+`npm update <name> --package-lock-only --ignore-scripts` — in the mirror (then
+the check and the `cp` above), or at the repo root. At the root on a Mac the
+same command also drops the Linux-only `"libc"` lines and reorders a few
+entries, so commit only `<name>`'s hunk (`git add -p package-lock.json`); CI's
+`npm ci` verifies the result. If a newer release came out in between, run it in
+the other lock too. (2026-10-25: the root lock moved from i18next 26.5.3 to the
+mirror's 26.5.10; mobile typecheck and the plural keys rendered with and
+without `Intl.PluralRules` — all 10 locales, no log lines — pass on 26.5.10.)
+
+**A Dependabot security PR against `mobile/package-lock.json`** (title "… in
+/mobile"): do not merge it — it was made outside the mirror, so it rewrites the
+`@cleanway/*` entries to `"*"` and CI's check fails on it. Make the same bump in
+the mirror instead, for a transitive dependency too (`npm update` takes the
+newest release its dependents allow):
+
+```bash
+cd "$M"                     # after steps 1–2, up to and including the `cp` line
+npm update <name> --package-lock-only --ignore-scripts
+node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"
+diff "$REPO/mobile/package-lock.json" package-lock.json        # only <name>'s entries
+cp "$M/package-lock.json" "$REPO/mobile/package-lock.json"     # commit it, then close the Dependabot PR
+```
+
+(2026-10-25, #329: undici 6.29.0 → 6.29.1 — the same entry Dependabot wrote,
+without its `"*"`; #329 closed unmerged.)
 
 ---
 
@@ -671,12 +759,13 @@ the code on 2026-10-08 (`main` @ `9aff8ee`); the evidence is listed in §7.7.
       line. The paywall does not promise it either: `smsBenefitShown()`
       (`mobile/src/utils/freemium.ts`) is false in every build until that branch
       merges.
-- [ ] **Pricing line.** Phones in Russia see no paid plans
-      (`mobile/src/utils/freemium.ts` `paidPlansVisible`: region RU, or Russian
-      with no region — where the paywall can only say "coming soon"), the
-      daily free-check limit and the 7-day trial are not in the app, and RuStore
-      in-app payments are not wired. So the copy says only "Основная защита —
-      бесплатно." When paid is live in the build, replace the "СКОЛЬКО СТОИТ"
+- [ ] **Pricing line.** The RuStore build shows no paid plans to anyone — no
+      Upgrade or Plan row (`mobile/src/utils/freemium.ts` `paidPlansVisible`:
+      region RU, or Russian with no region, and every phone in a build that
+      cannot sell — RuStore in-app payments are not wired), the daily
+      free-check limit and the 7-day trial are not in the app. So the copy
+      says only "Основная защита — бесплатно." When paid is live in the build,
+      replace the "СКОЛЬКО СТОИТ"
       block with (numbers from `docs/ACCOUNTS_BILLING_PLAN.md` §5 — confirm them):
       "Блокировка опасных сайтов по списку — бесплатно и без ограничений. 3
       подробные проверки в день — бесплатно, первые 7 дней — без ограничений.
@@ -690,9 +779,11 @@ the code on 2026-10-08 (`main` @ `9aff8ee`); the evidence is listed in §7.7.
       scam-text explanation, devices (not an automatic SMS check, which no build
       has, nor call protection, which is free for everyone) — and the APK has no
       Google Play Billing library and no `com.android.vending.BILLING`
-      permission. Still
-      decide whether a RuStore user with a non-Russian phone should see the
-      "$0.99" paywall at all (`paidPlansVisible` in `mobile/src/utils/freemium.ts`).
+      permission. A RuStore user with a non-Russian phone no longer sees it
+      from Settings or Account either (decided 2026-10-25: `paidPlansVisible`
+      hides Upgrade in a build that cannot sell), and if the sheet opens anyway
+      it says "coming soon" with the button off — no sign-in first
+      (`paywallSaleOff`).
 - [ ] **Screenshots** are from v1.0.0. Since 1.0.4 the home screen has the "Мне
       звонят" button and the "Чтобы защита не выключалась" card. Recapture
       `01`–`04` on the signed 1.0.6 RuStore APK and add the three new frames in §7.6.
@@ -837,4 +928,4 @@ What each claim rests on:
 | Call warning + after-call reminder | `mobile/src/utils/call-guard.ts:1-20`; `CallGuard.kt` (`noteEvent` from `CleanwayVpnService.kt:737`, `MessageCheck.kt:49`, `LinkCheckService.kt:132`) |
 | Battery checklist | `mobile/src/components/shield/KeepAliveCard.tsx`; module manifest line 31 |
 | Account: devices, unlink, delete | `mobile/app/account.tsx`; `mobile/app/(tabs)/settings.tsx:321-332` |
-| Paid plans hidden in Russia | `mobile/src/utils/freemium.ts` (`paidPlansVisible`) |
+| Paid plans hidden in Russia and in the whole RuStore build | `mobile/src/utils/freemium.ts` (`paidPlansVisible`, `paywallSaleOff`) |

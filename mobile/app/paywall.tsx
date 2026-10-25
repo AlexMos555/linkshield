@@ -20,7 +20,10 @@
  *     under the button (3.1.2); without EXPO_PUBLIC_REVENUECAT_IOS_KEY the
  *     build has no paid plans at all (PAID_PLANS_OFFERED): nothing opens
  *     this sheet, and a stray link to it lands on home;
- *   • RuStore → not built yet: "coming soon";
+ *   • RuStore → not built yet: "coming soon" up front, the button off and no
+ *     sign-in first (paywallSaleOff); Settings and Account have no entry to
+ *     this sheet there (paidPlansVisible) — the same for a Play build made
+ *     without its RevenueCat key;
  *   • Russia → phone-balance billing is not merged yet: "coming soon" (the
  *     Play build does not mention other ways to pay).
  * Coming back to the sheet re-reads the plan; once it is paid, it says so,
@@ -45,8 +48,8 @@ import {
   BILLING_STORE, loadStorePlans, restoreStorePurchases, startStorePurchase, storeBillingOn,
 } from "../src/services/store-billing";
 import {
-  PRICES, WEB_CHECKOUT_URL, marketFor, paywallBenefits, priceDisplay, purchaseAction, revenueCatStore,
-  webCheckoutAllowed, type PaywallBenefit,
+  PRICES, WEB_CHECKOUT_URL, marketFor, paywallBenefits, paywallSaleOff, priceDisplay, purchaseAction,
+  revenueCatStore, webCheckoutAllowed, type PaywallBenefit,
 } from "../src/utils/freemium";
 import {
   manageSubscriptionUrl, storeCopyKeys, storeErrorNoteKey, type PlanPeriod,
@@ -285,21 +288,21 @@ function PaywallScreen() {
 
   const soonCta = STORE ? "mobile.paywall.cta_soon_play" : "mobile.paywall.cta_soon_ru";
   const soonFine = STORE ? "mobile.paywall.fine_soon_play" : "mobile.paywall.fine_soon";
-  // A store build made without its RevenueCat key: say so up front, no dead
-  // button — and do not send a signed-out person to sign in for a purchase
-  // that cannot happen yet.
-  const playOff = STORE && !storeOn && (action === "store" || action === "sign_in");
+  // A build that cannot take a payment — RuStore, or a store build made
+  // without its RevenueCat key: say so up front, no dead button — and do not
+  // send a signed-out person to sign in for a purchase that cannot happen yet.
+  const saleOff = paywallSaleOff({ action, distribution: FREEMIUM.distribution, storeBillingOn: storeOn });
   const ctaKey =
-    playOff ? "mobile.paywall.cta_store"
+    saleOff ? "mobile.paywall.cta_store"
     : action === "sign_in" ? "mobile.paywall.cta_sign_in"
     : action === "web_checkout" ? "mobile.paywall.cta_web"
     : action === "store" ? "mobile.paywall.cta_store"
     : soonCta;
   const storeNotReady = action === "store" && storeOn && plans.kind !== "ok";
-  const ctaDisabled = action === "soon" || busy || acct === null || storeNotReady || playOff;
+  const ctaDisabled = action === "soon" || busy || acct === null || storeNotReady || saleOff;
   const fineKey =
     action === "soon" ? soonFine
-    : playOff ? "mobile.paywall.note_store_soon"
+    : saleOff ? "mobile.paywall.note_store_soon"
     : STORE ? COPY.fine
     : "mobile.paywall.fine_cancel";
   const manageUrl = manageSubscriptionUrl(acct?.ent, FREEMIUM.distribution, ANDROID_PACKAGE);
