@@ -530,6 +530,16 @@ locked. (Done this way on 2026-10-25 for #303's i18next and #230's
 react-native-web: i18next 26.5.10 and react-native-web 0.21.4, the same tree
 iOS 1.0.6 (6) was built with.)
 
+**`overrides` in `mobile/package.json` are read only by the mirror** (npm
+ignores them in a workspace; the root `package.json` carries the same ones for
+CI). Keep the two sets equal. `xcode` stays at `3.0.1` because
+`patches/xcode+3.0.1.patch` and `plugins/withSafariExtension.js` depend on it:
+`@expo/config-plugins` 54.0.6 asks for `xcode ^4.0.0`, and without the override
+the mirror got an unpatched `xcode` 4.0.0 nested under it while CI kept testing
+3.0.1 — a difference `check-mirror-lock.mjs` cannot see, since it compares
+direct dependencies only (#338). After a regeneration,
+`grep '/node_modules/xcode"' "$M/package-lock.json"` should find nothing.
+
 **The check names a version, not a range** (`<name>: mirror lock X, root
 package-lock.json Y`): the ranges match, but CI tests one release and the store
 builds ship another. Bring the older lock up to the newer release with
