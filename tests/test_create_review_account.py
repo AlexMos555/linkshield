@@ -9,7 +9,9 @@ and rotated instead of duplicated, an address that is not a review account
 refused before any request, a dry run writes nothing, the password
 reaches only the HTTPS body and the Keychain's stdin — never argv, stdout or
 an error message — and the server key comes from the same variables the
-backend reads.
+backend reads. An account a reviewer deleted (still inside the 30-day grace)
+is restored the way POST /user/account/restore does it — the users row and
+the API's Redis lock — or the run stops before writing anything.
 """
 from __future__ import annotations
 
@@ -18,6 +20,8 @@ import importlib.util
 import json
 import string
 import sys
+import urllib.parse
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import ModuleType
 
@@ -217,12 +221,14 @@ def test_the_shipped_build_allowlists_the_review_address():
 
 
 class FakeGoTrue:
-    """GoTrue admin API stand-in: a user table and a request log."""
+    """GoTrue admin API stand-in: a user table and a request log — plus the
+    PostgREST `users` table: id → deletion_requested_at (None: not deleted)."""
 
-    def __init__(self, users=None, fail=None):
+    def __init__(self, users=None, fail=None, rows=None):
         self.users = list(users or [])
         self.requests = []
         self.fail = fail  # (method, status, body) to answer instead
+        self.rows = dict(rows or {})
 
     def __call__(self, method, url, headers, body):
         data = json.loads(body) if body else None
@@ -241,7 +247,22 @@ class FakeGoTrue:
             return 200, user
         if method == "PUT" and path.startswith("/auth/v1/admin/users/"):
             return 200, {"id": path.rsplit("/", 1)[1]}
+        if path.startswith("/rest/v1/users?"):
+            return self._users_table(method, _query(url), data)
         return 404, {"msg": "not found"}
+
+    def _users_table(self, method, query, data):
+        uid = query["id"].removeprefix("eq.")
+        if method == "GET":
+            return 200, [{"deletion_requested_at": self.rows[uid]}] if uid in self.rows else []
+        if method == "PATCH":
+            # The restore's own guard: only a deletion still inside the window.
+            cutoff = datetime.fromisoformat(query["or"].split('gt."', 1)[1].rstrip('")'))
+            if uid not in self.rows or (self.rows[uid] and datetime.fromisoformat(self.rows[uid]) <= cutoff):
+                return 200, []
+            self.rows[uid] = data["deletion_requested_at"]
+            return 200, [{"id": uid}]
+        return 405, {"msg": "method not allowed"}
 
     def writes(self):
         return [r for r in self.requests if r[0] != "GET"]
@@ -273,6 +294,37 @@ class FakeSecurity:
         raise AssertionError(f"unexpected command {argv}")
 
 
+class FakeRedis:
+    """The API's Redis stand-in (sync, like redis-py), and the factory the
+    script calls with REDIS_URL."""
+
+    def __init__(self, keys=(), down=False):
+        self.store = dict.fromkeys(keys, "1")
+        self.down = down
+        self.urls = []
+        self.calls = []
+
+    def __call__(self, url):
+        self.urls.append(url)
+        return self
+
+    def ping(self):
+        self.calls.append(("ping",))
+        if self.down:
+            raise ConnectionRefusedError(61, "Connection refused")
+        return True
+
+    def delete(self, *keys):
+        self.calls.append(("delete", *keys))
+        if self.down:
+            raise ConnectionRefusedError(61, "Connection refused")
+        return sum(self.store.pop(k, None) is not None for k in keys)
+
+
+def _query(url):
+    return dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(url).query))
+
+
 class _Completed:
     def __init__(self, returncode, stdout, stderr):
         self.returncode, self.stdout, self.stderr = returncode, stdout, stderr
@@ -287,8 +339,9 @@ def env_file(tmp_path, monkeypatch):
     return path
 
 
-def _run(env_file, *args, gotrue, security, platform="darwin"):
-    return cra.main(["--env-file", str(env_file), *args], transport=gotrue, run=security, platform=platform)
+def _run(env_file, *args, gotrue, security, platform="darwin", redis=None):
+    return cra.main(["--env-file", str(env_file), *args], transport=gotrue, run=security, platform=platform,
+                    redis_factory=redis or FakeRedis())
 
 
 def _passwords(gotrue):
@@ -339,7 +392,7 @@ def test_the_account_is_found_past_the_first_page(env_file, monkeypatch):
     others = [{"id": f"o-{i}", "email": f"person{i}@mail.ru"} for i in range(5)]
     gotrue = FakeGoTrue(users=others + [{"id": "u-9", "email": "review@cleanway.ai"}])
     assert _run(env_file, gotrue=gotrue, security=FakeSecurity()) == 0
-    assert [r[0] for r in gotrue.requests].count("GET") == 3
+    assert sum(r[0] == "GET" and "/auth/v1/admin/users?" in r[1] for r in gotrue.requests) == 3
     assert gotrue.writes()[0][1].endswith("/auth/v1/admin/users/u-9")
 
 
@@ -489,3 +542,235 @@ def test_copy_hint_reads_the_keychain_without_printing():
     assert f"-s '{cra.KEYCHAIN_SERVICE}'" in hint
     assert "-a review@cleanway.ai" in hint
     assert hint.endswith("| tr -d '\\n' | pbcopy")
+
+
+# ─── an account a reviewer deleted ────────────────────────────────
+#
+# DELETE /user/account (api/routers/user.py) only marks the users row and sets
+# the Redis lock `deleted:{id}` for the 30-day grace; the auth user stays
+# until the purge. Rotating the password alone left every API call answering
+# 410 and the app showing "account on hold" to the next reviewer.
+
+REDIS_PASSWORD = "q" * 12
+REDIS_URL = f"redis://default:{REDIS_PASSWORD}@proxy.example.net:6379"
+REVIEW_USER = {"id": "u-1", "email": "review@cleanway.ai"}
+
+
+def _ago(days: int) -> str:
+    return (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+
+def _with_redis(env_file, url=REDIS_URL):
+    env_file.write_text(env_file.read_text(encoding="utf-8") + f"REDIS_URL={url}\n", encoding="utf-8")
+
+
+def test_a_deleted_review_account_is_restored_with_the_rotation(env_file, capsys):
+    _with_redis(env_file)
+    gotrue = FakeGoTrue(users=[REVIEW_USER], rows={"u-1": _ago(2)})
+    redis = FakeRedis(keys=["deleted:u-1", "notdeleted:u-1", "tier:u-1", "deleted:someone-else"])
+    security = FakeSecurity()
+    assert _run(env_file, gotrue=gotrue, security=security, redis=redis) == 0
+    put, patch = gotrue.writes()
+    assert put[:2] == ("PUT", URL + "/auth/v1/admin/users/u-1")
+    # What POST /user/account/restore sends: the row, pinned to the grace window.
+    assert patch[0] == "PATCH" and patch[3] == {"deletion_requested_at": None}
+    query = _query(patch[1])
+    assert query["id"] == "eq.u-1" and query["select"] == "id"
+    assert query["or"].startswith("(deletion_requested_at.is.null,deletion_requested_at.gt.")
+    assert patch[2]["apikey"] == SECRET and patch[2]["Prefer"] == "return=representation"
+    assert gotrue.rows["u-1"] is None
+    assert redis.urls == [REDIS_URL]
+    assert redis.store == {"deleted:someone-else": "1"}  # the lock and its caches, nobody else's
+    assert security.items[("review@cleanway.ai", cra.KEYCHAIN_SERVICE)] == put[3]["password"]
+    out = capsys.readouterr()
+    assert put[3]["password"] not in out.out + out.err
+    assert REDIS_PASSWORD not in out.out + out.err
+    assert "удаление отменено" in out.out
+
+
+def test_a_deleted_account_without_the_apis_redis_stops_before_any_write(env_file, capsys):
+    gotrue, redis, security = FakeGoTrue(users=[REVIEW_USER], rows={"u-1": _ago(2)}), FakeRedis(), FakeSecurity()
+    assert _run(env_file, gotrue=gotrue, security=security, redis=redis) == 1
+    assert gotrue.writes() == [] and security.calls == [] and redis.calls == []
+    assert gotrue.rows["u-1"] is not None  # still there for the next run to find
+    err = capsys.readouterr().err
+    assert "REDIS_URL" in err and "Восстановить аккаунт" in err
+
+
+def test_an_unreachable_redis_stops_before_any_write(env_file, capsys):
+    _with_redis(env_file)
+    gotrue, security = FakeGoTrue(users=[REVIEW_USER], rows={"u-1": _ago(2)}), FakeSecurity()
+    assert _run(env_file, gotrue=gotrue, security=security, redis=FakeRedis(down=True)) == 4
+    assert gotrue.writes() == [] and security.calls == []
+    err = capsys.readouterr().err
+    assert "ConnectionRefusedError" in err and "proxy.example.net" in err
+    assert REDIS_PASSWORD not in err
+
+
+def test_past_the_grace_window_nothing_is_written(env_file, capsys):
+    """The purge deletes it (the auth user too); only then can a run create it anew."""
+    _with_redis(env_file)
+    gotrue, redis, security = FakeGoTrue(users=[REVIEW_USER], rows={"u-1": _ago(31)}), FakeRedis(), FakeSecurity()
+    assert _run(env_file, gotrue=gotrue, security=security, redis=redis) == 4
+    assert gotrue.writes() == [] and security.calls == [] and redis.calls == []
+    assert "30" in capsys.readouterr().err
+
+
+def test_a_window_that_closes_mid_run_leaves_the_lock_alone(env_file):
+    """The row's guard decides, as in the restore endpoint: no row back, no
+    Redis change — the purge has the account."""
+    class Closing(FakeGoTrue):
+        def _users_table(self, method, query, data):
+            if method == "PATCH":
+                return 200, []
+            return super()._users_table(method, query, data)
+
+    _with_redis(env_file)
+    gotrue, redis = Closing(users=[REVIEW_USER], rows={"u-1": _ago(2)}), FakeRedis(keys=["deleted:u-1"])
+    assert _run(env_file, gotrue=gotrue, security=FakeSecurity(), redis=redis) == 4
+    assert redis.store == {"deleted:u-1": "1"}
+
+
+def test_a_live_account_needs_no_redis(env_file):
+    gotrue, redis = FakeGoTrue(users=[REVIEW_USER], rows={"u-1": None}), FakeRedis()
+    assert _run(env_file, gotrue=gotrue, security=FakeSecurity(), redis=redis) == 0
+    assert [w[0] for w in gotrue.writes()] == ["PUT"]
+    assert redis.calls == []
+
+
+def test_with_redis_a_lock_left_on_a_live_row_is_cleared(env_file):
+    """A restore that cleared the row but not the lock (its 503 path) still
+    answers 410; the run clears the lock without touching the row."""
+    _with_redis(env_file)
+    gotrue, redis = FakeGoTrue(users=[REVIEW_USER], rows={"u-1": None}), FakeRedis(keys=["deleted:u-1"])
+    assert _run(env_file, gotrue=gotrue, security=FakeSecurity(), redis=redis) == 0
+    assert [w[0] for w in gotrue.writes()] == ["PUT"]
+    assert redis.store == {}
+
+
+def test_dry_run_reports_a_pending_deletion_and_writes_nothing(env_file, capsys):
+    gotrue, redis, security = FakeGoTrue(users=[REVIEW_USER], rows={"u-1": _ago(2)}), FakeRedis(), FakeSecurity()
+    assert _run(env_file, "--dry-run", gotrue=gotrue, security=security, redis=redis) == 0
+    assert gotrue.writes() == [] and security.calls == [] and redis.calls == []
+    out = capsys.readouterr().out
+    assert "помечен на удаление" in out and "REDIS_URL" in out
+
+
+@pytest.mark.parametrize("url", [
+    f"redis://:{REDIS_PASSWORD}@localhost:6379",
+    "redis://127.0.0.1:6379/0",
+    f"redis://default:{REDIS_PASSWORD}@redis.railway.internal:6379",
+    f"https://default:{REDIS_PASSWORD}@proxy.example.net:6379",
+])
+def test_a_redis_url_that_cannot_be_the_apis_is_refused_before_any_request(env_file, capsys, url):
+    """A local Redis would "clear" nothing while the production lock stays."""
+    _with_redis(env_file, url)
+    gotrue = FakeGoTrue(users=[REVIEW_USER], rows={"u-1": _ago(2)})
+    assert _run(env_file, gotrue=gotrue, security=FakeSecurity(), redis=FakeRedis()) == 1
+    assert gotrue.requests == []
+    err = capsys.readouterr().err
+    assert "REDIS_URL" in err and REDIS_PASSWORD not in err
+
+
+def test_a_new_account_never_asks_redis(env_file):
+    _with_redis(env_file)
+    gotrue, redis = FakeGoTrue(), FakeRedis()
+    assert _run(env_file, gotrue=gotrue, security=FakeSecurity(), redis=redis) == 0
+    assert redis.calls == [] and not any("/rest/v1/" in r[1] for r in gotrue.requests)
+
+
+def test_the_grace_window_and_the_lock_are_the_apis():
+    import inspect
+
+    from api.routers import user as user_router
+    from api.services import account_purge
+
+    assert cra.GRACE_DAYS == user_router._DELETION_GRACE_DAYS == account_purge.GRACE_DAYS
+    written = inspect.getsource(user_router.delete_account) + inspect.getsource(user_router.restore_account)
+    for key in cra.LOCK_KEYS:
+        assert f'"{key.replace("{id}", "{user.id}")}"' in written, key
+
+
+@pytest.mark.parametrize(("value", "expected"), [
+    ("2026-10-23T10:00:00.123456+00:00", datetime(2026, 10, 23, 10, 0, 0, 123456, timezone.utc)),
+    ("2026-10-23T10:00:00.12+00:00", datetime(2026, 10, 23, 10, 0, 0, 120000, timezone.utc)),
+    ("2026-10-23 14:00:00+04", datetime(2026, 10, 23, 10, 0, tzinfo=timezone.utc)),
+    ("2026-10-23T10:00:00Z", datetime(2026, 10, 23, 10, 0, tzinfo=timezone.utc)),
+    ("2026-10-23T10:00:00", datetime(2026, 10, 23, 10, 0, tzinfo=timezone.utc)),
+    ("not a date", None),
+])
+def test_postgres_timestamps_parse_on_any_python(value, expected):
+    assert cra.parse_timestamp(value) == expected
+
+
+class _RespServer:
+    """A Redis stand-in on 127.0.0.1 that speaks the protocol: it logs each
+    command and answers like Redis (AUTH with the password only)."""
+
+    def __init__(self, password="pw"):
+        import socket
+        import threading
+
+        self.password, self.commands = password, []
+        self._listener = socket.create_server(("127.0.0.1", 0))
+        self.port = self._listener.getsockname()[1]
+        self._thread = threading.Thread(target=self._serve, daemon=True)
+        self._thread.start()
+
+    def _serve(self):
+        conn, _ = self._listener.accept()
+        reader = conn.makefile("rb")
+        authed = not self.password
+        while True:
+            head = reader.readline()
+            if not head:
+                break
+            args = []
+            for _ in range(int(head[1:-2])):
+                size = int(reader.readline()[1:-2])
+                args.append(reader.read(size + 2)[:-2].decode())
+            self.commands.append(args)
+            name = args[0].upper()
+            if name == "AUTH":
+                authed = args[-1] == self.password
+                conn.sendall(b"+OK\r\n" if authed else b"-WRONGPASS invalid username-password pair\r\n")
+            elif not authed:
+                conn.sendall(b"-NOAUTH Authentication required.\r\n")
+            elif name in ("PING", "SELECT"):
+                conn.sendall(b"+PONG\r\n" if name == "PING" else b"+OK\r\n")
+            elif name == "DEL":
+                conn.sendall(b":%d\r\n" % (len(args) - 1))
+        reader.close()
+        conn.close()
+
+    def close(self):
+        self._listener.close()
+        self._thread.join(2)
+
+
+def test_the_resp_client_authenticates_selects_pings_and_deletes():
+    server = _RespServer(password="pw")
+    client = cra.open_redis(f"redis://default:pw@127.0.0.1:{server.port}/2")
+    try:
+        assert client.ping() == "PONG"
+        assert client.delete("deleted:u-1", "notdeleted:u-1", "tier:u-1") == 3
+    finally:
+        client.close()
+        server.close()
+    assert server.commands == [["AUTH", "pw"], ["SELECT", "2"], ["PING"],
+                               ["DEL", "deleted:u-1", "notdeleted:u-1", "tier:u-1"]]
+
+
+def test_a_wrong_redis_password_is_named_by_its_code_only(env_file, capsys):
+    server = _RespServer(password="right")
+    wrong = "w" * 12
+    _with_redis(env_file, f"redis://default:{wrong}@proxy.example.net:6379")
+    gotrue, security = FakeGoTrue(users=[REVIEW_USER], rows={"u-1": _ago(2)}), FakeSecurity()
+    local = f"redis://default:{wrong}@127.0.0.1:{server.port}"
+    try:
+        code = _run(env_file, gotrue=gotrue, security=security, redis=lambda _url: cra.open_redis(local))
+    finally:
+        server.close()
+    assert code == 4 and gotrue.writes() == [] and security.calls == []
+    err = capsys.readouterr().err
+    assert "RespError WRONGPASS" in err and wrong not in err
