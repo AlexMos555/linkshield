@@ -386,6 +386,18 @@ def test_curated_run_claims_outside_allowlist_only_when_it_could_check(monkeypat
     assert unverified["legit_outside_allowlist"] is False
 
 
+def test_curated_description_names_today_s_ranking_not_tranco():
+    # landing/lib/benchmark.ts legitSampleRanking() reads a run whose
+    # sources.legit names Tranco as one made before 2026-10-23, and
+    # /transparency/methodology then says the run was made against Tranco's
+    # list. scripts/test-landing-honesty.mjs expects a newer latest.json to
+    # name the Majestic Million.
+    eval_module = _load_eval_module()
+    _, _, sources = eval_module.pick_legit("curated", 5, is_trusted=lambda _h: False)
+    assert "Tranco" not in sources["legit"]
+    assert "Majestic Million" in sources["legit"]
+
+
 def test_tranco_run_never_claims_a_false_positive_measurement(tmp_path, monkeypatch):
     eval_module = _load_eval_module()
     _write_top_100k(tmp_path / "top_100k.json", ["a.com", "b.com"])

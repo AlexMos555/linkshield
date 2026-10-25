@@ -219,13 +219,28 @@ check("committed latest.json: false-positive rate is shown only by its own numbe
 console.log("legitSampleRanking (the list the real-site sample was taken outside of)");
 const METHODOLOGY_PAGE = path.join(ROOT, "landing", "app", "[locale]", "transparency", "methodology", "page.tsx");
 const CURATED_KEYS = ["dataset_safe_desc_curated", "caveat_allowlist_curated"];
-check("a sample described with the Majestic + CrUX ranking is that one; anything else predates it (Tranco)", () => {
+check("a sample described as outside Tranco's list predates the Majestic + CrUX ranking; any other is today's", () => {
   const described = (legit) => ({ ...snapshot(), sources: { legit_outside_allowlist: true, legit } });
   // eval_fresh_urls.pick_legit's text before #284 (2026-10-23) and since.
   assert.equal(legitSampleRanking(described("data/benchmark_legit_ru.txt: 200 of 270 real Russian sites outside the Tranco top-100k (regional …)")), "tranco");
   assert.equal(legitSampleRanking(described("data/benchmark_legit_ru.txt: 200 of 270 real Russian sites outside the allowlist's top 100,000 (Majestic Million + Chrome UX Report; regional …)")), "majestic_crux");
-  assert.equal(legitSampleRanking(snapshot()), "tranco");
-  assert.equal(legitSampleRanking(null), "tranco");
+  // Rewording today's text (a ranking rebuild) must not send a new run back
+  // to Tranco's copy: only the frozen pre-2026-10-23 snapshots name Tranco.
+  assert.equal(legitSampleRanking(described("data/benchmark_legit_ru.txt: 200 of 270 real Russian sites outside the allowlist's top 100,000 (regional …)")), "majestic_crux");
+  assert.equal(legitSampleRanking(snapshot()), "majestic_crux");
+  assert.equal(legitSampleRanking(null), "majestic_crux");
+});
+check("every committed real-site run made before 2026-10-23 is read as taken outside Tranco's list", () => {
+  const dir = path.dirname(LATEST);
+  const runs = fs.readdirSync(dir).filter((name) => /^\d{4}-\d{2}-\d{2}-fresh-urls\.json$/.test(name));
+  let curatedBefore = 0;
+  for (const name of runs) {
+    const run = JSON.parse(fs.readFileSync(path.join(dir, name), "utf-8"));
+    if (name.slice(0, 10) >= "2026-10-23" || run.sources?.legit_outside_allowlist !== true) continue;
+    curatedBefore += 1;
+    assert.equal(legitSampleRanking(run), "tranco", name);
+  }
+  assert.ok(curatedBefore >= 3, `found ${curatedBefore} curated runs before 2026-10-23`);
 });
 check("each ranking's copy names that ranking, in every language", () => {
   for (const locale of LOCALES) {
