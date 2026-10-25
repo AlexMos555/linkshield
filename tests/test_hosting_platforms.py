@@ -47,9 +47,12 @@ PAGE_HOSTS = ["forms.yandex.ru", "disk.yandex.ru", "sites.google.com", "docs.goo
 def test_data_file_is_well_formed():
     with open(DATA) as f:
         data = json.load(f)
-    assert set(data) == {"_meta", "tenant_suffixes", "user_content_hosts", "operator_hosts", "dynamic_dns_services"}
+    assert set(data) == {"_meta", "tenant_suffixes", "user_content_hosts", "operator_hosts", "operator_zones",
+                         "dynamic_dns_services"}
     assert hp.TENANT_SUFFIXES and hp.USER_CONTENT_HOSTS and hp.OPERATOR_HOSTS and hp.DYNAMIC_DNS_SUFFIXES
-    for name in hp.TENANT_SUFFIXES | hp.USER_CONTENT_HOSTS | hp.OPERATOR_HOSTS | hp.DYNAMIC_DNS_SUFFIXES:
+    assert hp.OPERATOR_ZONES
+    for name in (hp.TENANT_SUFFIXES | hp.USER_CONTENT_HOSTS | hp.OPERATOR_HOSTS | hp.DYNAMIC_DNS_SUFFIXES
+                 | hp.OPERATOR_ZONES):
         assert name == name.lower().strip(".") and "." in name, name
         assert " " not in name and "/" not in name, name
 
@@ -57,7 +60,7 @@ def test_data_file_is_well_formed():
 def test_every_operator_host_sits_under_a_tenant_suffix():
     """An operator entry only makes sense as an exception to a tenant rule;
     anywhere else it would be dead weight, or a typo hiding one."""
-    for host in hp.OPERATOR_HOSTS:
+    for host in hp.OPERATOR_HOSTS | hp.OPERATOR_ZONES:
         assert any(host.endswith("." + s) for s in hp.TENANT_SUFFIXES), host
 
 
@@ -122,6 +125,7 @@ def test_informational_reason_only_for_curated_platforms():
 
 def test_missing_data_file_degrades_to_hand_list(tmp_path):
     assert hp._load(str(tmp_path / "absent.json")) == (frozenset(), frozenset(), frozenset())
+    assert hp._load_operator_zones(str(tmp_path / "absent.json")) == frozenset()
 
 
 # ── The platforms' OWN hosts (review 2026-09-27) ──
@@ -150,6 +154,38 @@ def test_operator_exception_is_exact(host):
     """Only the exact operator host is excepted — never a customer's www, a
     look-alike label, or another tenant of the same suffix."""
     assert is_trusted_top_domain(host) is False
+
+
+# ── The platforms' own ZONES (review of #336, 2026-10-25) ──
+#
+# A tenant suffix can hold the platform's own sign-in, mail tracking, file CDN
+# or shared servers: login.secureserver.net, email.m.teachable.com,
+# files.cdn.thinkific.com, a2plcpnl0019.prod.iad2.secureserver.net. Phishing
+# feeds list them once in a while, and blocking one breaks it for everyone, so
+# the blocklist never lists a name at or under an operator zone. Many serve
+# every customer's pages at a path (form.typeform.com/to/<id>), so the
+# instant-safe path stays shut for them: they are judged like tenants.
+
+@pytest.mark.parametrize("host", [
+    "login.secureserver.net", "cache.nebula.phx3.secureserver.net", "a2plcpnl0019.prod.iad2.secureserver.net",
+    "email.m.teachable.com", "email.em.teachable.com", "pages.teachable.com", "files.cdn.thinkific.com",
+    "form.typeform.com", "images.typeform.com",
+])
+def test_an_operator_zone_holds_the_name_and_everything_under_it(host):
+    assert hp.is_operator_zone_name(host), host
+    assert hp.is_operator_zone_name("x." + host), host
+    assert is_trusted_top_domain(host) is False, host
+
+
+@pytest.mark.parametrize("host", [
+    "exodus-help.teachable.com", "assurance2.thinkific.com", "admin318.typeform.com",
+    "0.232.205.92.host.secureserver.net", "ip-107-180-2-159.ip.secureserver.net",
+    "xm.teachable.com", "prod.iad2.secureserver.net.evil.com", "teachable.com",
+])
+def test_an_operator_zone_is_not_its_neighbours(host):
+    """A customer next to the zone (or a customer's own server, <ip>.host.
+    secureserver.net), a look-alike label and the platform apex are not in it."""
+    assert not hp.is_operator_zone_name(host), host
 
 
 # ── The user-content SERVICE host itself (review 2026-09-27) ──

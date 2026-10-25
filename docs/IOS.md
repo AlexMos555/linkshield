@@ -492,7 +492,14 @@ production): for that exact address the sign-in screen asks for a password
 instead; every other address keeps the code. Only builds made with the
 variable have the password field (the first one after 2026-10-23) — for an
 older binary say instead that sign-in is optional. If the reviewer deleted the
-account while testing deletion, re-run the script before the next submission.
+account while testing deletion, it is on hold for 30 days: sign-in works, but
+every API call answers 410 and the app shows "Account on hold" — a new
+password alone does not bring it back. Before the next submission re-run the
+script as usual: after the new password it signs in as the review account and
+taps "Restore my account" for it (POST /api/v1/user/account/restore). If that
+step fails (`restore error`), sign in as the review account in the app and tap
+"Restore my account" yourself. Past 30 days the purge removes the account and
+the next run creates it anew (runbook: "Если проверяющий удалил аккаунт").
 
 ### 3.7 Screenshots and listing
 

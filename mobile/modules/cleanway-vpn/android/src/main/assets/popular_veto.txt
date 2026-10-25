@@ -348,7 +348,10 @@ akadns6.net
 akakce.com
 akam.net
 akamai.com
+akamai.net
+akamaihd.net
 akamaitechnologies.com
+akamaized.net
 akc.org
 akkadia.org
 akkords.pro
@@ -1721,6 +1724,7 @@ cloudflare.com
 cloudflareaccess.com
 cloudflareinsights.com
 cloudflaressl.com
+cloudfront.net
 cloudinary.com
 cloudways.com
 cloudwaysapps.com
@@ -2227,6 +2231,7 @@ digitalgujarat.gov.in
 digitaljournal.com
 digitallocker.gov.in
 digitalocean.com
+digitaloceanspaces.com
 digitalspy.com
 digitaltrends.com
 digitimes.com
@@ -3351,6 +3356,7 @@ gitee.com
 github.blog
 github.com
 githubassets.com
+githubusercontent.com
 gitlab.com
 gitter.im
 givc.ru
@@ -3500,6 +3506,7 @@ google.se
 google.si
 google.sk
 googleadservices.com
+googleapis.com
 googleblog.com
 googledomains.com
 googlepages.com
@@ -9547,6 +9554,7 @@ wisegeek.com
 wishlink.com
 wistia.com
 wistia.net
+withgoogle.com
 wiwo.de
 wix.com
 wixstatic.com
