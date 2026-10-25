@@ -13,7 +13,9 @@ import { getSessionState } from "../src/services/auth";
 import { getEntitlement, unlinkDevice, type AccountDevice, type EntitlementResponse } from "../src/services/api";
 import { linkThisDevice, signOutUnlinkedDevice } from "../src/services/account";
 import { FREEMIUM, PAID_PLANS_OFFERED, rememberEntitlement } from "../src/services/freemium";
-import { BILLING_STORE, restoreStorePurchases, storeBillingOn } from "../src/services/store-billing";
+import {
+  BILLING_STORE, restoreStorePurchases, storeBillingOn, storeRestoreSuggested,
+} from "../src/services/store-billing";
 import { manageSubscriptionUrl, storeCopyKeys, storeErrorNoteKey } from "../src/utils/store-billing";
 import { confirmDeleteAccount, signOutEverywhereLocal } from "../src/services/account-actions";
 import { downloadAccountData } from "../src/services/account-export";
@@ -54,6 +56,8 @@ export default function AccountScreen() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
   const [exporting, setExporting] = useState(false);
+  /** iPhone: the plan bought on this phone signed out did not follow the account — Restore moves it. */
+  const [restoreHere, setRestoreHere] = useState(false);
 
   const formatDate = useCallback(
     (iso?: string | null) => {
@@ -75,6 +79,7 @@ export default function AccountScreen() {
     if (data) {
       setLoad({ kind: "ready", email, ent: data });
       void rememberEntitlement(data);
+      setRestoreHere(data.plan === "free" && (await storeRestoreSuggested()));
     } else if (accountFailure(error) === "signed_out") {
       setLoad({ kind: "signed_out" });
     } else if (accountFailure(error) !== "revoked") {
@@ -143,7 +148,7 @@ export default function AccountScreen() {
       const key =
         r.kind === "restored" ? "mobile.paywall.note_restored"
         : r.kind === "processing" ? "mobile.paywall.note_processing"
-        : r.kind === "none" ? "mobile.paywall.note_restore_none"
+        : r.kind === "none" ? storeCopyKeys(BILLING_STORE).restoreNone
         : r.kind === "error" ? storeErrorNoteKey(r.error, BILLING_STORE)
         : "mobile.paywall.note_restore_failed";
       if (key) Alert.alert(t("mobile.account.restore"), t(key));
@@ -241,7 +246,11 @@ export default function AccountScreen() {
 
       <Section
         title={t("mobile.account.plan_title")}
-        footnote={appleCancelNote ? t("mobile.account.cancel_note_appstore") : undefined}
+        footnote={
+          appleCancelNote ? t("mobile.account.cancel_note_appstore")
+          : restoreHere && canRestore ? t("mobile.paywall.note_restore_here_appstore")
+          : undefined
+        }
       >
         <Row
           first

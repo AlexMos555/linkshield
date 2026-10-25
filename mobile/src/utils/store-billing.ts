@@ -14,7 +14,10 @@
  *     strings (localised currency); nothing here invents a price.
  *   • Store errors become a few kinds the paywall can say in words.
  *   • RevenueCat knows the person by the Supabase account id, read from the
- *     session's access token (`sub`).
+ *     session's access token (`sub`). Signed out, the iPhone app buys and
+ *     restores under RevenueCat's anonymous id (payingAs; App Review 5.1.1)
+ *     and the phone honours its own App Store plan (storePlanActive); Google
+ *     Play asks to sign in first.
  *
  * Server side and store setup: docs/runbooks/revenuecat.md.
  */
@@ -86,15 +89,22 @@ export function paidPlansOffered(billing: StoreBillingConfig, os: string): boole
  * Start the SDK when the app starts? Only for a signed-in person on this
  * phone who has started a store purchase before: the SDK must then run to
  * finish a pending ("slow card") purchase and acknowledge it, or Google
- * refunds it after 3 days. Everyone else meets RevenueCat only when they
- * open the paywall or tap "Restore purchases" — no request on every start.
+ * refunds it after 3 days. In the iPhone app ([withoutAccount], freemium.ts
+ * storePurchaseWithoutAccount) signed out too: a phone that bought or
+ * restored without an account has nobody else to tell it about an Ask to
+ * Buy approval, a renewal or an end. Everyone else meets RevenueCat only
+ * when they open the paywall or tap "Restore purchases" — no request on
+ * every start.
  */
 export function configureAtStart(input: {
   billing: StoreBillingConfig;
   signedIn: boolean;
   purchaseStarted: boolean;
+  withoutAccount?: boolean;
 }): boolean {
-  return input.billing.kind === "on" && input.signedIn && input.purchaseStarted;
+  return (
+    input.billing.kind === "on" && input.purchaseStarted && (input.signedIn || input.withoutAccount === true)
+  );
 }
 
 // ── Who is paying ─────────────────────────────────────────────────────
@@ -140,6 +150,21 @@ export function accountIdFromAccessToken(token: string | null | undefined): stri
   } catch {
     return null;
   }
+}
+
+/**
+ * Who a purchase or a restore goes under:
+ *   account       — signed in: the account id, so the webhook files it there;
+ *   anonymous     — signed out in the iPhone app ([withoutAccount]):
+ *                   RevenueCat's anonymous id. Signing in later
+ *                   (Purchases.logIn) makes it an alias of the account;
+ *   sign_in_first — signed out on Google Play: a plan belongs to an account.
+ */
+export type PayingAs = { kind: "account"; id: string } | { kind: "anonymous" } | { kind: "sign_in_first" };
+
+export function payingAs(accountId: string | null, withoutAccount: boolean): PayingAs {
+  if (accountId) return { kind: "account", id: accountId };
+  return withoutAccount ? { kind: "anonymous" } : { kind: "sign_in_first" };
 }
 
 // ── What is on sale ───────────────────────────────────────────────────
@@ -277,6 +302,91 @@ export function storeHasPlan(
   return info?.entitlements?.active?.[PLAN_ENTITLEMENT_ID]?.isActive === true;
 }
 
+// ── This phone's own plan (the iPhone app) ────────────────────────────
+
+/**
+ * What RevenueCat last said about the plan of whoever the SDK is on this
+ * phone. Kept only by the iPhone app, which sells without an account
+ * (freemium.ts storePurchaseWithoutAccount): a signed-out buyer has no
+ * server answer, so the phone counts its own App Store plan — and keeps
+ * counting it signed in when the account's device seats are all taken.
+ */
+export interface StorePlanCache {
+  paid: boolean;
+  /** When the store says the plan ends (ms since epoch); null = no end date known. */
+  expiresAt: number | null;
+  /** When RevenueCat said so. */
+  checkedAt: number;
+}
+
+/** Ask RevenueCat again at most this often — as freemium.ts ENTITLEMENT_FRESH_MS. */
+export const STORE_PLAN_FRESH_MS = 6 * 60 * 60 * 1000;
+/** A paid answer counts this long when RevenueCat cannot be asked — as freemium.ts ENTITLEMENT_GRACE_MS. */
+export const STORE_PLAN_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** The parts of the SDK's CustomerInfo read below. */
+export interface CustomerInfoLike {
+  entitlements?: {
+    active?: Record<string, { isActive?: boolean; expirationDate?: string | null } | undefined>;
+  };
+}
+
+/**
+ * This phone's plan from a CustomerInfo the SDK just gave (purchase,
+ * restore, logIn, a read). An end date already past is not paid, whatever
+ * isActive says: offline the SDK answers from its cache, and in a billing
+ * grace period RevenueCat moves the end date to the end of the grace.
+ */
+export function storePlanFromInfo(info: CustomerInfoLike | null | undefined, nowMs: number): StorePlanCache {
+  const unpaid = { paid: false, expiresAt: null, checkedAt: nowMs };
+  const ent = info?.entitlements?.active?.[PLAN_ENTITLEMENT_ID];
+  if (ent?.isActive !== true) return unpaid;
+  const ends = typeof ent.expirationDate === "string" ? Date.parse(ent.expirationDate) : NaN;
+  if (!Number.isFinite(ends)) return { paid: true, expiresAt: null, checkedAt: nowMs };
+  return ends > nowMs ? { paid: true, expiresAt: ends, checkedAt: nowMs } : unpaid;
+}
+
+/** Narrowing for a cache read back from storage. */
+export function parseStorePlanCache(raw: unknown): StorePlanCache | null {
+  if (!raw || typeof raw !== "object") return null;
+  const c = raw as Partial<StorePlanCache>;
+  if (typeof c.paid !== "boolean" || typeof c.checkedAt !== "number" || !Number.isFinite(c.checkedAt)) return null;
+  if (c.expiresAt !== null && (typeof c.expiresAt !== "number" || !Number.isFinite(c.expiresAt))) return null;
+  return { paid: c.paid, expiresAt: c.expiresAt, checkedAt: c.checkedAt };
+}
+
+/**
+ * Does this phone's own plan count right now? Until the store's end date.
+ * Past it (a renewal RevenueCat could not be asked about yet), or with no
+ * end date, STORE_PLAN_GRACE_MS after the last paid answer — as a paid
+ * account answer offline. Online, storePlanStale has it re-read first.
+ */
+export function storePlanActive(cache: StorePlanCache | null, nowMs: number): boolean {
+  if (!cache || !cache.paid) return false;
+  if (cache.expiresAt !== null && nowMs < cache.expiresAt) return true;
+  const age = nowMs - cache.checkedAt;
+  return age >= 0 && age < STORE_PLAN_GRACE_MS;
+}
+
+/** Ask RevenueCat again? After STORE_PLAN_FRESH_MS, or once a paid plan's end date has passed since the last answer. */
+export function storePlanStale(cache: StorePlanCache | null, nowMs: number): boolean {
+  if (!cache) return true;
+  const age = nowMs - cache.checkedAt;
+  if (age < 0 || age >= STORE_PLAN_FRESH_MS) return true;
+  return cache.paid && cache.expiresAt !== null && cache.checkedAt < cache.expiresAt && nowMs >= cache.expiresAt;
+}
+
+/**
+ * Signed in, and the plan this phone bought signed out did not come along?
+ * Purchases.logIn merges the anonymous buyer into the account — unless the
+ * account already has an anonymous alias of its own (RevenueCat
+ * "Identifying customers"). Then only "Restore purchases" moves it, and the
+ * app says so.
+ */
+export function restoreSuggested(before: StorePlanCache | null, after: StorePlanCache, nowMs: number): boolean {
+  return storePlanActive(before, nowMs) && !after.paid;
+}
+
 // ── When it goes wrong ────────────────────────────────────────────────
 
 /**
@@ -376,6 +486,8 @@ export interface StoreCopyKeys {
   fine: string;
   /** Under "Restore purchases" on the account screen. */
   restoreDesc: string;
+  /** "Restore purchases" found nothing — on this Apple ID (it restores signed out too), on this account. */
+  restoreNone: string;
 }
 
 export function storeCopyKeys(store: BillingStore): StoreCopyKeys {
@@ -386,6 +498,7 @@ export function storeCopyKeys(store: BillingStore): StoreCopyKeys {
         pricesEmpty: "mobile.paywall.prices_empty_appstore",
         fine: "mobile.paywall.fine_store_appstore",
         restoreDesc: "mobile.account.restore_desc_appstore",
+        restoreNone: "mobile.paywall.note_restore_none_appstore",
       }
     : {
         pricesLoading: "mobile.paywall.prices_loading",
@@ -393,6 +506,7 @@ export function storeCopyKeys(store: BillingStore): StoreCopyKeys {
         pricesEmpty: "mobile.paywall.prices_empty",
         fine: "mobile.paywall.fine_store",
         restoreDesc: "mobile.account.restore_desc",
+        restoreNone: "mobile.paywall.note_restore_none",
       };
 }
 

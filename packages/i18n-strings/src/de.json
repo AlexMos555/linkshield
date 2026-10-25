@@ -4090,7 +4090,10 @@
       "err_already_owned_appstore": "Diese Apple-ID hat das Abo bereits. Tippe auf Wiederherstellen, um es in dieses Konto zu übernehmen.",
       "err_network_appstore": "Keine Verbindung zum App Store. Prüfe das Internet und versuche es noch einmal.",
       "err_not_allowed_appstore": "Käufe sind auf diesem iPhone deaktiviert (zum Beispiel in der Bildschirmzeit).",
-      "err_store_appstore": "Der App Store konnte den Kauf nicht abschließen. Bitte versuche es noch einmal."
+      "err_store_appstore": "Der App Store konnte den Kauf nicht abschließen. Bitte versuche es noch einmal.",
+      "note_restore_none_appstore": "Für diese Apple-ID gibt es kein aktives Abo.",
+      "sync_offer": "Auf diesem iPhone aktiv. Anmelden ist freiwillig: Dann gilt dasselbe Abo auch in der Cleanway-App für Android und in der Browsererweiterung, auf bis zu {{n}} Geräten.",
+      "note_restore_here_appstore": "Das auf diesem iPhone gekaufte Abo ist noch nicht in deinem Konto. Tippe auf Wiederherstellen, um es hinzuzufügen."
     },
     "ios_sms": {
       "line_ready": "Verschiebt Betrugs-SMS von unbekannten Absendern nach „Unerwünscht“ – direkt auf diesem iPhone. Wirkt, sobald du ihn in den Einstellungen einschaltest.",

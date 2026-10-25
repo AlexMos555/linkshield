@@ -10,7 +10,9 @@
  *     link, or a shared message), counted on the phone and reset at local
  *     midnight. The first TRIAL_DAYS after install are unlimited.
  *   • A paid account (GET /api/v1/me/entitlement) is unlimited. Not signed in
- *     is free. A paid answer is trusted offline for ENTITLEMENT_GRACE_MS.
+ *     is free — except an iPhone whose own App Store plan RevenueCat reports
+ *     (store-billing.ts storePlanActive; the iPhone app sells without an
+ *     account). A paid answer is trusted offline for ENTITLEMENT_GRACE_MS.
  *
  * Everything is behind EXPO_PUBLIC_FREEMIUM_ENABLED (off by default): with it
  * off the app behaves exactly as before — every check is detailed.
@@ -351,8 +353,23 @@ export function selfUpdateAllowed(distribution: Distribution): boolean {
 }
 
 /**
+ * Can a signed-out person buy and restore the plan here? Only in the iPhone
+ * app (docs/STORE_DECISIONS_2026-10.md §3, option Б): App Review 5.1.1(v)
+ * rejects an app that asks for an account before an in-app purchase its
+ * main function does not need, so the App Store purchase and "Restore
+ * purchases" run under RevenueCat's anonymous id, the phone honours its own
+ * plan, and signing in is offered after the purchase — to use it on Android
+ * and in the browser extension. Google Play has no such rule, and its flow
+ * (sign in first, the plan on the account) stays as it shipped.
+ */
+export function storePurchaseWithoutAccount(distribution: Distribution): boolean {
+  return distribution === "appstore";
+}
+
+/**
  * What the paywall's one button does:
- *   sign_in      — paying needs an account: sign in first, then come back;
+ *   sign_in      — paying needs an account: sign in first, then come back
+ *                  (every build but the iPhone app, storePurchaseWithoutAccount);
  *   web_checkout — the site's checkout (site APK, world prices);
  *   store        — the build's own store billing (startStorePurchase) — only
  *                  when paywallSaleOff says the build can take it;
@@ -363,7 +380,7 @@ export type PurchaseAction = "sign_in" | "web_checkout" | "store" | "soon";
 export function purchaseAction(input: { signedIn: boolean; market: Market; distribution: Distribution }): PurchaseAction {
   const { signedIn, market, distribution } = input;
   if (market === "ru") return "soon";
-  if (!signedIn) return "sign_in";
+  if (!signedIn && !storePurchaseWithoutAccount(distribution)) return "sign_in";
   return webCheckoutAllowed(distribution) ? "web_checkout" : "store";
 }
 

@@ -4090,7 +4090,10 @@
       "err_already_owned_appstore": "Questo ID Apple ha già l'abbonamento. Tocca Ripristina per spostarlo su questo account.",
       "err_network_appstore": "Nessuna connessione all'App Store. Controlla internet e riprova.",
       "err_not_allowed_appstore": "Gli acquisti sono disattivati su questo iPhone (ad esempio in Tempo di utilizzo).",
-      "err_store_appstore": "L'App Store non è riuscito a completare l'acquisto. Riprova."
+      "err_store_appstore": "L'App Store non è riuscito a completare l'acquisto. Riprova.",
+      "note_restore_none_appstore": "Nessun abbonamento attivo su questo ID Apple.",
+      "sync_offer": "Attivo su questo iPhone. L'accesso è facoltativo: con l'accesso lo stesso abbonamento funziona nell'app Cleanway per Android e nell'estensione del browser, su un massimo di {{n}} dispositivi.",
+      "note_restore_here_appstore": "L'abbonamento acquistato su questo iPhone non è ancora nel tuo account. Tocca Ripristina per aggiungerlo."
     },
     "ios_sms": {
       "line_ready": "Sposta gli SMS truffa di mittenti sconosciuti in Indesiderata, direttamente su questo iPhone. Funziona dopo che lo attivi in Impostazioni.",

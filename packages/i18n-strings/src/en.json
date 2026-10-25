@@ -4032,7 +4032,10 @@
       "err_already_owned_appstore": "This Apple ID already has the subscription. Tap Restore to move it to this account.",
       "err_network_appstore": "No connection to the App Store. Check the internet and try again.",
       "err_not_allowed_appstore": "Purchases are turned off on this iPhone (for example, in Screen Time).",
-      "err_store_appstore": "The App Store couldn't complete the purchase. Please try again."
+      "err_store_appstore": "The App Store couldn't complete the purchase. Please try again.",
+      "note_restore_none_appstore": "No active subscription on this Apple ID.",
+      "sync_offer": "Active on this iPhone. Signing in is optional: it lets the same subscription work in the Cleanway Android app and browser extension, on up to {{n}} devices.",
+      "note_restore_here_appstore": "The subscription bought on this iPhone isn't in your account yet. Tap Restore to add it."
     },
     "ios_sms": {
       "line_ready": "Moves scam texts from unknown senders to Junk, right on this iPhone. Works once you turn it on in Settings.",

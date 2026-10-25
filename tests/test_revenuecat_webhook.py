@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+import logging
 import time
 from pathlib import Path
 
@@ -297,12 +298,40 @@ def test_refund_reversed_restores_access(client, account_store):
 # ─── who bought it ────────────────────────────────────────────────
 
 
-def test_anonymous_purchase_is_acknowledged_and_alerted(client, account_store, caplog):
+def test_anonymous_play_purchase_is_acknowledged_and_alerted(client, account_store, caplog):
+    """The Play app logs in before every purchase: an anonymous one is a bug."""
     anon = "$RCAnonymousID:2f6e0b9d4c8a4e1f9b3a7c5d1e0f2a4b"
     resp = post(client, load("initial_purchase", app_user_id=anon, aliases=[anon], original_app_user_id=anon))
     assert resp.status_code == 200 and resp.json()["reason"] == "anonymous"
     assert account_store.entitlements == []
-    assert any(r.message == "revenuecat_purchase_without_account" for r in caplog.records)
+    [rec] = [r for r in caplog.records if r.message == "revenuecat_purchase_without_account"]
+    assert rec.levelno == logging.ERROR
+
+
+def test_anonymous_app_store_purchase_is_expected_not_alerted(client, account_store, caplog):
+    """The iPhone app sells without an account (docs/STORE_DECISIONS_2026-10.md
+    §3, option Б): the phone honours the purchase from RevenueCat itself, and
+    signing in later aliases it to the account, which the app then refreshes.
+    Nothing to grant here and nothing to alert about."""
+    caplog.set_level(logging.INFO, logger="cleanway.revenuecat")
+    anon = "$RCAnonymousID:2f6e0b9d4c8a4e1f9b3a7c5d1e0f2a4b"
+    body = load("initial_purchase_app_store", app_user_id=anon, aliases=[anon], original_app_user_id=anon)
+    resp = post(client, body)
+    assert resp.status_code == 200 and resp.json()["reason"] == "anonymous"
+    assert account_store.entitlements == []
+    [rec] = [r for r in caplog.records if r.message == "revenuecat_purchase_without_account"]
+    assert rec.levelno == logging.INFO
+    # Marked processed: a later RENEWAL under the account is a new event id anyway.
+    assert body["event"]["id"] in account_store.processed_events
+
+
+def test_app_store_renewal_after_sign_in_finds_the_account_through_aliases(client, account_store):
+    """After Purchases.logIn the anonymous buyer is an alias of the account."""
+    anon = "$RCAnonymousID:2f6e0b9d4c8a4e1f9b3a7c5d1e0f2a4b"
+    post(client, load("initial_purchase_app_store", app_user_id=ACCOUNT, original_app_user_id=anon,
+                      aliases=[anon, ACCOUNT], type="RENEWAL", period_type="NORMAL"))
+    r = row(account_store, "2000000912345678", source="app_store")
+    assert r["account_id"] == ACCOUNT and r["status"] == "active"
 
 
 def test_account_found_through_aliases(client, account_store):
@@ -443,11 +472,68 @@ def test_transfer_sync_failure_is_500_so_revenuecat_retries(client, account_stor
 
 
 def test_transfer_to_an_anonymous_id_is_ignored(client, account_store):
+    """Without the secret API key nobody can tell which rows moved: none
+    are touched (a Play row of the same account may have nothing to do
+    with the restored App Store receipt)."""
     body = load("transfer")
     body["event"]["transferred_to"] = ["$RCAnonymousID:abc"]
     account_store.add_entitlement(OTHER, source="google_play", external_id=GPA)
     assert post(client, body).json()["reason"] == "anonymous"
     assert row(account_store)["account_id"] == OTHER
+
+
+def test_transfer_to_an_anonymous_id_resyncs_the_accounts_it_left(client, account_store, settings, monkeypatch, caplog):
+    """"Restore purchases" on a signed-out iPhone moves the receipt from the
+    account to that phone's anonymous id (RevenueCat "Transfer to new App
+    User ID"). The account must stop being paid for it: with the secret key
+    every identified source account is re-read from RevenueCat."""
+    caplog.set_level(logging.INFO, logger="cleanway.revenuecat")
+    synced: list[str] = []
+
+    async def fake_sync(account_id):
+        synced.append(account_id)
+        return {"applied": 0, "ended": 1}
+
+    monkeypatch.setattr("api.services.revenuecat_sync.sync_account", fake_sync)
+    monkeypatch.setattr(settings, "revenuecat_secret_api_key", "sk_test")
+    body = load("transfer", store="APP_STORE")
+    body["event"]["transferred_from"] = [OTHER, "$RCAnonymousID:old"]
+    body["event"]["transferred_to"] = ["$RCAnonymousID:abc"]
+    resp = post(client, body)
+    assert resp.status_code == 200 and resp.json()["reason"] == "transfer_to_anonymous"
+    assert synced == [OTHER]
+    assert not [r for r in caplog.records if r.levelno >= logging.ERROR]
+
+
+def test_transfer_between_anonymous_ids_only_is_ignored_quietly(client, account_store, settings, monkeypatch, caplog):
+    synced: list[str] = []
+
+    async def fake_sync(account_id):
+        synced.append(account_id)
+        return {"applied": 0, "ended": 0}
+
+    monkeypatch.setattr("api.services.revenuecat_sync.sync_account", fake_sync)
+    monkeypatch.setattr(settings, "revenuecat_secret_api_key", "sk_test")
+    body = load("transfer", store="APP_STORE")
+    body["event"]["transferred_from"] = ["$RCAnonymousID:old"]
+    body["event"]["transferred_to"] = ["$RCAnonymousID:abc"]
+    assert post(client, body).json()["reason"] == "anonymous"
+    assert synced == []
+    assert not [r for r in caplog.records if r.levelno >= logging.ERROR]
+
+
+def test_transfer_to_an_anonymous_id_sync_failure_is_500(client, account_store, settings, monkeypatch):
+    from api.services.revenuecat import RevenueCatError
+
+    async def failing_sync(account_id):
+        raise RevenueCatError("RevenueCat answered 503")
+
+    monkeypatch.setattr("api.services.revenuecat_sync.sync_account", failing_sync)
+    monkeypatch.setattr(settings, "revenuecat_secret_api_key", "sk_test")
+    body = load("transfer")
+    body["event"]["transferred_to"] = ["$RCAnonymousID:abc"]
+    assert post(client, body).status_code == 500
+    assert body["event"]["id"] not in account_store.processed_events
 
 
 def test_sample_payloads_are_unchanged_by_load():

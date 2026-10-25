@@ -219,6 +219,33 @@ def test_other_stores_and_unknown_products_are_skipped(account_store, revenuecat
     assert account_store.entitlements == []
 
 
+def test_refresh_after_sign_in_picks_up_an_app_store_purchase_made_without_an_account(
+    client, account_store, revenuecat_api
+):
+    """The iPhone app sells without an account (docs/STORE_DECISIONS_2026-10.md
+    §3, option Б). Its INITIAL_PURCHASE webhook came with an anonymous id and
+    wrote nothing; on sign-in the app calls Purchases.logIn (RevenueCat makes
+    the anonymous buyer an alias of the account — no webhook for that) and
+    then this refresh, which reads the merged customer by the account id."""
+    body = subscriber()
+    sub = body["subscriber"]
+    sub["original_app_user_id"] = "$RCAnonymousID:2f6e0b9d4c8a4e1f9b3a7c5d1e0f2a4b"
+    sub["management_url"] = "https://apps.apple.com/account/subscriptions"
+    subs = sub["subscriptions"]
+    subs["cleanway.devices.monthly"] = dict(subs.pop("cleanway.devices"), store="app_store",
+                                            store_transaction_id="2000000912345678")
+    subs["cleanway.devices.monthly"].pop("product_plan_identifier")
+    requests = revenuecat_api(body)
+    resp = refresh(client)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["source"] == "app_store" and resp.json()["plan"] == "personal"
+    [row] = store_rows(account_store, "app_store")
+    assert row["account_id"] == ACCOUNT and row["external_id"] == "2000000912345678"
+    assert row["product_id"] == "cleanway.devices.monthly" and row["status"] == "active"
+    [req] = requests
+    assert str(req.url) == f"https://api.revenuecat.com/v1/subscribers/{ACCOUNT}"
+
+
 def test_app_store_row_is_found_by_product(account_store, revenuecat_api):
     """The REST API carries the LATEST App Store transaction id, not the
     original the webhook keyed the row by — match on the product instead."""

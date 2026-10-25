@@ -4090,7 +4090,10 @@
       "err_already_owned_appstore": "Cet identifiant Apple a déjà l'abonnement. Touchez Restaurer pour le transférer sur ce compte.",
       "err_network_appstore": "Pas de connexion à l'App Store. Vérifiez Internet et réessayez.",
       "err_not_allowed_appstore": "Les achats sont désactivés sur cet iPhone (par exemple dans Temps d'écran).",
-      "err_store_appstore": "L'App Store n'a pas pu finaliser l'achat. Veuillez réessayer."
+      "err_store_appstore": "L'App Store n'a pas pu finaliser l'achat. Veuillez réessayer.",
+      "note_restore_none_appstore": "Aucun abonnement actif sur cet identifiant Apple.",
+      "sync_offer": "Actif sur cet iPhone. La connexion est facultative : elle permet d'utiliser le même abonnement dans l'app Cleanway pour Android et dans l'extension de navigateur, sur {{n}} appareils maximum.",
+      "note_restore_here_appstore": "L'abonnement acheté sur cet iPhone n'est pas encore dans votre compte. Touchez Restaurer pour l'ajouter."
     },
     "ios_sms": {
       "line_ready": "Range les SMS d'arnaque d'expéditeurs inconnus dans Indésirables, directement sur cet iPhone. Fonctionne une fois activé dans Réglages.",

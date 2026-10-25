@@ -4030,7 +4030,10 @@
       "err_already_owned_appstore": "Este Apple ID ya tiene la suscripción. Toca Restaurar para pasarla a esta cuenta.",
       "err_network_appstore": "Sin conexión con el App Store. Revisa internet e inténtalo de nuevo.",
       "err_not_allowed_appstore": "Las compras están desactivadas en este iPhone (por ejemplo, en Tiempo de uso).",
-      "err_store_appstore": "El App Store no pudo completar la compra. Inténtalo de nuevo."
+      "err_store_appstore": "El App Store no pudo completar la compra. Inténtalo de nuevo.",
+      "note_restore_none_appstore": "Este Apple ID no tiene ninguna suscripción activa.",
+      "sync_offer": "Activa en este iPhone. Iniciar sesión es opcional: así la misma suscripción funciona en la app de Cleanway para Android y en la extensión del navegador, en hasta {{n}} dispositivos.",
+      "note_restore_here_appstore": "La suscripción comprada en este iPhone aún no está en tu cuenta. Toca Restaurar para añadirla."
     },
     "ios_sms": {
       "line_ready": "Mueve los SMS de estafa de remitentes desconocidos a No deseado, en tu propio iPhone. Funciona cuando lo activas en Ajustes.",

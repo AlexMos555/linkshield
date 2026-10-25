@@ -4090,7 +4090,10 @@
       "err_already_owned_appstore": "Apple ID ini sudah memiliki langganan. Ketuk Pulihkan untuk memindahkannya ke akun ini.",
       "err_network_appstore": "Tidak ada koneksi ke App Store. Periksa internet lalu coba lagi.",
       "err_not_allowed_appstore": "Pembelian dinonaktifkan di iPhone ini (misalnya di Durasi Layar).",
-      "err_store_appstore": "App Store tidak dapat menyelesaikan pembelian. Silakan coba lagi."
+      "err_store_appstore": "App Store tidak dapat menyelesaikan pembelian. Silakan coba lagi.",
+      "note_restore_none_appstore": "Tidak ada langganan aktif di Apple ID ini.",
+      "sync_offer": "Aktif di iPhone ini. Masuk bersifat opsional: dengan masuk, langganan yang sama berfungsi di aplikasi Cleanway untuk Android dan ekstensi browser, hingga {{n}} perangkat.",
+      "note_restore_here_appstore": "Langganan yang dibeli di iPhone ini belum ada di akun Anda. Ketuk Pulihkan untuk menambahkannya."
     },
     "ios_sms": {
       "line_ready": "Memindahkan SMS penipuan dari pengirim tak dikenal ke Sampah, langsung di iPhone ini. Berfungsi setelah Anda menyalakannya di Pengaturan.",

@@ -21,6 +21,9 @@
  *   • store errors map to a few kinds, each with a sentence in every locale;
  *     a cancel says nothing; a slow card is "pending", not a failure;
  *   • RevenueCat knows the person by the Supabase account id (JWT `sub`);
+ *     signed out, the iPhone app buys and restores under RevenueCat's
+ *     anonymous id (App Review 5.1.1) and the phone honours its own App
+ *     Store plan; Google Play still asks to sign in first;
  *   • a store build opens only a store's subscriptions page, never our site;
  *   • deleting the account sends a Google Play subscriber to cancel in Play;
  *   • the site and Play APKs never promise automatic SMS checks; only the
@@ -38,27 +41,38 @@ import {
   APP_STORE_SUBSCRIPTIONS_URL,
   OFFERING_ID,
   PLAN_PRODUCT_ID,
+  STORE_PLAN_FRESH_MS,
+  STORE_PLAN_GRACE_MS,
   accountIdFromAccessToken,
   billingStoreFor,
   configureAtStart,
   manageSubscriptionUrl,
   manageUrlFor,
   paidPlansOffered,
+  parseStorePlanCache,
+  payingAs,
   planOptions,
   playSubscriptionsUrl,
   readStoreBillingConfig,
+  restoreSuggested,
   storeCopyKeys,
   storeErrorKind,
   storeErrorNoteKey,
   storeHasPlan,
+  storePlanActive,
+  storePlanFromInfo,
+  storePlanStale,
   storeSubscriptionToCancel,
 } from "../src/utils/store-billing.ts";
 import {
+  ENTITLEMENT_FRESH_MS,
+  ENTITLEMENT_GRACE_MS,
   distributionFor,
   purchaseAction,
   revenueCatStore,
   selfUpdateAllowed,
   smsBenefitShown,
+  storePurchaseWithoutAccount,
   webCheckoutAllowed,
 } from "../src/utils/freemium.ts";
 
@@ -205,7 +219,20 @@ check("the SDK starts with the app only for a signed-in person who started a pur
   assert.equal(configureAtStart({ billing: on, signedIn: true, purchaseStarted: true }), true);
   assert.equal(configureAtStart({ billing: on, signedIn: true, purchaseStarted: false }), false);
   assert.equal(configureAtStart({ billing: on, signedIn: false, purchaseStarted: true }), false);
+  assert.equal(configureAtStart({ billing: on, signedIn: false, purchaseStarted: true, withoutAccount: false }), false);
   assert.equal(configureAtStart({ billing: { kind: "off", why: "no_key" }, signedIn: true, purchaseStarted: true }), false);
+});
+
+check("the iPhone app also starts it for a phone that bought or restored without an account", () => {
+  // A pending (Ask to Buy) purchase must finish, and the phone must learn of
+  // a renewal or an end — it has no account the server could answer for.
+  const on = { kind: "on", apiKey: IOS_KEY, store: "app_store" };
+  assert.equal(configureAtStart({ billing: on, signedIn: false, purchaseStarted: true, withoutAccount: true }), true);
+  assert.equal(configureAtStart({ billing: on, signedIn: false, purchaseStarted: false, withoutAccount: true }), false);
+  assert.equal(
+    configureAtStart({ billing: { kind: "off", why: "no_key" }, signedIn: false, purchaseStarted: true, withoutAccount: true }),
+    false,
+  );
 });
 
 check("store policy: only the site APK links to the web checkout or offers a self-update", () => {
@@ -228,7 +255,10 @@ check("store policy: the iPhone app never links to the web checkout, never self-
   assert.equal(revenueCatStore("site"), false);
   assert.equal(revenueCatStore("rustore"), false);
   assert.equal(purchaseAction({ signedIn: true, market: "world", distribution: "appstore" }), "store");
-  assert.equal(purchaseAction({ signedIn: false, market: "world", distribution: "appstore" }), "sign_in");
+  // No account needed to buy on the iPhone (App Review 5.1.1; STORE_DECISIONS §3, option Б).
+  assert.equal(purchaseAction({ signedIn: false, market: "world", distribution: "appstore" }), "store");
+  assert.equal(storePurchaseWithoutAccount("appstore"), true);
+  assert.equal(storePurchaseWithoutAccount("play"), false);
   // An iOS build is the App Store build whatever the env says (no "site" on iOS).
   for (const raw of ["site", "play", "rustore", "", undefined]) {
     assert.equal(distributionFor(raw, "ios"), "appstore", String(raw));
@@ -285,6 +315,22 @@ check("the SDK's require sits behind a literal EXPO_PUBLIC_DISTRIBUTION === \"pl
   }
 });
 
+check("services/store-billing.ts: buying and restoring go through payingAs; only the iPhone app with its key goes anonymous", () => {
+  const src = readFileSync(join(MOBILE, "src/services/store-billing.ts"), "utf8");
+  assert.ok(
+    src.includes('STORE_BILLING.kind === "on" && storePurchaseWithoutAccount(FREEMIUM.distribution)'),
+    "STORE_PURCHASE_WITHOUT_ACCOUNT needs App Store billing on and the iPhone distribution",
+  );
+  assert.equal([...src.matchAll(/payingAs\(payer, STORE_PURCHASE_WITHOUT_ACCOUNT\)/g)].length, 2, "purchase + restore");
+  // A signed-in session that could not be refreshed (offline) never buys anonymously.
+  assert.equal([...src.matchAll(/if \(payer === undefined\)/g)].length, 2, "purchase + restore");
+  // The signed-out path logs the SDK out of an account it kept before buying.
+  assert.ok(src.includes("ready(null, true)"), "anonymous purchase / restore asks ready() for an anonymous SDK");
+  // The phone's own plan is kept only by the iPhone app (services/freemium.ts DEVICE_PLAN too).
+  const freemium = readFileSync(join(MOBILE, "src/services/freemium.ts"), "utf8");
+  assert.ok(freemium.includes("PAID_PLANS_OFFERED && storePurchaseWithoutAccount(FREEMIUM.distribution)"));
+});
+
 // ── Who is paying ───────────────────────────────────────────────────
 
 function jwt(payload) {
@@ -305,6 +351,120 @@ check("no account id from a token without a UUID sub, or from junk", () => {
   assert.equal(accountIdFromAccessToken(jwt({ sub: 42 })), null);
   for (const junk of [null, undefined, "", "abc", "a.b", "a.!!!.c", "a.e30.c.d"]) {
     assert.equal(accountIdFromAccessToken(junk), null, String(junk));
+  }
+});
+
+check("who a purchase or a restore goes under: the account; signed out, anonymous on the iPhone only", () => {
+  assert.deepEqual(payingAs(UID, false), { kind: "account", id: UID });
+  assert.deepEqual(payingAs(UID, true), { kind: "account", id: UID });
+  // Google Play: a plan belongs to an account — sign in first, as before.
+  assert.deepEqual(payingAs(null, false), { kind: "sign_in_first" });
+  // The App Store: RevenueCat's anonymous id; signing in later aliases it.
+  assert.deepEqual(payingAs(null, true), { kind: "anonymous" });
+});
+
+// ── This phone's own plan (the iPhone app) ──────────────────────────
+
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+const NOW = Date.UTC(2026, 9, 25, 12, 0, 0);
+
+function info(active) {
+  return { entitlements: { active } };
+}
+
+check("this phone's plan from RevenueCat: the `unlimited` entitlement and its end date", () => {
+  const ends = new Date(NOW + 30 * DAY).toISOString();
+  assert.deepEqual(storePlanFromInfo(info({ unlimited: { isActive: true, expirationDate: ends } }), NOW), {
+    paid: true, expiresAt: NOW + 30 * DAY, checkedAt: NOW,
+  });
+  // No end date (or an unreadable one): paid, the end unknown.
+  assert.deepEqual(storePlanFromInfo(info({ unlimited: { isActive: true, expirationDate: null } }), NOW), {
+    paid: true, expiresAt: null, checkedAt: NOW,
+  });
+  assert.equal(storePlanFromInfo(info({ unlimited: { isActive: true, expirationDate: "soon" } }), NOW).expiresAt, null);
+  // An end date already past is not paid, whatever a cached isActive says
+  // (in a billing grace period RevenueCat moves the end date to the grace end).
+  const past = new Date(NOW - HOUR).toISOString();
+  assert.deepEqual(storePlanFromInfo(info({ unlimited: { isActive: true, expirationDate: past } }), NOW), {
+    paid: false, expiresAt: null, checkedAt: NOW,
+  });
+  // Nothing, the add-on alone, an inactive one, junk: not paid.
+  for (const x of [info({}), info({ extra_device: { isActive: true } }), info({ unlimited: { isActive: false } }), null, undefined, {}]) {
+    assert.deepEqual(storePlanFromInfo(x, NOW), { paid: false, expiresAt: null, checkedAt: NOW }, JSON.stringify(x));
+  }
+});
+
+check("this phone's plan counts until the store's end date", () => {
+  const plan = { paid: true, expiresAt: NOW + 30 * DAY, checkedAt: NOW };
+  assert.equal(storePlanActive(plan, NOW), true);
+  assert.equal(storePlanActive(plan, NOW + 29 * DAY), true);
+  assert.equal(storePlanActive({ ...plan, paid: false }, NOW), false);
+  assert.equal(storePlanActive(null, NOW), false);
+});
+
+check("past the end date (a renewal not seen yet) or with no end date: STORE_PLAN_GRACE_MS after the last answer", () => {
+  // Same 7 days as a paid account answer offline (freemium.ts).
+  assert.equal(STORE_PLAN_GRACE_MS, ENTITLEMENT_GRACE_MS);
+  const ended = { paid: true, expiresAt: NOW + DAY, checkedAt: NOW };
+  assert.equal(storePlanActive(ended, NOW + 2 * DAY), true);
+  assert.equal(storePlanActive(ended, NOW + 7 * DAY), false);
+  const open = { paid: true, expiresAt: null, checkedAt: NOW };
+  assert.equal(storePlanActive(open, NOW + 6 * DAY), true);
+  assert.equal(storePlanActive(open, NOW + 7 * DAY), false);
+  // An answer from the future (clock moved back) earns no grace.
+  assert.equal(storePlanActive({ paid: true, expiresAt: null, checkedAt: NOW + DAY }, NOW), false);
+});
+
+check("ask RevenueCat again after STORE_PLAN_FRESH_MS, or once the end date has passed", () => {
+  assert.equal(STORE_PLAN_FRESH_MS, ENTITLEMENT_FRESH_MS);
+  const plan = { paid: true, expiresAt: NOW + 30 * DAY, checkedAt: NOW };
+  assert.equal(storePlanStale(plan, NOW + HOUR), false);
+  assert.equal(storePlanStale(plan, NOW + 6 * HOUR), true);
+  assert.equal(storePlanStale({ ...plan, expiresAt: NOW + 2 * HOUR }, NOW + 3 * HOUR), true);
+  // Already asked after the end: wait the usual 6 hours.
+  assert.equal(storePlanStale({ paid: false, expiresAt: null, checkedAt: NOW }, NOW + HOUR), false);
+  assert.equal(storePlanStale(null, NOW), true);
+  assert.equal(storePlanStale({ ...plan, checkedAt: NOW + HOUR }, NOW), true); // from the future
+});
+
+check("this phone's plan read back from storage; junk reads as none", () => {
+  const plan = { paid: true, expiresAt: NOW, checkedAt: NOW };
+  assert.deepEqual(parseStorePlanCache(plan), plan);
+  assert.deepEqual(parseStorePlanCache({ paid: false, expiresAt: null, checkedAt: NOW }), { paid: false, expiresAt: null, checkedAt: NOW });
+  for (const junk of [null, "x", 1, {}, { paid: "yes", expiresAt: null, checkedAt: NOW }, { paid: true, expiresAt: "x", checkedAt: NOW }, { paid: true, expiresAt: null }]) {
+    assert.equal(parseStorePlanCache(junk), null, JSON.stringify(junk));
+  }
+});
+
+check("signed in, the plan bought here did not follow the account: suggest Restore", () => {
+  // RevenueCat merges the anonymous buyer into the account on logIn — unless
+  // the account already has an anonymous alias of its own. Then only
+  // "Restore purchases" moves it (docs/runbooks/revenuecat.md §9).
+  const before = { paid: true, expiresAt: NOW + 30 * DAY, checkedAt: NOW - HOUR };
+  const after = { paid: false, expiresAt: null, checkedAt: NOW };
+  assert.equal(restoreSuggested(before, after, NOW), true);
+  assert.equal(restoreSuggested(before, { ...after, paid: true, expiresAt: NOW + 30 * DAY }, NOW), false); // merged
+  assert.equal(restoreSuggested(null, after, NOW), false);
+  assert.equal(restoreSuggested({ ...before, paid: false }, after, NOW), false);
+  assert.equal(restoreSuggested({ ...before, expiresAt: NOW - 8 * DAY, checkedAt: NOW - 8 * DAY }, after, NOW), false); // long over
+});
+
+check("'nothing to restore' names the Apple ID in the iPhone app, the account on Android", () => {
+  assert.equal(storeCopyKeys("app_store").restoreNone, "mobile.paywall.note_restore_none_appstore");
+  assert.equal(storeCopyKeys("google_play").restoreNone, "mobile.paywall.note_restore_none");
+  const en = JSON.parse(readFileSync(join(MOBILE, "i18n", "en.json"), "utf8"));
+  assert.match(en["mobile.paywall.note_restore_none_appstore"], /Apple ID/);
+});
+
+check("the after-purchase sign-in offer and the Restore hint exist in all 10 locales", () => {
+  for (const loc of ["en", "ru", "es", "pt", "fr", "de", "it", "id", "hi", "ar"]) {
+    const strings = JSON.parse(readFileSync(join(MOBILE, "i18n", `${loc}.json`), "utf8"));
+    for (const key of ["mobile.paywall.sync_offer", "mobile.paywall.note_restore_here_appstore"]) {
+      assert.ok(typeof strings[key] === "string" && strings[key].length > 0, `${loc}: ${key}`);
+    }
+    // The offer is optional and says what signing in adds, with the device count.
+    assert.match(strings["mobile.paywall.sync_offer"], /\{\{n\}\}/, `${loc}: sync_offer {{n}}`);
   }
 });
 

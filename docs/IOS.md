@@ -383,10 +383,28 @@ Terms + Privacy links, no link to the web checkout anywhere in the iOS build,
 and for App Store subscribers the account screen explains that only Apple can
 cancel the subscription and that deleting the account does not.
 
+**No account needed to buy or restore** (branch `feat/iap-without-account`, a
+draft until the founder answers "Б" — `docs/STORE_DECISIONS_2026-10.md` §3).
+App Review 5.1.1(v) rejects an app that asks for an account before an in-app
+purchase its main function does not need. So, signed out, the purchase and
+"Restore purchases" run under RevenueCat's anonymous id. The phone keeps its
+own App Store plan from RevenueCat (`storePlanActive`,
+`mobile/src/utils/store-billing.ts`). It counts that plan signed in too, so
+the iPhone that paid stays unlimited even when the account's 3 device seats
+are taken (3.1.2(a)). After the purchase the paywall offers sign-in as
+optional, to use the plan in the Android app and the browser extension. On
+sign-in `Purchases.logIn` merges the anonymous buyer into the account, and the
+app asks the server to re-read it (`/me/entitlement/refresh`). Android is
+unchanged (sign in first). Details and edge cases: runbook §9.1.
+
 Sandbox testing: App Store Connect → Users and Access → Sandbox testers; sign
 in on the device under Settings → App Store → Sandbox Account. The simulator
 can use a StoreKit configuration file, but RevenueCat needs real sandbox
-receipts for the server webhook — test on a device via TestFlight.
+receipts for the server webhook — test on a device via TestFlight. The
+TestFlight checklist for buying without an account (buy signed out; reinstall
+and restore signed out; sign in and see the plan on Android and in the
+extension; sign out and restore; a full device list) is in
+`docs/runbooks/revenuecat.md` §9.1.
 
 ### 3.5 App Privacy ("nutrition labels")
 
@@ -477,10 +495,22 @@ in-app purchase or subscription to such a version in App Store Connect (the
 version page's "In-App Purchases and Subscriptions" section stays empty). Only
 for a build made with the public `appl_…` key (§1.2, §3.4) and with its
 subscriptions attached to the version, replace the sentence "This version has
-no in-app purchases: …" with:
+no in-app purchases: …" with the sentence for that build:
 
-> Subscriptions are sold only through In-App Purchase; "Restore purchases"
-> is on the paywall and in Account.
+- built from `feat/iap-without-account` (buying without an account, §3.4 —
+  after the founder's "Б"; `docs/STORE_DECISIONS_2026-10.md` §3.7):
+
+  > Subscriptions are sold only through In-App Purchase and can be bought and
+  > restored without an account. Signing in (a one-time code by email) is
+  > optional: it lets the same subscription work in the Cleanway Android app
+  > and browser extension and manage up to 3 devices. "Restore purchases" is
+  > on the paywall and on the Account screen.
+
+- built before it (the paywall still asks to sign in first — answer "А" or
+  "В"):
+
+  > Subscriptions are sold only through In-App Purchase; "Restore purchases"
+  > is on the paywall and in Account.
 
 Sign-In Information (App Review Information → **Sign-in required**): user
 name `review@cleanway.ai`, password from the macOS Keychain — create the

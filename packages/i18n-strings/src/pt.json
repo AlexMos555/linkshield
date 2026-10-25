@@ -4090,7 +4090,10 @@
       "err_already_owned_appstore": "Este Apple ID já tem a assinatura. Toque em Restaurar para transferi-la para esta conta.",
       "err_network_appstore": "Sem conexão com a App Store. Verifique a internet e tente de novo.",
       "err_not_allowed_appstore": "As compras estão desativadas neste iPhone (por exemplo, em Tempo de Uso).",
-      "err_store_appstore": "A App Store não conseguiu concluir a compra. Tente de novo."
+      "err_store_appstore": "A App Store não conseguiu concluir a compra. Tente de novo.",
+      "note_restore_none_appstore": "Este Apple ID não tem assinatura ativa.",
+      "sync_offer": "Ativa neste iPhone. Entrar é opcional: assim a mesma assinatura funciona no app Cleanway para Android e na extensão do navegador, em até {{n}} dispositivos.",
+      "note_restore_here_appstore": "A assinatura comprada neste iPhone ainda não está na sua conta. Toque em Restaurar para adicioná-la."
     },
     "ios_sms": {
       "line_ready": "Move SMS de golpe de remetentes desconhecidos para Lixo, no próprio iPhone. Funciona depois que você o ativa nos Ajustes.",
