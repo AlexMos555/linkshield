@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, type ComponentRef } from "react";
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, Linking,
 } from "react-native";
@@ -90,7 +90,8 @@ export default function AuthScreen() {
   const [code, setCode] = useState("");
   // Review account only; never logged, cleared once the address changes.
   const [password, setPassword] = useState("");
-  const passwordRef = useRef<TextInput>(null);
+  // The instance type, not the component: RN 0.87+ strict types tell them apart.
+  const passwordRef = useRef<ComponentRef<typeof TextInput>>(null);
   const reviewMode = isReviewEmail(email, REVIEW_EMAILS);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

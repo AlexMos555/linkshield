@@ -22,6 +22,21 @@
  * an Android emulator needs, so the dev APK stopped installing on emulators.
  * Debug keeps every ABI; only what ships is trimmed.
  *
+ * Two parts, both release-only:
+ *   1. `ndk { abiFilters … }` in the release build type: all it took on the
+ *      legacy architecture (Expo SDK 54 and older).
+ *   2. On the New Architecture (the only one since Expo SDK 55) the React
+ *      Native gradle plugin adds every `reactNativeArchitectures` ABI to
+ *      `defaultConfig.ndk.abiFilters` (in `finalizeDsl`), and AGP merges those
+ *      with the build type's, so part 1 alone kept x86 and x86_64: the first
+ *      SDK 58 release APK was 117 MB with all four ABIs (2026-10-24, #327).
+ *      Excluding `lib/x86*` at packaging is not enough either: RN's
+ *      `pickFirsts` for its own libraries (libreactnative, libhermesvm, …)
+ *      win over `excludes`, and six x86 libraries stayed (86 MB). So a
+ *      `finalizeDsl` of ours, which runs after React Native's, moves those
+ *      ABIs from `defaultConfig` to the debug build type: debug keeps all
+ *      four, release is left with part 1.
+ *
  * Note on the AAB: `bundleRelease` is a release variant, so the bundle is
  * trimmed to the same two ARM ABIs. That is deliberate and safe for this launch
  * — no retail phone in the target market is x86 — but it does mean the store
@@ -36,18 +51,37 @@ const { withAppBuildGradle } = require("@expo/config-plugins");
 const SENTINEL = "cleanway-abi-filters";
 const DEFAULT_ABIS = "armeabi-v7a,arm64-v8a";
 
-function patch(contents, abis) {
+// Registered when build.gradle is evaluated, i.e. after `apply plugin:
+// "com.facebook.react"` registered React Native's finalizeDsl, so it runs second.
+const NEW_ARCH_FIX = `
+// ${SENTINEL} (New Architecture): React Native puts every reactNativeArchitectures ABI
+// into defaultConfig.ndk.abiFilters, which AGP merges into release too. Move them to
+// debug (emulators need x86_64); release keeps its own filter (plugins/withAbiFilters.js)
+androidComponents {
+    finalizeDsl { ext ->
+        def cleanwayAllAbis = new ArrayList(ext.defaultConfig.ndk.abiFilters)
+        if (!cleanwayAllAbis.isEmpty()) {
+            ext.defaultConfig.ndk.abiFilters.clear()
+            ext.buildTypes.getByName("debug").ndk.abiFilters.addAll(cleanwayAllAbis)
+        }
+    }
+}
+`;
+
+function patch(contents, abisCsv) {
   if (contents.includes(SENTINEL)) return contents;
   // Anchor on the RELEASE build type specifically. The non-greedy span requires
   // the literal `release {` after `buildTypes {`, so the `debug {` block above
   // it is never the one matched — debug keeps every ABI for emulators.
   const anchor = /(buildTypes\s*\{[\s\S]*?release\s*\{)/;
   if (!anchor.test(contents)) return contents;
-  const list = abis.split(",").map((a) => `"${a.trim()}"`).join(", ");
-  return contents.replace(
+  const abis = abisCsv.split(",").map((a) => a.trim()).filter(Boolean);
+  const list = abis.map((a) => `"${a}"`).join(", ");
+  const withNdk = contents.replace(
     anchor,
     `$1\n            // ${SENTINEL}: emulator ABIs (x86*) are dead weight on a phone download\n            ndk {\n                abiFilters ${list}\n            }\n`,
   );
+  return `${withNdk.trimEnd()}\n${NEW_ARCH_FIX}`;
 }
 
 module.exports = function withAbiFilters(config) {

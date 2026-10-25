@@ -20,6 +20,14 @@
  * Patches 1 & 2 touch Pods/ (which exist only after `pod install`), so they run
  * from the Podfile `post_install` hook. Patch 3 touches node_modules and is
  * applied directly at prebuild time.
+ *
+ * Expo SDK 58 (RN 0.88, Sentry 8, expo-localization 58): each patch only acts
+ * when it finds its exact old line, and none is expected to find it any more
+ * (RN 0.88 ships its core prebuilt, Sentry 8 has no such line, the
+ * localization switch changed). The plugin stays until the first EAS iOS
+ * build's `pod install` log confirms that: no "[Cleanway] patched" line means
+ * it can go, in its own PR (docs/EXPO_UPGRADE_PLAN.md §3.2). It still throws
+ * if a Podfile has no `post_install do |installer|`; SDK 58's template has one.
  */
 const { withDangerousMod } = require("@expo/config-plugins");
 const fs = require("fs");

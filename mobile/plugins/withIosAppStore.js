@@ -20,7 +20,11 @@
  *     one cannot creep back in from an old app.json or another plugin.
  *
  * The app group (group.ai.cleanway.app) that expo-share-intent adds is kept:
- * the share extension hands the shared text to the app through it.
+ * the share extension hands the shared text to the app through it. Listed
+ * once: since 6.1.1 expo-share-intent puts its group in front of the ones
+ * already there without checking for it, and the SMS filter and Safari
+ * plugins add the same group first, so the prebuild for Expo SDK 58 wrote it
+ * twice (2026-10-24).
  *
  * ORDER: list this plugin FIRST in app.json `plugins`. Expo runs the mods of
  * later plugins before earlier ones, so only a plugin listed before
@@ -34,11 +38,13 @@ const STRIPPED = ["aps-environment"];
 const NE_KEY = "com.apple.developer.networking.networkextension";
 const VPN_VALUES = new Set(["packet-tunnel-provider", "app-proxy-provider", "packet-tunnel-provider-systemextension"]);
 const DNS_SETTINGS = "dns-settings";
+const APP_GROUPS_KEY = "com.apple.security.application-groups";
 
-/** Returns the entitlements the iPhone app uses: unused ones stripped, `dns-settings` added. Pure. */
+/** Returns the entitlements the iPhone app uses: unused ones stripped, `dns-settings` added, each app group once. Pure. */
 function patchEntitlements(entitlements) {
   const out = { ...entitlements };
   for (const key of STRIPPED) delete out[key];
+  if (Array.isArray(out[APP_GROUPS_KEY])) out[APP_GROUPS_KEY] = [...new Set(out[APP_GROUPS_KEY])];
   const ne = Array.isArray(out[NE_KEY]) ? out[NE_KEY].filter((v) => !VPN_VALUES.has(v)) : [];
   if (!ne.includes(DNS_SETTINGS)) ne.push(DNS_SETTINGS);
   out[NE_KEY] = ne;
