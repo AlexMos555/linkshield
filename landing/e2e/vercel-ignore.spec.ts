@@ -1,5 +1,5 @@
-import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { execFileSync, spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test, expect } from "@playwright/test";
@@ -16,15 +16,47 @@ import { test, expect } from "@playwright/test";
  */
 
 const SCRIPT = join(__dirname, "..", "scripts", "vercel-ignore.sh");
+const STAMP = join(__dirname, "..", "scripts", "build-env-stamp.cjs");
 const VERCEL_JSON = join(__dirname, "..", "vercel.json");
+const LANDING_PACKAGE = join(__dirname, "..", "package.json");
+const LANDING_GITIGNORE = join(__dirname, "..", ".gitignore");
 const REPO_ROOT = join(__dirname, "..", "..");
+
+/**
+ * Stands in for the live site, which publishes the stamp of the NEXT_PUBLIC_*
+ * variables it was built with (build-env.txt): serves the files of the
+ * directory in argv[1]. A process of its own, because the script runs under
+ * spawnSync, which blocks this one.
+ */
+const LIVE_SITE_SERVER = `
+const http = require("node:http"), fs = require("node:fs"), path = require("node:path");
+const root = process.argv[1];
+http.createServer((req, res) => {
+  const file = path.join(root, decodeURIComponent(new URL(req.url, "http://x").pathname));
+  fs.readFile(file.startsWith(root + path.sep) ? file : root, (err, body) => {
+    res.writeHead(err ? 404 : 200, { "content-type": "text/plain" });
+    res.end(err ? "not found" : body);
+  });
+}).listen(0, "127.0.0.1", function () { console.log("http://127.0.0.1:" + this.address().port); });
+`;
 
 // Set up in beforeAll, so listing the tests creates no temporary directory.
 let sandbox = "";
 let GIT_ENV: NodeJS.ProcessEnv = { NODE_ENV: "test" };
+let www = "";
+let liveOrigin = "";
+let liveServer: ChildProcess | null = null;
 
-test.beforeAll(() => {
+test.beforeAll(async () => {
   sandbox = realpathSync(mkdtempSync(join(tmpdir(), "vercel-ignore-")));
+  www = join(sandbox, "www");
+  mkdirSync(www);
+  const server = spawn(process.execPath, ["-e", LIVE_SITE_SERVER, www], { stdio: ["ignore", "pipe", "inherit"] });
+  liveServer = server;
+  liveOrigin = await new Promise<string>((resolve, reject) => {
+    server.stdout?.once("data", (line) => resolve(String(line).trim()));
+    server.once("exit", (code) => reject(new Error(`the live-site stand-in exited with ${code}`)));
+  });
   const emptyGitConfig = join(sandbox, "gitconfig");
   writeFileSync(emptyGitConfig, "");
   // Git with none of this machine's config (signing, hooks, default branch),
@@ -44,6 +76,7 @@ test.beforeAll(() => {
 });
 
 test.afterAll(() => {
+  liveServer?.kill();
   if (sandbox) rmSync(sandbox, { recursive: true, force: true });
 });
 
@@ -70,8 +103,10 @@ const REPO_FILES: Record<string, string> = {
   "scripts/sync-addin.cjs": "// sync\n",
   "scripts/build-i18n.py": "# i18n\n",
   "email-plugin-outlook/manifest.xml": "<OfficeApp/>\n",
-  "docs/benchmarks/latest.json": "{}\n",
-  "docs/benchmarks/2026-10-18.json": "{}\n",
+  // docs/benchmarks/latest.json is a symlink to the first of these
+  // (LATEST_TARGET), made by newOrigin: as in the repository.
+  "docs/benchmarks/2026-10-18-fresh-urls.json": "{}\n",
+  "docs/benchmarks/2026-10-11-fresh-urls.json": "{}\n",
   "docs/ROADMAP.md": "# roadmap\n",
   "api/main.py": "# api\n",
   "ml/train.py": "# ml\n",
@@ -99,7 +134,8 @@ const LANDING_INPUTS = [
   "mobile/scripts/apply-patches.js",
   "scripts/sync-addin.cjs",
   "email-plugin-outlook/manifest.xml",
-  "docs/benchmarks/latest.json",
+  // The report latest.json points to: lib/benchmark.ts reads it through the link.
+  "docs/benchmarks/2026-10-18-fresh-urls.json",
   ".gitignore",
 ];
 
@@ -115,9 +151,13 @@ const NOT_LANDING_INPUTS = [
   "mobile/scripts/test-freemium.mjs",
   "scripts/build-i18n.py",
   "docs/ROADMAP.md",
-  "docs/benchmarks/2026-10-18.json",
+  // An older report: latest.json does not point to it.
+  "docs/benchmarks/2026-10-11-fresh-urls.json",
   ".github/workflows/ci.yml",
 ];
+
+const LATEST = "docs/benchmarks/latest.json";
+const LATEST_TARGET = "2026-10-18-fresh-urls.json";
 
 let counter = 0;
 
@@ -139,6 +179,13 @@ function commit(dir: string, message: string, files: Record<string, string> = {}
   return git(dir, "rev-parse", "HEAD");
 }
 
+/** Points docs/benchmarks/latest.json at `target`, as the benchmark script does. */
+function pointLatestAt(dir: string, target: string): void {
+  const link = join(dir, LATEST);
+  rmSync(link, { force: true });
+  symlinkSync(target, link);
+}
+
 /** Stands in for GitHub: a repository on `main` with every area committed once. */
 function newOrigin(): { dir: string; base: string } {
   const dir = join(sandbox, `origin-${++counter}`);
@@ -146,7 +193,29 @@ function newOrigin(): { dir: string; base: string } {
   git(dir, "init", "--quiet", "--initial-branch=main");
   // GitHub serves a commit by its SHA; a plain local repository refuses to.
   git(dir, "config", "uploadpack.allowAnySHA1InWant", "true");
-  return { dir, base: commit(dir, "base", REPO_FILES) };
+  write(dir, REPO_FILES);
+  pointLatestAt(dir, LATEST_TARGET);
+  return { dir, base: commit(dir, "base") };
+}
+
+/** The stamp build-env-stamp.cjs gives a build with these variables. */
+function stampOf(env: Record<string, string>): string {
+  const run = spawnSync(process.execPath, [STAMP, "--print"], { env: Object.assign({}, GIT_ENV, env), encoding: "utf-8" });
+  expect(run.status, run.stderr).toBe(0);
+  return run.stdout.trim();
+}
+
+/**
+ * A live site built with these NEXT_PUBLIC_* variables, as the base URL the
+ * script is given (VERCEL_PROJECT_PRODUCTION_URL, VERCEL_BRANCH_URL). The
+ * stand-in serves http, so its URL carries a scheme; Vercel's is a bare host.
+ * `stamp: null` is a site that publishes none (built before the stamp existed).
+ */
+function liveSite(env: Record<string, string>, stamp: string | null = stampOf(env)): string {
+  const dir = `site-${++counter}`;
+  mkdirSync(join(www, dir));
+  if (stamp !== null) writeFileSync(join(www, dir, "build-env.txt"), `${stamp}\n`);
+  return `${liveOrigin}/${dir}`;
 }
 
 /** Vercel's checkout of one branch: shallow (10 commits), that branch only. */
@@ -160,11 +229,16 @@ function hasCommit(dir: string, sha: string): boolean {
   return spawnSync("git", ["cat-file", "-e", `${sha}^{commit}`], { cwd: dir, env: GIT_ENV }).status === 0;
 }
 
-/** Runs the script the way Vercel does: from the Root Directory (landing/). */
+/**
+ * Runs the script the way Vercel does: from the Root Directory (landing/).
+ * Unless a case says otherwise, the live site (at the production and the
+ * branch URL) was built with the same NEXT_PUBLIC_* variables as this build.
+ */
 function ignoreStep(checkout: string, env: Record<string, string>): { code: number | null; out: string } {
+  const live = liveSite(env);
   const run = spawnSync("sh", [SCRIPT], {
     cwd: join(checkout, "landing"),
-    env: Object.assign({}, GIT_ENV, env),
+    env: Object.assign({}, GIT_ENV, { VERCEL_PROJECT_PRODUCTION_URL: live, VERCEL_BRANCH_URL: live }, env),
     encoding: "utf-8",
   });
   const out = `${run.stdout}${run.stderr}`.trim();
@@ -198,6 +272,101 @@ test.describe("Vercel ignored build step (landing/scripts/vercel-ignore.sh)", ()
     expect(run.out).toContain("redeploy");
   });
 
+  // NEXT_PUBLIC_* is inlined at build time: flipping NEXT_PUBLIC_STRIPE_LIVE,
+  // NEXT_PUBLIC_BILLING_ENABLED or the APK URL reaches the site only through
+  // a new build. Vercel's Redeploy runs this step too, and gives it nothing
+  // that tells it from a push (VERCEL_GIT_PREVIOUS_SHA is still the last
+  // successful deployment). Redeploying the newest row, a push this step
+  // canceled, compared the same two commits and canceled again.
+  test("a Redeploy of a canceled push that applies a changed NEXT_PUBLIC_* variable builds", () => {
+    const { dir, base } = newOrigin();
+    commit(dir, "api only, canceled", { "api/main.py": "# later\n" });
+    const clone = vercelClone(dir);
+    const live = liveSite({ NEXT_PUBLIC_API_URL: "https://api.cleanway.ai" });
+    const changes: Record<string, string>[] = [
+      { NEXT_PUBLIC_API_URL: "https://api.cleanway.ai", NEXT_PUBLIC_STRIPE_LIVE: "1" }, // a flag switched on
+      { NEXT_PUBLIC_API_URL: "https://api.cleanway.ai/v2" }, // a value changed
+      {}, // a variable removed
+    ];
+    for (const changed of changes) {
+      const run = ignoreStep(clone, {
+        VERCEL_ENV: "production",
+        VERCEL_GIT_PREVIOUS_SHA: base,
+        VERCEL_PROJECT_PRODUCTION_URL: live,
+        ...changed,
+      });
+      expect(run.code, `${JSON.stringify(changed)}: ${run.out}`).toBe(BUILD);
+      expect(run.out).toContain("NEXT_PUBLIC_");
+    }
+  });
+
+  test("with the live site's NEXT_PUBLIC_* values it still skips; Vercel's own NEXT_PUBLIC_VERCEL_* do not count", () => {
+    const { dir, base } = newOrigin();
+    commit(dir, "api only", { "api/main.py": "# later\n" });
+    const clone = vercelClone(dir);
+    const live = liveSite({ NEXT_PUBLIC_STRIPE_LIVE: "1", NEXT_PUBLIC_VERCEL_URL: "cleanway-abc.vercel.app" });
+    const run = ignoreStep(clone, {
+      VERCEL_ENV: "production",
+      VERCEL_GIT_PREVIOUS_SHA: base,
+      VERCEL_PROJECT_PRODUCTION_URL: live,
+      NEXT_PUBLIC_STRIPE_LIVE: "1",
+      NEXT_PUBLIC_VERCEL_URL: "cleanway-def.vercel.app",
+    });
+    expect(run.code, run.out).toBe(SKIP);
+    expect(run.out).toContain("Use project's Ignore Build Step");
+  });
+
+  test("builds when the live site's variables cannot be read", () => {
+    const { dir, base } = newOrigin();
+    commit(dir, "api only", { "api/main.py": "# later\n" });
+    const clone = vercelClone(dir);
+    for (const live of [
+      liveSite({}, null), // built before the stamp existed: 404
+      "http://127.0.0.1:9", // nothing listens
+      "", // no production URL
+      "not a host/../x",
+    ]) {
+      const run = ignoreStep(clone, {
+        VERCEL_ENV: "production",
+        VERCEL_GIT_PREVIOUS_SHA: base,
+        VERCEL_PROJECT_PRODUCTION_URL: live,
+      });
+      expect(run.code, `${live}: ${run.out}`).toBe(BUILD);
+    }
+  });
+
+  test("preview: compares the variables with the branch's last deployment, or with production when it has none", () => {
+    const { dir } = newOrigin();
+    git(dir, "checkout", "--quiet", "-b", "landing-then-ml");
+    const built = commit(dir, "landing", { "landing/app/page.tsx": "preview me\n" });
+    commit(dir, "ml", { "ml/train.py": "# new model\n" });
+    const clone = vercelClone(dir, "landing-then-ml");
+    const same = liveSite({});
+    const other = liveSite({ NEXT_PUBLIC_STRIPE_LIVE: "1" });
+    const deployed = { VERCEL_ENV: "preview", VERCEL_GIT_PREVIOUS_SHA: built };
+    expect(ignoreStep(clone, { ...deployed, VERCEL_BRANCH_URL: same, VERCEL_PROJECT_PRODUCTION_URL: other }).code).toBe(SKIP);
+    expect(ignoreStep(clone, { ...deployed, VERCEL_BRANCH_URL: other, VERCEL_PROJECT_PRODUCTION_URL: same }).code).toBe(BUILD);
+
+    git(dir, "checkout", "--quiet", "main");
+    git(dir, "checkout", "--quiet", "-b", "ml-only");
+    commit(dir, "ml", { "ml/train.py": "# another model\n" });
+    const first = { VERCEL_ENV: "preview", VERCEL_GIT_PREVIOUS_SHA: "" };
+    const mlClone = vercelClone(dir, "ml-only");
+    expect(ignoreStep(mlClone, { ...first, VERCEL_BRANCH_URL: other, VERCEL_PROJECT_PRODUCTION_URL: same }).code).toBe(SKIP);
+    expect(ignoreStep(mlClone, { ...first, VERCEL_BRANCH_URL: same, VERCEL_PROJECT_PRODUCTION_URL: other }).code).toBe(BUILD);
+  });
+
+  test("a redeploy of the last successful commit builds without asking the live site", () => {
+    const { dir, base } = newOrigin();
+    const run = ignoreStep(vercelClone(dir), {
+      VERCEL_ENV: "production",
+      VERCEL_GIT_PREVIOUS_SHA: base,
+      VERCEL_PROJECT_PRODUCTION_URL: "",
+    });
+    expect(run.code, run.out).toBe(BUILD);
+    expect(run.out).toContain("redeploy");
+  });
+
   test("every file the landing build reads triggers a build when it changes", () => {
     const { dir, base } = newOrigin();
     const skipped: string[] = [];
@@ -216,6 +385,45 @@ test.describe("Vercel ignored build step (landing/scripts/vercel-ignore.sh)", ()
     commit(dir, "delete a spec");
     const run = ignoreStep(dir, { VERCEL_ENV: "production", VERCEL_GIT_PREVIOUS_SHA: base });
     expect(run.code, run.out).toBe(BUILD);
+  });
+
+  // docs/benchmarks/latest.json is a symlink, and git compares a symlink by
+  // the name it holds. The site reads the report through it: a same-day rerun
+  // that rewrote the report in place changed the numbers the site shows,
+  // while latest.json itself stayed byte for byte the same.
+  test("the fixture's latest.json is a symlink, as the repository's is", () => {
+    const { dir } = newOrigin();
+    expect(git(dir, "ls-files", "-s", LATEST)).toMatch(/^120000 /);
+    expect(git(REPO_ROOT, "ls-files", "-s", LATEST)).toMatch(/^120000 /);
+  });
+
+  test("a rewrite of the report latest.json points to builds", () => {
+    const { dir, base } = newOrigin();
+    commit(dir, "rerun the same day", { [`docs/benchmarks/${LATEST_TARGET}`]: '{"recall": 0.41}\n' });
+    expect(git(dir, "diff", "--name-only", base, "HEAD", "--", LATEST)).toBe("");
+    const run = ignoreStep(vercelClone(dir), { VERCEL_ENV: "production", VERCEL_GIT_PREVIOUS_SHA: base });
+    expect(run.code, run.out).toBe(BUILD);
+    expect(run.out).toContain("1 landing file(s) changed");
+  });
+
+  test("pointing latest.json at another report builds", () => {
+    const { dir, base } = newOrigin();
+    pointLatestAt(dir, "2026-10-11-fresh-urls.json");
+    commit(dir, "publish an older run");
+    const run = ignoreStep(vercelClone(dir), { VERCEL_ENV: "production", VERCEL_GIT_PREVIOUS_SHA: base });
+    expect(run.code, run.out).toBe(BUILD);
+  });
+
+  test("builds when latest.json points outside docs/benchmarks", () => {
+    const { dir } = newOrigin();
+    pointLatestAt(dir, "../../api/main.py");
+    const deployed = commit(dir, "odd link");
+    commit(dir, "ml", { "ml/train.py": "# later\n" });
+    // The link is what was deployed; what it points to is not a report the
+    // script knows how to compare.
+    const run = ignoreStep(vercelClone(dir), { VERCEL_ENV: "production", VERCEL_GIT_PREVIOUS_SHA: deployed });
+    expect(run.code, run.out).toBe(BUILD);
+    expect(run.out).toContain("latest.json");
   });
 
   test("a change only to files the landing build never reads skips", () => {
@@ -392,6 +600,25 @@ test.describe("Vercel project config (landing/vercel.json)", () => {
     // Deprecated in favor of the dashboard toggle, still honored: no
     // vercel[bot] comments on pull requests and commits.
     expect(config.github?.silent).toBe(true);
+  });
+
+  test("every build publishes the stamp of its NEXT_PUBLIC_* variables at /build-env.txt", () => {
+    // landing's prebuild runs before `next build` copies public/ into the site.
+    const prebuild = (JSON.parse(readFileSync(LANDING_PACKAGE, "utf-8")).scripts ?? {}).prebuild as string;
+    expect(prebuild).toContain("node scripts/build-env-stamp.cjs --write public/build-env.txt");
+    // A build artifact, like public/outlook/.
+    expect(readFileSync(LANDING_GITIGNORE, "utf-8").split("\n")).toContain("public/build-env.txt");
+
+    const out = join(sandbox, `stamp-${++counter}.txt`);
+    const env = { NEXT_PUBLIC_STRIPE_LIVE: "1", NEXT_PUBLIC_VERCEL_URL: "cleanway-abc.vercel.app", SECRET_KEY: "x" };
+    const run = spawnSync(process.execPath, [STAMP, "--write", out], { env: Object.assign({}, GIT_ENV, env), encoding: "utf-8" });
+    expect(run.status, run.stderr).toBe(0);
+    const written = readFileSync(out, "utf-8").trim();
+    expect(written).toBe(stampOf(env));
+    expect(written).toBe(stampOf({ NEXT_PUBLIC_STRIPE_LIVE: "1" }));
+    expect(written).not.toBe(stampOf({ NEXT_PUBLIC_STRIPE_LIVE: "" }));
+    // A fingerprint: no value, and no variable that is not NEXT_PUBLIC_*.
+    expect(written).toMatch(/^v1 1 [0-9a-f]{64}$/);
   });
 
   test("every install script the root npm install runs has the files it reads in the script's path list", () => {

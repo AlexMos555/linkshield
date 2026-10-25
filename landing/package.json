@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node ../scripts/sync-addin.cjs",
+    "prebuild": "node ../scripts/sync-addin.cjs && node scripts/build-env-stamp.cjs --write public/build-env.txt",
     "build": "next build",
     "start": "next start",
     "e2e": "playwright test",

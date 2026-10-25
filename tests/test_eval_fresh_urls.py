@@ -751,6 +751,69 @@ async def test_a_run_that_asked_them_never_becomes_latest_json(tmp_path, monkeyp
     assert (tmp_path / "latest.json").exists()
 
 
+@pytest.mark.asyncio
+async def test_a_second_run_the_same_day_never_rewrites_the_report_latest_json_points_to(tmp_path, monkeypatch):
+    """latest.json is a symlink to the dated file, and the tag is the UTC day.
+    A second run that day (a dispatched sample=1000 that fails the gate, the
+    documented --virustotal --gsb rerun) rewrote that file in place: the
+    pointer the gate had refused to move served the refused run, Safe
+    Browsing columns included, and the weekly job committed it."""
+    eval_module = _load_eval_module()
+    await _stub_run(eval_module, monkeypatch, tmp_path, "--no-enforce-quality-gate")
+    latest = tmp_path / "latest.json"
+    published = tmp_path / "t-fresh-urls.json"
+    assert latest.is_symlink() and latest.resolve() == published.resolve()
+    published_md = (tmp_path / "t-fresh-urls.md").read_text(encoding="utf-8")
+    snapshot = json.loads(published.read_text(encoding="utf-8"))
+    snapshot["marker"] = "the published run"
+    published.write_text(json.dumps(snapshot), encoding="utf-8")
+
+    # A run the gate refuses (one URL a side), then a non-commercial one.
+    for flags in ((), ("--gsb", "--virustotal", "--no-enforce-quality-gate")):
+        await _stub_run(eval_module, monkeypatch, tmp_path, *flags)
+        assert json.loads(latest.read_text(encoding="utf-8"))["marker"] == "the published run", flags
+        assert (tmp_path / "t-fresh-urls.md").read_text(encoding="utf-8") == published_md, flags
+        assert latest.resolve() == published.resolve()
+
+    # Both runs are kept, each under the day's tag plus the time it was written,
+    # a name that sorts after the published one (weekly-benchmark.yml compares
+    # the last two) and stays inside .gitleaks.toml's allowlist pattern.
+    reruns = sorted(p.name for p in tmp_path.glob("tT*Z-fresh-urls.json"))
+    assert reruns, sorted(p.name for p in tmp_path.iterdir())
+    assert all(re.fullmatch(r"tT\d{6}Z-fresh-urls\.json", name) for name in reruns), reruns
+    assert sorted(["t-fresh-urls.json", *reruns])[0] == "t-fresh-urls.json"
+    rerun = json.loads((tmp_path / reruns[-1]).read_text(encoding="utf-8"))
+    assert {"gsb", "virustotal"} <= set(rerun["phishing"])
+    assert (tmp_path / reruns[-1].replace(".json", ".md")).exists()
+
+
+@pytest.mark.asyncio
+async def test_a_publishable_rerun_the_same_day_replaces_the_published_report(tmp_path, monkeypatch):
+    eval_module = _load_eval_module()
+    await _stub_run(eval_module, monkeypatch, tmp_path, "--no-enforce-quality-gate")
+    published = tmp_path / "t-fresh-urls.json"
+    snapshot = json.loads(published.read_text(encoding="utf-8"))
+    snapshot["marker"] = "the first run"
+    published.write_text(json.dumps(snapshot), encoding="utf-8")
+    monkeypatch.setattr(eval_module, "check_quality_gate",
+                        lambda _report: eval_module.QualityGateResult(passed=True, failed_gate=None, detail=None))
+    await _stub_run(eval_module, monkeypatch, tmp_path)
+    assert "marker" not in json.loads((tmp_path / "latest.json").read_text(encoding="utf-8"))
+    assert not list(tmp_path.glob("tT*Z-fresh-urls.json"))
+
+
+def test_gitleaks_allows_the_benchmark_s_rerun_names():
+    """The benchmark's URL lists are allowlisted by file name; a rerun's file
+    must match the same pattern, or the bot's commit turns the scan red."""
+    import tomllib
+
+    config = tomllib.loads((Path(__file__).resolve().parent.parent / ".gitleaks.toml").read_text(encoding="utf-8"))
+    patterns = [p for rule in [config.get("allowlist", {})] + config.get("allowlists", []) for p in rule.get("paths", [])]
+    for name in ("2026-11-01-fresh-urls.json", "2026-11-01T153012Z-fresh-urls.json", "2026-11-01T153012Z-fresh-urls.md"):
+        assert any(re.search(p, f"docs/benchmarks/{name}") for p in patterns), name
+    assert not any(re.search(p, "docs/benchmarks/latest.json") for p in patterns)
+
+
 def test_the_gate_refuses_a_report_with_a_non_commercial_resolver():
     eval_module = _load_eval_module()
     for name in ("gsb", "virustotal"):

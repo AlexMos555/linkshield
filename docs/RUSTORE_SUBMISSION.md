@@ -172,10 +172,13 @@ MOBILE_APK_URL=https://github.com/AlexMos555/linkshield/releases/download/v1.0.6
 RuStore one; the app opens only `https://` URLs). Optionally
 `MOBILE_RELEASE_NOTES=<one line>`. `MOBILE_MIN_SUPPORTED_VERSION_*` stays
 empty/0 unless you decide to force the update (1.0.6 carries the link-guard
-fix #201 that 1.0.3 lacks). In Vercel, point `NEXT_PUBLIC_APK_URL` at the same
-asset URL and redeploy without the build cache (see docs/GO_LIVE_CHECKLIST.md).
+fix #201 that 1.0.3 lacks). In Vercel, point `NEXT_PUBLIC_APK_URL` (and
+`NEXT_PUBLIC_APK_SHA256`) at the same asset and redeploy the deployment marked
+**Current** with both "Use existing Build Cache" and "Use project's Ignore Build
+Step" unticked (see docs/GO_LIVE_CHECKLIST.md): the newest row is often a
+canceled push, and its Redeploy would run the ignore step again.
 Check: `curl -s https://api.cleanway.ai/api/v1/mobile/version` shows `1.0.6`
-(the answer is cached up to 15 minutes).
+(the answer is cached up to 15 minutes), and `/ru/android` links the 1.0.6 asset.
 
 **SMS text model kill switch (1.0.4+).** The same answer carries
 `remote_config`, driven by Railway env — no APK needed:

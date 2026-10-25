@@ -33,6 +33,8 @@ export interface BenchmarkSources {
    * Written by scripts/eval_fresh_urls.py; absent in older snapshots.
    */
   legit_outside_allowlist?: boolean;
+  /** What the legitimate sample is, in the script's words (eval_fresh_urls.pick_legit). */
+  legit?: string;
 }
 
 export interface BenchmarkSnapshot {
@@ -109,6 +111,21 @@ export function falsePositiveRateIsPublishable(snapshot: BenchmarkSnapshot | nul
   if (!snapshot || snapshot.sources?.legit_outside_allowlist !== true) return false;
   const ours = snapshot.safe?.[OURS];
   return typeof ours?.fpr === "number" && classified(ours, "tn", "fp") >= MIN_SAFE_CLASSIFIED;
+}
+
+/**
+ * The list a snapshot's legitimate sample was taken from outside of: the one
+ * the server trusted without analysis when the run was made. Tranco's top
+ * 100k until 2026-10-23; since then (#284) a ranking built from the Majestic
+ * Million and the Chrome UX Report, which the script's description of the
+ * sample (sources.legit) names. A snapshot from before keeps describing a
+ * sample chosen against Tranco, and the page has to say so: the 2026-10-18
+ * sample has sites the new ranking trusts.
+ */
+export type LegitRanking = "tranco" | "majestic_crux";
+
+export function legitSampleRanking(snapshot: BenchmarkSnapshot | null): LegitRanking {
+  return /Majestic Million/.test(snapshot?.sources?.legit ?? "") ? "majestic_crux" : "tranco";
 }
 
 /** Read latest.json from the repo (SSR / build time). Null when missing or unreadable. */
