@@ -30,7 +30,7 @@ asyncpg==0.32.0
 # Pinned for reproducibility — bump only after re-verifying:
 #   * llm_judge prompt still returns the documented JSON schema
 #   * scam_explainer fallback path still works without the package
-anthropic==1.15.0
+anthropic==2.1.0
 
 # ── ML phishing scoring (CatBoost model, served via ONNX) ──
 # Prod runs the trained CatBoost model through onnxruntime (~40 MB RSS) instead
