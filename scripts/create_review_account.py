@@ -20,15 +20,17 @@ What it does, against the Supabase project in SUPABASE_URL:
      "Cleanway app review account", account = the email — and prints only
      the command that copies it to the clipboard;
   4. if a reviewer deleted it (Apple tests account deletion), restores it
-     as POST /api/v1/user/account/restore does: DELETE /user/account only
-     marks the row and sets the Redis lock `deleted:{id}` for the 30-day
-     grace — the auth user stays until the purge — so a new password alone
-     leaves every API call answering 410 ("account on hold" in the app). The
-     row is cleared with the server key, pinned to the grace window as the
-     endpoint does it, and the lock and its caches (`deleted:`,
-     `notdeleted:`, `tier:`) are deleted from the API's Redis (REDIS_URL).
-     Without REDIS_URL, or past the window, it stops before writing
-     anything and says what to do.
+     the way the app's "Restore my account" button does. DELETE
+     /user/account only marks the row and sets the Redis lock `deleted:{id}`
+     for the 30-day grace — the auth user stays until the purge — so a new
+     password alone leaves every API call answering 410 ("account on hold"
+     in the app). The script signs in as the account with the password it
+     has just set (POST /auth/v1/token), calls POST
+     /api/v1/user/account/restore on the API the production app talks to
+     (EXPO_PUBLIC_API_URL of mobile/eas.json) — the endpoint clears the row
+     and the lock and writes the audit log — and signs that session out.
+     It needs nothing beyond the inputs below (no Redis credentials on the
+     Mac). Past the window it stops before writing anything.
 
 Every run generates a new password: re-running IS the rotation.
 --dry-run looks the account up and says what it would do; nothing is written.
@@ -54,9 +56,6 @@ the backend reads (api/config.py, api/services/supabase_keys.py):
   SUPABASE_URL            https://<ref>.supabase.co
   SUPABASE_SECRET_KEY     sb_secret_… (preferred)
   SUPABASE_SERVICE_KEY    the legacy service_role JWT (fallback)
-  REDIS_URL               the API's Redis, reachable from the Mac (Railway →
-                          Redis → Variables → REDIS_PUBLIC_URL). Needed only to
-                          restore an account a reviewer deleted
 
 Run:  python3 scripts/create_review_account.py [--dry-run] [--email ADDRESS]
 """
@@ -68,11 +67,10 @@ import os
 import re
 import secrets
 import shlex
-import socket
-import ssl
 import string
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -94,6 +92,7 @@ REVIEW_EMAIL = "review@cleanway.ai"
 REVIEW_DOMAIN = "@cleanway.ai"  # the app's rule too (mobile/src/utils/review-login.ts)
 KEYCHAIN_SERVICE = "Cleanway app review account"
 REVIEW_EMAILS_VAR = "EXPO_PUBLIC_REVIEW_EMAILS"
+API_URL_VAR = "EXPO_PUBLIC_API_URL"
 
 PASSWORD_LENGTH = 32
 MIN_PASSWORD_LENGTH = 24
@@ -118,21 +117,21 @@ MAX_PAGES = 1000
 HTTP_TIMEOUT_S = 30
 KEYCHAIN_TIMEOUT_S = 300  # a locked Keychain asks for the Mac password first
 
-ENV_KEYS = ("SUPABASE_URL", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_KEY", "REDIS_URL")
+ENV_KEYS = ("SUPABASE_URL", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_KEY")
 PLACEHOLDER_MARKERS = ("YOUR_PROJECT", "REPLACE_WITH")
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 # The deletion grace: _DELETION_GRACE_DAYS in api/routers/user.py and
 # GRACE_DAYS in api/services/account_purge.py (a test pins all three).
 GRACE_DAYS = 30
-# What DELETE /user/account sets and POST /user/account/restore clears: the
-# 410 lock, and the caches beside it (api/services/auth.py, api/routers/user.py).
-LOCK_KEYS = ("deleted:{id}", "notdeleted:{id}", "tier:{id}")
-# Hosts that cannot be the production Redis as the Mac sees it: this machine
-# (also 127.* and *.localhost) and Railway's private network (*.railway.internal).
-LOCAL_HOSTS = ("localhost", "0.0.0.0", "::1")
+# The app's "Restore my account" (api/routers/user.py restore_account).
+RESTORE_PATH = "/api/v1/user/account/restore"
+# Its 503 — the row cleared, the Redis lock not yet — says to retry; so does a
+# busy API. Repeating it is safe.
+RESTORE_ATTEMPTS = 3
+RESTORE_RETRY_S = 5
+USER_AGENT = "cleanway-review-account/1"
 RESTORE_IN_APP = "войдите этим аккаунтом в приложении и нажмите «Восстановить аккаунт»"
-REDIS_HINT = "REDIS_PUBLIC_URL из Railway → Redis → Variables"
 
 
 class ConfigError(Exception):
@@ -202,7 +201,6 @@ def update_payload(password: str) -> dict[str, object]:
 class Config:
     url: str
     key: str
-    redis_url: str = ""
 
 
 def merged_env(process_env: Mapping[str, str], env_file: Path) -> dict[str, str]:
@@ -228,28 +226,7 @@ def resolve_config(env: Mapping[str, str]) -> Config:
     kind = supabase_keys.key_kind(key)
     if kind not in ("secret", "legacy_service_role"):
         raise ConfigError(f"{name} holds a {kind} key, not a server key (sb_secret_… or the service_role JWT)")
-    redis_url = (env.get("REDIS_URL") or "").strip()
-    if redis_url:
-        check_redis_url(redis_url)
-    return Config(url=url, key=key, redis_url=redis_url)
-
-
-def redis_host(url: str) -> str:
-    return (urllib.parse.urlsplit(url).hostname or "").lower()
-
-
-def check_redis_url(url: str) -> None:
-    """The API's Redis, or nothing: a local one would "clear" a lock that
-    production still holds. Messages name the host, never the URL (it holds
-    the password)."""
-    if urllib.parse.urlsplit(url).scheme not in ("redis", "rediss"):
-        raise ConfigError("REDIS_URL must start with redis:// or rediss://")
-    host = redis_host(url)
-    if not host or host in LOCAL_HOSTS or host.startswith("127.") or host.endswith((".localhost", ".railway.internal")):
-        raise ConfigError(
-            f"REDIS_URL points at {host or 'no host'}, not at the API's Redis as the Mac reaches it: "
-            "take REDIS_PUBLIC_URL from Railway → Redis → Variables"
-        )
+    return Config(url=url, key=key)
 
 
 def check_email(email: str) -> str:
@@ -259,15 +236,21 @@ def check_email(email: str) -> str:
     return address
 
 
+def production_env(path: Optional[Path] = None) -> dict:
+    """The env of the production EAS profile ({} when it cannot be read)."""
+    try:
+        profiles = json.loads((path or EAS_JSON).read_text(encoding="utf-8"))["build"]
+        env = (profiles.get("production") or {}).get("env") or {}
+    except (OSError, ValueError, KeyError, AttributeError):
+        return {}
+    return env if isinstance(env, dict) else {}
+
+
 def build_allowlist(path: Path = EAS_JSON) -> list[str]:
     """EXPO_PUBLIC_REVIEW_EMAILS of the production EAS profile, parsed like the
     app does (parseReviewEmails): addresses on @cleanway.ai only, no "$…"
     references, no duplicates."""
-    try:
-        profiles = json.loads(path.read_text(encoding="utf-8"))["build"]
-        raw = str(((profiles.get("production") or {}).get("env") or {}).get(REVIEW_EMAILS_VAR, ""))
-    except (OSError, ValueError, KeyError, AttributeError):
-        return []
+    raw = str(production_env(path).get(REVIEW_EMAILS_VAR, ""))
     out: list[str] = []
     for part in raw.split(","):
         email = part.strip().lower()
@@ -288,6 +271,18 @@ def require_review_email(email: str) -> str:
             f"{REVIEW_EMAILS_VAR} (mobile/eas.json, production) — nothing was sent"
         )
     return address
+
+
+def production_api_url(path: Optional[Path] = None) -> str:
+    """The API the production app talks to (EXPO_PUBLIC_API_URL of the same
+    profile): the restore goes where the app's button sends it."""
+    url = str(production_env(path).get(API_URL_VAR, "")).strip().rstrip("/")
+    if not url.startswith("https://"):
+        raise ConfigError(
+            f"{API_URL_VAR} of the production profile in mobile/eas.json is missing or not https:// — "
+            "nothing was written"
+        )
+    return url
 
 
 # ─── GoTrue admin API ─────────────────────────────────────────────
@@ -343,12 +338,9 @@ class AdminApi:
         self.headers = supabase_keys.api_key_headers(key)
         self.headers["Content-Type"] = "application/json"
 
-    def _call(
-        self, method: str, path: str, body: Optional[Mapping[str, object]] = None, prefer: str = ""
-    ) -> object:
+    def _call(self, method: str, path: str, body: Optional[Mapping[str, object]] = None) -> object:
         payload = json.dumps(body).encode("utf-8") if body is not None else None
-        headers = {**self.headers, "Prefer": prefer} if prefer else self.headers
-        status, data = self._transport(method, self._base + path, headers, payload)
+        status, data = self._transport(method, self._base + path, self.headers, payload)
         if status >= 400:
             raise ApiError(f"{method} {path.split('?')[0]} → HTTP {status}: {_scrub(_describe(data), body)}")
         return data
@@ -385,20 +377,21 @@ class AdminApi:
         value = rows[0].get("deletion_requested_at") if rows and isinstance(rows[0], dict) else None
         return str(value) if value else None
 
-    def cancel_deletion(self, user_id: str, cutoff: str) -> bool:
-        """The PATCH of POST /user/account/restore: only a deletion still inside
-        the grace window is cleared, in the UPDATE itself (the purge acts only
-        past the same cutoff). False: the window closed, the purge has it."""
-        query = urllib.parse.urlencode({
-            "id": f"eq.{user_id}",
-            "or": f'(deletion_requested_at.is.null,deletion_requested_at.gt."{cutoff}")',
-            "select": "id",
-        })
-        rows = self._call("PATCH", f"/rest/v1/users?{query}", {"deletion_requested_at": None},
-                          prefer="return=representation")
-        if not isinstance(rows, list):
-            raise ApiError("PATCH /rest/v1/users: unexpected answer (no list)")
-        return bool(rows)
+    def sign_in(self, email: str, password: str) -> str:
+        """The password grant, as the app's review sign-in sends it: the
+        session's access token (never printed)."""
+        data = self._call("POST", "/auth/v1/token?grant_type=password", {"email": email, "password": password})
+        token = data.get("access_token") if isinstance(data, dict) else None
+        if not isinstance(token, str) or not token:
+            raise ApiError("POST /auth/v1/token: unexpected answer (no access_token)")
+        return token
+
+    def sign_out(self, token: str) -> None:
+        """Ends the session sign_in opened, only that one."""
+        headers = supabase_keys.api_key_headers(self.headers["apikey"], Authorization=f"Bearer {token}")
+        status, data = self._transport("POST", self._base + "/auth/v1/logout?scope=local", headers, None)
+        if status >= 400:
+            raise ApiError(f"POST /auth/v1/logout → HTTP {status}: {_describe(data)}")
 
 
 def parse_timestamp(value: str) -> Optional[datetime]:
@@ -411,7 +404,7 @@ def parse_timestamp(value: str) -> Optional[datetime]:
     try:
         moment = datetime.fromisoformat(text)
     except ValueError:
-        return None  # the PATCH's own guard still decides
+        return None  # the restore endpoint's own guard still decides
     return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
 
 
@@ -419,115 +412,58 @@ def grace_cutoff(now: Optional[datetime] = None) -> datetime:
     return (now or datetime.now(timezone.utc)) - timedelta(days=GRACE_DAYS)
 
 
-# ─── The API's Redis ──────────────────────────────────────────────
+# ─── «Восстановить аккаунт» ───────────────────────────────────────
 
 
-class RespError(Exception):
-    """Redis answered an error; the message is its code only (WRONGPASS, NOAUTH…)."""
+def _api_detail(data: object) -> str:
+    """FastAPI's error, short: {"detail": "…"} or {"detail": {"code", "error"}}."""
+    detail = data.get("detail") if isinstance(data, dict) else data
+    if isinstance(detail, dict):
+        code, text = detail.get("code") or "", detail.get("error") or detail.get("message") or ""
+        return (f"{code}: {text}" if code else str(text))[:300]
+    return str(detail)[:300]
 
 
-class RespClient:
-    """Just enough of the Redis protocol for PING and DEL, on the standard
-    library: the script runs on the Mac's own python3, which has no `redis`
-    package. redis:// or rediss:// (TLS), a password, a database number."""
-
-    def __init__(self, url: str, timeout: float = HTTP_TIMEOUT_S) -> None:
-        parts = urllib.parse.urlsplit(url)
-        host = parts.hostname or ""
-        sock = socket.create_connection((host, parts.port or 6379), timeout=timeout)
-        if parts.scheme == "rediss":
-            context = ssl.create_default_context()
-            context.minimum_version = ssl.TLSVersion.TLSv1_2
-            sock = context.wrap_socket(sock, server_hostname=host)
-        self._sock = sock
-        self._reader = sock.makefile("rb")
-        password = urllib.parse.unquote(parts.password or "")
-        user = urllib.parse.unquote(parts.username or "")
-        try:
-            if password:
-                # One argument for the default user: what every Redis version takes.
-                self._command("AUTH", *([user] if user not in ("", "default") else []), password)
-            if parts.path.strip("/"):
-                self._command("SELECT", parts.path.strip("/"))
-        except Exception:
-            self.close()
-            raise
-
-    def _command(self, *args: str) -> object:
-        frame = [b"*%d\r\n" % len(args)]
-        for arg in args:
-            data = arg.encode("utf-8")
-            frame.append(b"$%d\r\n%s\r\n" % (len(data), data))
-        self._sock.sendall(b"".join(frame))
-        line = self._reader.readline(65536)
-        if not line.endswith(b"\r\n"):
-            raise ConnectionError("Redis closed the connection")
-        kind, text = line[:1], line[1:-2].decode("utf-8", "replace")
-        if kind == b"-":
-            raise RespError(text.split(" ", 1)[0])
-        if kind == b":":
-            return int(text)
-        if kind == b"+":
-            return text
-        raise ConnectionError("unexpected Redis reply")
-
-    def ping(self) -> object:
-        return self._command("PING")
-
-    def delete(self, *keys: str) -> object:
-        return self._command("DEL", *keys)
-
-    def close(self) -> None:
-        self._reader.close()
-        self._sock.close()
-
-
-def open_redis(url: str) -> RespClient:
-    return RespClient(url)
-
-
-def _failure(exc: Exception) -> str:
-    """What went wrong, never the error's own text (it could hold the URL)."""
-    return f"{type(exc).__name__} {exc}" if isinstance(exc, RespError) else type(exc).__name__
-
-
-def connect_redis(url: str, factory: Callable[[str], object]) -> object:
-    """Before anything is written: a restore that cannot reach Redis would
-    leave the 410 lock in place behind a cleared row."""
-    client = None
+def restore_account(
+    api: AdminApi, api_url: str, email: str, password: str, transport: Transport, sleep: Callable[[float], object]
+) -> None:
+    """What the app's "Restore my account" does, as the account itself: sign
+    in, POST /api/v1/user/account/restore, sign out. Any failure is a
+    RestoreError that names the in-app way; the new password is kept."""
     try:
-        client = factory(url)
-        client.ping()
-    except Exception as exc:  # protocol, socket and DNS errors alike; never their text (the URL)
-        _close(client)
+        token = api.sign_in(email, password)
+    except ApiError as exc:
         raise RestoreError(
-            f"Redis API ({redis_host(url)}) не отвечает ({_failure(exc)}). Ничего не записано: проверьте "
-            f"REDIS_URL (нужен {REDIS_HINT}) или уберите его, если аккаунт не удалён, и запустите ещё раз — "
-            f"или {RESTORE_IN_APP}"
+            f"{email}: вход новым паролем не удался ({exc}). Пароль новый и в Keychain — {RESTORE_IN_APP}"
         ) from None
-    return client
-
-
-def clear_lock(client: object, user_id: str, host: str) -> None:
-    keys = [k.format(id=user_id) for k in LOCK_KEYS]
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json", "User-Agent": USER_AGENT}
     try:
-        client.delete(*keys)
-    except Exception as exc:
-        raise RestoreError(
-            f"Redis API ({host}): флаг удаления не снять ({_failure(exc)}). Пароль новый и в Keychain. "
-            f"Запустите скрипт ещё раз с тем же REDIS_URL — или {RESTORE_IN_APP}"
-        ) from None
+        for attempt in range(1, RESTORE_ATTEMPTS + 1):
+            try:
+                status, data = transport("POST", api_url + RESTORE_PATH, headers, b"")
+            except ApiError as exc:
+                raise RestoreError(f"{email}: {exc}. Пароль новый и в Keychain — {RESTORE_IN_APP}") from None
+            if status == 200 and isinstance(data, dict) and data.get("restored") is True:
+                return
+            if status == 410:
+                raise RestoreError(
+                    f"{email}: {_api_detail(data)} — окно {GRACE_DAYS} дней закрылось, аккаунт удаляет очистка. "
+                    "Пароль новый и в Keychain, но после очистки он не подойдёт: тогда запустите скрипт ещё раз — "
+                    "он создаст аккаунт заново"
+                )
+            if status != 503 or attempt == RESTORE_ATTEMPTS:
+                raise RestoreError(
+                    f"{email}: POST {RESTORE_PATH} → HTTP {status}: {_api_detail(data)}. "
+                    f"Пароль новый и в Keychain — {RESTORE_IN_APP}"
+                )
+            detail = data.get("detail") if isinstance(data, dict) else None
+            wait = detail.get("retry_after_seconds") if isinstance(detail, dict) else None
+            sleep(min(float(wait), 30.0) if isinstance(wait, (int, float)) and wait > 0 else RESTORE_RETRY_S)
     finally:
-        _close(client)
-
-
-def _close(client: object) -> None:
-    close = getattr(client, "close", None)
-    if callable(close):
         try:
-            close()
-        except OSError:
-            pass  # the run's outcome stands
+            api.sign_out(token)
+        except ApiError as exc:  # the run's outcome stands; the session ends with the next rotation
+            print(f"! сессия скрипта не закрыта ({exc})", file=sys.stderr)
 
 
 # ─── Keychain ─────────────────────────────────────────────────────
@@ -591,13 +527,12 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def deletion_plan(email: str, deleted_at: str, past_window: bool, have_redis: bool) -> str:
+def deletion_plan(email: str, deleted_at: str, past_window: bool, api_url: str) -> str:
     if past_window:
         return (f"dry run: {email} помечен на удаление {deleted_at}; {GRACE_DAYS} дней прошли — восстановить нельзя, "
                 "после очистки скрипт создаст аккаунт заново")
-    redis_state = "REDIS_URL задан" if have_redis else f"нужен REDIS_URL ({REDIS_HINT}), без него запуск остановится"
-    return (f"dry run: {email} помечен на удаление {deleted_at} — снял бы пометку в users и флаг удаления в Redis, "
-            f"как «Восстановить аккаунт» ({redis_state})")
+    return (f"dry run: {email} помечен на удаление {deleted_at} — после смены пароля вошёл бы им и нажал бы "
+            f"«Восстановить аккаунт» за него (POST {api_url}{RESTORE_PATH})")
 
 
 def main(
@@ -606,13 +541,13 @@ def main(
     transport: Optional[Transport] = None,
     run: Optional[Callable[..., object]] = None,
     platform: Optional[str] = None,
-    redis_factory: Optional[Callable[[str], object]] = None,
+    sleep: Optional[Callable[[float], object]] = None,
 ) -> int:
     args = build_parser().parse_args(argv)
     transport = transport or urllib_transport
     run = run or subprocess.run
     platform = platform or sys.platform
-    redis_factory = redis_factory or open_redis
+    sleep = sleep or time.sleep
     try:
         email = require_review_email(args.email)  # before any request, dry run included
         cfg = resolve_config(merged_env(os.environ, args.env_file))
@@ -631,12 +566,13 @@ def main(
         deleted_at = api.deletion_requested_at(user_id) if user else None
         since = parse_timestamp(deleted_at) if deleted_at else None
         past_window = since is not None and since <= grace_cutoff()
+        api_url = production_api_url() if deleted_at and not past_window else ""
 
         if args.dry_run:
             if user:
                 print(f"dry run: сменил бы пароль {email} (id {user_id}), снял бы блокировку и обновил Keychain «{KEYCHAIN_SERVICE}»")
                 if deleted_at:
-                    print(deletion_plan(email, deleted_at, past_window, bool(cfg.redis_url)))
+                    print(deletion_plan(email, deleted_at, past_window, api_url))
             else:
                 print(f"dry run: создал бы {email} (адрес подтверждён) и сохранил пароль в Keychain «{KEYCHAIN_SERVICE}»")
             print("ничего не записано")
@@ -647,14 +583,6 @@ def main(
                 f"{email} помечен на удаление {deleted_at}: {GRACE_DAYS} дней прошли, аккаунт удалит очистка "
                 "(вместе со входом). После неё запустите скрипт ещё раз — он создаст аккаунт заново. Ничего не записано"
             )
-        if deleted_at and not cfg.redis_url:
-            raise ConfigError(
-                f"{email} помечен на удаление ({deleted_at}): пока в Redis стоит флаг удаления, API отвечает ему 410, "
-                f"и новый пароль его не снимет. Нужен REDIS_URL ({REDIS_HINT}): REDIS_URL='…' python3 "
-                f"scripts/create_review_account.py — или {RESTORE_IN_APP}. Ничего не записано"
-            )
-        lock = connect_redis(cfg.redis_url, redis_factory) if user and cfg.redis_url else None
-
         if user:
             api.update_user(user_id, password)
             print(f"✓ {email}: новый пароль (id {user_id}), адрес подтверждён, блокировки нет")
@@ -664,18 +592,9 @@ def main(
             print(f"✓ {email}: аккаунт создан (id {new_id or '?'}), адрес подтверждён")
         store_in_keychain(email, password, run)
         print(f"✓ пароль в Keychain: служба «{KEYCHAIN_SERVICE}», аккаунт {email} (на экран не выводится)")
-        if deleted_at and not api.cancel_deletion(user_id, grace_cutoff().isoformat()):
-            raise RestoreError(
-                f"{email}: окно {GRACE_DAYS} дней закрылось — аккаунт удаляет очистка, флаг удаления не трогали. "
-                "Пароль новый и в Keychain, но после очистки он не подойдёт: тогда запустите скрипт ещё раз — "
-                "он создаст аккаунт заново"
-            )
-        if lock is not None:
-            # On a live row too: a restore that cleared the row but not the
-            # flag (its 503 path) still answers 410.
-            clear_lock(lock, user_id, redis_host(cfg.redis_url))
-            if deleted_at:
-                print(f"✓ {email}: удаление отменено — пометка в users и флаг в Redis сняты, как «Восстановить аккаунт»")
+        if deleted_at:
+            restore_account(api, api_url, email, password, transport, sleep)
+            print(f"✓ {email}: удаление отменено («Восстановить аккаунт», {api_url})")
         print("Скопировать в буфер обмена:")
         print(f"  {copy_command(email)}")
         print("Куда вставить адрес и пароль (App Store Connect, Play Console, RuStore): docs/runbooks/app-review-account.md")
