@@ -13,6 +13,12 @@ of these suffixes; when the copies differ, the phone cancels the tenant
 entries the publisher blocks — after #284 it did for 66 top-10k platforms
 (tilda.ws, narod.ru, godaddysites.com, blogspot.com.br …; audit 2026-10-25).
 
+Under a shared suffix, the platform's own names are no tenant's either:
+www.<suffix>, the operator hosts and zones of data/hosting_platforms.json
+(app.netlify.com, login.secureserver.net, prod.iad2.secureserver.net). The
+publisher never lists them (is_platform_own), and the phone keeps them under
+its veto: they are the '!' lines of shared_suffixes.txt (platform_own_names).
+
 Standard library only (plus api/services/hosting_platforms.py, which is):
 scripts/build_mobile_assets.py runs in CI with a bare python3, nothing
 installed.
@@ -53,19 +59,10 @@ HOSTING_PLATFORMS = frozenset({
 # already skips them; listed here so they are never treated as tenant suffixes).
 BIG_ORGS = frozenset({"google.com", "microsoft.com", "amazonaws.com", "cloudflare.com"})
 
-# Suffixes where EVERY label belongs to the platform operator — there are no
-# tenants under them, only the operator's own infrastructure. The tenant rule
-# must never fire here: on 2026-08-19 it put media.githubusercontent.com
-# (GitHub's own media CDN, one URLhaus entry) into production, so every phone
-# and every DoH user got NXDOMAIN for it.
-OPERATOR_SUFFIXES = frozenset({
-    "githubusercontent.com", "googleusercontent.com", "googleapis.com",
-    "gstatic.com", "ggpht.com", "usercontent.goog", "withgoogle.com",
-    "cloudfront.net", "akamaihd.net", "akamaized.net", "akamai.net",
-    "fbcdn.net", "cdninstagram.com", "licdn.com", "twimg.com",
-    "wp.com", "gravatar.com", "shopifycdn.com", "cloudflarestorage.com",
-    "linodeusercontent.com", "digitaloceanspaces.com", "oaiusercontent.com",
-})
+# Suffixes where EVERY label belongs to the platform operator
+# (githubusercontent.com, googleapis.com): never a tenant's, never listed. The
+# list lives in api/services/hosting_platforms.py, which the scorer reads too.
+OPERATOR_SUFFIXES = curated_platforms.OPERATOR_SUFFIXES
 
 
 def _load_public_suffixes_in_top() -> set[str]:
@@ -241,3 +238,25 @@ def default_shared_suffixes() -> set[str]:
     return ((set(HOSTING_PLATFORMS) - BIG_ORGS) | _load_public_suffixes_in_top()
             | curated_platforms.TENANT_SUFFIXES | curated_platforms.DYNAMIC_DNS_SUFFIXES
             | UNRANKED_SHARED_DOMAINS) - OPERATOR_SUFFIXES
+
+
+def platform_own_names() -> frozenset[str]:
+    """Names under a shared suffix that the platform runs itself, each with
+    every name under it: data/hosting_platforms.json operator_hosts
+    (app.netlify.com) and operator_zones (prod.iad2.secureserver.net,
+    m.teachable.com). With www.<suffix>, what is_platform_own() skips — and
+    what the phone vetoes by the platform's rank."""
+    return curated_platforms.OPERATOR_HOSTS | curated_platforms.OPERATOR_ZONES
+
+
+def is_platform_own(host: str, suffix: str) -> bool:
+    """Is `host`, a name under the shared `suffix`, the platform's own rather
+    than a tenant's: www.<suffix>, or at or under a platform_own_names() name?
+    Under one, only the platform can create a name (email.m.teachable.com,
+    a2plcpnl0019.prod.iad2.secureserver.net) — BlockList.isPlatformOwn on the
+    phone answers the same."""
+    if host == f"www.{suffix}":
+        return True
+    own = platform_own_names()
+    parts = host.split(".")
+    return any(".".join(parts[i:]) in own for i in range(len(parts) - suffix.count(".") - 1))

@@ -129,7 +129,6 @@ from api.services.blocklist_artifact import (  # noqa: E402
     meta_for_v2, parse_artifact_v2, render_artifact_v2, render_delta,
 )
 from api.services import blocklist_feed_backing as feed_backing  # noqa: E402
-from api.services import hosting_platforms as curated_platforms  # noqa: E402
 from api.services import blocklist_feed_health as feed_health  # noqa: E402
 from api.services import blocklist_retention as retention  # noqa: E402
 from api.services import confirmed_threats  # noqa: E402
@@ -144,6 +143,7 @@ if _SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, _SCRIPTS_DIR)
 from blocklist_shared_zones import (  # noqa: E402,F401 — the rest re-exported
     BIG_ORGS, HOSTING_PLATFORMS, OPERATOR_SUFFIXES, UNRANKED_SHARED_DOMAINS, default_shared_suffixes,
+    is_platform_own,
 )
 
 DEFAULT_API_BASE = "https://api.cleanway.ai"
@@ -939,10 +939,13 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
                      host under a tenant suffix but carrying >= SHARED_URL_THRESHOLD
                      feed URLs (a shared file host, not a tenant);
                      host is the platform's own under its tenant suffix:
-                     www.<suffix>, or an operator host of
-                     data/hosting_platforms.json (app.netlify.com,
-                     microsoft.sharepoint.com) — the phone does not veto
-                     them by the platform's rank (shared_suffixes.txt).
+                     www.<suffix>, or at or under an operator host or zone
+                     of data/hosting_platforms.json (app.netlify.com,
+                     login.secureserver.net, email.m.teachable.com, the
+                     shared servers under prod.iad2.secureserver.net) — a
+                     block there breaks the platform for everyone, and the
+                     phone vetoes it by the platform's rank (the '!' lines
+                     of shared_suffixes.txt; blocklist_shared_zones.is_platform_own).
       EXACT ONLY     host is one tenant's site under a shared suffix
                      (evil.github.io, gwcu.us.org, x.blob.core.windows.net) —
                      unless the suffix is a domain registry's zone
@@ -1020,10 +1023,10 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
             # this single hostname carrying many URLs (then it is a shared
             # host itself, e.g. files.<platform>), or the host itself is
             # popular enough to be ranked (a tenant site people actually use).
-            # www.<suffix> and the curated operator hosts are the platform's
-            # own (hosting_platforms.tenant_suffix_of): www.tumblr.com is
-            # Tumblr, microsoft.sharepoint.com is Microsoft.
-            if h == f"www.{suffix}" or h in curated_platforms.OPERATOR_HOSTS:
+            # www.<suffix> and the curated operator hosts and zones are the
+            # platform's own: www.tumblr.com is Tumblr, login.secureserver.net
+            # is GoDaddy's sign-in, email.m.teachable.com its e-mail links.
+            if is_platform_own(h, suffix):
                 continue
             if counts[h] >= SHARED_URL_THRESHOLD:
                 continue

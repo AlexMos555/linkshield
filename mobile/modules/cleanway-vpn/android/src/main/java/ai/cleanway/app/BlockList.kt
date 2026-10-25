@@ -50,10 +50,20 @@ class BlockList private constructor(
      * blocks: `best10cdn.blob.core.windows.net` has registrable
      * `windows.net`, which is top-10k, so a bucket someone filled with
      * phishing was silently un-blocked — 783 of the 1,548 tenant suffixes the
-     * publisher targets behaved that way.
+     * publisher targets behaved that way. Its '!' lines are [platformOwn].
      */
     private val sharedSuffixes: Set<String> = emptySet(),
 ) {
+    /**
+     * The platforms' own names under those suffixes, each with every name
+     * under it: the '!' lines of shared_suffixes.txt (!login.secureserver.net,
+     * !prod.iad2.secureserver.net, !m.teachable.com, !app.netlify.com). No
+     * tenant's, so the veto applies to them as to the platform's apex. A '!'
+     * line is no suffix of any name, so [tenantSuffixOf] never matches one.
+     */
+    private val platformOwn: Set<String> =
+        sharedSuffixes.asSequence().filter { it.startsWith("!") }.map { it.substring(1) }.toHashSet()
+
     /**
      * The listed suffix of [qname] that blocks it, or null. A listed name
      * covers itself and all its subdomains, so the walk goes from the full
@@ -84,11 +94,34 @@ class BlockList private constructor(
      * top-10k) — that is the guard against a bad publish darkening
      * paypal.com. No when the name is a TENANT under a shared platform: a
      * bucket, a Pages site or a Blob container is not the platform's own
-     * name, and the platform's popularity says nothing about it.
+     * name, and the platform's popularity says nothing about it. The
+     * platform's own names under its suffix ([isPlatformOwn]) are no tenant's.
      */
     private fun isVetoed(name: String): Boolean {
-        if (tenantSuffixOf(name) != null) return false
+        val tenant = tenantSuffixOf(name)
+        if (tenant != null && !isPlatformOwn(name, tenant)) return false
         return RegistrableDomain.of(name) in popularVeto
+    }
+
+    /**
+     * Is [name], under the shared [suffix], the platform's own: www.<suffix>,
+     * or at or under a [platformOwn] name? Only the platform can create a name
+     * there (email.m.teachable.com, a2plcpnl0019.prod.iad2.secureserver.net).
+     * The publisher never lists one (scripts/blocklist_shared_zones.py
+     * is_platform_own answers the same); this keeps an older list, the APK's
+     * seed or a bad publish from darkening GoDaddy's sign-in or Teachable's
+     * e-mail links, as the registrable veto did before the phone took over
+     * the publisher's zones.
+     */
+    private fun isPlatformOwn(name: String, suffix: String): Boolean {
+        if (name == "www.$suffix") return true
+        if (platformOwn.isEmpty()) return false
+        val parts = name.split('.')
+        val suffixLabels = suffix.count { it == '.' } + 1
+        for (k in parts.size downTo suffixLabels + 1) {
+            if (parts.takeLast(k).joinToString(".") in platformOwn) return true
+        }
+        return false
     }
 
     /** The longest shared suffix strictly shorter than [name], or null. */
