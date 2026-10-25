@@ -266,9 +266,18 @@ class Settings(BaseSettings):
     # slot (inside the analysis budget); sized so that at the default fresh
     # budget nothing ever waits (32 x 13 licensed checks = 416).
     load_shed_outbound_max_inflight: int = 512
-    # A request body must arrive within this many seconds, plus its size at
-    # ~0.5 Mbit/s, or the request gets 408. It is read BEFORE the request
-    # takes a slot, so a slow client holds none.
+    # Request bodies over 64 KiB at once: read to their end BEFORE the
+    # request takes its slot (the voice upload: as its route reads it,
+    # instead of the API slot), so a slow upload holds only one of these.
+    # They are what bounds the memory big bodies take: 16 x the 4 MiB cap of
+    # /email/analyze = 64 MiB per worker. Past it: 503. Legit ones are rare
+    # (the opt-in webmail scanner, voice uploads).
+    load_shed_upload_max_inflight: int = 16
+    # A request body must keep up with ~0.5 Mbit/s after this many seconds
+    # (byte n due this + n / 64 KiB/s after the request came in), or the
+    # request gets 408: a client that stops sending is cut this long after
+    # it falls behind, whatever size it declared. No body is waited for on a
+    # request class's slot (only, past 64 KiB, on an uploads slot).
     load_shed_body_timeout_s: float = 10.0
     load_shed_retry_after_s: int = 2
 
