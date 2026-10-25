@@ -47,7 +47,7 @@ from api.services.tls_contexts import client_tls_context
 from api.services.hosting_platforms import is_user_content_service
 from api.services.scoring import (
     calculate_score, calculate_confidence, calculate_confidence_pct, is_hosting_platform_site,
-    is_regional_government_domain, registrable_domain,
+    is_regional_government_domain, popularity_rank, registrable_domain,
 )
 from api.services.domain_validator import (
     validate_domain,
@@ -398,11 +398,15 @@ def _at_most(confidence: ConfidenceLevel, cap: ConfidenceLevel) -> ConfidenceLev
     return confidence if _CONFIDENCE_RANK[confidence] <= _CONFIDENCE_RANK[cap] else cap
 
 
-def _popularity_rank(tranco_result: dict) -> Optional[int]:
-    """The best top-1M rank of the host or its registrable domain, or None."""
-    ranks = [r for r in (tranco_result.get("rank") if tranco_result.get("ranked") else None,
-                         tranco_result.get("registrable_rank")) if isinstance(r, int) and 0 < r <= 1_000_000]
-    return min(ranks) if ranks else None
+def _popularity_rank(tranco_result: dict, domain: str) -> Optional[int]:
+    """The best top-1M rank of the host or its registrable domain, or None —
+    scoring.popularity_rank, so a hosting platform's rank never counts for
+    its tenant here either."""
+    return popularity_rank({
+        "tranco_ranked": tranco_result.get("ranked"),
+        "tranco_rank": tranco_result.get("rank"),
+        "tranco_registrable_rank": tranco_result.get("registrable_rank"),
+    }, domain)
 
 
 def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
@@ -428,8 +432,9 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
     # registrable domain) is a victim reference far more often than a
     # verdict — rostelecom.ru, rosbank.ru and certum.pl all have pulses. It
     # is not a blocklist hit: counted as one it would also stop the LLM judge
-    # (llm_judge gate 2) from looking at the caution it causes.
-    otx_counts = bool(alienvault_data.get("hit")) and not _popularity_rank(tranco_result)
+    # (llm_judge gate 2) from looking at the caution it causes. A hosting
+    # platform's rank is not its tenant's: a pulse about x.workers.dev counts.
+    otx_counts = bool(alienvault_data.get("hit")) and not _popularity_rank(tranco_result, domain)
 
     return {
         "domain": domain,
