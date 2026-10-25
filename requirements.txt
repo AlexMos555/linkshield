@@ -13,7 +13,7 @@ PyJWT==2.15.1
 python-multipart==0.0.32
 dnspython==2.9.0
 stripe==16.0.0
-sentry-sdk[fastapi]==2.72.0
+sentry-sdk[fastapi]==2.73.0
 bcrypt==5.0.0
 
 # ── Operator-billed subscriptions (api/billing, docs/BILLING.md) ──
