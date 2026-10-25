@@ -138,3 +138,67 @@ def test_a_government_host_is_never_a_hosting_tenant(host):
     to dangerous (verifier, 2026-10-23)."""
     assert shared_tenant(host)[0] is None, host
     assert not (scoring.PUBLIC_SUFFIXES_IN_TOP & {"gc.ca", "nhs.uk", "sp.gov.br", "jus.br", "mi.us", "nic.in"})
+
+
+# ── A hosting platform's rank is not its tenants' ──
+#
+# The analyzer passes the rank of the host's registrable domain, and for a
+# customer's site on a hosting platform that is the PLATFORM (evil.workers.dev
+# → workers.dev, rank 2,121). Its popularity says nothing about one customer's
+# site, and AlienVault OTX is asked about the full host — a pulse there is
+# about the tenant. Gated on the platform's rank, a phishing tenant OTX
+# reported lost the OTX weight and the blocklist hit
+# (clientes-portal.webcindario.com went from caution 21 to safe 6), and a
+# Worker named bitbucket.<x>.workers.dev lost brand_subdomain_abuse (audit F2,
+# 2026-10-25).
+
+@pytest.mark.parametrize("host,platform_rank", [
+    ("clientes-portal.webcindario.com", 17_898),
+    ("office-docs.bitrix24.site", 15_618),
+    ("secure-login.pages.dev", 257),
+    ("verify-account.firebaseapp.com", 30_000),
+    ("bank-login.at.ua", 4_297),                 # at.ua is in the top-10k file too
+    ("konto.blogspot.com.br", 600_000),
+    ("wallet-sync.duckdns.org", 20_000),
+    ("a.b.x.workers.dev", 2_121),
+])
+def test_otx_pulses_about_a_tenant_keep_their_weight(host, platform_rank):
+    _, _, reasons = scoring.calculate_score(_signals(
+        host, alienvault_pulse_count=3, tranco_registrable_rank=platform_rank))
+    assert _otx(reasons) == 30, host
+    assert scoring.popularity_rank({"tranco_registrable_rank": platform_rank}, host) is None
+
+
+def test_a_tenant_ranked_itself_is_judged_by_its_own_rank():
+    sig = _signals("popular-tenant.pages.dev", alienvault_pulse_count=3, tranco_ranked=True,
+                   tranco_rank=50_000, tranco_weight=-8, tranco_registrable_rank=257)
+    assert scoring.popularity_rank(sig) == 50_000
+    _, _, reasons = scoring.calculate_score(sig)
+    assert _otx(reasons) == 0
+
+
+def test_an_otx_mention_of_a_tenant_is_a_blocklist_hit():
+    platform = {"ranked": False, "rank": None, "weight": 0, "label": "", "registrable_rank": 17_898}
+    sig = analyzer._build_signals("clientes-portal.webcindario.com", "", False, _outcomes(3, platform))
+    assert sig["blocklist_hits"] == 1
+    assert sig["tranco_registrable_rank"] == 17_898  # the signal itself is unchanged
+
+
+@pytest.mark.parametrize("host,rank", [
+    ("app.netlify.com", 3_329), ("www.tumblr.com", 37), ("microsoft.sharepoint.com", 119),
+    ("shop.otx-gating-example.net", 150_000),
+])
+def test_the_platforms_own_hosts_keep_its_rank(host, rank):
+    """www.<platform> and data/hosting_platforms.json operator_hosts are the
+    platform's own (hosting_platforms.tenant_suffix_of), as is any subdomain
+    of a name that is not a platform."""
+    _, _, reasons = scoring.calculate_score(_signals(host, alienvault_pulse_count=3, tranco_registrable_rank=rank))
+    assert _otx(reasons) == 0, host
+
+
+@pytest.mark.parametrize("host", [
+    "bitbucket.auth-session.workers.dev", "gitlab.my-project.pages.dev", "jira.helpdesk.firebaseapp.com",
+])
+def test_a_product_name_on_a_tenant_is_still_brand_abuse(host):
+    _, _, reasons = scoring.calculate_score(_signals(host, tranco_registrable_rank=2_121))
+    assert _brand(reasons), host

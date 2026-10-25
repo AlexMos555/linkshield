@@ -881,11 +881,39 @@ def _has_fake_tld_in_subdomain(domain: str) -> bool:
     return bool(subdomain) and _registered_tld_lookalike(domain) is not None
 
 
-def popularity_rank(signals: dict) -> Optional[int]:
+def _platform_tenant_site(domain: str) -> Optional[str]:
+    """The customer's own name (x.webcindario.com of a.x.webcindario.com) when
+    `domain` is a site on a curated hosting platform or dynamic-DNS service
+    AND its registrable domain is the platform's (webcindario.com,
+    workers.dev, blogspot.com.br) — else None: for registered names, the
+    platforms' own hosts (www.tumblr.com, app.netlify.com) and zones where the
+    registrable already is the customer's name.
+
+    The registrable's rank and its place in the top lists are then the
+    PLATFORM's popularity, which says nothing about one customer's site (the
+    analyzer's _name_is_vouched_for refuses it for the same reason). Curated
+    platforms only, as in is_hosting_platform_site: the PSL-derived suffixes
+    are mostly the operators' own infrastructure (fonts.googleapis.com),
+    whose names the registrable's owner runs."""
+    d = (domain or "").lower().strip(".")
+    suffix = _dynamic_dns_suffix_of(d) or tenant_suffix_of(d, HOSTING_PLATFORMS)
+    if not suffix:
+        return None
+    registrable = registrable_domain(d)
+    if registrable != suffix and not suffix.endswith("." + registrable):
+        return None
+    return ".".join(d.split(".")[-(suffix.count(".") + 2):])
+
+
+def popularity_rank(signals: dict, domain: Optional[str] = None) -> Optional[int]:
     """The best top-1M rank (Redis tranco:ranks) of the host or of its
-    registrable domain, from the analyzer's signals, or None."""
+    registrable domain, from the analyzer's signals, or None. `domain`
+    defaults to signals['domain']; for a tenant whose registrable is the
+    hosting platform (_platform_tenant_site) only the host's own rank counts."""
+    host = signals.get("domain", "") if domain is None else domain
+    registrable_rank = None if _platform_tenant_site(host) else signals.get("tranco_registrable_rank")
     ranks = [r for r in (signals.get("tranco_rank") if signals.get("tranco_ranked") else None,
-                         signals.get("tranco_registrable_rank")) if isinstance(r, int) and 0 < r <= 1_000_000]
+                         registrable_rank) if isinstance(r, int) and 0 < r <= 1_000_000]
     return min(ranks) if ranks else None
 
 
@@ -1065,11 +1093,16 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # with full OTX weight rostelecom.ru, rosbank.ru, beget.ru and dream11.com
     # went from safe to caution 27 and ddos-guard.net to dangerous 67 on
     # victim-reference pulses (verifier, 2026-10-23).
+    #
+    # A customer's site on a hosting platform is judged by its own name, not
+    # the platform's (_platform_tenant_site): OTX is asked about the full
+    # host, so its pulses are about the tenant, and workers.dev or at.ua being
+    # popular vouches for none of their customers (audit 2026-10-25).
     alienvault_pulses = signals.get("alienvault_pulse_count", 0)
     if alienvault_pulses > 0:
         from api.services.doh_gateway import _registrable_domain
-        _reg = _registrable_domain(domain)
-        _rank = popularity_rank(signals)
+        _reg = _platform_tenant_site(ascii_domain) or _registrable_domain(domain)
+        _rank = popularity_rank(signals, ascii_domain)
         _top_ranked = _rank is not None and _rank <= 100_000
         _ranked = _rank is not None
         if _reg not in TOP_10K_RANKS and not _top_ranked and not (_ranked and alienvault_pulses <= 5):
@@ -2661,8 +2694,11 @@ _SELF_HOSTED_PRODUCTS = frozenset({"gitlab", "jira", "confluence", "bitbucket"})
 def _is_self_hosted_product(domain: str, brand: str, signals: dict) -> bool:
     """`brand` is a self-hosted product, it is a whole subdomain label of
     `domain` (gitlab.x.ru, not gitlab-login.x.ru) and the registrable domain
-    is in the top 1M (signals: tranco_registrable_rank)."""
-    if brand not in _SELF_HOSTED_PRODUCTS:
+    is in the top 1M (signals: tranco_registrable_rank) — and it is the
+    owner's own: on a hosting platform the registrable is the platform's
+    (bitbucket.<account>.workers.dev), whose rank says nothing about who
+    named the Worker (_platform_tenant_site)."""
+    if brand not in _SELF_HOSTED_PRODUCTS or _platform_tenant_site(domain):
         return False
     rank = signals.get("tranco_registrable_rank")
     if not (isinstance(rank, int) and 0 < rank <= 1_000_000):
