@@ -11,10 +11,14 @@ it would, and the requests already admitted finish in time.
 A slot bounds the work THIS worker does, never the time it waits on someone
 else (review of PR #295: each of these let a few hundred idle connections
 or a slow upstream refuse everyone):
-  * a request body is read before the slot is taken — bounded by the route's
-    size cap (request_guards, 413) and a deadline (408), held in memory as
-    FastAPI held it anyway — so a client that sends its body slowly, or
-    never, holds no slot;
+  * at most 64 KiB of a request body (a DoH query, the API's JSON) is read
+    before the slot is taken, so a client that sends it slowly, or never,
+    holds no slot. The rest of a bigger body is read as the route asks for
+    it, and the voice upload — its route checks the caller first — gets
+    nothing read ahead. Every byte stays under the route's size cap
+    (request_guards, 413) and a deadline (408). Until the audit of
+    2026-10-25 the whole body was read ahead: 26 MiB for the voice upload,
+    before auth or any budget — ~40 stalled anonymous uploads held ~1 GB;
   * the slot is given back when the answer starts going out: a slow reader
     of a big answer (the 2.6 MB phone blocklist) is the client's time;
   * a DNS query gives its slot back while it waits on the upstream (its own
@@ -85,9 +89,15 @@ _DEFAULT_RETRY_AFTER_S = 2
 _DEFAULT_BODY_TIMEOUT_S = 10.0
 # A body must arrive within LOAD_SHED_BODY_TIMEOUT_S plus its size at this
 # rate (~0.5 Mbit/s): 1 KB of JSON ~10 s, the 1 MiB cap ~26 s, a 25 MB voice
-# upload ~7 min. The wait holds no slot; the deadline only bounds how long a
-# silent client keeps its connection.
+# upload ~7 min. The wait for the part read ahead holds no slot; the rest
+# keeps the slot only until this deadline.
 _MIN_UPLOAD_BYTES_PER_S = 64 * 1024
+# What is read of a body before a slot: a whole DoH message (<= 65,535
+# bytes) and the API's usual JSON. uvicorn buffers about as much per
+# connection on its own (its read high-water mark).
+_PRE_READ_BYTES = 64 * 1024
+_GONE = 0  # the client went away mid-body: nobody to answer
+_BODY_REFUSALS = {408: "Request body not received in time", 413: "Request body too large"}
 
 
 def _settings():
@@ -369,14 +379,94 @@ def _has_body(scope) -> bool:
         return False  # BodySizeLimit answers it 400 before reading a byte
 
 
-def _replay(messages: list, receive):
-    """`receive` that hands out the body already read, then the real one
-    (a disconnect, for whoever listens)."""
-    pending = list(reversed(messages))
+class _Body:
+    """A request's body on its way to the app: up to `ahead` bytes read
+    before the request has a slot (read_ahead), the rest as the app asks for
+    it (the `receive` of bind). Every byte counts against the route's cap
+    (413) and the body's deadline (408). Past either, after the slot, the
+    client gets the refusal — unless the app's answer has started — the app
+    a disconnect, so it stops reading, and what it answers then is dropped
+    (as request_guards.BodySizeLimit does)."""
 
-    async def replay():
-        return pending.pop() if pending else await receive()
-    return replay
+    def __init__(self, scope, receive) -> None:
+        from api.services.request_guards import body_limit_for, reads_body_after_auth
+
+        path = scope.get("path", "")
+        self.limit = body_limit_for(path)
+        try:
+            self.declared: Optional[int] = int(_header(scope, b"content-length") or b"")
+        except ValueError:
+            self.declared = None  # chunked
+        self.ahead = 0 if reads_body_after_auth(path) else _PRE_READ_BYTES
+        expected = self.declared if self.declared is not None else self.limit
+        self._deadline = (asyncio.get_running_loop().time() + body_timeout_s()
+                          + expected / _MIN_UPLOAD_BYTES_PER_S)
+        self._receive = receive
+        self._read: list = []
+        self._size = 0
+        self.complete = False
+
+    def too_big(self) -> bool:
+        return self.declared is not None and self.declared > self.limit
+
+    async def _next(self) -> Union[dict, int]:
+        """The client's next body message, or why there is none: 408, 413, _GONE."""
+        remaining = self._deadline - asyncio.get_running_loop().time()
+        try:
+            message = await asyncio.wait_for(self._receive(), max(0.0, remaining))
+        except asyncio.TimeoutError:
+            return 408
+        if message["type"] != "http.request":
+            return _GONE
+        self._size += len(message.get("body", b""))
+        if self._size > self.limit:
+            return 413
+        self.complete = not message.get("more_body")
+        return message
+
+    async def read_ahead(self) -> Optional[int]:
+        """Read before a slot, `ahead` bytes at most: None when that went
+        fine (the body may go on), else why it stopped (408, 413, _GONE)."""
+        while not self.complete and self._size < self.ahead:
+            message = await self._next()
+            if isinstance(message, int):
+                return message
+            self._read.append(message)
+        return None
+
+    def bind(self, send, refuse) -> tuple:
+        """The app's `receive` and `send`. `refuse(status)` answers the
+        client a 408 or 413."""
+        pending = list(reversed(self._read))
+        self._read = []
+        refused = started = False
+
+        async def receive() -> dict:
+            nonlocal refused
+            if pending:
+                return pending.pop()
+            if refused:
+                return {"type": "http.disconnect"}
+            if self.complete:
+                return await self._receive()  # past the body: a disconnect, for whoever listens
+            message = await self._next()
+            if isinstance(message, dict):
+                return message
+            if message != _GONE:
+                refused = True
+                if not started:
+                    await refuse(message)
+            return {"type": "http.disconnect"}
+
+        async def guarded_send(message) -> None:
+            nonlocal started
+            if refused:
+                return  # the refusal went out instead
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        return receive, guarded_send
 
 
 class LoadShedding:
@@ -400,14 +490,16 @@ class LoadShedding:
         if budget.limit() <= 0:
             await self.app(scope, receive, send)
             return
-        if _has_body(scope):
-            body = await self._read_body(scope, receive, send)
-            if body is None:
+        body = _Body(scope, receive) if _has_body(scope) else None
+        if body is not None:
+            stop = 413 if body.too_big() else await body.read_ahead()
+            if stop is not None:
+                if stop != _GONE:
+                    await self._refuse(scope, send, stop, _BODY_REFUSALS[stop])
                 return
-            receive = _replay(body, receive)
         slot = _Slot(budget)
         if not slot.take():
-            await self._refuse(scope, send, 503, BUSY_DETAIL)
+            await self._refuse(scope, send, 503, BUSY_DETAIL, unread_body=body is not None and not body.complete)
             return
 
         async def send_and_give_back(message) -> None:
@@ -415,60 +507,30 @@ class LoadShedding:
                 slot.give_back()  # the answer is ready; sending it is the client's time
             await send(message)
 
+        async def refuse_body(status: int) -> None:
+            await self._refuse(scope, send_and_give_back, status, _BODY_REFUSALS[status])
+
+        app_receive, app_send = receive, send_and_give_back
+        if body is not None:
+            app_receive, app_send = body.bind(send_and_give_back, refuse_body)
         token = _REQUEST_SLOT.set(slot)
         try:
-            await self.app(scope, receive, send_and_give_back)
+            await self.app(scope, app_receive, app_send)
         finally:
             _REQUEST_SLOT.reset(token)
             slot.give_back()
 
-    async def _read_body(self, scope, receive, send) -> Optional[list]:
-        """The request's body messages, read before a slot is taken; None
-        when it was refused (too big, too slow) or the client went away."""
-        from api.services.request_guards import body_limit_for
-
-        limit = body_limit_for(scope.get("path", ""))
-        try:
-            declared: Optional[int] = int(_header(scope, b"content-length") or b"")
-        except ValueError:
-            declared = None  # chunked
-        if declared is not None and declared > limit:
-            await self._refuse(scope, send, 413, "Request body too large")
-            return None
-
-        async def read() -> Union[list, int, None]:
-            messages, size = [], 0
-            while True:
-                message = await receive()
-                if message["type"] != "http.request":
-                    return None  # gone: nobody to answer
-                size += len(message.get("body", b""))
-                if size > limit:
-                    return 413
-                messages.append(message)
-                if not message.get("more_body"):
-                    return messages
-
-        expected = declared if declared is not None else limit
-        try:
-            outcome = await asyncio.wait_for(read(), body_timeout_s() + expected / _MIN_UPLOAD_BYTES_PER_S)
-        except asyncio.TimeoutError:
-            outcome = 408
-        if outcome == 408:
-            await self._refuse(scope, send, 408, "Request body not received in time")
-        elif outcome == 413:
-            await self._refuse(scope, send, 413, "Request body too large")
-        return outcome if isinstance(outcome, list) else None
-
-    async def _refuse(self, scope, send, status: int, detail: str) -> None:
+    async def _refuse(self, scope, send, status: int, detail: str, unread_body: bool = True) -> None:
         from api.services.doh_fastpath import _SECURITY_HEADERS
 
         body = b"" if scope.get("path") == DNS_PATH else json.dumps({"detail": detail}).encode()
         if status == 503:
             headers = [(name.lower().encode(), value.encode()) for name, value in _busy_header_dict().items()]
         else:
+            headers = [(b"cache-control", b"no-store")]
+        if unread_body:
             # The body was not read to its end: the connection cannot be reused.
-            headers = [(b"cache-control", b"no-store"), (b"connection", b"close")]
+            headers.append((b"connection", b"close"))
         headers.append((b"content-length", str(len(body)).encode()))
         if body:
             headers.append((b"content-type", b"application/json"))

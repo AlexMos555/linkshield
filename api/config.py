@@ -267,8 +267,9 @@ class Settings(BaseSettings):
     # budget nothing ever waits (32 x 13 licensed checks = 416).
     load_shed_outbound_max_inflight: int = 512
     # A request body must arrive within this many seconds, plus its size at
-    # ~0.5 Mbit/s, or the request gets 408. It is read BEFORE the request
-    # takes a slot, so a slow client holds none.
+    # ~0.5 Mbit/s, or the request gets 408. Its first 64 KiB are read BEFORE
+    # the request takes a slot, so a slow client holds none for them; the
+    # rest of a bigger body keeps the slot only until this deadline.
     load_shed_body_timeout_s: float = 10.0
     load_shed_retry_after_s: int = 2
 

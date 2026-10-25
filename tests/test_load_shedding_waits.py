@@ -167,7 +167,7 @@ def test_coalesced_misses_wait_for_their_leader_without_a_dns_slot(settings, slo
     assert ls.DNS.shed == 0
 
 
-# ── Request bodies: read before the slot, bounded in size and time ──
+# ── Request bodies: up to 64 KiB read before the slot; all bounded in size and time ──
 
 def _scope(method: str, path: str, headers: list[tuple[bytes, bytes]] = ()) -> dict:
     return {
@@ -269,7 +269,7 @@ def test_a_body_that_never_arrives_gets_408_and_never_a_slot(settings):
     assert ls.API.in_flight == 0 and ls.API.peak == 0
 
 
-def test_an_oversized_body_is_413_before_a_slot(settings):
+def test_a_declared_oversized_body_is_413_before_a_slot(settings):
     from api.services.request_guards import DEFAULT_BODY_LIMIT
 
     settings(load_shed_api_max_inflight=1)
@@ -280,14 +280,188 @@ def test_an_oversized_body_is_413_before_a_slot(settings):
         declared = _Client()
         await asyncio.wait_for(
             mw(_scope("POST", "/api/v1/x", _post(DEFAULT_BODY_LIMIT + 1)), declared.receive, declared.send), 2)
-        chunked = _Client([b"x" * DEFAULT_BODY_LIMIT, b"x"])
-        await asyncio.wait_for(
-            mw(_scope("POST", "/api/v1/x", [(b"transfer-encoding", b"chunked")]), chunked.receive, chunked.send), 2)
-        return declared, chunked
+        return declared
 
-    declared, chunked = asyncio.run(main())
-    assert declared.status == 413 and chunked.status == 413 and seen == []
+    declared = asyncio.run(main())
+    assert declared.status == 413 and seen == []
     assert ls.API.peak == 0
+
+
+# Audit 2026-10-25: the whole body — up to the route's cap, 26 MiB for the
+# voice upload — used to be read into memory before the slot, before routing
+# and auth. ~40 anonymous uploads stalled before their last chunk held ~1 GB
+# for ~7 minutes each while no budget counted them. Now at most 64 KiB is
+# read ahead; the rest is read as the route asks for it, capped and
+# deadlined all the same.
+
+class _Upload(_Client):
+    """A body of `size` bytes, made `chunk` at a time only as it is asked
+    for, up to `stall_at` bytes; after that it waits like _Client (more/gone).
+    `pulled` is what was taken off the "socket", `peak_held` the most of it
+    taken but not yet handed to the app (which reports it in `delivered`)."""
+
+    def __init__(self, size: int, chunk: int = 16 * 1024, stall_at: int | None = None) -> None:
+        super().__init__()
+        self.size, self.chunk = size, chunk
+        self.stall_at = size if stall_at is None else stall_at
+        self.pulled = self.delivered = self.peak_held = 0
+        self.pulled_before_app: int | None = None
+
+    async def receive(self) -> dict:
+        if self.pulled < self.stall_at:
+            n = min(self.chunk, self.stall_at - self.pulled)
+            self.pulled += n
+            self.peak_held = max(self.peak_held, self.pulled - self.delivered)
+            return {"type": "http.request", "body": b"x" * n, "more_body": self.pulled < self.size}
+        return await super().receive()
+
+
+def _counting_app(upload: _Upload, seen: list):
+    """Reads the whole body (or until a disconnect), then answers 200."""
+    async def app(scope, receive, send):
+        upload.pulled_before_app = upload.pulled
+        seen.append(ls.API.in_flight)
+        while True:
+            message = await receive()
+            upload.delivered += len(message.get("body", b""))
+            if message["type"] != "http.request" or not message.get("more_body"):
+                seen.append(message["type"])
+                break
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b"ok"})
+    return app
+
+
+def test_a_big_body_is_read_by_the_app_after_the_slot_never_held_whole(settings):
+    settings(load_shed_api_max_inflight=1)
+    seen: list = []
+    upload = _Upload(1024 * 1024)
+
+    async def main():
+        mw = ls.LoadShedding(_counting_app(upload, seen))
+        await asyncio.wait_for(mw(_scope("POST", "/api/v1/x", _post(upload.size)), upload.receive, upload.send), 2)
+
+    asyncio.run(main())
+    assert upload.status == 200 and upload.delivered == upload.size
+    assert seen[0] == 1  # the app ran with the slot
+    assert upload.pulled_before_app == ls._PRE_READ_BYTES  # read ahead without a slot: 64 KiB, no more
+    assert upload.peak_held <= ls._PRE_READ_BYTES
+    assert ls.API.in_flight == 0 and ls.API.shed == 0
+
+
+def test_a_big_body_meeting_a_full_budget_gets_503_after_64_kib_and_a_closed_connection(settings):
+    settings(load_shed_api_max_inflight=1)
+    ls.API.try_acquire()  # full
+    seen: list = []
+    upload = _Upload(1024 * 1024)
+
+    async def main():
+        mw = ls.LoadShedding(_counting_app(upload, seen))
+        await asyncio.wait_for(mw(_scope("POST", "/api/v1/x", _post(upload.size)), upload.receive, upload.send), 2)
+
+    asyncio.run(main())
+    assert upload.status == 503 and seen == []
+    assert upload.pulled == ls._PRE_READ_BYTES
+    headers = dict(upload.sent[0]["headers"])
+    assert headers[b"retry-after"] and headers[b"connection"] == b"close"  # the rest of the body is unread
+
+
+def test_a_whole_body_meeting_a_full_budget_keeps_the_connection(settings):
+    settings(load_shed_api_max_inflight=1)
+    ls.API.try_acquire()  # full
+    small = _Client([b'{"a": 1}'])
+    small.more.set()
+
+    async def main():
+        mw = ls.LoadShedding(_echo_app([]))
+        await asyncio.wait_for(mw(_scope("POST", "/api/v1/x", _post(8)), small.receive, small.send), 2)
+
+    asyncio.run(main())
+    assert small.status == 503 and b"connection" not in dict(small.sent[0]["headers"])
+
+
+def test_a_big_body_that_stalls_after_the_slot_gets_408_and_the_slot_back(settings, monkeypatch):
+    settings(load_shed_api_max_inflight=1, load_shed_body_timeout_s=0.05)
+    monkeypatch.setattr(ls, "_MIN_UPLOAD_BYTES_PER_S", 1 << 40)  # the deadline: the 0.05 s alone
+    seen: list = []
+    upload = _Upload(1024 * 1024, stall_at=128 * 1024)
+
+    async def main():
+        mw = ls.LoadShedding(_counting_app(upload, seen))
+        await asyncio.wait_for(mw(_scope("POST", "/api/v1/x", _post(upload.size)), upload.receive, upload.send), 2)
+
+    asyncio.run(main())
+    assert upload.status == 408 and len(upload.sent) == 2  # the app's own answer is dropped
+    assert dict(upload.sent[0]["headers"])[b"connection"] == b"close"
+    assert seen == [1, "http.disconnect"]  # the app was told the client is gone
+    assert ls.API.in_flight == 0 and ls.API.peak == 1
+
+
+def test_a_chunked_body_is_413_the_moment_it_passes_the_cap(settings):
+    from api.services.request_guards import DEFAULT_BODY_LIMIT
+
+    settings(load_shed_api_max_inflight=1)
+    seen: list = []
+    upload = _Upload(DEFAULT_BODY_LIMIT + 64 * 1024)
+
+    async def main():
+        mw = ls.LoadShedding(_counting_app(upload, seen))
+        await asyncio.wait_for(
+            mw(_scope("POST", "/api/v1/x", [(b"transfer-encoding", b"chunked")]), upload.receive, upload.send), 2)
+
+    asyncio.run(main())
+    assert upload.status == 413 and len(upload.sent) == 2
+    assert upload.pulled == DEFAULT_BODY_LIMIT + upload.chunk  # not a chunk past the one that crossed it
+    assert upload.delivered <= DEFAULT_BODY_LIMIT and seen[-1] == "http.disconnect"
+    assert upload.peak_held <= ls._PRE_READ_BYTES
+    assert ls.API.in_flight == 0
+
+
+def test_the_voice_upload_is_not_read_ahead_at_all(settings):
+    """The voice route checks its caller before it reads the upload
+    (api/routers/scam.py): nothing of it is read before the route asks."""
+    settings(load_shed_api_max_inflight=1)
+    upload = _Upload(26 * 1024 * 1024)
+
+    async def unauthorized(scope, receive, send):
+        await send({"type": "http.response.start", "status": 401, "headers": []})
+        await send({"type": "http.response.body", "body": b"{}"})
+
+    async def main():
+        mw = ls.LoadShedding(unauthorized)
+        await asyncio.wait_for(mw(_scope("POST", "/api/v1/scam/analyze_voice", _post(upload.size)),
+                                  upload.receive, upload.send), 2)
+
+    asyncio.run(main())
+    assert upload.status == 401 and upload.pulled == 0
+    assert ls.API.in_flight == 0 and ls.API.peak == 1
+
+
+def test_an_anonymous_26_mib_voice_upload_is_401_with_none_of_it_in_memory(settings):
+    """The audit's reproduction, through the real app: before, the 401 came
+    after all 27 MB had been read into memory (traced peak ~34 MB)."""
+    import tracemalloc
+
+    from api.main import app
+
+    upload = _Upload(26 * 1024 * 1024, chunk=64 * 1024)
+    headers = [(b"content-length", str(upload.size).encode()),
+               (b"content-type", b"multipart/form-data; boundary=b")]
+
+    async def main():
+        await asyncio.wait_for(app(_scope("POST", "/api/v1/scam/analyze_voice", headers),
+                                   upload.receive, upload.send), 10)
+
+    tracemalloc.start()
+    try:
+        asyncio.run(main())
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert upload.status == 401
+    assert upload.pulled == 0  # not a byte of the upload taken off the socket
+    assert peak < 8 * 1024 * 1024, peak
+    assert ls.API.in_flight == 0
 
 
 def test_a_client_gone_mid_body_costs_no_slot_and_gets_no_answer(settings):
