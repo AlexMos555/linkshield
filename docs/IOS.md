@@ -42,7 +42,7 @@ fs.writeFileSync("package.json",JSON.stringify(p,null,2)+"\n");
 const c=JSON.parse(fs.readFileSync("vendor/api-client/package.json"));
 c.dependencies["@cleanway/api-types"]="file:../api-types";
 fs.writeFileSync("vendor/api-client/package.json",JSON.stringify(c,null,2)+"\n");'
-node scripts/check-mirror-lock.mjs             # "ok:"; "out of step" = regenerate mobile/package-lock.json first (docs/RUSTORE_SUBMISSION.md §2)
+node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"; "out of step" = regenerate mobile/package-lock.json first (docs/RUSTORE_SUBMISSION.md §2)
 npm install                                    # installs mobile/package-lock.json, which came along
 # The Safari extension target bundles the repo's built extension-safari/
 # (plugins/withSafariExtension.js); outside the repo it must be told where.
@@ -83,12 +83,17 @@ case "$PK" in
   sb_publishable_?*) LC_ALL=C grep -aqF "$PK" "$B" && echo "publishable key ok" || echo "STOP, no publishable key" ;;
   *) echo "STOP: no EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY in $M/.env" ;;
 esac
-# Does this build sell? Decides the review notes (§3.6).
-RC=${EXPO_PUBLIC_REVENUECAT_IOS_KEY:-$(sed -n 's/^EXPO_PUBLIC_REVENUECAT_IOS_KEY=//p' "$M/.env")}
-case "$RC" in
-  *REPLACE*) echo "no in-app purchases (a placeholder, not a key): §3.6 as written" ;;
-  appl_?*) LC_ALL=C grep -aqF "$RC" "$B" && echo "sells: §3.6 with the In-App Purchase sentence" || echo "STOP, the appl_ key did not reach the bundle" ;;
-  *) echo "no in-app purchases: §3.6 as written" ;;
+# Does this build sell? Decides the review notes (§3.6). Read from the bundle,
+# not from .env: Expo also loads .env.local / .env.production and strips quotes
+# and `export`, so a key the .env text seems to lack can still be built in —
+# and on iOS that turns App Store billing on. A real key is appl_ + letters and
+# digits; the bare "appl_" of the app's own key check (in every bundle) and the
+# .env.example placeholder (appl_REPLACE_…) do not match.
+LC_ALL=C grep -aqE 'appl_[A-Za-z0-9]{8,}' "$B"
+case $? in
+  0) echo "sells: §3.6 with the In-App Purchase sentence" ;;
+  1) echo "no in-app purchases: §3.6 as written" ;;
+  *) echo "STOP: cannot read $B" ;;
 esac
 ```
 

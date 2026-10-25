@@ -212,11 +212,16 @@ Turning the model back on = unset `SMS_TEXT_MODEL_ENABLED` (or `true`).
 > Gradle downloads the NDK on the first build (≈2.5 GB, slow). The first full
 > build took ~22 min on the 6-core Intel Mac, later ones ~2 min.
 > `mobile/package-lock.json` is the lock of the verified mirror (its
-> `@cleanway/*` entries point at `vendor/`). npm workspaces, Dependabot and
-> CI's `npm ci` never touch it; CI only checks that its root ranges still match
-> `mobile/package.json` (`mobile/scripts/check-mirror-lock.mjs`). After any
-> change to `mobile/package.json`, regenerate it ("When `mobile/package.json`
-> changes", at the end of this section).
+> `@cleanway/*` entries point at `vendor/`). npm workspaces and CI's `npm ci`
+> never touch it, and Dependabot's weekly version updates change only the root
+> lock — but Dependabot's **security** updates do open PRs against it (#329,
+> undici): made outside the mirror, they rewrite the `@cleanway/*` entries to
+> `"*"`. Do not merge such a PR; make the bump in the mirror and close it. CI
+> checks that the lock's root ranges match `mobile/package.json` and that every
+> direct dependency resolves to the same version as in the root lock CI tests
+> (`mobile/scripts/check-mirror-lock.mjs`). After any change to
+> `mobile/package.json` or to a mobile dependency in the root lock, regenerate
+> it ("When `mobile/package.json` changes", at the end of this section).
 
 ```bash
 # 1) Toolchain. (The older sandbox toolchain — $HOME/Library/Caches/cleanway-dev
@@ -524,6 +529,35 @@ Only the ranges that changed are resolved again; everything else stays as
 locked. (Done this way on 2026-10-25 for #303's i18next and #230's
 react-native-web: i18next 26.5.10 and react-native-web 0.21.4, the same tree
 iOS 1.0.6 (6) was built with.)
+
+**The check names a version, not a range** (`<name>: mirror lock X, root
+package-lock.json Y`): the ranges match, but CI tests one release and the store
+builds ship another. Bring the older lock up to the newer release with
+`npm update <name> --package-lock-only --ignore-scripts` — in the mirror (then
+the check and the `cp` above), or at the repo root. At the root on a Mac the
+same command also drops the Linux-only `"libc"` lines and reorders a few
+entries, so commit only `<name>`'s hunk (`git add -p package-lock.json`); CI's
+`npm ci` verifies the result. If a newer release came out in between, run it in
+the other lock too. (2026-10-25: the root lock moved from i18next 26.5.3 to the
+mirror's 26.5.10; mobile typecheck and the plural keys rendered with and
+without `Intl.PluralRules` — all 10 locales, no log lines — pass on 26.5.10.)
+
+**A Dependabot security PR against `mobile/package-lock.json`** (title "… in
+/mobile"): do not merge it — it was made outside the mirror, so it rewrites the
+`@cleanway/*` entries to `"*"` and CI's check fails on it. Make the same bump in
+the mirror instead, for a transitive dependency too (`npm update` takes the
+newest release its dependents allow):
+
+```bash
+cd "$M"                     # after steps 1–2, up to and including the `cp` line
+npm update <name> --package-lock-only --ignore-scripts
+node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"
+diff "$REPO/mobile/package-lock.json" package-lock.json        # only <name>'s entries
+cp "$M/package-lock.json" "$REPO/mobile/package-lock.json"     # commit it, then close the Dependabot PR
+```
+
+(2026-10-25, #329: undici 6.29.0 → 6.29.1 — the same entry Dependabot wrote,
+without its `"*"`; #329 closed unmerged.)
 
 ---
 

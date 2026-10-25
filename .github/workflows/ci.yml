@@ -190,9 +190,17 @@ jobs:
       - name: Build mirror lock matches mobile/package.json
         # Store builds install from mobile/package-lock.json in a mirror outside
         # the monorepo (docs/RUSTORE_SUBMISSION.md §2), not from the root lock
-        # that npm ci, Dependabot and this job use. #303 bumped i18next without
-        # it, and three 1.0.6 builds resolved three different 26.x releases.
+        # this job's npm ci installs. #303 bumped i18next without it, and three
+        # 1.0.6 builds resolved three different 26.x releases; then the mirror
+        # locked 26.5.10 while this job kept testing 26.5.3. Ranges and the
+        # direct dependencies' resolved versions must both match.
         run: node mobile/scripts/check-mirror-lock.mjs
+
+      - name: Mirror lock check table test
+        # The check itself: a range bump without the mirror lock (#303), equal
+        # ranges at different releases, a Dependabot security PR's "*" for the
+        # vendored packages (#329), and no root lock = STOP, not a pass.
+        run: node mobile/scripts/test-check-mirror-lock.mjs
 
       - name: Host parser table test
         run: node mobile/scripts/test-host-parser.mjs
