@@ -33,6 +33,7 @@ from api.models.schemas import RiskLevel, DomainReason, ConfidenceLevel
 from api.services import ru_brands, ru_lures
 from api.services.hosting_platforms import dynamic_dns_suffix_of as _dynamic_dns_suffix_of
 from api.services.hosting_platforms import is_shared_platform_site, tenant_suffix_of
+from api.services.hosting_platforms import OPERATOR_SUFFIXES, is_operator_zone_name
 
 logger = logging.getLogger("cleanway.scoring")
 
@@ -881,22 +882,39 @@ def _has_fake_tld_in_subdomain(domain: str) -> bool:
     return bool(subdomain) and _registered_tld_lookalike(domain) is not None
 
 
+# The tenant zones whose registrable's rank is the platform's, not its
+# customers' (_platform_tenant_site): every shared suffix the scorer knows,
+# PSL-derived ones included (ondigitalocean.app, altervista.org, hf.space),
+# but not the operators' own suffixes (fonts.googleapis.com is Google's) nor
+# a zone with a restricted label (gov.scot: its names are the Scottish
+# Government's agencies, not anyone's pick).
+_RANK_TENANT_SUFFIXES: frozenset[str] = frozenset(
+    z for z in _SCORER_SHARED_SUFFIXES - OPERATOR_SUFFIXES
+    if not _RESTRICTED_ZONE_LABELS.intersection(z.split("."))
+)
+
+
 def _platform_tenant_site(domain: str) -> Optional[str]:
     """The customer's own name (x.webcindario.com of a.x.webcindario.com) when
-    `domain` is a site on a curated hosting platform or dynamic-DNS service
-    AND its registrable domain is the platform's (webcindario.com,
-    workers.dev, blogspot.com.br) — else None: for registered names, the
-    platforms' own hosts (www.tumblr.com, app.netlify.com) and zones where the
-    registrable already is the customer's name.
+    `domain` is a site on a hosting platform or dynamic-DNS service AND its
+    registrable domain is the platform's (webcindario.com, workers.dev,
+    blogspot.com.br, ondigitalocean.app) — else None: for registered names,
+    the platforms' own hosts and zones (www.tumblr.com, app.netlify.com,
+    login.secureserver.net — hosting_platforms operator_zones), the
+    operators' own suffixes (googleapis.com) and zones where the registrable
+    already is the customer's name.
 
     The registrable's rank and its place in the top lists are then the
     PLATFORM's popularity, which says nothing about one customer's site (the
-    analyzer's _name_is_vouched_for refuses it for the same reason). Curated
-    platforms only, as in is_hosting_platform_site: the PSL-derived suffixes
-    are mostly the operators' own infrastructure (fonts.googleapis.com),
-    whose names the registrable's owner runs."""
+    analyzer's _name_is_vouched_for refuses it for the same reason). Unlike
+    is_hosting_platform_site, the PSL-derived suffixes count. A restricted
+    registry does not: registrable_domain() already reads a name under
+    gov.ru or co.uk as the registrant's own, and the zones it does not know
+    (gov.scot) are left out of _RANK_TENANT_SUFFIXES."""
     d = (domain or "").lower().strip(".")
-    suffix = _dynamic_dns_suffix_of(d) or tenant_suffix_of(d, HOSTING_PLATFORMS)
+    if is_operator_zone_name(d):
+        return None
+    suffix = _dynamic_dns_suffix_of(d) or tenant_suffix_of(d, _RANK_TENANT_SUFFIXES)
     if not suffix:
         return None
     registrable = registrable_domain(d)
