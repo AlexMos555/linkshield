@@ -187,6 +187,13 @@ jobs:
       - name: Expo config plugins (release signing + ABI filters)
         run: node mobile/plugins/__tests__/plugins.test.js
 
+      - name: Build mirror lock matches mobile/package.json
+        # Store builds install from mobile/package-lock.json in a mirror outside
+        # the monorepo (docs/RUSTORE_SUBMISSION.md §2), not from the root lock
+        # that npm ci, Dependabot and this job use. #303 bumped i18next without
+        # it, and three 1.0.6 builds resolved three different 26.x releases.
+        run: node mobile/scripts/check-mirror-lock.mjs
+
       - name: Host parser table test
         run: node mobile/scripts/test-host-parser.mjs
 

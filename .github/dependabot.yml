@@ -9,7 +9,10 @@ updates:
   # One npm entry at the root: landing/, mobile/ and packages/ are workspaces
   # that share the root package-lock.json. Per-folder entries bumped a
   # workspace's package.json without the root lock, so every such PR failed
-  # "Verify package-lock is in sync".
+  # "Verify package-lock is in sync". A bump in mobile/package.json still needs
+  # mobile/package-lock.json (the store-build mirror's lock, which Dependabot
+  # never touches) regenerated in the same PR, or CI's "Build mirror lock
+  # matches mobile/package.json" fails: docs/RUSTORE_SUBMISSION.md, end of §2.
   - package-ecosystem: "npm"
     directory: "/"
     schedule:

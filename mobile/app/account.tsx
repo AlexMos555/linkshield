@@ -197,8 +197,14 @@ export default function AccountScreen() {
   const source = sourceKey(ent.source);
   const status = statusKey(ent.status, Boolean(ent.period_end));
   // Neither "Upgrade" nor "Add a device" in an iPhone build without App Store
-  // billing, nor where the paywall can only say "coming soon" (by region, as its prices).
-  const showUpgrade = PAID_PLANS_OFFERED && paidPlansVisible(i18n.language, Localization.getLocales()[0]?.regionCode);
+  // billing, nor where the paywall can only say "coming soon" (by region, as its
+  // prices, and in a build that cannot sell — RuStore, a store build without its SDK).
+  const showUpgrade = PAID_PLANS_OFFERED && paidPlansVisible({
+    language: i18n.language,
+    region: Localization.getLocales()[0]?.regionCode,
+    distribution: FREEMIUM.distribution,
+    storeBillingOn: storeBillingOn(),
+  });
   // A store build opens only the store's own page (manageUrlFor).
   const manageUrl = manageSubscriptionUrl(ent, FREEMIUM.distribution, ANDROID_PACKAGE);
   const canRestore = storeBillingOn();
