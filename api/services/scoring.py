@@ -935,6 +935,75 @@ def popularity_rank(signals: dict, domain: Optional[str] = None) -> Optional[int
     return min(ranks) if ranks else None
 
 
+# Signals that are each about as common on real sites as on phishing, so a
+# pile of them alone is a caution, never 'dangerous' (calculate_score caps it
+# at DANGEROUS_ABOVE). 'dangerous' needs at least one other signal with a
+# positive weight: a list or 6+ distinct OTX reports, the model, a brand or
+# look-alike rule, the domain's age, a high-abuse zone (.cfd, .sbs, .top …),
+# no HTTPS or a broken certificate, an address trick (@, //, %xx, a port, a
+# token in the URL). A signal added later is strong until it is listed here.
+#
+# дорожное.рф (Дорожное радио) was 'dangerous' 53 on the 2026-10-25 benchmark
+# with five of them: no security headers, no MX on an alias domain, a
+# renewed certificate, and two hops to dorognoe.ru, its own main site.
+# Replayed on the live signals of 2026-10-26 (1,735 hosts): with the
+# high-abuse zone counted weak too, 6 of the 219 dangerous fresh phishing
+# hosts fell to caution — 4 of them on .cfd/.click/.sbs — so it is not. As
+# listed, 2 of the 219 do (bnb-binance.ac.cn, buscarmi-icloud.app: they send
+# a foreign scanner on to binance.com and google.com).
+WEAK_SIGNALS: frozenset[str] = frozenset({
+    # what the probes saw on the site: hygiene, not intent
+    "missing_headers", "no_mx_record", "new_certificate", "multiple_redirects",
+    "excessive_redirects", "cross_domain_redirect", "low_dns_ttl", "many_a_records",
+    # the shape of the name and the address
+    "high_entropy", "medium_entropy", "high_digit_ratio", "excessive_special_chars",
+    "many_special_chars", "long_domain_name", "unnatural_ngram", "suspicious_ngram",
+    "abnormal_vowel_ratio", "consonant_cluster", "suspicious_keyword", "excessive_subdomains",
+    "long_url", "very_long_url", "deep_path",
+    # where it is registered or hosted
+    "risky_tld_medium", "abused_registrar", "risky_registrar", "dynamic_dns_host", "url_shortener",
+    # one to five community mentions: victims are mentioned too
+    "alienvault_otx",
+})
+# The top of the caution band (a score above it is 'dangerous').
+DANGEROUS_ABOVE = 50
+
+
+# A domain registered this long ago has outlived a 90-day ACME certificate:
+# a fresh certificate on it is a renewal or a re-issue, not a new site.
+_RENEWAL_DOMAIN_AGE_DAYS = 90
+
+
+def _certificate_is_a_renewal(signals: dict) -> bool:
+    """Something shows the name is older than its fresh certificate:
+
+    * it is a customer's site on a hosting platform (_platform_tenant_site)
+      and the certificate names it only through a wildcard (signals
+      'cert_wildcard', site_probes): the platform's certificate, renewed for
+      every site under it at once — every Vercel tenant showed the same
+      57-day-old *.vercel.app one. A wildcard on the site's own registered
+      name is its registrant's and still counts: kits put one on a fresh
+      domain for all their subdomains (ferrari.info4571011.pro,
+      bradesco.ne12topaz.digital, 2026-10-25);
+    * the name is in the top-1M popularity ranking (popularity_rank — never a
+      hosting platform's rank for its tenant): the ranking measures months of
+      links and visits;
+    * its registration is at least _RENEWAL_DOMAIN_AGE_DAYS old.
+
+    Without any of these the certificate may be the site's first, as for a
+    kit's fresh domain. (Certificate Transparency would tell a renewal apart
+    directly — crt.sh lists the previous, still valid certificate for 13 of
+    the 15 real sites it answered for — but on 2026-10-26 it took 7.2 s at
+    the median, and 31 of 96 queries failed (502s, timeouts): far past the
+    3 s analysis budget.)"""
+    if signals.get("cert_wildcard") and _platform_tenant_site(signals.get("domain", "")):
+        return True
+    if popularity_rank(signals) is not None:
+        return True
+    age = signals.get("domain_age_days")
+    return isinstance(age, int) and age >= _RENEWAL_DOMAIN_AGE_DAYS
+
+
 def _is_url_shortener(domain: str) -> bool:
     """Check if domain is a known URL shortener."""
     base = _extract_base_domain(domain)
@@ -1116,28 +1185,39 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # the platform's (_platform_tenant_site): OTX is asked about the full
     # host, so its pulses are about the tenant, and workers.dev or at.ua being
     # popular vouches for none of their customers (audit 2026-10-25).
-    alienvault_pulses = signals.get("alienvault_pulse_count", 0)
-    if alienvault_pulses > 0:
+    #
+    # The tiers count DISTINCT reports (analyzer._distinct_otx_reports): a
+    # cloned pulse is the same report again. tztu.ru's 44 pulses were one
+    # malspam-header dump and 43 copies of it, and "Flagged in 44 reports"
+    # (+60) plus a renewed certificate made a real plant's site 'dangerous'
+    # (benchmark 2026-10-25). Without a pulse list (an older caller) the
+    # count is used, as before.
+    alienvault_pulses = signals.get("alienvault_pulse_count", 0) or 0
+    _distinct = signals.get("alienvault_distinct_pulses")
+    otx_reports = alienvault_pulses if _distinct is None else min(_distinct, alienvault_pulses)
+    if otx_reports > 0:
         from api.services.doh_gateway import _registrable_domain
         _reg = _platform_tenant_site(ascii_domain) or _registrable_domain(domain)
         _rank = popularity_rank(signals, ascii_domain)
         _top_ranked = _rank is not None and _rank <= 100_000
         _ranked = _rank is not None
-        if _reg not in TOP_10K_RANKS and not _top_ranked and not (_ranked and alienvault_pulses <= 5):
+        if _reg not in TOP_10K_RANKS and not _top_ranked and not (_ranked and otx_reports <= 5):
             _discount = _reg in TOP_100K or _ranked
-            if alienvault_pulses > 5:
+            _copies = (f" ({otx_reports} distinct, the rest are copies)"
+                       if otx_reports < alienvault_pulses else "")
+            if otx_reports > 5:
                 _wt = 30 if _discount else 60
                 score += _wt
                 reasons.append(DomainReason(
                     signal="alienvault_otx_high", weight=_wt,
-                    detail=f"Flagged in {alienvault_pulses} AlienVault OTX threat reports",
+                    detail=f"Flagged in {alienvault_pulses} AlienVault OTX threat reports{_copies}",
                 ))
             else:
                 _wt = 15 if _discount else 30
                 score += _wt
                 reasons.append(DomainReason(
                     signal="alienvault_otx", weight=_wt,
-                    detail=f"Found in {alienvault_pulses} AlienVault OTX threat report(s)",
+                    detail=f"Found in {alienvault_pulses} AlienVault OTX threat report(s){_copies}",
                 ))
 
     # IPQualityScore
@@ -1392,7 +1472,13 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
 
     # ── 3.12 Suspicious keywords in domain ──
     # Unicode form: the keyword list is words a human would read in the name.
-    keyword = _check_suspicious_keywords(unicode_domain)
+    # On a hosting platform or a dynamic-DNS service the name someone chose
+    # is the tenant's label (domain_name above): this rule read 'vercel' of
+    # secure-login-portal.vercel.app. Measured 2026-10-26 on brandless
+    # tenants: the word is in 49 of 815 in the four licensed feeds' fresh
+    # phishing (6.0%) and in 18 of 5,221 with real Chrome traffic (CrUX
+    # global origins, 0.34%).
+    keyword = _keyword_in_name(domain_name) if tenant_label else _check_suspicious_keywords(unicode_domain)
     if keyword:
         score += 10
         reasons.append(DomainReason(
@@ -1644,8 +1730,16 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.27 SSL: New certificate (issued < 7 days ago) ──
+    # A stand-in for "the site is new", so it yields to anything that shows
+    # the name is older than its certificate (_certificate_is_a_renewal).
+    # Let's Encrypt and the other ACME authorities issue 90-day certificates
+    # that renew every ~60 days: on 2026-10-26, 17 of the 157 real Russian
+    # sites with a certificate (data/benchmark_legit_ru.txt) had one under a
+    # week old — tztu.ru's renewal of 2026-10-24 and дорожное.рф's of
+    # 2026-10-20 among them (benchmark 2026-10-25) — against 22-29% of the
+    # fresh phishing hosts: a weak signal (WEAK_SIGNALS).
     cert_age = signals.get("cert_age_days")
-    if cert_age is not None and cert_age < 7:
+    if cert_age is not None and cert_age < 7 and not _certificate_is_a_renewal(signals):
         score += 15
         reasons.append(DomainReason(
             signal="new_certificate", weight=15,
@@ -1812,13 +1906,21 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     except Exception:
         pass  # ML is optional — don't break scoring if unavailable
 
+    # ── Weak signals alone are a caution (WEAK_SIGNALS) ──
+    # Every reason stays in the list, so the person sees what was found; only
+    # the verdict stops at the top of the caution band.
+    if score > DANGEROUS_ABOVE and not any(
+        r.weight > 0 and r.signal not in WEAK_SIGNALS for r in reasons
+    ):
+        score = DANGEROUS_ABOVE
+
     # ── Clamp ──
     score = max(0, min(100, score))
 
     # ── Determine level ──
     if score <= 20:
         level = RiskLevel.safe
-    elif score <= 50:
+    elif score <= DANGEROUS_ABOVE:
         level = RiskLevel.caution
     else:
         level = RiskLevel.dangerous
@@ -2872,8 +2974,12 @@ def _is_tenant_lure(word: str, brand: str) -> bool:
 
 def _check_suspicious_keywords(domain: str) -> Optional[str]:
     base = _extract_base_domain(domain)
-    name = base.split(".")[0].lower()
-    for part in name.replace("_", "-").split("-"):
+    return _keyword_in_name(base.split(".")[0])
+
+
+def _keyword_in_name(name: str) -> Optional[str]:
+    """The first word of `name` (split at '-' and '_') on _SUSPICIOUS_KEYWORDS."""
+    for part in name.lower().replace("_", "-").split("-"):
         if part in _SUSPICIOUS_KEYWORDS:
             return part
     return None

@@ -450,6 +450,8 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
         "spamhaus_hit": _value(outcomes, "spamhaus", False),
         "surbl_hit": _value(outcomes, "surbl", False),
         "alienvault_pulse_count": alienvault_data.get("pulse_count", 0),
+        # Separate reports among them (copies of one pulse are one report).
+        "alienvault_distinct_pulses": alienvault_data.get("distinct_pulses"),
         "ipqs_risk_score": ipqs_data.get("risk_score", 0),
         "ipqs_phishing": ipqs_data.get("phishing", False),
         "malware_bazaar_hit": _value(outcomes, "malware_bazaar", False),
@@ -484,6 +486,10 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
         "certificate_problem": ssl_data.get("certificate_problem"),
         "free_ssl": ssl_data.get("is_free_ssl", False),
         "cert_age_days": ssl_data.get("cert_age_days"),
+        # The certificate names this host only through a wildcard (site_probes);
+        # on a hosting platform that is the platform's, and its age is not the
+        # site's (scoring._certificate_is_a_renewal).
+        "cert_wildcard": bool(ssl_data.get("cert_wildcard")),
         "missing_security_headers": headers_data.get("missing"),
         # DNS
         "dns_ttl": dns_data.get("ttl"),
@@ -912,7 +918,8 @@ async def check_feodo_tracker(domain: str) -> bool:
 async def check_alienvault_otx(domain: str) -> dict:
     """
     Check domain reputation via AlienVault OTX (free, no key for basic lookup).
-    Returns reputation data including pulse count (community threat reports).
+    Returns reputation data including pulse count (community threat reports)
+    and how many of those pulses are distinct reports (_distinct_otx_reports).
     """
     async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.get(
@@ -922,13 +929,36 @@ async def check_alienvault_otx(domain: str) -> dict:
         if resp.status_code != 200:
             return {}
         data = resp.json()
-        pulse_count = data.get("pulse_info", {}).get("count", 0)
+        pulse_info = data.get("pulse_info") or {}
+        pulse_count = pulse_info.get("count", 0) or 0
         reputation = data.get("reputation", 0)
         return {
             "pulse_count": pulse_count,  # Number of community threat reports
+            "distinct_pulses": _distinct_otx_reports(pulse_info.get("pulses"), pulse_count),
             "reputation": reputation,
             "hit": pulse_count > 0,
         }
+
+
+def _distinct_otx_reports(pulses: Any, count: int) -> int:
+    """How many of a name's `count` OTX pulses are separate reports.
+
+    Anyone can clone a pulse, and a clone carries the original's tags and
+    indicators. tztu.ru (a carbon-black plant, benchmark 2026-10-25) had 44
+    pulses: one 12,732-indicator malspam-header dump from 2021 and 43 copies of
+    it under names like "test" and "test CREATED 1 YEAR AGO by testivk1 clone"
+    — "Flagged in 44 AlienVault OTX threat reports", +60. So a pulse is keyed
+    by its tag set and indicator count; one with neither keeps its own id and
+    is never merged. Pulses OTX counted but did not list are taken as
+    distinct, so a truncated list never lowers the count by guesswork.
+    """
+    listed = [p for p in pulses if isinstance(p, dict)] if isinstance(pulses, list) else []
+    keys = set()
+    for i, p in enumerate(listed):
+        tags = frozenset(str(t).strip().lower() for t in (p.get("tags") or []) if str(t).strip())
+        size = p.get("indicator_count")
+        keys.add((tags, size) if tags or size else ("id", p.get("id") or i))
+    return len(keys) + max(0, int(count or 0) - len(listed))
 
 
 # ═══════════════════════════════════════════════════════════════
