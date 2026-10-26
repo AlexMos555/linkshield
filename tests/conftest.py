@@ -432,6 +432,18 @@ def _hermetic_ssrf_dns(monkeypatch):
     monkeypatch.setattr(domain_validator, "_getaddrinfo", _fake)
 
 
+# ─── RDAP bootstrap file: one per test ─────────────────────────────
+
+@pytest.fixture(autouse=True)
+def _fresh_rdap_bootstrap(monkeypatch):
+    """The RDAP lookup keeps IANA's zone → server file in memory for a day
+    (api/services/rdap.py). A test whose stubbed network answered that fetch
+    must not leave its zone list to the next test."""
+    from api.services import rdap
+
+    monkeypatch.setattr(rdap, "_bootstrap", rdap._Bootstrap())
+
+
 # ─── Site probes over a table instead of the network ───────────────
 
 @pytest.fixture

@@ -504,6 +504,8 @@ def _load_abused_registrars() -> tuple[set[str], set[str]]:
 
 
 _ABUSED_REGISTRARS_HIGH, _ABUSED_REGISTRARS_MEDIUM = _load_abused_registrars()
+# How long a registration is "recent" for the registrar rules (3.33).
+_RECENT_REGISTRATION_DAYS = 90
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1753,8 +1755,15 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.33 Registrar reputation ──
+    # data/abused_registrars.json ranks registrars by the phishing domains
+    # registered through them, which are used within days of registration.
+    # An old registration says nothing about its registrar: on the
+    # 2026-10-26 replay, the first with RDAP data, the rule fired on 192 of
+    # 376 real sites of known age (ncfr.org, 28 years at Tucows) and on 124
+    # of 527 phishing hosts. So it counts only for a recent registration,
+    # and only when the registry gave the date.
     registrar = signals.get("registrar", "")
-    if registrar:
+    if registrar and domain_age is not None and domain_age < _RECENT_REGISTRATION_DAYS:
         registrar_lower = registrar.lower()
         if any(ar in registrar_lower for ar in _ABUSED_REGISTRARS_HIGH):
             score += 12

@@ -2426,7 +2426,7 @@
             "Per decidere se il sito è pericoloso, il nostro server può:"
           ],
           "items": [
-            "chiedere informazioni sul nome a servizi di controllo esterni: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX e IPQualityScore, e scoprire quando il sito è stato registrato tramite il servizio RDAP rdap.org. Ricevono solo il nome del sito, non chi sei;",
+            "chiedere informazioni sul nome a servizi di controllo esterni: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX e IPQualityScore, e scoprire quando il sito è stato registrato chiedendolo via RDAP al registro della sua estensione di dominio (per .com, Verisign). Ricevono solo il nome del sito, non chi sei;",
             "confrontare la propria risposta con quella del filtro DNS di Cloudflare (1.1.1.1 for Families), che riceve il nome del sito con una normale richiesta DNS;",
             "esaminare il sito stesso (indirizzo, certificato e impostazioni) dal nostro server, non dal tuo telefono;",
             "nei casi dubbi, chiedere un secondo parere a un modello di IA di Anthropic. Riceve solo segnali astratti, senza il nome del sito."

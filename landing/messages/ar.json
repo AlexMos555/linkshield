@@ -875,7 +875,7 @@
           "لتحديد ما إذا كان الموقع خطيرًا، قد يقوم خادمنا بما يلي:"
         ],
         "items": [
-          "سؤال خدمات فحص خارجية عن الاسم: Google Safe Browsing وPhishTank وURLhaus وMalwareBazaar وThreatFox وPhishStats وSpamhaus DBL وSURBL وAlienVault OTX وIPQualityScore، ومعرفة تاريخ تسجيل الموقع عبر خدمة RDAP ‏rdap.org. وهي لا تتلقى إلا اسم الموقع، لا هويتك؛",
+          "سؤال خدمات فحص خارجية عن الاسم: Google Safe Browsing وPhishTank وURLhaus وMalwareBazaar وThreatFox وPhishStats وSpamhaus DBL وSURBL وAlienVault OTX وIPQualityScore، ومعرفة تاريخ تسجيل الموقع من سجلّ نطاقه عبر بروتوكول RDAP (لنطاقات ‎.com هو Verisign). وهي لا تتلقى إلا اسم الموقع، لا هويتك؛",
           "مقارنة جوابه بجواب مرشّح DNS من Cloudflare ‏(1.1.1.1 for Families)، الذي يتلقى اسم الموقع في طلب DNS عادي؛",
           "النظر في الموقع نفسه (عنوانه وشهادته وإعداداته) من خادمنا، لا من هاتفك؛",
           "في الحالات الملتبسة، طلب رأي ثانٍ من نموذج ذكاء اصطناعي من Anthropic. ولا يتلقى إلا علامات مجرّدة، دون اسم الموقع."
