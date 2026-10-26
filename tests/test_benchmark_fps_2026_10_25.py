@@ -15,19 +15,23 @@ signals that are each as common on real sites as on phishing:
   dorognoe.ru, the station's own site) − ml_safe_override 10.
 
 What changed:
-  * OTX is tiered on distinct reports, not copies (analyzer counts them).
+  * OTX is tiered on distinct reports, not copies: OTX marks a clone
+    (`cloned_from`), and the analyzer counts originals.
   * new_certificate is not raised when something shows the name is older than
-    its certificate: on a hosting platform, the platform's wildcard (renewed
-    for every site under it); a top-1M popularity rank; a domain age of 90+
-    days.
-  * Weak signals alone cannot make a verdict 'dangerous' (scoring.WEAK_SIGNALS);
-    one to five OTX reports are among them, six or more are not.
+    its certificate: on a hosting platform, the platform's own wildcard
+    (*.vercel.app, renewed for every site under it — not a tenant's
+    *.x.workers.dev); a top-1M popularity rank; a domain age of 90+ days.
+  * Weak signals alone cannot make a verdict 'dangerous' (scoring.WEAK_SIGNALS).
+    OTX is not one of them: its auto-feeds list fresh phishing within a day.
+    Only one to five reports that are all 90+ days old are weak. On a hosting
+    customer's site that names a brand (coinbase-com-08739.x.workers.dev)
+    the pile counts.
   * The suspicious-keyword rule reads a hosting tenant's own label.
 """
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import httpx
 import pytest
@@ -61,14 +65,32 @@ def ml_says(monkeypatch):
 # ── The two rows, replayed through the analyzer's own signal builder ──
 
 def _clone_pulses() -> list[dict]:
-    """tztu.ru's pulse list as OTX answered it on 2026-10-26 (names, tags and
-    indicator counts; ids made up)."""
+    """tztu.ru's pulse list as OTX answered it on 2026-10-26 (ids shortened).
+
+    One original, a 2021 malspam-header dump by cnoscsoc@att.com (d4ec91), and
+    43 copies: 4 OctoSeek clones of it (2023), 22 testivk1 clones of one of
+    those (2024; one with 12,733 indicators) and 17 msudosos clones of one of
+    the testivk1 ones (2026-05). Tags and indicator counts are the
+    original's."""
     tags = ["msi file", "tuesday", "malspam email", "headers", "anna paula", "utf8"]
-    rows = ([("test", 12732)] * 21 + [("test CREATED 1 YEAR AGO by testivk1 clone", 12732)] * 17
-            + [("Network IOCs                     (Pulse Created by cnoscsoc@att.com)", 12732)] * 4
-            + [("test", 12733), ("Network IOCs", 12732)])
-    return [{"id": f"p{i}", "name": name, "tags": list(tags), "indicator_count": n}
-            for i, (name, n) in enumerate(rows)]
+
+    def pulse(pid, cloned_from, created, name, size=12732, modified=None):
+        return {"id": pid, "cloned_from": cloned_from, "name": name, "tags": list(tags),
+                "indicator_count": size, "created": f"{created}T10:00:00.000000",
+                "modified": f"{modified or created}T10:00:00.000000"}
+
+    rows = [pulse("d4ec91", None, "2021-09-24", "Network IOCs", modified="2023-05-11")]
+    rows += [pulse(f"octo{i}", "d4ec91", "2023-09-15", "Network IOCs (Pulse Created by cnoscsoc@att.com)")
+             for i in range(4)]
+    rows += [pulse("f6a190", "octo0", "2024-11-27", "test")]
+    rows += [pulse(f"tv{i}", "octo0", "2024-11-27", "test") for i in range(18)]
+    rows += [pulse("bf71e3", "octo0", "2024-11-27", "test")]
+    rows += [pulse("fc3446", "f6a190", "2024-11-27", "test", size=12733),
+             pulse("3923c4", "f6a190", "2024-11-27", "test")]
+    rows += [pulse(f"ms{i}", "bf71e3", "2026-05-08", "test CREATED 1 YEAR AGO by testivk1 clone")
+             for i in range(17)]
+    assert len(rows) == 44
+    return rows
 
 
 def _otx_payload(pulses: list[dict], count: int | None = None) -> dict:
@@ -97,7 +119,8 @@ def _score(host: str, outcomes: dict):
 def test_tztu_ru_44_copies_of_one_otx_dump_and_a_renewal_are_not_dangerous(monkeypatch):
     _otx_answers(monkeypatch, _otx_payload(_clone_pulses()))
     otx = asyncio.run(analyzer.check_alienvault_otx("tztu.ru"))
-    assert otx["pulse_count"] == 44 and otx["distinct_pulses"] == 2
+    assert otx["pulse_count"] == 44 and otx["distinct_pulses"] == 1
+    assert otx["newest_report_days"] > 365    # the original, made in 2021
     score, level, reasons = _score("tztu.ru", {
         "alienvault": (otx, True),
         "ssl": ({"reachable": True, "has_ssl": True, "issuer": "Let's Encrypt", "is_free_ssl": True,
@@ -113,7 +136,7 @@ def test_tztu_ru_44_copies_of_one_otx_dump_and_a_renewal_are_not_dangerous(monke
     assert level != RiskLevel.dangerous, (score, codes)
     assert "alienvault_otx_high" not in codes and codes["alienvault_otx"] == 30
     otx_reason = next(r for r in reasons if r.signal == "alienvault_otx")
-    assert "44" in otx_reason.detail and "2 distinct" in otx_reason.detail
+    assert "44" in otx_reason.detail and "1 distinct" in otx_reason.detail
 
 
 def test_dorozhnoe_rf_weak_signals_alone_stop_at_caution():
@@ -137,39 +160,117 @@ def test_dorozhnoe_rf_weak_signals_alone_stop_at_caution():
 
 # ── OTX: copies are not reports ──
 
-def test_distinct_reports_are_counted_by_content():
+_TODAY = date(2026, 10, 26)
+
+
+def _pulse(pid: str, *, cloned_from: str | None = None, created: str = "2026-10-20",
+           modified: str | None = None, tags=("phishing",), size: int = 2000) -> dict:
+    """A pulse as OTX lists it (the fields the analyzer reads)."""
+    return {"id": pid, "cloned_from": cloned_from, "tags": list(tags), "indicator_count": size,
+            "created": f"{created}T08:00:00.000000", "modified": f"{modified or created}T08:00:00.000000"}
+
+
+def test_clones_traced_back_to_one_original_are_one_report():
+    # tztu.ru: an original, clones of it, clones of the clones.
+    assert analyzer._otx_reports(_clone_pulses(), 44, today=_TODAY)[0] == 1
+
+
+def test_a_daily_feed_is_a_report_a_day_though_tags_and_size_repeat():
+    # spotifypremiumapk.pk (phishing): LTNA-Australia's "Phishing | <date> | Part n/566",
+    # one pulse a day (50 of them, June to October 2026), each tagged
+    # 'phishing' with 2,000 indicators, none a clone.
+    feed = [_pulse(f"day{i}", created=f"2026-{6 + i // 28:02d}-{1 + i % 28:02d}") for i in range(50)]
+    distinct, newest = analyzer._otx_reports(feed, 50, today=_TODAY)
+    assert distinct == 50
+    assert newest == (_TODAY - date(2026, 7, 22)).days     # day49: the latest of the feed
+
+
+def test_clones_of_a_pulse_otx_did_not_list_are_one_report():
+    pulses = [_pulse("a", cloned_from="gone"), _pulse("b", cloned_from="gone"), _pulse("c")]
+    assert analyzer._otx_reports(pulses, 3, today=_TODAY)[0] == 2
+
+
+def test_a_clone_cycle_does_not_hang():
+    pulses = [_pulse("a", cloned_from="b"), _pulse("b", cloned_from="a")]
+    assert analyzer._otx_reports(pulses, 2, today=_TODAY)[0] >= 1
+
+
+def test_without_the_clone_field_copies_are_told_by_content():
+    # Older answers carry no `cloned_from`: a copy keeps the original's tags and size.
     pulses = [{"id": "a", "tags": ["phishing"], "indicator_count": 356},
               {"id": "b", "tags": ["Phishing"], "indicator_count": 356},       # a copy (tag case aside)
               {"id": "c", "tags": ["phishing"], "indicator_count": 143},       # another day's list
               {"id": "d", "tags": [], "indicator_count": 14}]
-    assert analyzer._distinct_otx_reports(pulses, 4) == 3
+    assert analyzer._otx_reports(pulses, 4)[0] == 3
 
 
 def test_reports_without_tags_or_size_are_never_merged():
     pulses = [{"id": "a", "name": "x"}, {"id": "b", "name": "y"}, {"id": "c"}]
-    assert analyzer._distinct_otx_reports(pulses, 3) == 3
+    assert analyzer._otx_reports(pulses, 3)[0] == 3
 
 
 def test_reports_otx_did_not_list_count_as_distinct():
     copies = [{"id": str(i), "tags": ["dump"], "indicator_count": 9000} for i in range(50)]
     # OTX listed 50 of 60: the 10 unseen ones are not assumed to be copies.
-    assert analyzer._distinct_otx_reports(copies, 60) == 11
-    assert analyzer._distinct_otx_reports([], 7) == 7
+    assert analyzer._otx_reports(copies, 60)[0] == 11
+    assert analyzer._otx_reports([], 7)[0] == 7
 
 
-def test_otx_answer_carries_the_distinct_count(monkeypatch):
-    pulses = [{"id": str(i), "tags": [f"campaign-{i}"], "indicator_count": 10 + i} for i in range(3)]
+# ── OTX: how old the newest report is ──
+
+def test_newest_report_age_is_when_the_newest_report_was_made():
+    pulses = [_pulse("a", created="2025-12-20"), _pulse("b", created="2024-01-02")]
+    assert analyzer._otx_reports(pulses, 2, today=_TODAY) == (2, (_TODAY - date(2025, 12, 20)).days)
+
+
+def test_a_pulse_kept_up_to_date_is_as_old_as_it_was_made():
+    # centralnic-dns.com (2026-10-26): on phishdestroy's "(Live)" lists, made in
+    # 2026-03 and modified that morning, and on a 2023 pulse.
+    pulses = [_pulse("live1", created="2026-03-23", modified="2026-10-26"),
+              _pulse("live2", created="2026-03-22", modified="2026-10-26"),
+              _pulse("old", created="2023-08-22", modified="2023-09-24")]
+    assert analyzer._otx_reports(pulses, 3, today=_TODAY) == (3, (_TODAY - date(2026, 3, 23)).days)
+
+
+def test_only_a_modified_date_is_used_when_created_is_missing():
+    pulses = [{"id": "a", "cloned_from": None, "tags": [], "indicator_count": 1,
+               "modified": "2026-10-20T00:00:00"}]
+    assert analyzer._otx_reports(pulses, 1, today=_TODAY) == (1, 6)
+
+
+def test_a_copy_does_not_make_an_old_report_new():
+    # tztu.ru: the newest copies are from 2026-05, the original from 2021.
+    _, newest = analyzer._otx_reports(_clone_pulses(), 44, today=_TODAY)
+    assert newest == (_TODAY - date(2021, 9, 24)).days
+
+
+@pytest.mark.parametrize("pulses,count", [
+    ([{"id": "a", "cloned_from": None, "tags": ["x"], "indicator_count": 3}], 1),   # no dates
+    ([_pulse("a", created="2024-01-01")], 2),                                      # one not listed
+    ([_pulse("a", cloned_from="gone", created="2024-01-01")], 1),                  # original not listed
+    ([], 3),
+])
+def test_newest_report_age_is_unknown_unless_every_report_is_dated(pulses, count):
+    assert analyzer._otx_reports(pulses, count, today=_TODAY)[1] is None
+
+
+def test_otx_answer_carries_the_distinct_count_and_the_newest_age(monkeypatch):
+    pulses = [_pulse(str(i), tags=[f"campaign-{i}"], size=10 + i, created=f"2026-10-{20 + i}")
+              for i in range(3)]
     _otx_answers(monkeypatch, _otx_payload(pulses))
     out = asyncio.run(analyzer.check_alienvault_otx("example.net"))
-    assert out == {"pulse_count": 3, "distinct_pulses": 3, "reputation": 0, "hit": True}
+    newest = (datetime.now(timezone.utc).date() - date(2026, 10, 22)).days
+    assert out == {"pulse_count": 3, "distinct_pulses": 3, "newest_report_days": newest,
+                   "reputation": 0, "hit": True}
 
 
-def test_build_signals_passes_the_distinct_count_and_the_wildcard_flag():
+def test_build_signals_passes_the_otx_summary_and_the_wildcard_flag():
     sig = analyzer._build_signals("example.net", "example.net", False, {
-        "alienvault": ({"pulse_count": 44, "distinct_pulses": 2, "hit": True}, True),
+        "alienvault": ({"pulse_count": 44, "distinct_pulses": 2, "newest_report_days": 1264, "hit": True}, True),
         "ssl": ({"reachable": True, "has_ssl": True, "cert_age_days": 1, "cert_wildcard": True}, True),
     }, 13)
     assert sig["alienvault_pulse_count"] == 44 and sig["alienvault_distinct_pulses"] == 2
+    assert sig["alienvault_newest_report_days"] == 1264
     assert sig["cert_wildcard"] is True
 
 
@@ -228,6 +329,21 @@ def test_a_wildcard_on_the_sites_own_name_still_counts(ml_off, host):
     assert _codes(reasons).get("new_certificate") == 15
 
 
+@pytest.mark.parametrize("host", [
+    "rblxcashout.swervostore.workers.dev",   # *.swervostore.workers.dev, issued 0 days ago (2026-10-26)
+    "a.x.workers.dev",                       # *.x.workers.dev: the account's
+    "a.x.pages.dev",                         # *.x.pages.dev: the project's
+    "login.evil.duckdns.org",                # *.evil.duckdns.org: DNS-01 on the tenant's own zone
+    "a.x.duckdns.org",
+])
+def test_a_tenants_own_wildcard_one_level_down_still_counts(ml_off, host):
+    # A wildcard covers one label, so it is the platform's (*.workers.dev)
+    # only for a host directly under the platform; deeper, the parent is the
+    # tenant's own name and the certificate is as old as the tenant's site.
+    _, _, reasons = scoring.calculate_score(_signals(host, cert_age_days=1, cert_wildcard=True))
+    assert _codes(reasons).get("new_certificate") == 15
+
+
 def test_young_domain_keeps_its_fresh_certificate(ml_off):
     _, _, reasons = scoring.calculate_score(_signals("young-example.xyz", cert_age_days=1, domain_age_days=3))
     codes = _codes(reasons)
@@ -248,7 +364,8 @@ def test_weak_signals_are_codes_the_scorer_emits():
     # The model, the brand rules, the age, the zone and the lists are what make 'dangerous'.
     assert not scoring.WEAK_SIGNALS & {
         "ml_high_risk", "ml_suspicious", "typosquatting", "homograph_attack", "brand_subdomain_abuse",
-        "domain_new", "domain_very_new", "alienvault_otx_high", "no_https", "invalid_certificate",
+        "domain_new", "domain_very_new", "alienvault_otx", "alienvault_otx_high", "no_https",
+        "invalid_certificate",
         "safe_browsing", "phishstats", "ipqs_phishing", "favicon_brand_clone", "risky_tld_high",
     }
 
@@ -284,15 +401,89 @@ def test_a_young_domain_is_a_strong_signal(ml_off):
     assert level == RiskLevel.dangerous and score > 50
 
 
-def test_few_otx_reports_need_corroboration_many_do_not(ml_off):
-    weak = dict(missing_security_headers=list(site_probes._SECURITY_HEADERS), cert_age_days=1)
-    score, level, _ = scoring.calculate_score(_signals(
-        "otx-pile-example.net", alienvault_pulse_count=5, alienvault_distinct_pulses=5, **weak))
-    assert level == RiskLevel.caution and score == 50
+_OTX_PILE = dict(missing_security_headers=list(site_probes._SECURITY_HEADERS), dns_has_mx=False,
+                 cert_age_days=1)
+
+
+@pytest.mark.parametrize("reports,newest", [
+    (1, 0),        # CyberHunterAutoFeed's list of the day (portal-canalbradesco.digital 74, 2026-10-26)
+    (4, 23),       # phishdestroy, 2026-10-03 (ingdirect-accesoweb-login.com)
+    (5, 89),
+    (3, None),     # how old is not known: as before
+    (8, 2000),     # six or more reports, however old
+])
+def test_otx_reports_let_the_pile_count(ml_off, reports, newest):
+    extra = dict(alienvault_pulse_count=reports, alienvault_distinct_pulses=reports, **_OTX_PILE)
+    if newest is not None:
+        extra["alienvault_newest_report_days"] = newest
+    score, level, reasons = scoring.calculate_score(_signals("otx-pile-example.net", **extra))
+    assert any(r.signal.startswith("alienvault") for r in reasons)
+    assert level == RiskLevel.dangerous and score > 50, (score, _codes(reasons))
+
+
+@pytest.mark.parametrize("reports,newest", [(1, 310), (2, 1264), (5, 90)])
+def test_few_old_otx_reports_need_corroboration(ml_off, reports, newest):
+    # job-shop.com: one pulse of 2025-12-20; crcdn.org, webglobe.com: two of 2022-2023
+    # (sites that left the allowlist in #284, 2026-10-26).
     score, level, reasons = scoring.calculate_score(_signals(
-        "otx-pile-example.net", alienvault_pulse_count=8, alienvault_distinct_pulses=8, **weak))
-    assert _codes(reasons)["alienvault_otx_high"] == 60
+        "otx-pile-example.net", alienvault_pulse_count=reports, alienvault_distinct_pulses=reports,
+        alienvault_newest_report_days=newest, **_OTX_PILE))
+    otx = next(r for r in reasons if r.signal == "alienvault_otx")
+    assert otx.weight == 30 and f"{newest} days" in otx.detail
+    assert level == RiskLevel.caution and score == 50
+
+
+def test_old_otx_reports_still_count_with_a_strong_signal(ml_says):
+    ml_says(0.95)
+    score, level, _ = scoring.calculate_score(_signals(
+        "otx-pile-example.net", alienvault_pulse_count=2, alienvault_distinct_pulses=2,
+        alienvault_newest_report_days=500, **_OTX_PILE))
     assert level == RiskLevel.dangerous and score > 50
+
+
+# ── A brand word in a hosting customer's own name lets the pile count ──
+
+# What the probes saw on such hosts (2026-10-26): no security headers and the
+# platform's subdomain depth; with a fresh certificate the pile passes 50.
+_TENANT_PILE = dict(missing_security_headers=list(site_probes._SECURITY_HEADERS), cert_age_days=1,
+                    redirect_count=2, redirect_cross_domain=True)
+
+
+@pytest.mark.parametrize("host", [
+    "coinbase-com-08739.lclarkpz.workers.dev",                  # phishing, 61 -> 50 under the cap
+    "dashboard.booking-com-waedubai-hotels.webflow.io",          # one of six booking-com*.webflow.io
+    "d4d5qr1cpoos73dg9ntg.booking-dubai-desert-safaria.webflow.io",
+    "ozon-777.x.workers.dev",                                   # a Russian brand of four letters or more
+])
+def test_a_brand_word_in_a_tenants_name_lets_weak_signals_count(ml_off, host):
+    score, level, reasons = scoring.calculate_score(_signals(host, **_TENANT_PILE))
+    assert sum(r.weight for r in reasons) > 50
+    assert level == RiskLevel.dangerous and score > 50, (score, _codes(reasons))
+
+
+@pytest.mark.parametrize("host", [
+    "polished-hall-486c.brandaq.workers.dev",       # a real Worker (CrUX), brandless
+    "blog.aebooking-com-dubai-hotels.webflow.io",   # glued to other letters: not the word
+    "coinbase-com-08739.weak-pile-example.ru",      # a registered name: the brand rules' business
+    "vk-club.x.workers.dev",                        # Russian brands under four letters are too common
+])
+def test_without_a_tenant_brand_word_the_pile_stops_at_caution(ml_off, host):
+    score, level, reasons = scoring.calculate_score(_signals(host, **_TENANT_PILE))
+    assert sum(r.weight for r in reasons) > 50, _codes(reasons)
+    assert level == RiskLevel.caution and score == 50, (score, _codes(reasons))
+
+
+@pytest.mark.parametrize("host,word", [
+    ("coinbase-com-08739.lclarkpz.workers.dev", "coinbase"),
+    ("bradesco-login.zaka25.duckdns.org", None),         # not a typosquat target
+    ("dhl_express.pro.typeform.com", "dhl"),
+    ("kitpanelas-tiktok.vercel.app", "tiktok"),
+    ("verifiedbadgehub.vercel.app", None),
+    ("ozon-skidki.netlify.app", "ozon"),
+    ("www.coinbase.com", None),                         # not on a hosting platform
+])
+def test_tenant_brand_word(host, word):
+    assert scoring._tenant_brand_word(host) == word
 
 
 def test_blocklist_verdicts_are_untouched():

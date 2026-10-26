@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Optional
 
 import httpx
@@ -450,8 +450,10 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
         "spamhaus_hit": _value(outcomes, "spamhaus", False),
         "surbl_hit": _value(outcomes, "surbl", False),
         "alienvault_pulse_count": alienvault_data.get("pulse_count", 0),
-        # Separate reports among them (copies of one pulse are one report).
+        # Separate reports among them (copies of one pulse are one report),
+        # and how many days ago the newest was made (_otx_reports).
         "alienvault_distinct_pulses": alienvault_data.get("distinct_pulses"),
+        "alienvault_newest_report_days": alienvault_data.get("newest_report_days"),
         "ipqs_risk_score": ipqs_data.get("risk_score", 0),
         "ipqs_phishing": ipqs_data.get("phishing", False),
         "malware_bazaar_hit": _value(outcomes, "malware_bazaar", False),
@@ -918,8 +920,9 @@ async def check_feodo_tracker(domain: str) -> bool:
 async def check_alienvault_otx(domain: str) -> dict:
     """
     Check domain reputation via AlienVault OTX (free, no key for basic lookup).
-    Returns reputation data including pulse count (community threat reports)
-    and how many of those pulses are distinct reports (_distinct_otx_reports).
+    Returns reputation data including pulse count (community threat reports),
+    how many of those pulses are distinct reports and how many days ago the
+    newest of them was made (_otx_reports).
     """
     async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.get(
@@ -932,33 +935,96 @@ async def check_alienvault_otx(domain: str) -> dict:
         pulse_info = data.get("pulse_info") or {}
         pulse_count = pulse_info.get("count", 0) or 0
         reputation = data.get("reputation", 0)
+        distinct, newest = _otx_reports(pulse_info.get("pulses"), pulse_count)
         return {
             "pulse_count": pulse_count,  # Number of community threat reports
-            "distinct_pulses": _distinct_otx_reports(pulse_info.get("pulses"), pulse_count),
+            "distinct_pulses": distinct,
+            "newest_report_days": newest,
             "reputation": reputation,
             "hit": pulse_count > 0,
         }
 
 
-def _distinct_otx_reports(pulses: Any, count: int) -> int:
-    """How many of a name's `count` OTX pulses are separate reports.
+def _otx_reports(pulses: Any, count: int, today: Optional[date] = None) -> tuple[int, Optional[int]]:
+    """How many of a name's `count` OTX pulses are separate reports, and how
+    many days before `today` (UTC) the newest of them was made — None when
+    that is not known for every report.
 
-    Anyone can clone a pulse, and a clone carries the original's tags and
-    indicators. tztu.ru (a carbon-black plant, benchmark 2026-10-25) had 44
-    pulses: one 12,732-indicator malspam-header dump from 2021 and 43 copies of
-    it under names like "test" and "test CREATED 1 YEAR AGO by testivk1 clone"
-    — "Flagged in 44 AlienVault OTX threat reports", +60. So a pulse is keyed
-    by its tag set and indicator count; one with neither keeps its own id and
-    is never merged. Pulses OTX counted but did not list are taken as
-    distinct, so a truncated list never lowers the count by guesswork.
+    Copies. Anyone can clone a pulse, and OTX marks the clone with the pulse
+    it was cloned from (`cloned_from`). tztu.ru (a carbon-black plant,
+    benchmark 2026-10-25) had 44 pulses: one 12,732-indicator malspam-header
+    dump made in 2021, and 43 clones of it and of its clones, under names like
+    "test" and "test CREATED 1 YEAR AGO by testivk1 clone" — "Flagged in 44
+    AlienVault OTX threat reports", +60. So a pulse is traced back along
+    `cloned_from` through the listed pulses to its original, and one report
+    is an original with its copies; clones of a pulse OTX did not list are
+    copies of that one. Pulses that are not marked as clones are separate
+    reports even when tags and size repeat: a daily feed ("Phishing | Oct 24,
+    2026 | Part 193/566", the tag 'phishing', 2,000 indicators, one a day) is
+    one report a day — spotifypremiumapk.pk had 50. Only an answer without
+    the field falls back to the content a copy keeps (tags and indicator
+    count); a pulse with neither is never merged. Pulses OTX counted but did
+    not list are taken as distinct, so a truncated list never lowers the
+    count by guesswork.
+
+    Age. A report is as old as its original (_otx_pulse_date): a copy made
+    later repeats old content. Unknown — None — when some report has no
+    date, its original was not listed, or some counted pulses were not
+    listed (scoring then treats the reports as current).
     """
     listed = [p for p in pulses if isinstance(p, dict)] if isinstance(pulses, list) else []
-    keys = set()
+    by_id = {str(p["id"]): p for p in listed if p.get("id")}
+    reports: dict[tuple, Optional[date]] = {}
     for i, p in enumerate(listed):
-        tags = frozenset(str(t).strip().lower() for t in (p.get("tags") or []) if str(t).strip())
-        size = p.get("indicator_count")
-        keys.add((tags, size) if tags or size else ("id", p.get("id") or i))
-    return len(keys) + max(0, int(count or 0) - len(listed))
+        if "cloned_from" in p:
+            original, seen = p, set()
+            while original.get("cloned_from") and str(original["cloned_from"]) in by_id \
+                    and id(original) not in seen:
+                seen.add(id(original))
+                original = by_id[str(original["cloned_from"])]
+            if original.get("cloned_from") and id(original) not in seen:
+                # A copy of a pulse OTX did not list: dated by that pulse, unknown.
+                reports[("pulse", str(original["cloned_from"]))] = None
+                continue
+            key = ("pulse", str(original.get("id") or f"#{i}"))
+            reports[key] = _otx_pulse_date(original)
+        else:
+            tags = frozenset(str(t).strip().lower() for t in (p.get("tags") or []) if str(t).strip())
+            size = p.get("indicator_count")
+            key = ("content", tags, size) if tags or size else ("pulse", str(p.get("id") or f"#{i}"))
+            when = _otx_pulse_date(p)
+            if key in reports:
+                # Which of the same content is the original is not known: the newest stands.
+                before = reports[key]
+                when = None if before is None or when is None else max(before, when)
+            reports[key] = when
+    unlisted = max(0, int(count or 0) - len(listed))
+    dates = list(reports.values())
+    if unlisted or not dates or any(d is None for d in dates):
+        newest = None
+    else:
+        newest = max(0, ((today or datetime.now(timezone.utc).date()) - max(dates)).days)
+    return len(reports) + unlisted, newest
+
+
+def _otx_pulse_date(pulse: dict) -> Optional[date]:
+    """When a pulse was made: its `created` (OTX: '2021-09-24T15:35:11.574000'),
+    else its `modified`, else None.
+
+    Not the later of the two: some pulses are kept up to date for months —
+    phishdestroy's "Active Phishing & Crypto Scam Domains (Live)", made
+    2026-03-22, was modified on 2026-10-26 — and would make every name ever
+    put on them look freshly reported (centralnic-dns.com, CentralNic's DNS
+    domain, is on it). An auto-feed of fresh phishing makes a new pulse
+    every day or month instead (CyberHunterAutoFeed's "Malware Filter -
+    Phishing List - 24-10-2026", "PhishDestroy Monthly - All Domains -
+    2026-10")."""
+    for field in ("created", "modified"):
+        try:
+            return date.fromisoformat(str(pulse.get(field) or "")[:10])
+        except ValueError:
+            continue
+    return None
 
 
 # ═══════════════════════════════════════════════════════════════
