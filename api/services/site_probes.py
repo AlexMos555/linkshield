@@ -190,7 +190,7 @@ def _check_ssl_sync(domain: str) -> dict:
         if _may_have_no_https(exc) and _serves_plain_http(domain, address, deadline):
             return {"reachable": True, "has_ssl": False, "http_only": True}
         return _unreachable(exc)
-    return _describe_certificate(cert or {})
+    return _describe_certificate(cert or {}, domain)
 
 
 def _may_have_no_https(exc: BaseException) -> bool:
@@ -276,7 +276,7 @@ def _parse_head(raw: bytes) -> Optional[tuple[int, Optional[str]]]:
     return int(status_line[1]), location
 
 
-def _describe_certificate(cert: dict) -> dict:
+def _describe_certificate(cert: dict, domain: str = "") -> dict:
     issuer = dict(x[0] for x in cert.get("issuer", []))
     issuer_org = issuer.get("organizationName", "Unknown")
     issuer_cn = issuer.get("commonName", "")
@@ -287,7 +287,28 @@ def _describe_certificate(cert: dict) -> dict:
         "issuer": issuer_org,
         "is_free_ssl": is_free,
         "cert_age_days": _cert_age_days(cert.get("notBefore")),
+        "cert_wildcard": _covered_only_by_wildcard(cert, domain),
     }
+
+
+def _covered_only_by_wildcard(cert: dict, domain: str) -> bool:
+    """True when the certificate names `domain` only through a wildcard
+    (*.vercel.app for verifiedbadgehub.vercel.app) and not by itself.
+
+    On a hosting platform such a certificate is the platform's, shared by
+    every site under it, and its age says when the platform last renewed it
+    — nothing about this site: every Vercel tenant showed the same
+    57-day-old *.vercel.app certificate on 2026-10-26 (the scorer decides
+    whose wildcard it is: scoring._certificate_is_a_renewal). A wildcard
+    covers exactly one label (RFC 6125 §6.4.3), so *.example.com does not
+    cover a.b.example.com.
+    """
+    host = (domain or "").lower().rstrip(".")
+    names = [v.lower().rstrip(".") for k, v in cert.get("subjectAltName", ()) or () if k == "DNS"]
+    if not host or host in names:
+        return False
+    parent = host.split(".", 1)[1] if "." in host else ""
+    return bool(parent) and f"*.{parent}" in names
 
 
 def _cert_age_days(not_before: Optional[str]) -> Optional[int]:

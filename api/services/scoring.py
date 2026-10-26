@@ -935,6 +935,99 @@ def popularity_rank(signals: dict, domain: Optional[str] = None) -> Optional[int
     return min(ranks) if ranks else None
 
 
+# Signals that are each about as common on real sites as on phishing, so a
+# pile of them alone is a caution, never 'dangerous' (calculate_score caps it
+# at DANGEROUS_ABOVE). 'dangerous' needs at least one other signal with a
+# positive weight: a list or OTX, the model, a brand or look-alike rule, the
+# domain's age, a high-abuse zone (.cfd, .sbs, .top …), no HTTPS or a broken
+# certificate, an address trick (@, //, %xx, a port, a token in the URL). A
+# signal added later is strong until it is listed here.
+#
+# дорожное.рф (Дорожное радио) was 'dangerous' 53 on the 2026-10-25 benchmark
+# with five of them: no security headers, no MX on an alias domain, a
+# renewed certificate, and two hops to dorognoe.ru, its own main site.
+# Replayed on the live signals of 2026-10-26 (1,735 hosts): with the
+# high-abuse zone counted weak too, 6 of the 219 dangerous fresh phishing
+# hosts fell to caution — 4 of them on .cfd/.click/.sbs — so it is not. As
+# listed, 2 of the 219 do (bnb-binance.ac.cn, buscarmi-icloud.app: they send
+# a foreign scanner on to binance.com and google.com).
+#
+# OTX is not on the list: its auto-feeds (CyberHunterAutoFeed, phishdestroy)
+# list fresh phishing within about a day, and with one to five reports
+# counted weak, 50 of the fresh phishing hosts OTX answered for on
+# 2026-10-26 fell from 'dangerous' to caution 50 (portal-canalbradesco.digital
+# 74, kucoindeep.com 68). Only one to five reports whose newest is
+# _OTX_STALE_DAYS or more old are weak — calculate_score marks that one.
+WEAK_SIGNALS: frozenset[str] = frozenset({
+    # what the probes saw on the site: hygiene, not intent
+    "missing_headers", "no_mx_record", "new_certificate", "multiple_redirects",
+    "excessive_redirects", "cross_domain_redirect", "low_dns_ttl", "many_a_records",
+    # the shape of the name and the address
+    "high_entropy", "medium_entropy", "high_digit_ratio", "excessive_special_chars",
+    "many_special_chars", "long_domain_name", "unnatural_ngram", "suspicious_ngram",
+    "abnormal_vowel_ratio", "consonant_cluster", "suspicious_keyword", "excessive_subdomains",
+    "long_url", "very_long_url", "deep_path",
+    # where it is registered or hosted
+    "risky_tld_medium", "abused_registrar", "risky_registrar", "dynamic_dns_host", "url_shortener",
+})
+# The top of the caution band (a score above it is 'dangerous').
+DANGEROUS_ABOVE = 50
+
+# One to five OTX reports whose newest was made this many days ago or earlier
+# (analyzer._otx_reports) are history, not a live campaign, and weak:
+# victims and references are listed too (#284). Real OTX answers of
+# 2026-10-26: the 53 fresh phishing hosts with one to five distinct reports
+# had their newest 0-55 days old (auto-feeds of the day, phishdestroy's
+# monthly lists); the 6 real sites with one to five that left the allowlist
+# in #284 had theirs 217-1,579 days old (centralnic-dns.com, job-shop.com,
+# pbsadverxo.com, webglobe.com, cmgroup.com, crcdn.org). When the age is not
+# known, the reports count as current.
+_OTX_STALE_DAYS = 90
+
+
+# A domain registered this long ago has outlived a 90-day ACME certificate:
+# a fresh certificate on it is a renewal or a re-issue, not a new site.
+_RENEWAL_DOMAIN_AGE_DAYS = 90
+
+
+def _certificate_is_a_renewal(signals: dict) -> bool:
+    """Something shows the name is older than its fresh certificate:
+
+    * it is a customer's site directly under a hosting platform's suffix
+      (_platform_tenant_site is the host itself) and the certificate names it
+      only through a wildcard (signals 'cert_wildcard', site_probes). A
+      wildcard covers one label, so that wildcard is the platform's own
+      (*.vercel.app, *.wixsite.com), renewed for every site under it at once —
+      every Vercel tenant showed the same 57-day-old *.vercel.app one. One
+      level down it is the tenant's: *.<account>.workers.dev,
+      *.<project>.pages.dev, or a DNS-01 wildcard on the tenant's own
+      dynamic-DNS zone (*.evil.duckdns.org), as old as the tenant's site: on
+      fresh phishing of 2026-10-26, 10 of the 11 wildcards under a week old
+      on such hosts were the tenant's (rblxcashout.swervostore.workers.dev:
+      *.swervostore.workers.dev, issued that day). A wildcard
+      on the site's own registered name is its registrant's too: kits put one
+      on a fresh domain for all their subdomains (ferrari.info4571011.pro,
+      bradesco.ne12topaz.digital, 2026-10-25);
+    * the name is in the top-1M popularity ranking (popularity_rank — never a
+      hosting platform's rank for its tenant): the ranking measures months of
+      links and visits;
+    * its registration is at least _RENEWAL_DOMAIN_AGE_DAYS old.
+
+    Without any of these the certificate may be the site's first, as for a
+    kit's fresh domain. (Certificate Transparency would tell a renewal apart
+    directly — crt.sh lists the previous, still valid certificate for 13 of
+    the 15 real sites it answered for — but on 2026-10-26 it took 7.2 s at
+    the median, and 31 of 96 queries failed (502s, timeouts): far past the
+    3 s analysis budget.)"""
+    host = (signals.get("domain") or "").lower().strip(".")
+    if signals.get("cert_wildcard") and host and _platform_tenant_site(host) == host:
+        return True
+    if popularity_rank(signals) is not None:
+        return True
+    age = signals.get("domain_age_days")
+    return isinstance(age, int) and age >= _RENEWAL_DOMAIN_AGE_DAYS
+
+
 def _is_url_shortener(domain: str) -> bool:
     """Check if domain is a known URL shortener."""
     base = _extract_base_domain(domain)
@@ -955,6 +1048,9 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     """
     score = 0
     reasons: list[DomainReason] = []
+    # Reasons that are weak this time though their code is not in
+    # WEAK_SIGNALS (old OTX reports, _OTX_STALE_DAYS).
+    weak_here: list[DomainReason] = []
     domain: str = signals.get("domain", "")
 
     # ── IDN normalisation, done ONCE, up front ──
@@ -1116,29 +1212,49 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # the platform's (_platform_tenant_site): OTX is asked about the full
     # host, so its pulses are about the tenant, and workers.dev or at.ua being
     # popular vouches for none of their customers (audit 2026-10-25).
-    alienvault_pulses = signals.get("alienvault_pulse_count", 0)
-    if alienvault_pulses > 0:
+    #
+    # The tiers count DISTINCT reports (analyzer._otx_reports): a
+    # cloned pulse is the same report again. tztu.ru's 44 pulses were one
+    # malspam-header dump and 43 copies of it, and "Flagged in 44 reports"
+    # (+60) plus a renewed certificate made a real plant's site 'dangerous'
+    # (benchmark 2026-10-25). Without a pulse list (an older caller) the
+    # count is used, as before.
+    #
+    # One to five reports that are all _OTX_STALE_DAYS or more old are weak
+    # (WEAK_SIGNALS): they still score, but alone with other weak signals
+    # they make a caution, not a 'dangerous'.
+    alienvault_pulses = signals.get("alienvault_pulse_count", 0) or 0
+    _distinct = signals.get("alienvault_distinct_pulses")
+    otx_reports = alienvault_pulses if _distinct is None else min(_distinct, alienvault_pulses)
+    if otx_reports > 0:
         from api.services.doh_gateway import _registrable_domain
         _reg = _platform_tenant_site(ascii_domain) or _registrable_domain(domain)
         _rank = popularity_rank(signals, ascii_domain)
         _top_ranked = _rank is not None and _rank <= 100_000
         _ranked = _rank is not None
-        if _reg not in TOP_10K_RANKS and not _top_ranked and not (_ranked and alienvault_pulses <= 5):
+        if _reg not in TOP_10K_RANKS and not _top_ranked and not (_ranked and otx_reports <= 5):
             _discount = _reg in TOP_100K or _ranked
-            if alienvault_pulses > 5:
+            _copies = (f" ({otx_reports} distinct, the rest are copies)"
+                       if otx_reports < alienvault_pulses else "")
+            if otx_reports > 5:
                 _wt = 30 if _discount else 60
                 score += _wt
                 reasons.append(DomainReason(
                     signal="alienvault_otx_high", weight=_wt,
-                    detail=f"Flagged in {alienvault_pulses} AlienVault OTX threat reports",
+                    detail=f"Flagged in {alienvault_pulses} AlienVault OTX threat reports{_copies}",
                 ))
             else:
                 _wt = 15 if _discount else 30
                 score += _wt
+                _newest = signals.get("alienvault_newest_report_days")
+                _stale = isinstance(_newest, int) and _newest >= _OTX_STALE_DAYS
+                _age = f", the newest {_newest} days old" if _stale else ""
                 reasons.append(DomainReason(
                     signal="alienvault_otx", weight=_wt,
-                    detail=f"Found in {alienvault_pulses} AlienVault OTX threat report(s)",
+                    detail=f"Found in {alienvault_pulses} AlienVault OTX threat report(s){_copies}{_age}",
                 ))
+                if _stale:
+                    weak_here.append(reasons[-1])
 
     # IPQualityScore
     if signals.get("ipqs_phishing"):
@@ -1392,7 +1508,13 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
 
     # ── 3.12 Suspicious keywords in domain ──
     # Unicode form: the keyword list is words a human would read in the name.
-    keyword = _check_suspicious_keywords(unicode_domain)
+    # On a hosting platform or a dynamic-DNS service the name someone chose
+    # is the tenant's label (domain_name above): this rule read 'vercel' of
+    # secure-login-portal.vercel.app. Measured 2026-10-26 on brandless
+    # tenants: the word is in 49 of 815 in the four licensed feeds' fresh
+    # phishing (6.0%) and in 18 of 5,221 with real Chrome traffic (CrUX
+    # global origins, 0.34%).
+    keyword = _keyword_in_name(domain_name) if tenant_label else _check_suspicious_keywords(unicode_domain)
     if keyword:
         score += 10
         reasons.append(DomainReason(
@@ -1644,8 +1766,16 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.27 SSL: New certificate (issued < 7 days ago) ──
+    # A stand-in for "the site is new", so it yields to anything that shows
+    # the name is older than its certificate (_certificate_is_a_renewal).
+    # Let's Encrypt and the other ACME authorities issue 90-day certificates
+    # that renew every ~60 days: on 2026-10-26, 17 of the 157 real Russian
+    # sites with a certificate (data/benchmark_legit_ru.txt) had one under a
+    # week old — tztu.ru's renewal of 2026-10-24 and дорожное.рф's of
+    # 2026-10-20 among them (benchmark 2026-10-25) — against 22-29% of the
+    # fresh phishing hosts: a weak signal (WEAK_SIGNALS).
     cert_age = signals.get("cert_age_days")
-    if cert_age is not None and cert_age < 7:
+    if cert_age is not None and cert_age < 7 and not _certificate_is_a_renewal(signals):
         score += 15
         reasons.append(DomainReason(
             signal="new_certificate", weight=15,
@@ -1812,13 +1942,24 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     except Exception:
         pass  # ML is optional — don't break scoring if unavailable
 
+    # ── Weak signals alone are a caution (WEAK_SIGNALS) ──
+    # Every reason stays in the list, so the person sees what was found; only
+    # the verdict stops at the top of the caution band. Not on a hosting
+    # customer's site that names a brand (_tenant_brand_word): there a pile
+    # of weak signals is how fresh phishing looks.
+    if score > DANGEROUS_ABOVE and not any(
+        r.weight > 0 and r.signal not in WEAK_SIGNALS and not any(r is w for w in weak_here)
+        for r in reasons
+    ) and not _tenant_brand_word(ascii_domain):
+        score = DANGEROUS_ABOVE
+
     # ── Clamp ──
     score = max(0, min(100, score))
 
     # ── Determine level ──
     if score <= 20:
         level = RiskLevel.safe
-    elif score <= 50:
+    elif score <= DANGEROUS_ABOVE:
         level = RiskLevel.caution
     else:
         level = RiskLevel.dangerous
@@ -2844,6 +2985,43 @@ def _check_brand_on_hosting_tenant(domain: str) -> Optional[str]:
     return None
 
 
+# Brands looked for as a whole word of a hosting customer's own name by
+# _tenant_brand_word: the global typosquat targets and the Russian brands of
+# four letters or more (vk, ok, mts are words of too many names).
+_TENANT_BRAND_WORDS = frozenset(
+    set(GLOBAL_TYPOSQUAT_TARGETS) | {b for b in _RU_ZONE_BRANDS if len(b) >= _RU_ZONE_BRAND_PART_MIN})
+
+
+def _tenant_brand_word(domain: str) -> Optional[str]:
+    """A brand (_TENANT_BRAND_WORDS) as one word, between hyphens or
+    underscores, of the labels a hosting or dynamic-DNS customer chose
+    (_platform_tenant_site): coinbase-com-08739.lclarkpz.workers.dev,
+    dashboard.booking-com-waedubai-hotels.webflow.io — else None, also for
+    registered names, whose brand rules read the whole name.
+
+    calculate_score lets such a host's weak signals add up past caution
+    (WEAK_SIGNALS). The brand rules miss these names: the brand is no whole
+    label (_check_brand_in_subdomain) and has no lure word beside it
+    (_check_brand_on_hosting_tenant). Measured 2026-10-26 on fresh phishing
+    the weak-signal cap held at caution 50: it gives back 5 of the 18
+    hosting-tenant subdomains probed live and 7 of the 55 in the address-only
+    samples of four licensed feeds and Phishing.Database (six of these on
+    booking-com*.webflow.io). On real sites it made nothing 'dangerous': not
+    one of the 44 hosting customers with a brand word and real Chrome
+    traffic (CrUX global, probed live) nor of the 119,306 in the
+    address-only sets."""
+    d = (domain or "").lower().strip(".")
+    site = _platform_tenant_site(d)
+    if not site:
+        return None
+    suffix = site.split(".", 1)[1]
+    for label in d[: -(len(suffix) + 1)].split("."):
+        for word in label.replace("_", "-").split("-"):
+            if word in _TENANT_BRAND_WORDS:
+                return word
+    return None
+
+
 # Lure words a site builder's free name carries that a brand's own campaign
 # page or a fan page does not: facebook-supports.blogspot.com,
 # gmail-support.netlify.app, facebook-new-security.blogspot.com (OpenPhish /
@@ -2872,8 +3050,12 @@ def _is_tenant_lure(word: str, brand: str) -> bool:
 
 def _check_suspicious_keywords(domain: str) -> Optional[str]:
     base = _extract_base_domain(domain)
-    name = base.split(".")[0].lower()
-    for part in name.replace("_", "-").split("-"):
+    return _keyword_in_name(base.split(".")[0])
+
+
+def _keyword_in_name(name: str) -> Optional[str]:
+    """The first word of `name` (split at '-' and '_') on _SUSPICIOUS_KEYWORDS."""
+    for part in name.lower().replace("_", "-").split("-"):
         if part in _SUSPICIOUS_KEYWORDS:
             return part
     return None
