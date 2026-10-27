@@ -18,7 +18,8 @@ Order of attempts for one query (proxy_to_upstream):
      and the caller serves a stale cached answer or SERVFAIL.
 A request the query no longer waits for (the hedge loser, or one still out at
 the deadline) is not cancelled: it runs on until the upstream answers it, and
-keeps its slot until then (see MAX_IN_FLIGHT).
+keeps its slot until then (see MAX_IN_FLIGHT) — at most REQUEST_TIMEOUT_S after
+it was sent, when it is dropped together with its connection.
 
 A per-upstream breaker (3 consecutive failures or lost hedges → skipped for
 10 s, then retried) means a dead upstream costs the hedge delay a handful of
@@ -59,10 +60,18 @@ CLOUDFLARE_IP_DOH_URL = "https://1.1.1.1/dns-query"  # same resolver, no DNS loo
 DEFAULT_UPSTREAMS = (CLOUDFLARE_DOH_URL, CLOUDFLARE_IP_DOH_URL)
 DOH_CONTENT_TYPE = "application/dns-message"
 UPSTREAM_TIMEOUT_S = 4.0
-# How long one HTTP request may stay open — longer than a query waits: a
-# request the query gave up on runs on until the upstream answers (see
-# proxy_to_upstream). Cloudflare answers a zone whose servers never respond
-# with SERVFAIL after up to ~5.4 s (measured 2026-10-23).
+# How long one request may stay open at the upstream — longer than a query
+# waits: a request the query gave up on runs on until the upstream answers
+# (see proxy_to_upstream). Cloudflare answers a zone whose servers never
+# respond with SERVFAIL after up to ~5.4 s (measured 2026-10-23). httpx's read
+# timeout (the same value) does not bound a request over HTTP/2: it times one
+# network read on the shared connection, and any other stream's data starts
+# it again, so a stream the upstream never answers stayed open for as long as
+# the connection carried traffic (probe 2026-10-27: still open after 8 s at a
+# 1 s timeout; stand: every slot gone in ~9 s with 2 % such names). Past it,
+# _ask gives the request up and drops its connection — cancelled alone, its
+# stream would stay open there (see MAX_IN_FLIGHT); the requests still on
+# that connection fail and are re-sent once on a new one (_RETRY_ONCE).
 REQUEST_TIMEOUT_S = 10.0
 HEDGE_AFTER_S = 0.4
 MAX_RESPONSE_BYTES = 65535
@@ -227,13 +236,14 @@ class Upstream:
 class _Attempt:
     """One query's request to one upstream."""
 
-    __slots__ = ("up", "sent", "sent_at", "abandoned")
+    __slots__ = ("up", "sent", "sent_at", "abandoned", "client")
 
     def __init__(self, up: Upstream, loop: asyncio.AbstractEventLoop) -> None:
         self.up = up
         self.sent = loop.create_future()  # done once it is at the upstream
         self.sent_at: Optional[float] = None  # holds a slot (and a stream) there since
         self.abandoned = False  # the query has its outcome without this answer
+        self.client: Optional[httpx.AsyncClient] = None  # the one its request went out on
 
     def mark_sent(self, now: float) -> None:
         self.sent_at = now
@@ -245,9 +255,11 @@ _upstreams: list[Upstream] = []
 # The event loop the upstreams' clients and slots, and the zones, belong to.
 _loop: object = None
 _zones: dict[str, _Zone] = {}
-# Requests no query waits for any more, running on until the upstream answers.
-# Referenced here because the event loop keeps only weak references to tasks.
+# Requests no query waits for any more, running on until the upstream answers,
+# and clients being closed (_drop). Referenced here because the event loop
+# keeps only weak references to tasks.
 _abandoned: set[asyncio.Task] = set()
+_closing: dict[httpx.AsyncClient, asyncio.Task] = {}
 
 
 def configured_urls() -> list[str]:
@@ -274,6 +286,7 @@ def _bind(loop: asyncio.AbstractEventLoop, ups: list[Upstream]) -> None:
     if _loop is not loop:
         _loop, _zones = loop, {}
         _abandoned.clear()
+        _closing.clear()
         for up in ups:
             up.client = up.slots = None
     for up in ups:
@@ -303,17 +316,42 @@ def _reset_upstream_client_for_tests() -> None:
     _loop = None
     _zones = {}
     _abandoned.clear()
+    _closing.clear()
+
+
+async def _close(client: httpx.AsyncClient) -> None:
+    try:
+        await client.aclose()
+    except Exception:  # noqa: BLE001
+        logger.debug("DoH upstream client close failed", exc_info=True)
+
+
+def _drop(up: Upstream, client: Optional[httpx.AsyncClient]) -> None:
+    """Close `client` and its connection; the upstream's next request opens a
+    new one."""
+    if up.client is client:
+        up.client = None
+    if client is None or client in _closing:
+        return
+    task = asyncio.get_running_loop().create_task(_close(client))
+    _closing[client] = task
+    task.add_done_callback(lambda _t: _closing.pop(client, None))
 
 
 async def close_upstream_client() -> None:
-    """Release the pooled connections (call from app shutdown)."""
+    """Release the pooled connections (call from app shutdown). Requests no
+    query waits for are cancelled first: their streams go with the
+    connection, and failed by the close each would log an upstream failure
+    (5-9 warnings per API restart on the stand, 2026-10-27)."""
+    if _loop is asyncio.get_running_loop() and _abandoned:
+        left = list(_abandoned)
+        for task in left:
+            task.cancel()
+        await asyncio.gather(*left, return_exceptions=True)
     for up in _upstreams:
         client, up.client = up.client, None
         if client is not None:
-            try:
-                await client.aclose()
-            except Exception:  # noqa: BLE001
-                logger.debug("DoH upstream client close failed", exc_info=True)
+            await _close(client)
 
 
 def valid_answer(wire: bytes, status: int, body: bytes) -> bool:
@@ -333,11 +371,13 @@ _RETRY_ONCE = (httpx.RemoteProtocolError, httpx.ReadError, httpx.WriteError)
 async def _post(attempt: _Attempt, wire: bytes) -> httpx.Response:
     up = attempt.up
     try:
-        return await _client_for(up).post(up.url, content=wire, headers=_HEADERS)
+        attempt.client = _client_for(up)
+        return await attempt.client.post(up.url, content=wire, headers=_HEADERS)
     except _RETRY_ONCE:
         if attempt.abandoned:
             raise
-        return await _client_for(up).post(up.url, content=wire, headers=_HEADERS)
+        attempt.client = _client_for(up)
+        return await attempt.client.post(up.url, content=wire, headers=_HEADERS)
 
 
 def _zone_of(wire: bytes) -> str:
@@ -442,13 +482,18 @@ async def _ask(attempt: _Attempt, wire: bytes, zone: str, z: Optional[_Zone]) ->
         try:
             if attempt.abandoned:  # its query ended before its task started
                 return None
-            resp = await _post(attempt, wire)
+            resp = await asyncio.wait_for(_post(attempt, wire), REQUEST_TIMEOUT_S)
         finally:
             _release(zone, z, up)
         if valid_answer(wire, resp.status_code, resp.content):
             body = resp.content
         else:
             logger.warning("DoH upstream returned an unusable answer (HTTP %d)", resp.status_code)
+    except asyncio.TimeoutError:
+        _drop(up, attempt.client)
+        doh_metrics.METRICS.inc("upstream_dropped")
+        logger.warning("DoH upstream left a request unanswered for %.0f s: connection dropped",
+                       REQUEST_TIMEOUT_S)
     except Exception as exc:  # noqa: BLE001
         logger.warning("DoH upstream call failed: %s", type(exc).__name__)
     if attempt.abandoned:

@@ -511,3 +511,94 @@ async def test_over_http_1_1_the_cap_is_the_connection_pool(holding_upstream, mo
     held = await _ask_many([f"r{i}.dead{i}.example" for i in range(40)])
     assert len(holding_upstream.posted) == doh_upstream._UPSTREAM_MAX_CONNECTIONS
     await asyncio.gather(*held)
+
+
+async def _h2c_upstream():
+    """A real HTTP/2 DoH upstream over plain TCP (prior knowledge): names
+    under `.dead.example` are never answered, every other name at once."""
+    import h2.config
+    import h2.connection
+    import h2.events
+
+    async def handle(reader, writer):
+        conn = h2.connection.H2Connection(config=h2.config.H2Configuration(client_side=False))
+        conn.initiate_connection()
+        writer.write(conn.data_to_send())
+        bodies: dict = {}
+        try:
+            while data := await reader.read(65535):
+                for ev in conn.receive_data(data):
+                    if isinstance(ev, h2.events.RequestReceived):
+                        bodies[ev.stream_id] = b""
+                    elif isinstance(ev, h2.events.DataReceived):
+                        bodies[ev.stream_id] = bodies.get(ev.stream_id, b"") + ev.data
+                        conn.acknowledge_received_data(ev.flow_controlled_length, ev.stream_id)
+                    elif isinstance(ev, h2.events.StreamEnded):
+                        body = bodies.pop(ev.stream_id, b"")
+                        if parse_qname(body).endswith(".dead.example"):
+                            continue
+                        resp = answer(body)
+                        conn.send_headers(ev.stream_id, [(":status", "200"),
+                                                         ("content-type", "application/dns-message"),
+                                                         ("content-length", str(len(resp)))])
+                        conn.send_data(ev.stream_id, resp, end_stream=True)
+                writer.write(conn.data_to_send())
+                await writer.drain()
+        except (ConnectionError, asyncio.CancelledError):
+            pass
+        finally:
+            writer.close()
+    return await asyncio.start_server(handle, "127.0.0.1", 0)
+
+
+@pytest.mark.asyncio
+async def test_a_request_the_upstream_never_answers_gives_its_slot_back_after_request_timeout(monkeypatch):
+    """httpx's read timeout times one network read on the shared HTTP/2
+    connection, and every other stream's data starts it again: a stream the
+    upstream never answers stayed open, its slot held, for as long as the
+    connection carried traffic (review 2026-10-27; stand: every slot gone in
+    ~9 s with 2 % such names). Past REQUEST_TIMEOUT_S the request is dropped
+    with its connection, and the queries on it are answered on a new one."""
+    server = await _h2c_upstream()
+    port = server.sockets[0].getsockname()[1]
+    from api import config
+    monkeypatch.setattr(config.get_settings(), "doh_upstreams", f"http://127.0.0.1:{port}/dns-query")
+    real = httpx.AsyncClient
+    monkeypatch.setattr(doh_upstream.httpx, "AsyncClient", lambda *a, **kw: real(*a, http1=False, **kw))
+    monkeypatch.setattr(doh_upstream, "REQUEST_TIMEOUT_S", 1.0)
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 0.3)
+    doh_upstream._reset_upstream_client_for_tests()
+    try:
+        assert await doh_upstream.proxy_to_upstream(query("warm.example.org")) is not None
+        assert await doh_upstream.proxy_to_upstream(query("r1.dead.example")) is None
+        assert len(doh_upstream._abandoned) == 1
+        started = time.monotonic()
+        i = 0
+        while time.monotonic() - started < 3.0:  # traffic on the same connection, 3 x REQUEST_TIMEOUT_S
+            assert await doh_upstream.proxy_to_upstream(query(f"live{i}.example.org")) is not None
+            i += 1
+            await asyncio.sleep(0.1)
+        slots = doh_upstream.upstreams()[0].slots
+        assert slots.free == slots.size and not doh_upstream._abandoned
+        assert doh_metrics.METRICS.counts["upstream_dropped"] == 1
+    finally:
+        await doh_upstream.close_upstream_client()
+        server.close()
+        await server.wait_closed()
+
+
+@pytest.mark.asyncio
+async def test_shutdown_cancels_the_requests_nobody_waits_for(holding_upstream, monkeypatch, caplog):
+    """Closing the clients would fail them, and each would log an upstream
+    failure (5-9 warnings per API restart on the stand, 2026-10-27)."""
+    import logging
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 0.05)
+    assert await asyncio.gather(*[doh_upstream.proxy_to_upstream(query(f"r{i}.dead.example"))
+                                  for i in range(3)]) == [None] * 3
+    assert len(doh_upstream._abandoned) == 3
+    with caplog.at_level(logging.WARNING, logger="api.services.doh_gateway"):
+        await doh_upstream.close_upstream_client()
+    assert not doh_upstream._abandoned
+    slots = doh_upstream.upstreams()[0].slots
+    assert slots.free == slots.size and not doh_upstream._zones
+    assert not [r for r in caplog.records if "upstream" in r.getMessage()]
