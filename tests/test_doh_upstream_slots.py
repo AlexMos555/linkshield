@@ -613,6 +613,58 @@ async def test_a_request_the_upstream_never_answers_gives_its_slot_back_after_re
         await server.wait_closed()
 
 
+def _droppable_client():
+    """Names in dead zones never answered, the rest after 0.2 s. Closing a
+    client fails what is still pending on it with LocalProtocolError — what
+    httpcore raises for a request caught mid-send by the close."""
+    class _Droppable:
+        made: list = []
+
+        def __init__(self, *a, **kw):
+            self.is_closed = False
+            self.pending: list = []
+            type(self).made.append(self)
+
+        async def post(self, url, content=b"", **_kw):
+            loop = asyncio.get_running_loop()
+            fut = loop.create_future()
+            self.pending.append(fut)
+            if not _dead_zone(parse_qname(content)):
+                loop.call_later(0.2, lambda: fut.done() or fut.set_result(None))
+            exc = await fut
+            if exc is not None:
+                raise exc
+            return _Resp(200, answer(content))
+
+        async def aclose(self):
+            self.is_closed = True
+            for fut in self.pending:
+                if not fut.done():
+                    fut.set_result(httpx.LocalProtocolError("connection closed"))
+    return _Droppable
+
+
+@pytest.mark.asyncio
+async def test_a_query_whose_request_was_on_a_dropped_connection_is_answered_on_a_new_one(monkeypatch):
+    """Dropping a connection fails every request on it, with a ReadError or,
+    caught mid-send, a LocalProtocolError (stand 2026-10-27). Those a query
+    still waits for are re-sent once on a new connection, whatever the error."""
+    from api import config
+    monkeypatch.setattr(config.get_settings(), "doh_upstreams", A)
+    client = _droppable_client()
+    monkeypatch.setattr(doh_upstream.httpx, "AsyncClient", client)
+    doh_upstream._reset_upstream_client_for_tests()
+    monkeypatch.setattr(doh_upstream, "REQUEST_TIMEOUT_S", 0.6)
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 1.5)
+    dead = _ask("r1.dead.example")  # unanswered: dropped with its connection at 0.6 s
+    await asyncio.sleep(0.5)
+    live = _ask("www.example.org")  # on the same connection, answer due at 0.7 s
+    assert await live is not None
+    assert await dead is None
+    assert len(client.made) == 2
+    assert doh_metrics.METRICS.counts["upstream_dropped"] == 1
+
+
 @pytest.mark.asyncio
 async def test_shutdown_cancels_the_requests_nobody_waits_for(holding_upstream, monkeypatch, caplog):
     """Closing the clients would fail them, and each would log an upstream
@@ -745,3 +797,5 @@ async def test_slot_gauges_show_slots_in_use_and_queries_waiting(holding_upstrea
     assert doh_upstream.slots_status() == {"zones_full": 1, "zone_waiting": 4, "abandoned": 0, "dropping": 0}
     await asyncio.gather(*held)
     assert doh_upstream.slots_status()["abandoned"] == doh_upstream.MAX_IN_FLIGHT
+
+

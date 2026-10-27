@@ -12,8 +12,8 @@ Order of attempts for one query (proxy_to_upstream):
   2. if it fails outright (refused, reset, TLS, non-200, garbage) → the next
      one immediately;
   3. if it is merely slow → HEDGE_AFTER_S after it was sent the next one is
-     asked in parallel, if that one has spare room (_take), and
-     whichever answers first wins;
+     asked in parallel if it has spare room (_take), and whichever answers
+     first wins;
   4. all of it inside one UPSTREAM_TIMEOUT_S budget. Nothing answered → None,
      and the caller serves a stale cached answer or SERVFAIL.
 A request the query no longer waits for (the hedge loser, or one still out at
@@ -27,12 +27,12 @@ times, not on every query. A skipped upstream is still tried last.
 
 Requests at the upstreams are limited per upstream (MAX_IN_FLIGHT, the streams
 of its one connection) and per zone (ZONE_MAX_IN_FLIGHT): random subdomains of
-a zone whose servers never answer each wait the whole budget, and without the
-zone limit ~4 of them a second took every slot while every other cache miss
-queued behind them (docs/runbooks/doh-gateway.md, «A zone that never
-answers»). A query waits for room in its zone holding no slot, and for a slot
-without taking its zone's room; a freed slot goes to the newest waiting query
-whose zone has room.
+a zone whose servers never answer each wait the whole budget, and until
+2026-10-23 ~4-8 of them a second took all 32 slots a worker then had, while
+every other cache miss queued behind them (docs/runbooks/doh-gateway.md, «A
+zone that never answers»). A query waits for room in its zone holding no
+slot, and for a slot without taking its zone's room; a freed slot goes to the
+newest waiting query whose zone has room.
 
 Responses are validated before they are believed: HTTP 200, 12..65535 bytes,
 the query's transaction ID. Query bytes are forwarded exactly as received —
@@ -43,6 +43,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+import weakref
 from typing import Optional
 
 import httpx
@@ -68,10 +69,15 @@ UPSTREAM_TIMEOUT_S = 4.0
 # network read on the shared connection, and any other stream's data starts
 # it again, so a stream the upstream never answers stayed open for as long as
 # the connection carried traffic (probe 2026-10-27: still open after 8 s at a
-# 1 s timeout; stand: every slot gone in ~9 s with 2 % such names). Past it,
-# _ask gives the request up and drops its connection — cancelled alone, its
-# stream would stay open there (see MAX_IN_FLIGHT); the requests still on
-# that connection fail and are re-sent once on a new one (_RETRY_ONCE).
+# 1 s timeout; stand: every slot gone in ~9 s with 2 % such names). A request
+# unanswered this long after it was first sent (a re-send included) is given
+# up together with its connection (_ask, _drop) — cancelled alone, its stream
+# would stay open there (see MAX_IN_FLIGHT); the requests still on that
+# connection fail and are re-sent once on a new one (_post). Counted per
+# re-send instead, fewer connections were dropped, and each drop is what
+# frees the slots of every unanswered stream on it: with one upstream and 2 %
+# names nobody answers, 12-39 % of the healthy misses got SERVFAIL instead of
+# 0.1-5 % (stand, 2026-10-27, same seeds).
 REQUEST_TIMEOUT_S = 10.0
 HEDGE_AFTER_S = 0.4
 MAX_RESPONSE_BYTES = 65535
@@ -97,8 +103,7 @@ except ImportError:  # pragma: no cover - depends on the environment
 # new request on it fails at once ("Max outbound streams is 100") — and a
 # cancelled request's stream stays open until the upstream answers it
 # (httpcore sends no RST_STREAM). So no request is cancelled once sent, and
-# the cap counts every open stream: 100 less a margin for the streams
-# httpcore drops on its own (REQUEST_TIMEOUT_S, a connection error).
+# the cap counts the connection's open streams, a margin below 100.
 # The cap is per upstream because the ceiling is per connection: Cloudflare
 # by name and by IP are two connections, 2 x 96 slots. Shared, 96 slots were
 # gone at ~9 names nobody answers a second (each held two, with the hedge,
@@ -263,6 +268,7 @@ _zones: dict[str, _Zone] = {}
 # keeps only weak references to tasks.
 _abandoned: set[asyncio.Task] = set()
 _closing: dict[httpx.AsyncClient, asyncio.Task] = {}
+_dropped: "weakref.WeakSet[httpx.AsyncClient]" = weakref.WeakSet()
 
 
 def configured_urls() -> list[str]:
@@ -336,6 +342,7 @@ def _drop(up: Upstream, client: Optional[httpx.AsyncClient]) -> None:
         up.client = None
     if client is None or client in _closing:
         return
+    _dropped.add(client)
     task = asyncio.get_running_loop().create_task(_close(client))
     _closing[client] = task
     task.add_done_callback(lambda _t: _closing.pop(client, None))
@@ -364,23 +371,27 @@ def valid_answer(wire: bytes, status: int, body: bytes) -> bool:
 # A pooled connection the server has just closed (HTTP/2 GOAWAY after N
 # streams — Cloudflare rotates connections — or an HTTP/1.1 keep-alive race)
 # fails the request with one of these before any answer exists. A DNS query
-# is idempotent, so it is re-sent once, at once, on a fresh connection —
-# unless no query waits for its answer any more: re-sent, it would hold a
-# slot for another whole answer time (stand 2026-10-27: the stub's GOAWAY
-# every 1000 requests, 5.4 % vs 0 % SERVFAIL).
+# is idempotent, so it is re-sent once, at once, on a fresh connection — as
+# is a request whose connection we dropped (_drop), whatever it failed with
+# (caught mid-send: LocalProtocolError) — unless no query waits for its
+# answer any more: re-sent, it would hold a slot for another whole answer
+# time (stand 2026-10-27: the stub's GOAWAY every 1000 requests, 5.4 % vs
+# 0 % SERVFAIL).
 _RETRY_ONCE = (httpx.RemoteProtocolError, httpx.ReadError, httpx.WriteError)
 
 
+async def _send(attempt: _Attempt, wire: bytes) -> httpx.Response:
+    attempt.client = _client_for(attempt.up)
+    return await attempt.client.post(attempt.up.url, content=wire, headers=_HEADERS)
+
+
 async def _post(attempt: _Attempt, wire: bytes) -> httpx.Response:
-    up = attempt.up
     try:
-        attempt.client = _client_for(up)
-        return await attempt.client.post(up.url, content=wire, headers=_HEADERS)
-    except _RETRY_ONCE:
-        if attempt.abandoned:
+        return await _send(attempt, wire)
+    except Exception as exc:  # noqa: BLE001 — re-raised unless re-sent
+        if attempt.abandoned or not (isinstance(exc, _RETRY_ONCE) or attempt.client in _dropped):
             raise
-        attempt.client = _client_for(up)
-        return await attempt.client.post(up.url, content=wire, headers=_HEADERS)
+        return await _send(attempt, wire)
 
 
 def _zone_of(wire: bytes) -> str:
