@@ -288,6 +288,18 @@ def test_the_legacy_reading_is_kept_for_the_model(host, legacy):
     assert legacy_registrable_domain(host) == legacy
 
 
+def test_without_the_list_the_old_reading_is_served(monkeypatch):
+    """A missing or malformed data/public_suffix_list.dat is logged at import
+    and the service keeps the reading it had (the Russian zones, else the
+    heuristic) rather than the last two labels."""
+    from api.services.scoring import legacy_registrable_domain
+
+    monkeypatch.setattr(ps, "_RULES", None)
+    for host in ("login.example.co.uk", "paypal-secure.my.id", "www.web.de", "kvs.gov.spb.ru", "www.отель.сочи.рус",
+                 "a.b.hosting.myjino.ru", "localhost", ""):
+        assert ps.registrable_domain(host) == legacy_registrable_domain(host), host
+
+
 class _NoPsl:
     """Stands in for the loaded rules: any read of the new matcher fails."""
 
