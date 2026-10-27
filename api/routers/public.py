@@ -23,7 +23,6 @@ from api.services import load_shedding, ml_scorer, public_stats
 from api.services import verdict_basis as vb
 from api.services.cleanway_blocklist import listed_as
 from api.services.domain_validator import DomainValidationError, validate_domain
-from api.services.hosting_platforms import is_user_content_service
 from api.services.rate_limiter import rate_limit
 from api.services.rate_limiter import (
     _extract_client_ip,
@@ -32,7 +31,7 @@ from api.services.rate_limiter import (
     install_key,
     ip_rate_key,
 )
-from api.services.scoring import calculate_confidence_pct, is_trusted_top_domain
+from api.services.scoring import calculate_confidence_pct, is_trusted_top_domain, is_user_content_service_host
 
 # Per-domain in-flight singleflight map. When N concurrent requests
 # arrive for the same fresh domain, only the first runs analyze_domain;
@@ -163,8 +162,8 @@ async def public_check(domain: str, request: Request):
       2. Cleanway's own published blocklist, the list the phone blocks: a
          listed host is 'dangerous' at once (verdict_basis 'blocklist').
       3. The service host of a user-content platform (disk.yandex.ru,
-         onedrive.live.com): a fixed "real service, we cannot vouch for the
-         page" caution (verdict_basis 'user_content'), no analysis.
+         onedrive.live.com, disk.yandex.kz): a fixed "real service, we cannot
+         vouch for the page" caution (verdict_basis 'user_content'), no analysis.
       4. Per-endpoint Redis cache, in its own namespace: a day for a full
          verdict, less for a not-found or partial one.
       5. A fresh-analysis cap per minute — per IP, or per install when the
@@ -198,7 +197,7 @@ async def public_check(domain: str, request: Request):
         return _format_public_result(vb.blocklist_result(domain, listed), modern_client=modern)
 
     # 4) A user-content service host: free, fixed answer (see analyzer).
-    if is_user_content_service(domain):
+    if is_user_content_service_host(domain):
         return await _build_response(vb.user_content_result(domain), modern)
 
     # 5) Public-cache hit: serve previously-analysed result. Essentially

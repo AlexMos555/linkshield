@@ -44,10 +44,9 @@ from api.services import licensed_intel, load_shedding, paid_budget, security_al
 from api.services import verdict_basis as vb
 from api.services.analysis_budget import MIN_STEP_S, Deadline, run_within_budget
 from api.services.tls_contexts import client_tls_context
-from api.services.hosting_platforms import is_user_content_service
 from api.services.scoring import (
     calculate_score, calculate_confidence, calculate_confidence_pct, is_hosting_platform_site,
-    is_regional_government_domain, popularity_rank, registrable_domain,
+    is_regional_government_domain, is_user_content_service_host, popularity_rank, registrable_domain,
 )
 from api.services.domain_validator import (
     validate_domain,
@@ -127,10 +126,11 @@ async def analyze_domain(
             verdict_basis=vb.BASIS_HEURISTICS,
         )
 
-    # A user-content service host (disk.yandex.ru, onedrive.live.com): its
-    # name is the platform's, so scoring it judges Yandex or Microsoft, not
-    # the page. Fixed answer, no analysis.
-    if is_user_content_service(domain):
+    # A user-content service host (disk.yandex.ru, onedrive.live.com, and
+    # disk.yandex.kz on another domain of its operator): its name is the
+    # platform's, so scoring it judges Yandex or Microsoft, not the page.
+    # Fixed answer, no analysis.
+    if is_user_content_service_host(domain):
         return vb.user_content_result(domain)
 
     budget = get_settings().analysis_budget_seconds if budget_s is None else budget_s

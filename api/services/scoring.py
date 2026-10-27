@@ -33,6 +33,7 @@ from api.models.schemas import RiskLevel, DomainReason, ConfidenceLevel
 from api.services import ru_brands, ru_lures
 from api.services.hosting_platforms import dynamic_dns_suffix_of as _dynamic_dns_suffix_of
 from api.services.hosting_platforms import is_shared_platform_site, tenant_suffix_of
+from api.services.hosting_platforms import USER_CONTENT_HOSTS, is_user_content_service
 from api.services.hosting_platforms import OPERATOR_SUFFIXES, is_operator_zone_name
 
 logger = logging.getLogger("cleanway.scoring")
@@ -283,9 +284,11 @@ def top_domain_key(domain: str) -> Optional[str]:
     (bbc.co.uk, yahoo.co.jp, amazon.com.br, www.nhs.uk, hdfc.bank.in) and
     every host under them never got the allowlist, and /public/check called
     www.amazon.co.uk 'caution 40'. Measured that day on the 100k entries and
-    their www. hosts: 163 entries stay untrusted (URL shorteners, names under
-    shared zones such as spb.ru), against 735 with registrable_domain() as
-    the key, and no host trusted before is lost — registrable_domain() would
+    their www. hosts: 165 entries stay untrusted (URL shorteners, names under
+    shared zones such as spb.ru; 163 until review put encurtador.com.br and
+    go.gov.sg, both entries, on the shortener list), against 735 with
+    registrable_domain() as the key (measured before that), and no host
+    trusted before is lost — registrable_domain() would
     have lost www.web.de and www.id.me, whose 2-label names the
     compound-ccTLD heuristic reads as suffixes. The longer keys it reaches
     (www.nhs.uk, hdfc.bank.in: 572 entries) all come from the PSL's ICANN
@@ -331,10 +334,18 @@ def top_domain_key(domain: str) -> Optional[str]:
 # Allowlist only: data/hosting_platforms.json and public_suffixes_in_top.json
 # are ML model inputs (ml_features.shared_tenant), so these move there with
 # the next retrain.
+#
+# And 000webhost.com, the one tenant zone of the blocklist publisher
+# (scripts/blocklist_shared_zones.HOSTING_PLATFORMS) that the allowlist did
+# not refuse: /public/check answers from the allowlist before the blocklist,
+# so every zone the publisher lists tenants under must be refused here
+# (tests/test_allowlist_blocklist_zones.py). It has no tenants today (a
+# random label is NXDOMAIN, the site redirects to Hostinger, 2026-10-27).
 _ALLOWLIST_TENANT_ZONES: frozenset[str] = frozenset({
     "sakura.ne.jp", "dothome.co.kr", "isweb.co.kr",
     "lojaintegrada.com.br", "lojavirtualnuvem.com.br", "shop2000.com.tw",
     "webeden.co.uk", "woobi.co.kr", "hostgator.com.br", "myzen.co.uk",
+    "000webhost.com",
 })
 
 # Hosts under a newly reached compound-suffix entry that many people publish
@@ -366,6 +377,67 @@ def _is_abused_google_service(domain: str, key: str) -> bool:
     return domain[: -(len(key) + 1)].split(".")[-1] in _GOOGLE_ABUSED_SERVICES
 
 
+# Operators that run their user-content services on their country domains
+# too: forms.yandex.com.tr is Yandex Forms, disk.yandex.kz, .by, .uz and
+# .com.tr are Yandex Disk (checked live 2026-10-27), as script.google.co.uk
+# would be Apps Script. data/hosting_platforms.json names only the .ru / .com
+# spellings, so the others were instant-safe: the compound ones since the
+# allowlist reached compound-suffix entries, yandex.kz and .by since always.
+# Every top entry with one of these first labels is the operator's (202
+# google.*; the 11 yandex.* on Yandex's name servers, but for yandex.ua,
+# which has none). Not office/live/microsoft/github: office.co.uk is OFFICE, a
+# UK shoe retailer, and live.net, microsoft.ai and github.blog run none of
+# the services.
+_CCTLD_SERVICE_OPERATORS: frozenset[str] = frozenset({"google", "yandex"})
+
+
+def _user_content_services() -> Mapping[str, frozenset[str]]:
+    """{operator: the labels left of its domain in USER_CONTENT_HOSTS}, for
+    _CCTLD_SERVICE_OPERATORS: 'yandex' → disk, disk.360, forms; 'google' →
+    docs, drive, forms, script, sites. From the curated list, so a service
+    added there holds on every country domain of its operator."""
+    out: dict[str, set[str]] = {}
+    for host in USER_CONTENT_HOSTS:
+        parts = host.split(".")
+        for i in range(1, len(parts) - 1):
+            if parts[i] in _CCTLD_SERVICE_OPERATORS:
+                out.setdefault(parts[i], set()).add(".".join(parts[:i]))
+                break
+    return MappingProxyType({op: frozenset(labels) for op, labels in out.items()})
+
+
+_USER_CONTENT_SERVICES: Mapping[str, frozenset[str]] = _user_content_services()
+
+
+def _is_user_content_mirror(domain: str, key: str, exact: bool = False) -> bool:
+    """`domain` is, or (unless `exact`) is a name under, a USER_CONTENT_HOSTS
+    service on `key`, its top entry, when that entry is a domain of the
+    service's operator: forms.yandex.com.tr, u.disk.yandex.kz,
+    script.google.co.uk. Allowlist and fixed answer only — hosting_platforms
+    stays as it is, ml/train_model.py reads is_user_content_host."""
+    services = _USER_CONTENT_SERVICES.get(key.split(".")[0])
+    if not services or not domain.endswith("." + key):
+        return False
+    left = domain[: -(len(key) + 1)]
+    if exact:
+        return left in services
+    return any(left == s or left.endswith("." + s) for s in services)
+
+
+def is_user_content_service_host(domain: str) -> bool:
+    """The service host of a user-content platform, which the public check
+    and the analyzer answer with the fixed "a real service; we cannot vouch
+    for the page" (verdict_basis.user_content_result): a USER_CONTENT_HOSTS
+    host (hosting_platforms.is_user_content_service), or the same service on
+    another domain of its operator (disk.yandex.kz, docs.google.co.uk).
+    Exactly that host: a page under it (u.disk.yandex.kz) is analysed."""
+    d = (domain or "").lower().strip(".")
+    if is_user_content_service(d):
+        return True
+    key = top_domain_key(d)
+    return key is not None and _is_user_content_mirror(d, key, exact=True)
+
+
 def _is_listed_shortener_host(domain: str) -> bool:
     """`domain` or a name it is under is in _URL_SHORTENERS, whatever its
     length. For the allowlist only: _is_url_shortener() reads the last two
@@ -381,7 +453,8 @@ def is_trusted_top_domain(domain: str) -> bool:
 
     True only when the domain is a top domain (the top 100k) or a subdomain of
     one (top_domain_key) that is NOT a shared platform / public suffix / URL
-    shortener / abused Google service. Shared platforms include the curated
+    shortener / abused Google service / user-content service on any of its
+    operator's domains (_is_user_content_mirror). Shared platforms include the curated
     data/hosting_platforms.json — Timeweb, Beget, SpaceWeb, Selectel, Weebly,
     WordPress staging, ScreenConnect, Yandex Forms/Disk … — whose customers'
     pages came back "safe, 99%" in production (report 2026-09-25 #7). Used by
@@ -396,7 +469,7 @@ def is_trusted_top_domain(domain: str) -> bool:
         return False
     if _is_url_shortener(key) or _is_listed_shortener_host(d):
         return False
-    if _is_abused_google_service(d, key):
+    if _is_abused_google_service(d, key) or _is_user_content_mirror(d, key):
         return False
     if _is_under_shared_suffix(d) or tenant_suffix_of(d, _ALLOWLIST_TENANT_ZONES):
         return False
