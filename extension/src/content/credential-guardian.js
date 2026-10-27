@@ -151,6 +151,16 @@
   // The registrable domain is never shorter than the last two labels, so it
   // only ever splits what they lumped together. Where the heuristic splits
   // one owner (it takes gov.hr and web.de for suffixes), see below.
+  //
+  // Only the suffixes that rule knows are split: the Russian PSL zones and a
+  // 2-letter ccTLD under one of the generic labels in cctldSecondLevels
+  // (utils/scorer-data.js: co, com, net, org, gov, ac …). Any other public
+  // suffix is still read as a name, as the last two labels read it: under
+  // my.id, io.vn, hl.cn, adv.br, kiev.ua, me.uk (or uk.com) everyone is
+  // still one site, and facebook-login.my.id is named "my" (Signal B). Most
+  // such feed hosts are under my.id. The fix belongs in the server's rule
+  // and its generated data, which this file follows, not in a list of its
+  // own here.
   var GUARD_ROOT = typeof self !== "undefined" ? self : globalThis;
 
   function _nameRules() {
