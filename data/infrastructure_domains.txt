@@ -138,6 +138,12 @@ azure.com
 azure.net
 msauth.net
 msftauth.net
+# Microsoft identity gateway: every Microsoft account / Entra sign-in chain
+# ends here (login.live.com -> login.msa.msidentity.com -> ... ->
+# prdv4a.aadg.msidentity.com). RDAP 2026-10-23: registrant Microsoft
+# Corporation, MarkMonitor, created 2016, NS Akamai + Azure DNS. Two
+# feed-listed subdomains would otherwise promote it whole.
+msidentity.com
 msftconnecttest.com
 msftncsi.com
 msn.com

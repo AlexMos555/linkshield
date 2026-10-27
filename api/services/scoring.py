@@ -33,6 +33,7 @@ from api.models.schemas import RiskLevel, DomainReason, ConfidenceLevel
 from api.services import ru_brands, ru_lures
 from api.services.hosting_platforms import dynamic_dns_suffix_of as _dynamic_dns_suffix_of
 from api.services.hosting_platforms import is_shared_platform_site, tenant_suffix_of
+from api.services.hosting_platforms import OPERATOR_SUFFIXES, is_operator_zone_name
 
 logger = logging.getLogger("cleanway.scoring")
 
@@ -107,8 +108,12 @@ logger.info("Loaded %d top domains from %s", len(TOP_DOMAINS), _domains_source)
 # ever reaching the analyzer (found 2026-08-18 through the Android shield).
 # Every PSL rule whose last-two-labels base is in top_100k.json, multi-label
 # ones like s3.amazonaws.com included — rebuilt with the list in the same run
-# (scripts/build_top_domains.py, build_public_suffixes_in_top.rules_in_top).
-# See is_trusted_top_domain().
+# (scripts/build_top_domains.py, build_public_suffixes_in_top.shared_suffix_rules).
+# See is_trusted_top_domain(). Plus the tenant zones of data/tenant_zones.json
+# whatever their rank (trycloudflare.com, cloud.goog, s3.cloud.ru …): every
+# reader of this set — _check_brand_on_hosting_tenant, the ML tenant features,
+# the extension's copy — needs them, and a zone's tenants count nowhere in
+# the licensed ranking, so its own name rarely ranks.
 PUBLIC_SUFFIXES_IN_TOP: set[str] = _load_json_set("public_suffixes_in_top.json")
 if not PUBLIC_SUFFIXES_IN_TOP:
     logger.warning("public_suffixes_in_top.json missing — falling back to the hand list only")
@@ -877,12 +882,150 @@ def _has_fake_tld_in_subdomain(domain: str) -> bool:
     return bool(subdomain) and _registered_tld_lookalike(domain) is not None
 
 
-def popularity_rank(signals: dict) -> Optional[int]:
+# The tenant zones whose registrable's rank is the platform's, not its
+# customers' (_platform_tenant_site): every shared suffix the scorer knows,
+# PSL-derived ones included (ondigitalocean.app, altervista.org, hf.space),
+# but not the operators' own suffixes (fonts.googleapis.com is Google's) nor
+# a zone with a restricted label (gov.scot: its names are the Scottish
+# Government's agencies, not anyone's pick).
+_RANK_TENANT_SUFFIXES: frozenset[str] = frozenset(
+    z for z in _SCORER_SHARED_SUFFIXES - OPERATOR_SUFFIXES
+    if not _RESTRICTED_ZONE_LABELS.intersection(z.split("."))
+)
+
+
+def _platform_tenant_site(domain: str) -> Optional[str]:
+    """The customer's own name (x.webcindario.com of a.x.webcindario.com) when
+    `domain` is a site on a hosting platform or dynamic-DNS service AND its
+    registrable domain is the platform's (webcindario.com, workers.dev,
+    blogspot.com.br, ondigitalocean.app) — else None: for registered names,
+    the platforms' own hosts and zones (www.tumblr.com, app.netlify.com,
+    login.secureserver.net — hosting_platforms operator_zones), the
+    operators' own suffixes (googleapis.com) and zones where the registrable
+    already is the customer's name.
+
+    The registrable's rank and its place in the top lists are then the
+    PLATFORM's popularity, which says nothing about one customer's site (the
+    analyzer's _name_is_vouched_for refuses it for the same reason). Unlike
+    is_hosting_platform_site, the PSL-derived suffixes count. A restricted
+    registry does not: registrable_domain() already reads a name under
+    gov.ru or co.uk as the registrant's own, and the zones it does not know
+    (gov.scot) are left out of _RANK_TENANT_SUFFIXES."""
+    d = (domain or "").lower().strip(".")
+    if is_operator_zone_name(d):
+        return None
+    suffix = _dynamic_dns_suffix_of(d) or tenant_suffix_of(d, _RANK_TENANT_SUFFIXES)
+    if not suffix:
+        return None
+    registrable = registrable_domain(d)
+    if registrable != suffix and not suffix.endswith("." + registrable):
+        return None
+    return ".".join(d.split(".")[-(suffix.count(".") + 2):])
+
+
+def popularity_rank(signals: dict, domain: Optional[str] = None) -> Optional[int]:
     """The best top-1M rank (Redis tranco:ranks) of the host or of its
-    registrable domain, from the analyzer's signals, or None."""
+    registrable domain, from the analyzer's signals, or None. `domain`
+    defaults to signals['domain']; for a tenant whose registrable is the
+    hosting platform (_platform_tenant_site) only the host's own rank counts."""
+    host = signals.get("domain", "") if domain is None else domain
+    registrable_rank = None if _platform_tenant_site(host) else signals.get("tranco_registrable_rank")
     ranks = [r for r in (signals.get("tranco_rank") if signals.get("tranco_ranked") else None,
-                         signals.get("tranco_registrable_rank")) if isinstance(r, int) and 0 < r <= 1_000_000]
+                         registrable_rank) if isinstance(r, int) and 0 < r <= 1_000_000]
     return min(ranks) if ranks else None
+
+
+# Signals that are each about as common on real sites as on phishing, so a
+# pile of them alone is a caution, never 'dangerous' (calculate_score caps it
+# at DANGEROUS_ABOVE). 'dangerous' needs at least one other signal with a
+# positive weight: a list or OTX, the model, a brand or look-alike rule, the
+# domain's age, a high-abuse zone (.cfd, .sbs, .top …), no HTTPS or a broken
+# certificate, an address trick (@, //, %xx, a port, a token in the URL). A
+# signal added later is strong until it is listed here.
+#
+# дорожное.рф (Дорожное радио) was 'dangerous' 53 on the 2026-10-25 benchmark
+# with five of them: no security headers, no MX on an alias domain, a
+# renewed certificate, and two hops to dorognoe.ru, its own main site.
+# Replayed on the live signals of 2026-10-26 (1,735 hosts): with the
+# high-abuse zone counted weak too, 6 of the 219 dangerous fresh phishing
+# hosts fell to caution — 4 of them on .cfd/.click/.sbs — so it is not. As
+# listed, 2 of the 219 do (bnb-binance.ac.cn, buscarmi-icloud.app: they send
+# a foreign scanner on to binance.com and google.com).
+#
+# OTX is not on the list: its auto-feeds (CyberHunterAutoFeed, phishdestroy)
+# list fresh phishing within about a day, and with one to five reports
+# counted weak, 50 of the fresh phishing hosts OTX answered for on
+# 2026-10-26 fell from 'dangerous' to caution 50 (portal-canalbradesco.digital
+# 74, kucoindeep.com 68). Only one to five reports whose newest is
+# _OTX_STALE_DAYS or more old are weak — calculate_score marks that one.
+WEAK_SIGNALS: frozenset[str] = frozenset({
+    # what the probes saw on the site: hygiene, not intent
+    "missing_headers", "no_mx_record", "new_certificate", "multiple_redirects",
+    "excessive_redirects", "cross_domain_redirect", "low_dns_ttl", "many_a_records",
+    # the shape of the name and the address
+    "high_entropy", "medium_entropy", "high_digit_ratio", "excessive_special_chars",
+    "many_special_chars", "long_domain_name", "unnatural_ngram", "suspicious_ngram",
+    "abnormal_vowel_ratio", "consonant_cluster", "suspicious_keyword", "excessive_subdomains",
+    "long_url", "very_long_url", "deep_path",
+    # where it is registered or hosted
+    "risky_tld_medium", "abused_registrar", "risky_registrar", "dynamic_dns_host", "url_shortener",
+})
+# The top of the caution band (a score above it is 'dangerous').
+DANGEROUS_ABOVE = 50
+
+# One to five OTX reports whose newest was made this many days ago or earlier
+# (analyzer._otx_reports) are history, not a live campaign, and weak:
+# victims and references are listed too (#284). Real OTX answers of
+# 2026-10-26: the 53 fresh phishing hosts with one to five distinct reports
+# had their newest 0-55 days old (auto-feeds of the day, phishdestroy's
+# monthly lists); the 6 real sites with one to five that left the allowlist
+# in #284 had theirs 217-1,579 days old (centralnic-dns.com, job-shop.com,
+# pbsadverxo.com, webglobe.com, cmgroup.com, crcdn.org). When the age is not
+# known, the reports count as current.
+_OTX_STALE_DAYS = 90
+
+
+# A domain registered this long ago has outlived a 90-day ACME certificate:
+# a fresh certificate on it is a renewal or a re-issue, not a new site.
+_RENEWAL_DOMAIN_AGE_DAYS = 90
+
+
+def _certificate_is_a_renewal(signals: dict) -> bool:
+    """Something shows the name is older than its fresh certificate:
+
+    * it is a customer's site directly under a hosting platform's suffix
+      (_platform_tenant_site is the host itself) and the certificate names it
+      only through a wildcard (signals 'cert_wildcard', site_probes). A
+      wildcard covers one label, so that wildcard is the platform's own
+      (*.vercel.app, *.wixsite.com), renewed for every site under it at once —
+      every Vercel tenant showed the same 57-day-old *.vercel.app one. One
+      level down it is the tenant's: *.<account>.workers.dev,
+      *.<project>.pages.dev, or a DNS-01 wildcard on the tenant's own
+      dynamic-DNS zone (*.evil.duckdns.org), as old as the tenant's site: on
+      fresh phishing of 2026-10-26, 10 of the 11 wildcards under a week old
+      on such hosts were the tenant's (rblxcashout.swervostore.workers.dev:
+      *.swervostore.workers.dev, issued that day). A wildcard
+      on the site's own registered name is its registrant's too: kits put one
+      on a fresh domain for all their subdomains (ferrari.info4571011.pro,
+      bradesco.ne12topaz.digital, 2026-10-25);
+    * the name is in the top-1M popularity ranking (popularity_rank — never a
+      hosting platform's rank for its tenant): the ranking measures months of
+      links and visits;
+    * its registration is at least _RENEWAL_DOMAIN_AGE_DAYS old.
+
+    Without any of these the certificate may be the site's first, as for a
+    kit's fresh domain. (Certificate Transparency would tell a renewal apart
+    directly — crt.sh lists the previous, still valid certificate for 13 of
+    the 15 real sites it answered for — but on 2026-10-26 it took 7.2 s at
+    the median, and 31 of 96 queries failed (502s, timeouts): far past the
+    3 s analysis budget.)"""
+    host = (signals.get("domain") or "").lower().strip(".")
+    if signals.get("cert_wildcard") and host and _platform_tenant_site(host) == host:
+        return True
+    if popularity_rank(signals) is not None:
+        return True
+    age = signals.get("domain_age_days")
+    return isinstance(age, int) and age >= _RENEWAL_DOMAIN_AGE_DAYS
 
 
 def _is_url_shortener(domain: str) -> bool:
@@ -905,6 +1048,9 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     """
     score = 0
     reasons: list[DomainReason] = []
+    # Reasons that are weak this time though their code is not in
+    # WEAK_SIGNALS (old OTX reports, _OTX_STALE_DAYS).
+    weak_here: list[DomainReason] = []
     domain: str = signals.get("domain", "")
 
     # ── IDN normalisation, done ONCE, up front ──
@@ -1061,29 +1207,54 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # with full OTX weight rostelecom.ru, rosbank.ru, beget.ru and dream11.com
     # went from safe to caution 27 and ddos-guard.net to dangerous 67 on
     # victim-reference pulses (verifier, 2026-10-23).
-    alienvault_pulses = signals.get("alienvault_pulse_count", 0)
-    if alienvault_pulses > 0:
+    #
+    # A customer's site on a hosting platform is judged by its own name, not
+    # the platform's (_platform_tenant_site): OTX is asked about the full
+    # host, so its pulses are about the tenant, and workers.dev or at.ua being
+    # popular vouches for none of their customers (audit 2026-10-25).
+    #
+    # The tiers count DISTINCT reports (analyzer._otx_reports): a
+    # cloned pulse is the same report again. tztu.ru's 44 pulses were one
+    # malspam-header dump and 43 copies of it, and "Flagged in 44 reports"
+    # (+60) plus a renewed certificate made a real plant's site 'dangerous'
+    # (benchmark 2026-10-25). Without a pulse list (an older caller) the
+    # count is used, as before.
+    #
+    # One to five reports that are all _OTX_STALE_DAYS or more old are weak
+    # (WEAK_SIGNALS): they still score, but alone with other weak signals
+    # they make a caution, not a 'dangerous'.
+    alienvault_pulses = signals.get("alienvault_pulse_count", 0) or 0
+    _distinct = signals.get("alienvault_distinct_pulses")
+    otx_reports = alienvault_pulses if _distinct is None else min(_distinct, alienvault_pulses)
+    if otx_reports > 0:
         from api.services.doh_gateway import _registrable_domain
-        _reg = _registrable_domain(domain)
-        _rank = popularity_rank(signals)
+        _reg = _platform_tenant_site(ascii_domain) or _registrable_domain(domain)
+        _rank = popularity_rank(signals, ascii_domain)
         _top_ranked = _rank is not None and _rank <= 100_000
         _ranked = _rank is not None
-        if _reg not in TOP_10K_RANKS and not _top_ranked and not (_ranked and alienvault_pulses <= 5):
+        if _reg not in TOP_10K_RANKS and not _top_ranked and not (_ranked and otx_reports <= 5):
             _discount = _reg in TOP_100K or _ranked
-            if alienvault_pulses > 5:
+            _copies = (f" ({otx_reports} distinct, the rest are copies)"
+                       if otx_reports < alienvault_pulses else "")
+            if otx_reports > 5:
                 _wt = 30 if _discount else 60
                 score += _wt
                 reasons.append(DomainReason(
                     signal="alienvault_otx_high", weight=_wt,
-                    detail=f"Flagged in {alienvault_pulses} AlienVault OTX threat reports",
+                    detail=f"Flagged in {alienvault_pulses} AlienVault OTX threat reports{_copies}",
                 ))
             else:
                 _wt = 15 if _discount else 30
                 score += _wt
+                _newest = signals.get("alienvault_newest_report_days")
+                _stale = isinstance(_newest, int) and _newest >= _OTX_STALE_DAYS
+                _age = f", the newest {_newest} days old" if _stale else ""
                 reasons.append(DomainReason(
                     signal="alienvault_otx", weight=_wt,
-                    detail=f"Found in {alienvault_pulses} AlienVault OTX threat report(s)",
+                    detail=f"Found in {alienvault_pulses} AlienVault OTX threat report(s){_copies}{_age}",
                 ))
+                if _stale:
+                    weak_here.append(reasons[-1])
 
     # IPQualityScore
     if signals.get("ipqs_phishing"):
@@ -1337,7 +1508,13 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
 
     # ── 3.12 Suspicious keywords in domain ──
     # Unicode form: the keyword list is words a human would read in the name.
-    keyword = _check_suspicious_keywords(unicode_domain)
+    # On a hosting platform or a dynamic-DNS service the name someone chose
+    # is the tenant's label (domain_name above): this rule read 'vercel' of
+    # secure-login-portal.vercel.app. Measured 2026-10-26 on brandless
+    # tenants: the word is in 49 of 815 in the four licensed feeds' fresh
+    # phishing (6.0%) and in 18 of 5,221 with real Chrome traffic (CrUX
+    # global origins, 0.34%).
+    keyword = _keyword_in_name(domain_name) if tenant_label else _check_suspicious_keywords(unicode_domain)
     if keyword:
         score += 10
         reasons.append(DomainReason(
@@ -1589,8 +1766,16 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.27 SSL: New certificate (issued < 7 days ago) ──
+    # A stand-in for "the site is new", so it yields to anything that shows
+    # the name is older than its certificate (_certificate_is_a_renewal).
+    # Let's Encrypt and the other ACME authorities issue 90-day certificates
+    # that renew every ~60 days: on 2026-10-26, 17 of the 157 real Russian
+    # sites with a certificate (data/benchmark_legit_ru.txt) had one under a
+    # week old — tztu.ru's renewal of 2026-10-24 and дорожное.рф's of
+    # 2026-10-20 among them (benchmark 2026-10-25) — against 22-29% of the
+    # fresh phishing hosts: a weak signal (WEAK_SIGNALS).
     cert_age = signals.get("cert_age_days")
-    if cert_age is not None and cert_age < 7:
+    if cert_age is not None and cert_age < 7 and not _certificate_is_a_renewal(signals):
         score += 15
         reasons.append(DomainReason(
             signal="new_certificate", weight=15,
@@ -1757,13 +1942,24 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     except Exception:
         pass  # ML is optional — don't break scoring if unavailable
 
+    # ── Weak signals alone are a caution (WEAK_SIGNALS) ──
+    # Every reason stays in the list, so the person sees what was found; only
+    # the verdict stops at the top of the caution band. Not on a hosting
+    # customer's site that names a brand (_tenant_brand_word): there a pile
+    # of weak signals is how fresh phishing looks.
+    if score > DANGEROUS_ABOVE and not any(
+        r.weight > 0 and r.signal not in WEAK_SIGNALS and not any(r is w for w in weak_here)
+        for r in reasons
+    ) and not _tenant_brand_word(ascii_domain):
+        score = DANGEROUS_ABOVE
+
     # ── Clamp ──
     score = max(0, min(100, score))
 
     # ── Determine level ──
     if score <= 20:
         level = RiskLevel.safe
-    elif score <= 50:
+    elif score <= DANGEROUS_ABOVE:
         level = RiskLevel.caution
     else:
         level = RiskLevel.dangerous
@@ -2235,7 +2431,26 @@ _NAME_RULES_AT_HOME: Mapping[str, _NameRule] = MappingProxyType(
 )
 
 
-def _imitation(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RULE) -> Optional[str]:
+# The definitions of the typosquat rule an ML model may have learned its
+# is_typosquat feature from. model_meta.json records the one a model was
+# trained on (feature_data.typosquat_rule, written by
+# ml_features.feature_data_record; no record = 1), and ml_scorer gives the
+# served model that rule's answer, as it gives it the data files it learned
+# (ml_features.resolve_feature_data). The scorer's own signal is always the
+# live rule.
+#   1  until 2026-10-23: a combo needs the brand's own string, glued or
+#      hyphened to one word (a global brand) or among several hyphenated
+#      words with a Russian or English lure word (a Russian brand,
+#      _check_lure_combo_v1).
+#   2  2026-10-23: a look-alike spelling of the brand counts as the brand in
+#      a combo (g00glemail, micr0soft-login, 5berbank-bonus), and a global
+#      brand as one hyphenated word with an English lure keyword among the
+#      others is a combo (outlook-de-login, apple-id-verify).
+TYPOSQUAT_RULE_VERSION = 2
+
+
+def _imitation(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RULE,
+               rule_version: int = TYPOSQUAT_RULE_VERSION) -> Optional[str]:
     """How `name` imitates `brand` (a different string), or None.
 
     Look-alike characters count as the letter they imitate at any length.
@@ -2244,18 +2459,19 @@ def _imitation(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RULE) -> O
     — from _FUZZY_MIN_LABEL, and not at all when `rule.fuzzy` is False. Two
     edits only when both are _TWO_EDIT_MIN_LABEL long. `rule` (see
     _rule_for) narrows combos and substitutions for some names.
+    `rule_version`: see TYPOSQUAT_RULE_VERSION.
     """
     tail = _generic_tail(name, brand)
     if tail:
         if "-" in name and name.replace("-", "") == brand:
             return "hyphen injection"
-        if _check_combosquat(name, brand, rule):
+        if _check_combosquat(name, brand, rule, rule_version):
             return "combosquatting"
         # `slips_only` is about names under 8 letters; gazprombank's stem is
         # short, the name is not.
         if min(len(name), len(brand)) >= _TWO_EDIT_MIN_LABEL:
             rule = rule._replace(slips_only=False)
-        return _imitation(name[:-tail].rstrip("-"), brand[:-tail], rule)
+        return _imitation(name[:-tail].rstrip("-"), brand[:-tail], rule, rule_version)
 
     # Character substitution
     if _check_char_substitution(name, brand, rule.fuzzy, rule.slips_only):
@@ -2279,7 +2495,7 @@ def _imitation(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RULE) -> O
             return "glyph homoglyph"
         if len(brand) >= 5 and (
             brand in re.split(r"[-.]", skel)
-            or _check_combosquat(skel, brand, rule)
+            or _check_combosquat(skel, brand, rule, rule_version)
             or SequenceMatcher(None, skel, brand).ratio() >= 0.90
         ):
             return "glyph homoglyph"
@@ -2293,7 +2509,13 @@ def _imitation(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RULE) -> O
         return "hyphen injection"
 
     # Combosquatting
-    if _check_combosquat(name, brand, rule):
+    if _check_combosquat(name, brand, rule, rule_version):
+        return "combosquatting"
+    # ...with the brand in look-alike characters: g00glemail, micr0soft-login,
+    # secure-paypa1. The look-alike test above needs the brand's length, the
+    # combo test the brand's string; neither read these until 2026-10-23.
+    spelled = _with_brand_spelled_out(name, brand) if rule_version >= 2 else None
+    if spelled and _check_combosquat(spelled, brand, rule, rule_version):
         return "combosquatting"
 
     # SequenceMatcher fallback. The ratio alone let two edits through at any
@@ -2337,7 +2559,10 @@ def _lookalike_zone_name(domain: str) -> Optional[str]:
     return None
 
 
-def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
+def _check_typosquatting_v2(domain: str, rule_version: int = TYPOSQUAT_RULE_VERSION) -> Optional[tuple[str, str]]:
+    # `rule_version`: an older definition, for a model trained on it (see
+    # TYPOSQUAT_RULE_VERSION); everything else reads the live rule.
+    #
     # Under a Russian public suffix, the REGISTRABLE label — never the zone
     # label ('spb' of kvs.gov.spb.ru was "ups", 'nov' of adm.nov.ru "n26").
     # Under ru.com / ru.net, the name registered there ('yandex' of
@@ -2386,7 +2611,7 @@ def _check_typosquatting_v2(domain: str) -> Optional[tuple[str, str]]:
                 return (legit_domain, "TLD confusion")
             continue
 
-        method = _imitation(name, brand, rules.get(brand, _DEFAULT_NAME_RULE))
+        method = _imitation(name, brand, rules.get(brand, _DEFAULT_NAME_RULE), rule_version)
         if method:
             return (legit_domain, method)
 
@@ -2450,7 +2675,8 @@ def _combo_parts(name: str, brand: str) -> list[tuple[str, bool, bool]]:
     return parts
 
 
-def _check_combosquat(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RULE) -> bool:
+def _check_combosquat(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RULE,
+                      rule_version: int = TYPOSQUAT_RULE_VERSION) -> bool:
     for word, hyphenated, after in _combo_parts(name, brand):
         if word in _COMBOSQUAT_KEYWORDS:
             return True
@@ -2460,7 +2686,52 @@ def _check_combosquat(name: str, brand: str, rule: _NameRule = _DEFAULT_NAME_RUL
             return True
         if rule.country_combos and after and word in _COMBO_COUNTRY_SUFFIXES:
             return True
-    return rule.lure_words and _check_lure_combo(name, brand)
+    if rule_version < 2:
+        return rule.lure_words and _check_lure_combo_v1(name, brand)
+    return _check_lure_combo(name, brand, rule)
+
+
+# A brand spelled in look-alike characters counts as the brand in a combo
+# from this length: g00gle, micr0soft, paypa1, 0zon. Shorter, a digit makes
+# another word — '72' is t2 in digits and '0k' is ok, but 72-bonus and
+# 0k-shop are someone else's names.
+_LOOKALIKE_COMBO_MIN = _SHAPE_MIN_LABEL
+
+
+def _spells_brand(word: str, brand: str) -> bool:
+    """`word` is `brand` written with look-alike characters: as long as it,
+    every character the letter or a look-alike of it (_imitates), at least
+    one of them a look-alike, and the brand _LOOKALIKE_COMBO_MIN long."""
+    return (
+        len(word) == len(brand) >= _LOOKALIKE_COMBO_MIN and word != brand
+        and all(_imitates(a, b) for a, b in zip(word, brand))
+    )
+
+
+def _with_brand_spelled_out(name: str, brand: str) -> Optional[str]:
+    """`name` with a look-alike spelling of `brand` at its start or end
+    written as the brand (g00glemail → googlemail, secure-paypa1 →
+    secure-paypal), or None when it has none."""
+    n = len(brand)
+    if len(name) > n:
+        if _spells_brand(name[:n], brand):
+            return brand + name[n:]
+        if _spells_brand(name[-n:], brand):
+            return name[:-n] + brand
+    return None
+
+
+def _is_brand_word(word: str, brand: str, rule: Optional[_NameRule]) -> bool:
+    """One hyphenated word that stands for the brand: the brand, the brand
+    in look-alike characters (5berbank, micr0soft), or — where `rule` allows
+    glued generic combos — the brand glued to a generic word (googlemail,
+    mypaypal)."""
+    if word == brand or _spells_brand(word, brand):
+        return True
+    if rule is None or not rule.generic_combos or rule.hyphen_combos_only:
+        return False
+    return any(part in (_COMBO_GENERIC_SUFFIXES if after else _COMBO_GENERIC_PREFIXES)
+               for part, _hyphenated, after in _combo_parts(word, brand))
 
 
 def _is_lure_word(word: str, brand: str) -> bool:
@@ -2474,11 +2745,67 @@ def _is_lure_word(word: str, brand: str) -> bool:
     )
 
 
-def _check_lure_combo(name: str, brand: str) -> bool:
+# Keywords that are no lure next to one brand in the combos of several words
+# or a word glued to the brand (_check_lure_combo). 'Secure booking' is what
+# hotel and airport booking engines call their checkout: of the six names
+# the 2026-10-23 combos added on the licensed 1M ranking, four were booking
+# engines (secure-direct-hotel-booking.com, rank 216,459, which went to
+# 'dangerous'; securebooking-belfastairport.com, Belfast International
+# Airport's parking and fast-track, run by Rezcomm; secure-booking-engine.com,
+# Djubo's hotel sales platform; secure-hotel-booking.com, allowlisted), and
+# live unranked ones read the same (hotel-booking-secure.net,
+# secure-online-booking.com). The brand and that one word stay a combo, as
+# they were before (securebooking.com, secure-booking.com: _check_combosquat),
+# and any other lure among the words still counts (booking-secure-login,
+# secure-booking-verify).
+_NOT_LURE_NEXT_TO: Mapping[str, frozenset[str]] = MappingProxyType({
+    "booking": frozenset({"secure"}),
+})
+
+
+def _check_lure_combo(name: str, brand: str, rule: Optional[_NameRule] = None) -> bool:
     """`name` is `brand` and a lure word: glued to it (ozonpriz, lkgosuslugi)
     or among the hyphenated words around it (sberbank-bonus, lk-gosuslugi,
     yandex-pay-login, vk-login-verify, госуслуги-лк). The brand has to be one
-    whole word: vkusvill-bonus is VkusVill's, not VK's."""
+    whole word (_is_brand_word): vkusvill-bonus is VkusVill's, not VK's.
+
+    The lure words: Russian and English (_is_lure_word) for a name whose rule
+    has lure_words, or with no rule (the Russian names' callers); the
+    English keywords alone (_COMBOSQUAT_KEYWORDS) for every other name —
+    outlook-de-login, paypal-secure-login, apple-id-verify, which the global
+    names' one-word combo test read as 'de-login' and missed until
+    2026-10-23. A keyword written with a hyphen (sign-in, log-in) counts as
+    one word. _NOT_LURE_NEXT_TO takes a word out next to its brand."""
+    russian = rule is None or rule.lure_words
+    not_lures = _NOT_LURE_NEXT_TO.get(brand, frozenset())
+
+    def is_lure(word: str) -> bool:
+        if word in not_lures:
+            return False
+        return _is_lure_word(word, brand) if russian else word in _COMBOSQUAT_KEYWORDS
+
+    words = name.split("-")
+    for i, word in enumerate(words):
+        if _is_brand_word(word, brand, rule):
+            others = words[:i] + words[i + 1:]
+            pairs = [f"{a}-{b}" for k, (a, b) in enumerate(zip(words, words[1:])) if i not in (k, k + 1)]
+            if any(is_lure(w) for w in others + pairs):
+                return True
+        if len(word) > len(brand):
+            spelled = _with_brand_spelled_out(word, brand) or word
+            glued = (spelled[len(brand):] if spelled.startswith(brand)
+                     else spelled[:-len(brand)] if spelled.endswith(brand) else "")
+            if glued and is_lure(glued):
+                return True
+    return False
+
+
+def _check_lure_combo_v1(name: str, brand: str) -> bool:
+    """_check_lure_combo as typosquat rule 1 had it (TYPOSQUAT_RULE_VERSION),
+    for a model that learned is_typosquat from it: the brand's own string as
+    one whole hyphenated word or glued, next to a Russian or English lure
+    word. Delete it with the last model_meta.json that records rule 1 (or
+    none)."""
     words = name.split("-")
     for i, word in enumerate(words):
         if word == brand:
@@ -2526,8 +2853,11 @@ _SELF_HOSTED_PRODUCTS = frozenset({"gitlab", "jira", "confluence", "bitbucket"})
 def _is_self_hosted_product(domain: str, brand: str, signals: dict) -> bool:
     """`brand` is a self-hosted product, it is a whole subdomain label of
     `domain` (gitlab.x.ru, not gitlab-login.x.ru) and the registrable domain
-    is in the top 1M (signals: tranco_registrable_rank)."""
-    if brand not in _SELF_HOSTED_PRODUCTS:
+    is in the top 1M (signals: tranco_registrable_rank) — and it is the
+    owner's own: on a hosting platform the registrable is the platform's
+    (bitbucket.<account>.workers.dev), whose rank says nothing about who
+    named the Worker (_platform_tenant_site)."""
+    if brand not in _SELF_HOSTED_PRODUCTS or _platform_tenant_site(domain):
         return False
     rank = signals.get("tranco_registrable_rank")
     if not (isinstance(rank, int) and 0 < rank <= 1_000_000):
@@ -2612,9 +2942,12 @@ def _check_brand_on_hosting_tenant(domain: str) -> Optional[str]:
     sber-hackathon.github.io). So the rule is narrow: a Russian brand of four
     letters or more as the whole name, or any brand next to a lure word — an
     English combo keyword or a Russian lure (ru_lures), hyphenated, or glued
-    for brands of four letters or more. Russian zones (spb.ru) are
-    _check_brand_under_open_zone's; a name directly under a country's zone
-    (paypal-login.com.br) is the typosquat rule's."""
+    for brands of four letters or more. The brand may be written in
+    look-alike characters, as in a registered name (_spells_brand:
+    paypa1-login.ngrok-free.app, 5berbank-bonus.pages.dev; since
+    2026-10-23). Russian zones (spb.ru) are _check_brand_under_open_zone's;
+    a name directly under a country's zone (paypal-login.com.br) is the
+    typosquat rule's."""
     from api.services.hosting_platforms import tenant_suffix_of
 
     d = (domain or "").lower().strip(".")
@@ -2639,14 +2972,53 @@ def _check_brand_on_hosting_tenant(domain: str) -> Optional[str]:
         # Two-word lures written with a hyphen: sign-in, log-in.
         pairs = [a + b for a, b in zip(words, words[1:])]
         for brand in _HOSTING_TENANT_BRANDS:
-            if brand in words:
-                if any(_is_tenant_lure(w, brand) for w in words + pairs if w != brand):
+            named = [w for w in words if w == brand or _spells_brand(w, brand)]
+            if named:
+                if any(_is_tenant_lure(w, brand) for w in words + pairs if w not in named):
                     return brand
             elif len(brand) >= _RU_ZONE_BRAND_PART_MIN:
                 for w in words:
+                    w = _with_brand_spelled_out(w, brand) or w
                     glued = w[len(brand):] if w.startswith(brand) else w[: -len(brand)] if w.endswith(brand) else ""
                     if glued and glued != w and _is_tenant_lure(glued, brand):
                         return brand
+    return None
+
+
+# Brands looked for as a whole word of a hosting customer's own name by
+# _tenant_brand_word: the global typosquat targets and the Russian brands of
+# four letters or more (vk, ok, mts are words of too many names).
+_TENANT_BRAND_WORDS = frozenset(
+    set(GLOBAL_TYPOSQUAT_TARGETS) | {b for b in _RU_ZONE_BRANDS if len(b) >= _RU_ZONE_BRAND_PART_MIN})
+
+
+def _tenant_brand_word(domain: str) -> Optional[str]:
+    """A brand (_TENANT_BRAND_WORDS) as one word, between hyphens or
+    underscores, of the labels a hosting or dynamic-DNS customer chose
+    (_platform_tenant_site): coinbase-com-08739.lclarkpz.workers.dev,
+    dashboard.booking-com-waedubai-hotels.webflow.io — else None, also for
+    registered names, whose brand rules read the whole name.
+
+    calculate_score lets such a host's weak signals add up past caution
+    (WEAK_SIGNALS). The brand rules miss these names: the brand is no whole
+    label (_check_brand_in_subdomain) and has no lure word beside it
+    (_check_brand_on_hosting_tenant). Measured 2026-10-26 on fresh phishing
+    the weak-signal cap held at caution 50: it gives back 5 of the 18
+    hosting-tenant subdomains probed live and 7 of the 55 in the address-only
+    samples of four licensed feeds and Phishing.Database (six of these on
+    booking-com*.webflow.io). On real sites it made nothing 'dangerous': not
+    one of the 44 hosting customers with a brand word and real Chrome
+    traffic (CrUX global, probed live) nor of the 119,306 in the
+    address-only sets."""
+    d = (domain or "").lower().strip(".")
+    site = _platform_tenant_site(d)
+    if not site:
+        return None
+    suffix = site.split(".", 1)[1]
+    for label in d[: -(len(suffix) + 1)].split("."):
+        for word in label.replace("_", "-").split("-"):
+            if word in _TENANT_BRAND_WORDS:
+                return word
     return None
 
 
@@ -2678,8 +3050,12 @@ def _is_tenant_lure(word: str, brand: str) -> bool:
 
 def _check_suspicious_keywords(domain: str) -> Optional[str]:
     base = _extract_base_domain(domain)
-    name = base.split(".")[0].lower()
-    for part in name.replace("_", "-").split("-"):
+    return _keyword_in_name(base.split(".")[0])
+
+
+def _keyword_in_name(name: str) -> Optional[str]:
+    """The first word of `name` (split at '-' and '_') on _SUSPICIOUS_KEYWORDS."""
+    for part in name.lower().replace("_", "-").split("-"):
         if part in _SUSPICIOUS_KEYWORDS:
             return part
     return None

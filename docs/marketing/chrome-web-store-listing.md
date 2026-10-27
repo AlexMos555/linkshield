@@ -51,7 +51,7 @@ Cleanway checks every link you see, in real time, against 16 threat intelligence
 
 **Privacy by design.** Most security extensions ship your full URL to their server so they can check it. Cleanway extracts the domain client-side and sends only the domain — never the full URL, never the page content, never your account email linked to the check. Even our server can't reconstruct your browsing history.
 
-**Honest about detection rate.** We publish our weekly benchmark at cleanway.ai/transparency/methodology — the script, the dataset, and the per-vendor comparison vs Cloudflare 1.1.1.1 for Families, Google Safe Browsing, PhishTank, and VirusTotal. Per-vendor recall, precision, and denominators (including our own unknown/rate-limited bucket) are shown side-by-side on that page and refresh every Monday. Static baseline: AUC 0.95 on a held-out test set of 24,000 verified domains.
+**Honest about detection rate.** We publish our weekly benchmark at cleanway.ai/transparency/methodology — the script, the dataset, and the per-vendor comparison vs Cloudflare 1.1.1.1 for Families and PhishTank (Google Safe Browsing and VirusTotal left the comparison in October 2026: their free APIs bar commercial use). Per-vendor recall, precision, and denominators (including our own unknown/rate-limited bucket) are shown side-by-side on that page and refresh every week. Static baseline: AUC 0.95 on a held-out test set of 24,000 verified domains.
 
 **Smart explanations, not just warnings.** Cleanway shows *why* a link looks dangerous — credential form mismatch, brand impersonation, fresh certificate from a high-risk registrar, unusual entropy in the domain name. Four skill levels (Grandma, Regular, Kids, Pro) tune the explanation to your reader.
 
@@ -117,15 +117,15 @@ Word count: ~470. Within sweet spot.
 
 ---
 
-## Screenshots — captions (5 required)
+## Screenshots
 
-1. **Hero / extension installed** — "Cleanway checks every link automatically. No clicks required."
-2. **Warning popup on a phishing URL** — "Plain-language warning: why the link is dangerous and what to do next."
-3. **Per-link badges in Gmail** — "Inline badges across Gmail, Outlook, Reddit, Discord, every site you read."
-4. **Methodology / transparency page** — "Our detection rate is measured weekly and published. No marketing math."
-5. **Family Hub view** — "Optional family sharing. End-to-end encrypted. Kids mode tunes warnings for younger readers."
-
-Suggested image size: 1280×800. Show real UI, no mockups.
+The caption list that stood here described shots that were never made (Gmail
+badges, the methodology page, Family Hub). The screenshots are ready in
+`store-assets/extension/{en,ru}/` (1280×800, real captures of 0.2.2, made by
+`scripts/store-screenshots/extension.mjs`): `01-block-page.png`,
+`02-popup-safe.png`, `03-popup-caution.png`, `04-link-badges.png`,
+`05-settings.png`. Both listings take all five. What each shows and the upload
+order: `store-assets/extension/README.md`.
 
 ---
 
@@ -171,7 +171,7 @@ Suggested image size: 1280×800. Show real UI, no mockups.
 - [ ] ZIP is `dist/store-artifacts/cleanway-0.2.2-chrome.zip`, rebuilt clean via `bash scripts/build-extensions.sh && bash scripts/build-store-artifacts.sh`
 - [ ] Privacy policy URL works: https://cleanway.ai/privacy-policy
 - [ ] Permissions justifications match what manifest.json actually requests
-- [ ] 5 screenshots uploaded at 1280×800
+- [ ] Screenshots uploaded from `store-assets/extension/` (EN: 01–05; RU: 01–05)
 - [ ] Promo tile uploaded (440×280)
 - [ ] Detailed description ≤ 16000 chars
 - [ ] No competitor names in detailed description

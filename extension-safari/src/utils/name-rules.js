@@ -105,6 +105,12 @@
   var LURE_WORDS = set(D && D.lureWords);
   var LURE_STEMS = D && D.lureStems ? D.lureStems : [];
   var BRAND_LURE_WORDS = new Map();
+  // _NOT_LURE_NEXT_TO: 'secure' is no lure next to 'booking' in the
+  // several-word and glued combos (booking engines' checkout).
+  var NOT_LURE_NEXT_TO = new Map();
+  if (D && D.notLureNextTo) {
+    Object.keys(D.notLureNextTo).forEach(function (b) { NOT_LURE_NEXT_TO.set(b, new Set(D.notLureNextTo[b])); });
+  }
   if (D && D.brandLureWords) for (var lb in D.brandLureWords) BRAND_LURE_WORDS.set(lb, set(D.brandLureWords[lb]));
   var SKEL_CYRILLIC = new Map(D && D.skeletonCyrillic ? Object.entries(D.skeletonCyrillic) : []);
   var SKEL_FOLDS = D && D.skeletonFolds ? D.skeletonFolds : [];
@@ -113,6 +119,7 @@
   var SHAPE_MIN = D ? D.shapeMinLabel : 4;
   var FUZZY_MIN = D ? D.fuzzyMinLabel : 5;
   var TWO_EDIT_MIN = D ? D.twoEditMinLabel : 8;
+  var LOOKALIKE_COMBO_MIN = D && D.lookalikeComboMinLabel ? D.lookalikeComboMinLabel : 4;
   // Literals inside the server's _imitation().
   var GLYPH_BRAND_MIN = 5, GLYPH_RATIO = 0.9, SIMILAR_RATIO = 0.82;
 
@@ -257,7 +264,8 @@
   }
 
   // _check_brand_on_hosting_tenant: a brand with a lure word (or a Russian
-  // brand as the whole name) as a customer's site on a hosting platform.
+  // brand as the whole name) as a customer's site on a hosting platform;
+  // the brand may be in look-alike characters (paypa1-login.ngrok-free.app).
   function brandOnHostingTenant(asciiDomain) {
     var d = clean(asciiDomain);
     var suffix = tenantSuffixOf(d);
@@ -277,13 +285,17 @@
       var candidates = words.concat(pairs);
       for (var b = 0; b < TENANT_BRANDS.length; b++) {
         var brand = TENANT_BRANDS[b];
-        if (words.indexOf(brand) !== -1) {
+        var named = [];
+        for (var n = 0; n < words.length; n++) {
+          if (words[n] === brand || spellsBrand(words[n], brand)) named.push(words[n]);
+        }
+        if (named.length) {
           for (var c = 0; c < candidates.length; c++) {
-            if (candidates[c] !== brand && isTenantLure(candidates[c], brand)) return brand;
+            if (named.indexOf(candidates[c]) === -1 && isTenantLure(candidates[c], brand)) return brand;
           }
         } else if (brand.length >= ZONE_BRAND_PART_MIN) {
           for (var w = 0; w < words.length; w++) {
-            var word = words[w];
+            var word = withBrandSpelledOut(words[w], brand) || words[w];
             var glued = startsWith(word, brand) ? word.slice(brand.length)
               : endsWith(word, brand) ? word.slice(0, word.length - brand.length) : "";
             if (glued && glued !== word && isTenantLure(glued, brand)) return brand;
@@ -536,18 +548,60 @@
     return false;
   }
 
+  // _spells_brand: the brand in look-alike characters (g00gle, micr0soft).
+  function spellsBrand(word, brand) {
+    if (word.length !== brand.length || brand.length < LOOKALIKE_COMBO_MIN || word === brand) return false;
+    for (var i = 0; i < word.length; i++) if (!imitates(word.charAt(i), brand.charAt(i))) return false;
+    return true;
+  }
+
+  // _with_brand_spelled_out: g00glemail → googlemail, secure-paypa1 → secure-paypal.
+  function withBrandSpelledOut(name, brand) {
+    var n = brand.length;
+    if (name.length > n) {
+      if (spellsBrand(name.slice(0, n), brand)) return brand + name.slice(n);
+      if (spellsBrand(name.slice(name.length - n), brand)) return name.slice(0, name.length - n) + brand;
+    }
+    return null;
+  }
+
+  // _is_brand_word: the brand, its look-alike spelling, or (where the rule
+  // allows glued generic combos) the brand glued to a generic word.
+  function isBrandWord(word, brand, rule) {
+    if (word === brand || spellsBrand(word, brand)) return true;
+    if (!rule || !rule.generic_combos || rule.hyphen_combos_only) return false;
+    var parts = comboParts(word, brand);
+    for (var i = 0; i < parts.length; i++) {
+      if ((parts[i][2] ? COMBO_SUFFIXES : COMBO_PREFIXES).has(parts[i][0])) return true;
+    }
+    return false;
+  }
+
   // _check_lure_combo: the brand as one whole word plus a lure word, glued
-  // to it or among the hyphenated words around it.
-  function checkLureCombo(name, brand) {
+  // to it or among the hyphenated words around it. Russian and English lure
+  // words under a rule with lure_words (or no rule), the English keywords
+  // alone otherwise; a hyphenated keyword (sign-in) counts as one word.
+  function checkLureCombo(name, brand, rule) {
+    var russian = !rule || !!rule.lure_words;
+    var notLures = NOT_LURE_NEXT_TO.get(brand);
+    function isLure(w) {
+      if (notLures && notLures.has(w)) return false;
+      return russian ? isLureWord(w, brand) : COMBO_KEYWORDS.has(w);
+    }
     var words = name.split("-");
     for (var i = 0; i < words.length; i++) {
       var word = words[i];
-      if (word === brand) {
-        for (var j = 0; j < words.length; j++) if (j !== i && isLureWord(words[j], brand)) return true;
-      } else if (word.length > brand.length) {
-        var glued = startsWith(word, brand) ? word.slice(brand.length)
-          : endsWith(word, brand) ? word.slice(0, word.length - brand.length) : "";
-        if (glued && isLureWord(glued, brand)) return true;
+      if (isBrandWord(word, brand, rule)) {
+        for (var j = 0; j < words.length; j++) if (j !== i && isLure(words[j])) return true;
+        for (var k = 0; k + 1 < words.length; k++) {
+          if (k !== i && k + 1 !== i && isLure(words[k] + "-" + words[k + 1])) return true;
+        }
+      }
+      if (word.length > brand.length) {
+        var spelled = withBrandSpelledOut(word, brand) || word;
+        var glued = startsWith(spelled, brand) ? spelled.slice(brand.length)
+          : endsWith(spelled, brand) ? spelled.slice(0, spelled.length - brand.length) : "";
+        if (glued && isLure(glued)) return true;
       }
     }
     return false;
@@ -562,7 +616,7 @@
       if (rule.generic_combos && (after ? COMBO_SUFFIXES : COMBO_PREFIXES).has(word)) return true;
       if (rule.country_combos && after && COMBO_COUNTRY.has(word)) return true;
     }
-    return !!rule.lure_words && checkLureCombo(name, brand);
+    return checkLureCombo(name, brand, rule);
   }
 
   function withRule(rule, changes) {
@@ -598,6 +652,8 @@
     if (checkTransposition(name, brand)) return "character swap";
     if (name.replace(/-/g, "") === brand && name.indexOf("-") !== -1) return "hyphen injection";
     if (checkCombosquat(name, brand, rule)) return "combosquatting";
+    var spelled = withBrandSpelledOut(name, brand);
+    if (spelled && checkCombosquat(spelled, brand, rule)) return "combosquatting";
 
     // The same conjunction as the server's, cheapest test first: the edit
     // budget can only pass when the lengths differ by at most the budget, so

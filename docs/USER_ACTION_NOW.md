@@ -41,12 +41,10 @@
 отчёту в тот же день. **Делать ДО submit'а.**
 **Время:** 20 мин.
 
-### 2. Скриншоты для листинга (нужно 5 штук, их ещё НЕТ)
-**Что:** 5 скриншотов расширения @ 1280×800 px для Chrome Web Store.
-**Как:** после шага 1 расширение уже загружено — сделай скрины: (1) popup с verdict,
-(2) бейджи на ссылках, (3) блок-страница фишинга, (4) scam-explainer, (5) Family Hub / Options.
-**Зачем:** CWS требует минимум 1, реально нужно 4-5 для доверия. Без них листинг слабый.
-**Время:** 20 мин (совмести с шагом 1).
+### 2. Скриншоты для листинга — готовы, снимать не нужно
+5 скриншотов 1280×800 (EN и RU) лежат в `store-assets/extension/{en,ru}/`, их делает
+`scripts/store-screenshots/extension.mjs`. Что на каждом и что загружать —
+`store-assets/extension/README.md`. И в английский, и в русский листинг идут все пять.
 
 ### 3. Rotate Anthropic API key + Railway env
 **Что:** Пересоздать Anthropic ключ, положить в Railway.
@@ -84,8 +82,9 @@
 **Шаги:**
 1. Купить dev-аккаунт ($5 однократно).
 2. Upload `dist/store-artifacts/cleanway-0.2.2-chrome.zip` (⚠️ имя такое, не `cleanway-extension.zip`).
-3. Листинг: copy-paste из `docs/marketing/chrome-web-store-listing.md` (текст честный, готов).
-4. Загрузить 5 скриншотов из шага 2.
+3. Листинг: copy-paste из `extension/STORE_LISTING.md`, ответы для проверки — из
+   `docs/CWS_SUBMISSION.md` (`docs/marketing/chrome-web-store-listing.md` больше не источник).
+4. Загрузить скриншоты из `store-assets/extension/en/`: 01…05 (шаг 2).
 5. Submit → статус «In review».
 **Зачем:** это и есть distribution — без листинга ноль пользователей. Всё остальное к этому.
 **Совет:** можно сабмитить как **Unlisted** сначала (доступ только по прямой ссылке) —
@@ -112,13 +111,12 @@ Weekly-бенчмарк рассчитан укладываться в лими�
 ### 9. Firefox AMO + Edge listings (те же zip, бесплатно)
 **Что:** `dist/store-artifacts/cleanway-0.2.2-firefox.zip` → addons.mozilla.org,
 `cleanway-0.2.2-edge.zip` → Edge dev console.
-**Сначала (5 минут, только Firefox):** `about:debugging` → «Этот Firefox» → «Загрузить
-временное дополнение» → `extension-firefox/manifest.json`. Открыть окно по значку
-(должен появиться вердикт, а не вечное «Проверяю страницу…»), Настройки (уровень
-и статистика загрузились) и образец страницы предупреждения: в about:debugging у
-Cleanway указан «URL манифеста» (`moz-extension://…/manifest.json`) — открыть его,
-заменив `manifest.json` на `src/popup/block-preview.html`. Автотесты Firefox-сборку
-не запускают: Chromium не умеет MV2.
+**Проверка в Firefox перед загрузкой — ✅ сделано автоматически:**
+`scripts/smoke-firefox-extension.mjs` ставит `cleanway-0.2.2-firefox.zip` в настоящий
+Firefox и проходит окно по значку (вердикт, а не вечное «Проверяю страницу…»),
+Настройки (уровень и статистика), страницу блокировки и её образец, консоль ошибок.
+Прогон 2026-10-24 (Firefox 158.0.1): 26 из 26. Как запустить снова и ручной
+вариант на 5 минут — `docs/STORE_SUBMISSION_KIT.md` §5.0.
 **Зачем:** покрывает ещё ~30% браузерного рынка теми же артефактами. Дев-аккаунты бесплатные.
 **Время:** 30 мин каждый.
 

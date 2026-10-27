@@ -23,16 +23,82 @@
 ### Tests
 - 382 backend tests passing (was 373). Added 9 parameterized tests for `CheckoutRequest` URL validation.
 
+## [App 1.0.6] - unreleased
+
+iOS build 6, Android versionCode 107. (iOS build 5, uploaded to TestFlight on
+2026-10-24, lacks the Safari popup wording fix #320; build 6 is the one for
+App Review.) Everything merged after the 1.0.5
+release commit (#216) that ships in the app. On iPhone it is the build after
+1.0.5 build 4.
+
+On Android 1.0.6 is the first release since 1.0.3: 1.0.4 (104/105) was never
+published, and neither was 1.0.5 (106) — no GitHub release `v1.0.5`; a 106
+file, if one was built, is not uploaded anywhere, 107 replaces it. So 1.0.6
+also carries the App 1.0.5 and Android 1.0.4 changes below. Android files, one
+per store, each built with its own `EXPO_PUBLIC_DISTRIBUTION` (gradle refuses a
+release build without it, #277;
+[docs/RUSTORE_SUBMISSION.md](docs/RUSTORE_SUBMISSION.md) §2):
+`cleanway-1.0.6-107-arm.apk` (site, GitHub release `v1.0.6`),
+`cleanway-1.0.6-107-rustore.apk` (RuStore), `cleanway-1.0.6-107-play.aab`
+(Google Play). Only files built after #318 was merged carry the
+`expo-share-intent` fix below; earlier 1.0.6 (107) files have the same names
+and must not be uploaded (docs/EXPO_UPGRADE_PLAN.md §1.2).
+
+**Что нового**
+- **Android: исправление безопасности.** Другое приложение на телефоне больше не может через «Поделиться» записать свой файл в приватную папку Cleanway (настройки, список «не мошенники») и так незаметно ослабить защиту. Для этого не требовалось ни разрешений, ни действий от человека. Ошибка была в сторонней библиотеке `expo-share-intent`, в приложение перенесено исправление её автора. Cleanway теперь появляется в меню «Поделиться» только для текста и ссылок: ничего другого он и раньше не проверял (#318). iPhone не затронут.
+- **Ссылка, которую приложение не может разобрать, больше его не закрывает.** Ссылка `cleanway://` с повторяющимся параметром (её может открыть любое приложение или сайт) роняла приложение, а на Android вместе с ним и защиту. Теперь берётся первое значение; если экран всё же не открылся — «Что-то пошло не так» и кнопка «На главный экран»; незнакомая ссылка показывает «Cleanway не может открыть эту ссылку» вместо английской страницы для разработчиков (#273).
+- **«Выйти» выходит только на этом телефоне.** Раньше выход завершал вход и на сайте, в расширении и на других телефонах. Если сервер входа отказал в продлении (вход отозван или истёк), приложение выходит из аккаунта, а не держит его вечно с ошибками; страница блокировки Cloudflare или прокси выходом не считается (#273).
+- **Язык — первый из языков телефона, который есть в приложении:** телефон на украинском, казахском или белорусском с русским вторым открывает приложение по-русски, а не по-английски (#273).
+- **«Улучшить» и тариф видны там, где экран подписки может её продать:** решает регион телефона, как на самом экране подписки, а не язык приложения (#273). В сборке RuStore, где оплаты в приложении пока нет, «Улучшить» не показывается совсем, а экран подписки, если всё же открылся, сразу говорит «скоро» — без просьбы сначала войти (#333).
+- **На экране входа — ссылки на политику конфиденциальности и условия использования** (#274).
+- **«Скачать мои данные» на экране «Аккаунт»:** аккаунт, тариф, устройства, настройки и данные семьи с нашего сервера одним файлом JSON через меню «Поделиться» (#275). Журналы, в том числе журнал входов, в файл не входят.
+- **Android: экран подписки перечисляет только то, что даёт подписка** — без «Автоматической проверки SMS» (её нет ни в одной сборке) и «Защиты во время звонков» (она бесплатна для всех) (#277).
+- **iPhone: проверка «я не робот» при входе открывается в окне внутри приложения** (ASWebAuthenticationSession), а не в Safari; запрос доступа к камере для QR-кодов — на языке телефона (#277).
+- **iPhone: расширение для Safari внутри приложения — версия 0.2.2** (#278): меньше ложных предупреждений на настоящих страницах входа, проверка ссылок не останавливается из-за общего лимита на IP-адрес, «Сообщить об ошибке» передаёт, в чём ошибка; подробно — Extension 0.2.2 ниже. Список хостингов, где сайт — это сайт одного клиента, в нём теперь собран из тех же лицензированных данных, что и на Android (Majestic Million и Chrome UX Report, ниже), вместо Tranco (#284); собственные домены брендов (например, adobelogin.com) оно больше не считает подделками (#294). Окно «осторожно» говорит о самом сайте, без выдуманного «1 ссылка» (#320).
+- **Android: встроенный список популярных сайтов** (их защита никогда не блокирует целиком — страховка от ошибочного списка) и список хостингов, где сайт — это сайт одного клиента, теперь собраны из открытых данных с лицензией — Majestic Million (CC BY 3.0) и Chrome UX Report (CC BY 4.0) — вместо Tranco (#284, #285).
+- **«Настройки» → «Источники данных»:** откуда эти данные и на каких условиях — ссылка на страницу методики на cleanway.ai (#291).
+
+**What's new**
+- **Android: security fix.** Another app on the phone can no longer use sharing to write its own file into Cleanway's private storage (settings, the "not a scam" list) and quietly weaken the protection. It needed no permission and nothing from the person. The bug was in the third-party `expo-share-intent` library; the app carries its author's fix. The share sheet now offers Cleanway for text and links only, the only things it ever checked (#318). iPhone was not affected.
+- A link the app cannot parse no longer closes it. A `cleanway://` link with a repeated parameter (any app or web page can open one) crashed the app, and on Android the shield with it. The first value is used now; if a screen still fails, "Something went wrong" offers "Go to the home screen"; an unknown link shows "Cleanway can't open this link" instead of the English developer page (#273).
+- Sign out signs out this phone only; it used to end the sign-in on the website, the extension and every other phone. A refresh token the sign-in server refuses (revoked or expired) ends the session instead of keeping it forever with errors; a Cloudflare or proxy block page does not count as one (#273).
+- The app starts in the first of the phone's languages it ships: a phone set to Ukrainian, Kazakh or Belarusian with Russian second opens in Russian, not English (#273).
+- "Upgrade" and the plan row show where the paywall can sell a plan: the phone's region decides, as on the paywall itself, not the app's language (#273). The RuStore build, which cannot take a payment in the app yet, shows no "Upgrade" at all, and its paywall, if it opens anyway, says "coming soon" up front instead of asking the person to sign in first (#333).
+- The sign-in screen links the privacy policy and the terms (#274).
+- "Download my data" on the Account screen: the account, plan, devices, settings and family records from our server, one JSON file through the share sheet (#275). Logs, the sign-in log among them, are not in the file.
+- Android: the paywall lists only what the subscription adds — no "Automatic SMS check" (no build has it) and no "Protection during phone calls" (free for everyone) (#277).
+- iPhone: the on-demand sign-in captcha opens in an in-app sheet (ASWebAuthenticationSession) instead of switching to Safari; the camera prompt for QR codes is in the phone's language (#277).
+- iPhone: the Safari extension inside the app is 0.2.2 (#278): fewer false warnings on real sign-in pages, link checks that no longer stop on a limit shared by an IP address, "Report wrong result" that says which way we were wrong; details under Extension 0.2.2 below. Its list of hosting zones where a site is one customer's is now built from the same licensed data as on Android (the Majestic Million and the Chrome UX Report, below) instead of Tranco (#284), and it no longer calls brands' own other domains (adobelogin.com, for one) fakes (#294). Its caution popup talks about the site itself instead of a made-up "1 links" (#320).
+- Android: the built-in popular-site list (the shield never blocks those whole — the safety net against a bad list) and the list of hosting zones where a site is one customer's are now built from licensed open data — the Majestic Million (CC BY 3.0) and the Chrome UX Report (CC BY 4.0) — instead of Tranco (#284, #285).
+- Settings → "Data sources" says where that data comes from and under which licences — a link to the methodology page on cleanway.ai (#291).
+
+**На сервере** (для всех версий приложения, обновлять его не нужно)
+- Проверка сайтов считает популярность по тем же лицензированным данным, модель переобучена на них (#284, #285); 62 проверенных имени, выпавших из списка популярных, — другие домены самих брендов (googlemail.com, yahoo.de…) и чужие сайты похожей формы — больше не «подделки» (#294); источники abuse.ch, которые с 21 октября отвечают без ключа отказом, больше не засчитываются как «не найдено» (#262).
+- Подписка из Google Play, App Store или промокода даёт тариф и на сервере (лимиты проверок), а не только на экране «Аккаунт» (#276).
+- Удалённый аккаунт остаётся закрытым и после 30 дней; при окончательном удалении стираются и записи у Stripe и RevenueCat (#275), а журнал входов Supabase Auth — вместе с аккаунтом и не позже чем через 2 года (#292, после миграции 027).
+- При перегрузке сервер сразу отказывает (503 с `Retry-After`), а не копит запросы в памяти, пока ответ не займёт секунды (#295).
+
+**Server side** (every app version, no update needed)
+- The site check ranks popularity on the same licensed data, and the model is retrained on it (#284, #285); 62 checked names that left the popular list — brands' own other domains (googlemail.com, yahoo.de…) and unrelated sites of the same shape — are no longer "fakes" (#294); abuse.ch sources, which refuse requests without a key since October 21, no longer count as "not listed" (#262).
+- A Google Play, App Store or promo plan sets the tier on the server too (check limits), not only on the Account screen (#276).
+- A deleted account stays locked after the 30 days; the final purge also erases the account at Stripe and RevenueCat (#275), and Supabase Auth's sign-in log goes with the account and after 2 years at most (#292, once migration 027 is applied).
+- Under overload the API refuses at once (503 with `Retry-After`) instead of piling requests up in memory until answers take seconds (#295).
+
+Captcha stays off until phones are on 1.0.6: on Android it is the first
+published build that can solve one, and on iPhone 1.0.5 build 4 still opens
+Safari for it. Enablement order: [docs/MOBILE_AUTH.md](docs/MOBILE_AUTH.md).
+
+Store review only (not for the store release notes): 1.0.6 builds made with
+`EXPO_PUBLIC_REVIEW_EMAILS=review@cleanway.ai` (`mobile/eas.json` sets it; a
+local build needs it in `mobile/.env`) let that review account sign in with a
+password; every other address keeps the email code (#288). Account and
+password: [docs/runbooks/app-review-account.md](docs/runbooks/app-review-account.md).
+
 ## [App 1.0.5] - unreleased
 
-iOS build 4, Android versionCode 106. Ships after 1.0.4 clears App Review.
-
-On Android 1.0.5 is the first release since 1.0.3 (Android 1.0.4 was built but
-never published), so it also carries the Android 1.0.4 changes below. Android
-files, one per store ([docs/RUSTORE_SUBMISSION.md](docs/RUSTORE_SUBMISSION.md) §2):
-`cleanway-1.0.5-106-arm.apk` (site, GitHub release `v1.0.5`),
-`cleanway-1.0.5-106-rustore.apk` (RuStore), `cleanway-1.0.5-106-play.aab`
-(Google Play).
+iOS build 4. Ships after 1.0.4 clears App Review. Android: not published as
+1.0.5 (no GitHub release `v1.0.5`) — these changes reach Android phones with
+App 1.0.6 (107).
 
 **Что нового**
 - **Приложение больше не «забывает» данные после сна.** Если система закрыла базу на устройстве, приложение открывает её заново, а неудачное чтение больше не считается первым запуском (#184).
@@ -43,8 +109,6 @@ files, one per store ([docs/RUSTORE_SUBMISSION.md](docs/RUSTORE_SUBMISSION.md) �
 - **Готовность к новому ключу Supabase** (publishable вместо anon JWT) (#215).
 - **Доступность.** У всех кнопок есть роли и подписи для VoiceOver и TalkBack; вердикт проверки и загрузка озвучиваются; онбординг говорит «Шаг N из 3». Контраст текста и кнопок — не ниже AA, области нажатия не меньше 44 pt, крупный шрифт больше не обрезается, при «Уменьшить движение» кольцо оценки и окно защиты от звонков не анимируются (#249).
 - **Политика конфиденциальности в приложении** перечисляет обработчиков данных после переезда инфраструктуры (#228); для сайтов на динамических DNS результат проверки показывает понятную причину (#224).
-- **Android: экран подписки перечисляет только то, что даёт подписка** — без «Автоматической проверки SMS» (её нет ни в одной сборке) и «Защиты во время звонков» (она бесплатна для всех).
-- **iOS, не в build 4 (нужна следующая iOS-сборка):** проверка «я не робот» при входе открывается в окне внутри приложения (ASWebAuthenticationSession), а не в Safari; запрос доступа к камере для QR-кодов — на языке телефона.
 
 **What's new**
 - Reopens a closed on-device database instead of losing data; a failed read is never treated as a first run (#184).
@@ -55,16 +119,11 @@ files, one per store ([docs/RUSTORE_SUBMISSION.md](docs/RUSTORE_SUBMISSION.md) �
 - Supabase publishable-key ready (`*_SUPABASE_PUBLISHABLE_KEY` preferred over the anon JWT) (#215).
 - Accessibility: roles and labels on every touchable for VoiceOver and TalkBack; verdicts and loading states are announced; onboarding says "Step N of 3". Text and button contrast meets AA, touch targets are at least 44 pt, large text is no longer clipped, and Reduce Motion stops the score-ring and call-guard animations (#249).
 - In-app privacy policy lists the subprocessors after the infrastructure move (#228); sites on dynamic DNS get a plain-language reason in the check result (#224).
-- Android: the paywall lists only what the subscription adds — no "Automatic SMS check" (no build has it) and no "Protection during phone calls" (free for everyone).
-- iOS, not in build 4 (needs the next iOS build): the on-demand sign-in captcha opens in an in-app sheet (ASWebAuthenticationSession) instead of switching to Safari; the camera prompt for QR codes is in the phone's language.
+
+Moved to App 1.0.6, merged after build 4: the Android paywall, the iPhone
+in-app captcha sheet and camera prompt, the review account's password sign-in.
 
 Enablement order for the server-side switches: [docs/MOBILE_AUTH.md](docs/MOBILE_AUTH.md).
-
-Store review only (not for the store release notes): builds made after
-2026-10-23 (iOS: the build after build 4; Android: the files rebuilt from
-`main`) let the review account `review@cleanway.ai` sign in with a password —
-`EXPO_PUBLIC_REVIEW_EMAILS`; every other address keeps the email code. Account
-and password: [docs/runbooks/app-review-account.md](docs/runbooks/app-review-account.md).
 
 ## [Extension 0.2.2] - 2026-10-22
 
@@ -115,8 +174,8 @@ Browser extension for Chrome, Edge, Opera, Firefox and Safari. The first version
 ## [Android 1.0.4] - built 2026-10-08, not published
 
 Android app, versionCode 104 (rebuilt as 105). Never published — no GitHub
-release, no store: these changes reach Android phones with App 1.0.5 (106),
-the first Android release after 1.0.3.
+release, no store: these changes reach Android phones with App 1.0.6 (107),
+the first Android release after 1.0.3 (1.0.5 was not published on Android).
 
 **Что нового**
 - **Проверка SMS стала умнее.** Кроме правил, текст сообщения теперь оценивает небольшая модель прямо на телефоне: она замечает мошеннические сообщения, даже если они написаны своими словами. Текст по-прежнему никуда не отправляется.

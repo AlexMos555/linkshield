@@ -96,13 +96,16 @@ grep '"version"' extension/manifest.json
      - Do **not** claim "no data collected", and do not leave these boxes
        unticked. Full answers: `docs/CWS_SUBMISSION.md` §4.
    - Link the privacy policy: https://cleanway.ai/privacy-policy
-4. Screenshots (1280×800 or 640×400):
-   - 1. Popup with safe verdict
-   - 2. Popup with dangerous verdict + reasons
-   - 3. Block page with evidence cards
-   - 4. Credential-guardian modal (#7) with three buttons
-   - 5. Transparency report on cleanway.ai/transparency
-5. Promo tiles (440×280, 1400×560) and screenshots: `docs/STORE_SUBMISSION_KIT.md` §2.3 (`store-assets/browser-extension/`).
+4. Screenshots (1280×800, ready — upload, don't retake): `store-assets/extension/en/`
+   (Russian listing: `ru/`), in this order:
+   - 1. `01-block-page.png` — block page with the "why we blocked" cards
+   - 2. `02-popup-safe.png` — popup, safe verdict
+   - 3. `03-popup-caution.png` — popup, caution verdict
+   - 4. `04-link-badges.png` — link badges on search results, red tooltip open
+   - 5. `05-settings.png` — Settings
+   Made by `scripts/store-screenshots/extension.mjs`; what each shows, the upload
+   order per language and how to retake them: `store-assets/extension/README.md`.
+5. Promo tiles (440×280, 1400×560): `docs/STORE_SUBMISSION_KIT.md` §2.3 (`store-assets/browser-extension/`).
 6. Pricing: free
 7. **Save draft → Preview → Submit for review.** Reviews typically 1-4 days; expedite by linking the transparency report (proves we publish FP rate).
 
@@ -148,7 +151,7 @@ grep '"version"' extension/manifest.json
 **Dev account:** https://addons.mozilla.org/developers/ — free, Mozilla account required.
 
 **Notes:**
-- We ship MV2 with a module background (`"type": "module"`, so Firefox 112+) and a `chrome → browser` alias in `src/utils/browser-alias.js` (the background's first import and the first script of every extension page: Firefox MV2's `chrome.*` there returns no Promises). Firefox's MV3 transition is still mid-flight; MV2 keeps the broadest compatibility. Chromium can't load MV2, so `scripts/test-extension-sw.mjs` does not cover this build: load it by hand in Firefox (about:debugging) before submitting.
+- We ship MV2 with a module background (`"type": "module"`, so Firefox 112+) and a `chrome → browser` alias in `src/utils/browser-alias.js` (the background's first import and the first script of every extension page: Firefox MV2's `chrome.*` there returns no Promises). Firefox's MV3 transition is still mid-flight; MV2 keeps the broadest compatibility. Chromium can't load MV2, so `scripts/test-extension-sw.mjs` does not cover this build; `scripts/smoke-firefox-extension.mjs` does, in a real headless Firefox, before submitting (how to run it, what it checks: `docs/STORE_SUBMISSION_KIT.md` §5.0).
 - AMO requires a **source-code submission** for any extension that uses minified or bundled code. Our own code is hand-written, unminified JS, but `src/utils/vendor/` holds two unmodified third-party files from their npm packages (tweetnacl 1.0.3 `nacl-fast.min.js`, minified as published; qrcode-generator 1.4.4 `qrcode.js`, unminified, saved as `qrcode-generator.js`) and `src/utils/scorer-data.js` is generated. So answer "Yes" and upload `dist/store-artifacts/cleanway-<v>-firefox-source.zip`; the reviewer notes with the libraries' URLs and hashes are in `docs/STORE_SUBMISSION_KIT.md` §5.
 - Mozilla's review is human-led; expect 3-10 business days. The honest publish-our-FP-rate angle plays VERY well with AMO reviewers.
 
@@ -501,10 +504,12 @@ every 24 h), a 429 pauses link lookups for its `Retry-After` but never the page
 check, and an offline fallback is kept minutes instead of an hour; the toolbar
 count is per tab and per page (a new page starts it from zero; an SPA's
 pushState or a #link keeps it); "Report wrong result" sends the
-right direction; the BitB scan no longer reads every div's text. Permissions
-are unchanged. Firefox: load `extension-firefox/` via about:debugging and open
-the popup, Settings and a block page before uploading — Chromium cannot run
-the MV2 build.
+right direction; the BitB scan no longer reads every div's text; "open
+anyway" answers the block page before taking the tab away (Firefox logged the
+late answer as an error against blocked.js). Permissions are unchanged.
+Firefox: `scripts/smoke-firefox-extension.mjs` opens the popup, Settings and a
+block page of the uploaded ZIP in a real Firefox before uploading (Chromium
+cannot run the MV2 build); 26 of 26 checks on 2026-10-24.
 
 What 0.2.1 adds over the never-submitted 0.2.0 (CHANGELOG `[Extension 0.2.1]`):
 the block page is the extension's own `src/blocked/blocked.html` (PR #207, the

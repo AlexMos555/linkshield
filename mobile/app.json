@@ -2,7 +2,7 @@
   "expo": {
     "name": "Cleanway",
     "slug": "cleanway",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "cleanway",
@@ -28,7 +28,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ai.cleanway.app",
-      "buildNumber": "4",
+      "buildNumber": "6",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -61,7 +61,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "ai.cleanway.app",
-      "versionCode": 106,
+      "versionCode": 107,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.BIND_VPN_SERVICE",
@@ -117,7 +117,7 @@
           },
           "iosShareExtensionName": "Cleanway — Check Link",
           "androidIntentFilters": [
-            "text/*"
+            "text/plain"
           ]
         }
       ],
@@ -128,6 +128,7 @@
       "./plugins/withAbiFilters",
       "./plugins/withSeedGuard",
       "./plugins/withDistributionGuard",
+      "./plugins/withShareIntentGuard",
       "./plugins/withDarkSystemBars",
       "./plugins/withBackupRules"
     ]

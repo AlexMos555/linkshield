@@ -20,7 +20,8 @@ import {
   isDefaultLinkHandler, requestLinkHandler, notificationsEnabled, turnOnBlockNotifications, linkListAvailable,
 } from "../../modules/cleanway-vpn";
 import { paidPlansVisible } from "../../src/utils/freemium";
-import { PAID_PLANS_OFFERED } from "../../src/services/freemium";
+import { FREEMIUM, PAID_PLANS_OFFERED } from "../../src/services/freemium";
+import { storeBillingOn } from "../../src/services/store-billing";
 import { linkGuardSettingShown } from "../../src/utils/platform-features";
 import { DATA_SOURCES_URL, PRIVACY_POLICY_URL, TERMS_URL } from "../../src/utils/legal-urls";
 
@@ -340,8 +341,14 @@ export default function SettingsScreen() {
                right={chevron} onPress={() => router.push("/auth")} />
         )}
         {/* No Plan row in an iPhone build without App Store billing (PAID_PLANS_OFFERED),
-            nor where the paywall can only say "coming soon" (paidPlansVisible: by region, as its prices). */}
-        {PAID_PLANS_OFFERED && paidPlansVisible(i18n.language, Localization.getLocales()[0]?.regionCode) && (
+            nor where the paywall can only say "coming soon" (paidPlansVisible: by region, as its
+            prices, and in a build that cannot sell — RuStore, a store build without its billing SDK). */}
+        {PAID_PLANS_OFFERED && paidPlansVisible({
+          language: i18n.language,
+          region: Localization.getLocales()[0]?.regionCode,
+          distribution: FREEMIUM.distribution,
+          storeBillingOn: storeBillingOn(),
+        }) && (
           <Row label={t("mobile.settings.plan")} desc={t("mobile.settings.plan_desc")}
                right={<Text style={s.pill}>{t("mobile.settings.upgrade")}</Text>}
                onPress={() => router.push({ pathname: "/paywall", params: { from: "upgrade" } })} />

@@ -36,7 +36,7 @@ Staging-окружения нет. Workflow `deploy-staging.yml` (только �
 5. Проверить:
    ```bash
    curl -s https://api.cleanway.ai/health/deep   # 200, "status":"ok", "warnings":[]
-   curl -s https://api.cleanway.ai/health/doh    # "ok":true, "filter":{"loaded":true,…}
+   curl -s https://dns.cleanway.ai/health/doh    # "ok":true, "filter":{"loaded":true,…}
    gh api repos/AlexMos555/linkshield/commits/<sha>/statuses \
      --jq '.[] | [.context, .state, .description] | @tsv'   # web и Vercel — success
    ```

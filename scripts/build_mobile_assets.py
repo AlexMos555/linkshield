@@ -8,11 +8,20 @@
     kept off the allowlist, not off the veto) PLUS the
     hand-curated internet infrastructure (data/infrastructure_domains.txt:
     DNS, CDN, OCSP, push and update names that no link- or visit-based
-    list ranks) MINUS public suffixes / shared platforms. The phone's
-    BlockList refuses to block any listed name whose registrable is here —
-    a last line of defence against a bad publish. Public suffixes are removed
-    on purpose: `github.io` is top-10k, but `evil.github.io` is one tenant's
-    site and MUST stay blockable.
+    list ranks) MINUS public suffixes / shared platforms, operators' own
+    suffixes excepted. The phone's BlockList refuses to block any listed
+    name whose registrable is here — a last line of defence against a bad
+    publish. Public suffixes are removed on purpose: `github.io` is top-10k,
+    but `evil.github.io` is one tenant's site and MUST stay blockable.
+
+  mobile/modules/cleanway-vpn/android/src/main/assets/shared_suffixes.txt
+    The publisher's shared suffixes (scripts/blocklist_shared_zones.py):
+    a listed name under one is one tenant's site, and the veto above does not
+    apply to it (evil-login.tilda.ws is blockable, tilda.ws is not). Then, as
+    '!' lines, the platforms' own names under them, each with every name
+    under it (!login.secureserver.net, !prod.iad2.secureserver.net,
+    !app.netlify.com): not a tenant's, so the veto does apply, as it does to
+    www.<suffix> (BlockList.isPlatformOwn). The publisher never lists them.
 
   mobile/modules/cleanway-vpn/android/src/main/assets/root_zone_tlds.txt
     Every TLD in the IANA root zone (data/iana_tlds.txt, a verbatim copy of
@@ -22,8 +31,8 @@
     without http:// only when it ends in one of these. Refresh: download the
     IANA file over data/iana_tlds.txt, then rebuild.
 
-Both files adapted from the ranking start with its CC BY attribution
-('# ' lines, from data/top_domains_sources.json).
+popular_veto.txt and shared_suffixes.txt are adapted from the ranking and
+start with its CC BY attribution ('# ' lines, from data/top_domains_sources.json).
 
 Usage: python3 scripts/build_mobile_assets.py [--check]
 """
@@ -35,6 +44,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from blocklist_shared_zones import OPERATOR_SUFFIXES, default_shared_suffixes, platform_own_names  # noqa: E402
+
 TOP10K = ROOT / "data" / "top_10k.json"
 REPORTED = ROOT / "data" / "top_domains_reported.json"
 SOURCES = ROOT / "data" / "top_domains_sources.json"
@@ -47,8 +59,9 @@ OUT_SHARED = ASSETS / "shared_suffixes.txt"
 IANA_TLDS = ROOT / "data" / "iana_tlds.txt"
 OUT_TLDS = ASSETS / "root_zone_tlds.txt"
 
-# Mirror of scripts/refresh_dangerous_domains.py HOSTING_PLATFORMS ∪ scoring.HOSTING_PLATFORMS
-# apexes that are top-10k but whose subdomains are tenants.
+# Apexes from scripts/blocklist_shared_zones.py HOSTING_PLATFORMS ∪ scoring.HOSTING_PLATFORMS
+# that are top-10k but whose subdomains are tenants: left out of the veto, as
+# the public suffixes are (shared_suffixes.txt is the publisher's set itself).
 SHARED_APEXES = {
     "github.io", "gitlab.io", "blogspot.com", "wordpress.com", "wixsite.com", "weebly.com",
     "webflow.io", "netlify.app", "vercel.app", "pages.dev", "workers.dev", "web.app",
@@ -78,22 +91,32 @@ def load_reported_popular(max_rank: int = VETO_RANK) -> set[str]:
 
 def attribution_header() -> str:
     """'# ' lines with the ranking's CC BY attribution (the phone skips '#' lines)."""
-    sys.path.insert(0, str(ROOT / "scripts"))
     from ranking_attribution import attribution_lines
 
     return "".join(f"# {line}\n" for line in attribution_lines(json.loads(SOURCES.read_text())))
 
 
-def build() -> list[str]:
+def build_names() -> set[str]:
+    """Every name the veto is cut from: the top 10k, the reported popular
+    names and the infrastructure names."""
     raw = json.loads(TOP10K.read_text())
-    names = ({d.lower() for d in (raw.keys() if isinstance(raw, dict) else raw)} | load_infrastructure()
-             | load_reported_popular())
+    return ({d.lower() for d in (raw.keys() if isinstance(raw, dict) else raw)} | load_infrastructure()
+            | load_reported_popular())
+
+
+def build() -> list[str]:
+    """The veto: build_names() minus the public suffixes and shared platform
+    apexes — but never an operator's own suffix (googleapis.com,
+    githubusercontent.com, cloudfront.net): nothing under those is a tenant's,
+    the publisher never lists a name there, and the veto keeps a bad publish
+    from darkening one on the phone."""
     psl_top = {d.lower() for d in json.loads(PSL_TOP.read_text())} if PSL_TOP.exists() else set()
-    return sorted(names - psl_top - SHARED_APEXES)
+    return sorted(build_names() - ((psl_top | SHARED_APEXES) - OPERATOR_SUFFIXES))
 
 
 def build_shared() -> list[str]:
-    """Suffixes under which a name is ONE TENANT's site.
+    """Suffixes under which a name is ONE TENANT's site — exactly the
+    publisher's (scripts/blocklist_shared_zones.py default_shared_suffixes).
 
     The phone needs these because the popular veto works on the registrable
     domain: `best10cdn.blob.core.windows.net` has registrable `windows.net`,
@@ -101,10 +124,17 @@ def build_shared() -> list[str]:
     tenant suffixes the publisher targets were silently un-blockable on the
     phone (found 2026-08-19 by simulating the shipped veto over the live
     artifact). With this set the phone can tell "Microsoft's own name" from
-    "someone's bucket on Microsoft's platform".
+    "someone's bucket on Microsoft's platform". A copy narrower than the
+    publisher's set did the same to 66 top-10k platforms after #284 widened it
+    (tilda.ws, narod.ru, godaddysites.com, blogspot.com.br …; 2026-10-25).
+
+    After them, '!'-prefixed, the platforms' own names under those suffixes
+    (blocklist_shared_zones.platform_own_names): taken over with the zones,
+    GoDaddy's sign-in, Teachable's e-mail links and Thinkific's file CDN
+    lost the veto they had on main, while DoH already blocked them from one
+    feed listing (review of #336).
     """
-    psl_top = {d.lower() for d in json.loads(PSL_TOP.read_text())} if PSL_TOP.exists() else set()
-    return sorted(psl_top | SHARED_APEXES)
+    return sorted(default_shared_suffixes()) + sorted("!" + n for n in platform_own_names())
 
 
 def build_root_zone() -> tuple[str, list[str]]:
@@ -136,6 +166,7 @@ def main() -> int:
     head = "# GENERATED by scripts/build_mobile_assets.py — do not edit\n" + attribution_header()
     shared_text = head + "\n".join(shared) + "\n"
     text = head + "\n".join(lines) + "\n"
+    own = sum(1 for n in shared if n.startswith("!"))
     tld_version, tlds = build_root_zone()
     tlds_text = (
         "# GENERATED by scripts/build_mobile_assets.py from data/iana_tlds.txt — do not edit\n"
@@ -153,14 +184,16 @@ def main() -> int:
             for f in stale:
                 print(f"STALE: {f.relative_to(ROOT)}")
             return 1
-        print(f"OK: {len(lines)} popular names, {len(shared)} shared suffixes, {len(tlds)} root-zone TLDs")
+        print(f"OK: {len(lines)} popular names, {len(shared) - own} shared suffixes "
+              f"(+{own} platform-own names), {len(tlds)} root-zone TLDs")
         return 0
     ASSETS.mkdir(parents=True, exist_ok=True)
     OUT.write_text(text)
     OUT_SHARED.write_text(shared_text)
     OUT_TLDS.write_text(tlds_text)
     print(f"wrote {OUT.relative_to(ROOT)}: {len(lines)} names, {len(text)} bytes")
-    print(f"wrote {OUT_SHARED.relative_to(ROOT)}: {len(shared)} suffixes, {len(shared_text)} bytes")
+    print(f"wrote {OUT_SHARED.relative_to(ROOT)}: {len(shared) - own} suffixes + {own} platform-own names, "
+          f"{len(shared_text)} bytes")
     print(f"wrote {OUT_TLDS.relative_to(ROOT)}: {len(tlds)} TLDs, {len(tlds_text.encode())} bytes")
     return 0
 

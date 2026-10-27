@@ -99,8 +99,8 @@
     "free_only_heading": "A proteção é grátis",
     "free_only_body": "Bloquear sites de golpe e verificar links e mensagens não custa nada e não exige conta. No seu país não há planos pagos no momento.",
     "free_only_cta": "Baixar o app para Android",
-    "free_body_with_plans": "Bloquear sites de golpe e verificar links e mensagens não custa nada e não exige conta. Os planos pagos são opcionais e nunca desligam a proteção em si.",
-    "plans_link": "Ver planos pagos",
+    "free_body_with_plans": "Bloquear sites de golpe e verificar links e mensagens não custa nada e não exige conta. Onde há planos pagos, eles são opcionais e nunca desligam a proteção em si.",
+    "plans_link": "Planos pagos no seu país",
     "operator": {
       "heading": "Assinatura cobrada na conta do celular",
       "body": "O bloqueio de sites fraudulentos pela lista funciona sempre, sem nada a pagar. A assinatura tira o limite de verificações detalhadas: {price} ₽ por mês para {devices, plural, one {# dispositivo} other {# dispositivos}}, cobrado na conta do celular — sem cartão bancário.",
@@ -559,6 +559,7 @@
     "dataset_phishing_desc": "links recentes da fonte pública PhishTank (até outubro de 2026 também URLhaus), baixados a cada execução e sem duplicatas por domínio.",
     "dataset_safe_desc": "domínios aleatórios da lista Tranco top-1M, das posições 100 a 100.000, com uma semente aleatória fixa para que a amostra possa ser reproduzida.",
     "dataset_safe_desc_curated": "sites russos reais fora dos 100.000 sites mais populares (segundo Majestic Million e Chrome UX Report) — administrações regionais e municipais, universidades, sites .рф, pequenos bancos e empresas, museus e teatros — de uma lista publicada que indica a fonte de cada site, com uma semente aleatória fixa.",
+    "dataset_safe_desc_curated_tranco": "sites russos reais fora do top 100.000 da Tranco, a lista que nosso servidor considerava segura sem analisar quando esta medição foi feita — administrações regionais e municipais, universidades, sites .рф, pequenos bancos e empresas, museus e teatros — de uma lista publicada que indica a fonte de cada site, com uma semente aleatória fixa.",
     "mapping_cleanway": "Cleanway: “perigoso” conta como perigoso, “seguro” como seguro, “cuidado” como desconhecido.",
     "mapping_cloudflare": "Cloudflare 1.1.1.1 for Families: uma resposta bloqueada (NXDOMAIN ou 0.0.0.0 / ::) conta como perigoso; uma resposta normal, como seguro.",
     "mapping_virustotal": "VirusTotal: perigoso quando pelo menos 2 dos seus antivírus marcam o link; a marcação de um só é ignorada por ser ruidosa demais.",
@@ -570,6 +571,7 @@
     "caveat_latency": "Os tempos de resposta são medidos a partir da máquina que roda o script (um servidor na nuvem nos EUA ou na UE); de outras regiões eles serão diferentes.",
     "caveat_allowlist": "Nosso servidor considera seguros, sem analisá-los, os sites do top 100.000 da Tranco, e a amostra de sites reais acima vem dessa mesma faixa. Por isso ela não mostra com que frequência o Cleanway chama por engano de perigoso um site real menos conhecido, e não publicamos taxa de alarmes falsos com base nela. Vamos publicar quando a amostra incluir sites reais fora dessa lista.",
     "caveat_allowlist_curated": "Nosso servidor considera seguros, sem analisá-los, os 100.000 sites mais populares (segundo Majestic Million e Chrome UX Report), por isso a amostra de sites reais acima vem de fora dessa lista: cada um deles é realmente analisado. Nosso servidor fica fora da Rússia, e alguns desses sites não respondem a visitantes estrangeiros; os resultados semanais no GitHub mostram à parte os alarmes falsos nesses sites.",
+    "caveat_allowlist_curated_tranco": "Quando esta medição foi feita, nosso servidor considerava seguros, sem analisá-los, os sites do top 100.000 da Tranco, por isso a amostra de sites reais acima veio de fora dessa lista: cada um deles foi realmente analisado. Desde 23 de outubro de 2026 o servidor confia, em vez disso, nos 100.000 sites mais populares segundo Majestic Million e Chrome UX Report; alguns sites desta amostra estão nessa lista, e a próxima medição os deixa de fora. Nosso servidor fica fora da Rússia, e alguns desses sites não respondem a visitantes estrangeiros; os resultados semanais no GitHub mostram à parte os alarmes falsos nesses sites.",
     "sources_heading": "Fontes de dados",
     "sources_intro": "O Cleanway é construído em parte com dados abertos. Estas são as principais fontes e as licenças sob as quais são publicadas.",
     "sources_popularity_heading": "Sites populares",
@@ -856,7 +858,7 @@
         "paragraphs": [
           "Quando você ativa a proteção, o Cleanway liga um filtro local usando o mecanismo de VPN do Android. Por ele passam só as consultas DNS — as perguntas que o celular faz para achar o endereço de um site, como “onde fica example.com?”. O conteúdo das páginas, suas mensagens e ligações não passam pelo filtro e não são lidos.",
           "Cada nome de site é comparado com a lista de sites de golpe guardada no celular. Se ele estiver na lista, o celular não abre o site e uma anotação (o nome do site, a hora e o que aconteceu) é salva no celular para o Histórico do app.",
-          "Os nomes que não estão na lista são repassados para achar o endereço do site: primeiro ao servidor DNS da rede em que o celular está — da sua operadora ou do seu roteador Wi-Fi —, como sem o Cleanway. Só se ele não responder, vão para o Cloudflare (1.1.1.1), depois para o Quad9 (9.9.9.9) e, em último caso, para o DNS-over-HTTPS criptografado do Cloudflare. É assim que funcionam as versões 1.0.2 a 1.0.5 do app; a versão 1.0.1 perguntava primeiro ao Cloudflare. Esses serviços veem o nome do site e o endereço IP da sua conexão, como qualquer serviço de DNS; valem as políticas de privacidade deles. O Cleanway não recebe nem guarda essas consultas.",
+          "Os nomes que não estão na lista são repassados para achar o endereço do site: primeiro ao servidor DNS da rede em que o celular está — da sua operadora ou do seu roteador Wi-Fi —, como sem o Cleanway. Só se ele não responder, vão para o Cloudflare (1.1.1.1), depois para o Quad9 (9.9.9.9) e, em último caso, para o DNS-over-HTTPS criptografado do Cloudflare. É assim que funcionam as versões 1.0.2 a 1.0.6 do app; a versão 1.0.1 perguntava primeiro ao Cloudflare. Esses serviços veem o nome do site e o endereço IP da sua conexão, como qualquer serviço de DNS; valem as políticas de privacidade deles. O Cleanway não recebe nem guarda essas consultas.",
           "A partir da versão 1.0.2, o app traz uma cópia da lista de sites de golpe, usada só até o celular baixar uma lista nova."
         ]
       },

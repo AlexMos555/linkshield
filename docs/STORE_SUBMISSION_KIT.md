@@ -434,7 +434,7 @@ Cleanway предупреждает о мошеннических и фишин�
 | Малая промо-плитка 440 × 280 | `store-assets/browser-extension/en/promo-small-440x280.png` (ru: `…/ru/promo-small-440x280.png`) |
 | Большая (marquee) 1400 × 560 | `store-assets/browser-extension/en/promo-marquee-1400x560.png` (ru: `…/ru/…`) |
 | Логотип Edge 300 × 300 | `store-assets/browser-extension/edge-store-logo-300.png` |
-| Скриншоты 1280 × 800 | `store-assets/browser-extension/screenshots/en/` — `01-link-badges.png`, `02-popup-verdict.png`, `03-block-page.png`, `04-credential-warning.png`, `05-settings.png` (ru: те же имена в `…/screenshots/ru/`); что на них — README там же |
+| Скриншоты 1280 × 800 (в этом порядке) | en: `store-assets/extension/en/`, ru: `store-assets/extension/ru/` — в обоих все пять, `01-block-page.png` … `05-settings.png`. Что на каждом, как снято и порядок загрузки — `store-assets/extension/README.md` |
 
 <!-- asset: extension/public/icons/icon128.png 128x128 -->
 <!-- asset: store-assets/browser-extension/en/promo-small-440x280.png 440x280 opaque -->
@@ -442,18 +442,20 @@ Cleanway предупреждает о мошеннических и фишин�
 <!-- asset: store-assets/browser-extension/en/promo-marquee-1400x560.png 1400x560 opaque -->
 <!-- asset: store-assets/browser-extension/ru/promo-marquee-1400x560.png 1400x560 opaque -->
 <!-- asset: store-assets/browser-extension/edge-store-logo-300.png 300x300 -->
-<!-- asset: store-assets/browser-extension/screenshots/en/01-link-badges.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/en/02-popup-verdict.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/en/03-block-page.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/en/04-credential-warning.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/en/05-settings.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/ru/01-link-badges.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/ru/02-popup-verdict.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/ru/03-block-page.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/ru/04-credential-warning.png 1280x800 opaque -->
-<!-- asset: store-assets/browser-extension/screenshots/ru/05-settings.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/en/01-block-page.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/en/02-popup-safe.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/en/03-popup-caution.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/en/04-link-badges.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/en/05-settings.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/ru/01-block-page.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/ru/02-popup-safe.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/ru/03-popup-caution.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/ru/04-link-badges.png 1280x800 opaque -->
+<!-- asset: store-assets/extension/ru/05-settings.png 1280x800 opaque -->
 
-Промо-плитки и картинка для Play нарисованы из иконки и названия скриптом `store-assets/render-graphics.mjs` (без элементов интерфейса); скриншоты — настоящие кадры, см. README рядом с ними. Все десять сняты заново 2026-10-21 со сборки 0.2.1: в 0.2.1 предупреждение — собственная страница расширения (`blocked.html`), а не слой поверх мошеннической страницы, поэтому старые `02` и `03` не подходят.
+Английский `03-popup-caution.png` снова в списке: раньше попап писал в нём «1 links on this page need a closer look» (число, которого фон никогда не присылал). Теперь строка называет сам сайт и не содержит числа, кадр переснят.
+
+Промо-плитки и картинка для Play нарисованы из иконки и названия скриптом `store-assets/render-graphics.mjs` (без элементов интерфейса). Скриншоты — настоящие кадры сборки 0.2.2, снимать руками ничего не нужно: их делает `scripts/store-screenshots/extension.mjs` (одна команда, без живого API и без новых зависимостей — см. README рядом со скриншотами). Расширение загружается как есть, вердикты дают его собственные офлайн-правила, страницы — демонстрационные на выдуманных адресах, а попап (настоящий, открытый кликом по значку) положен поверх снимка той же вкладки. После изменений интерфейса перезапустите скрипт.
 
 ---
 
@@ -609,6 +611,41 @@ Same build and same permission justifications as our Chrome Web Store item. No a
 ---
 
 ## 5. Firefox Add-ons (AMO) — `dist/store-artifacts/cleanway-0.2.2-firefox.zip`
+
+### 5.0 Перед загрузкой: проверка в настоящем Firefox — ✅ автоматическая
+
+Chromium не умеет MV2, поэтому ни e2e-тест, ни скриншоты Firefox-сборку не запускают. Ручную проверку в about:debugging заменяет `scripts/smoke-firefox-extension.mjs`. Он ставит в настоящий Firefox (без окна) **тот самый ZIP, который уходит в AMO**, временным дополнением — как about:debugging — и проходит то, что вы проверяли бы руками. В репозиторий ничего не добавляется: нужны Node, openssl, Firefox и geckodriver. Команды ниже кладут Firefox и geckodriver во временную папку (~550 МБ) и удаляют её после прогона (Mac на Intel; на Apple Silicon — `geckodriver-v0.37.1-macos-aarch64.tar.gz`):
+
+```bash
+T=$(mktemp -d) && mkdir "$T/mnt"
+curl -sSL -o "$T/firefox.dmg" "https://download.mozilla.org/?product=firefox-latest-ssl&os=osx&lang=en-US"
+hdiutil attach -nobrowse -readonly -mountpoint "$T/mnt" "$T/firefox.dmg" >/dev/null
+cp -R "$T/mnt/Firefox.app" "$T/" && hdiutil detach "$T/mnt" >/dev/null && rm "$T/firefox.dmg"
+curl -sSL https://github.com/mozilla/geckodriver/releases/download/v0.37.1/geckodriver-v0.37.1-macos.tar.gz | tar -xz -C "$T"
+node scripts/smoke-firefox-extension.mjs --firefox "$T/Firefox.app/Contents/MacOS/firefox" --geckodriver "$T/geckodriver"
+rm -rf "$T"
+```
+
+Firefox уже стоит в `/Applications`? Тогда строки 2–4 не нужны, а в строке 6 уберите `--firefox …`: скрипт найдёт его сам. Другой файл: `--zip <путь>` или распакованная папка `--ext extension-firefox`.
+
+Что проверяет (всё за ~1,5 минуты, каждый пункт — строка `ok` / `FAIL`):
+- ZIP совпадает с `extension-firefox/` файл в файл (иначе пересоберите: `bash scripts/build-extensions.sh && bash scripts/build-store-artifacts.sh`, затем архив исходников — команда в конце §5);
+- фон запустился: после установки открылась страница приветствия, выбор «Кто чаще всего пользуется этим устройством?» сохраняется;
+- на странице поиска у ссылок зелёные, жёлтые и красные значки;
+- Настройки загрузились: строка аккаунта, уровень защиты, выбранный на странице приветствия, переключатель почты; новый уровень сохраняется;
+- окно по значку показывает вердикт, а не вечное «Проверяю страницу…»: «Эта страница безопасна» на обычной странице, «Этот сайт выглядит подозрительно» на сомнительной, «Это мошеннический сайт» поверх страницы блокировки; его кнопки «Что собирает этот сайт», «Моя неделя» и «Мой уровень защиты» (в «Ещё») открывают свои панели на странице;
+- мошенническая страница заменяется страницей блокировки с именем сайта; «Уйти с этого сайта» (на страницу перед мошеннической) и «Я понимаю риск — открыть всё равно» (после отсчёта; сайт открывается и остаётся) работают;
+- образец страницы блокировки (`src/popup/block-preview.html`) открывается;
+- статистика в Настройках показывает то, что насчитал фон;
+- в консоли ошибок Firefox нет ни одной ошибки дополнения (его страниц, фона, скриптов на сайтах). Скрипт сам подбрасывает по одной ошибке каждого вида и проверяет, что их видно, — пустая консоль значит «прочитана и пуста».
+
+Сеть: все запросы Firefox идут в локальную заглушку. Проверка сайта получает вердикт собственных офлайн-правил дополнения (как у скриншотов, `scripts/store-screenshots/`), демо-страницы — вымышленные адреса оттуда же. До api.cleanway.ai и настоящих мошеннических сайтов не доходит ничего; собственные запросы Firefox (обновления и т. п.) тоже отбрасываются. Скриншоты (PNG) и `summary.json` (все проверки, запросы к заглушке, консоль) — в папке, которую скрипт печатает в конце (`--out <папка>`, чтобы выбрать свою: прогон заменяет в ней только свои файлы — `00-welcome.png` … `06-block-preview.png` и `summary.json`, остальное не трогает). Код выхода 1, если хоть одна проверка не прошла.
+
+Последний прогон — 2026-10-24, Firefox 158.0.1 (macOS, без окна), geckodriver 0.37.1, `cleanway-0.2.2-firefox.zip` (пересобран в тот же день): **26 из 26** три прогона подряд, ошибок дополнения в консоли нет. Первый же прогон нашёл одну: после «Я понимаю риск — открыть всё равно» Firefox иногда писал в консоль ошибку против `blocked.js` — фон отвечал странице блокировки уже после того, как увёл с неё вкладку. Исправлено в этой же сборке (фон сначала отвечает, потом уводит; сайт открывался и раньше). Контроль: та же проверка на копии без `browser-alias.js` в окне по значку и Настройках (ошибка, исправленная в 0.2.2) даёт 7 FAIL — окно «Не удалось проверить страницу», кнопки окна ничего не открывают, `TypeError` в `options.js`.
+
+Вручную — только если хочется увидеть своими глазами (5 минут): about:debugging → «Этот Firefox» → «Загрузить временное дополнение» → `extension-firefox/manifest.json`; открыть окно по значку на любом сайте (вердикт, а не вечное «Проверяю страницу…»), Настройки и образец блокировки (в about:debugging у Cleanway есть «URL манифеста» `moz-extension://…/manifest.json` — заменить `manifest.json` на `src/popup/block-preview.html`). Если в первые секунды после запуска Firefox вместо щита 🛡 на странице приветствия виден квадрат с кодом — это Firefox ещё загружает шрифты (так на любой странице), через секунду щит появляется.
+
+### 5.1 Загрузка
 
 Консоль: addons.mozilla.org/developers → **Submit a New Add-on** → «On this site».
 

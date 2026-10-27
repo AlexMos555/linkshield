@@ -33,6 +33,8 @@ export interface BenchmarkSources {
    * Written by scripts/eval_fresh_urls.py; absent in older snapshots.
    */
   legit_outside_allowlist?: boolean;
+  /** What the legitimate sample is, in the script's words (eval_fresh_urls.pick_legit). */
+  legit?: string;
 }
 
 export interface BenchmarkSnapshot {
@@ -54,6 +56,22 @@ export const MIN_SAFE_CLASSIFIED = 50;
 export const MAX_UNKNOWN_RATE = 0.3;
 
 const OURS = "cleanway";
+
+/**
+ * Services the weekly run stopped comparing on 2026-10-24: their free APIs
+ * bar a commercial product — VirusTotal's public API "must not be used in
+ * commercial products or services", Safe Browsing v4 is "for non-commercial
+ * use only" (scripts/eval_fresh_urls.py, NON_COMMERCIAL_RESOLVERS). Snapshots
+ * from before still hold their rows; the site leaves those rows out rather
+ * than show a comparison the weekly run no longer makes. The raw files on
+ * GitHub keep them.
+ */
+export const RETIRED_RESOLVERS: ReadonlySet<string> = new Set(["gsb", "virustotal"]);
+
+/** One batch's rows as the site shows them: the services still compared, in the snapshot's order. */
+export function comparedRows(batch: Record<string, ResolverStats> | undefined): [string, ResolverStats][] {
+  return Object.entries(batch ?? {}).filter(([name]) => !RETIRED_RESOLVERS.has(name));
+}
 
 function count(value: number | undefined): number {
   return typeof value === "number" ? value : 0;
@@ -93,6 +111,25 @@ export function falsePositiveRateIsPublishable(snapshot: BenchmarkSnapshot | nul
   if (!snapshot || snapshot.sources?.legit_outside_allowlist !== true) return false;
   const ours = snapshot.safe?.[OURS];
   return typeof ours?.fpr === "number" && classified(ours, "tn", "fp") >= MIN_SAFE_CLASSIFIED;
+}
+
+/**
+ * The list a snapshot's legitimate sample was taken from outside of: the one
+ * the server trusted without analysis when the run was made. Tranco's top
+ * 100k until 2026-10-23; since then (#284) a ranking built from the Majestic
+ * Million and the Chrome UX Report. A snapshot from before keeps describing a
+ * sample chosen against Tranco, and the page has to say so: the 2026-10-18
+ * sample has sites the new ranking trusts.
+ *
+ * Keyed on the old snapshots' text, not the new one's: their sources.legit
+ * names Tranco and is never rewritten, while eval_fresh_urls.pick_legit's
+ * current wording may change with the next ranking rebuild (a pytest keeps
+ * "Tranco" out of it).
+ */
+export type LegitRanking = "tranco" | "majestic_crux";
+
+export function legitSampleRanking(snapshot: BenchmarkSnapshot | null): LegitRanking {
+  return /Tranco/.test(snapshot?.sources?.legit ?? "") ? "tranco" : "majestic_crux";
 }
 
 /** Read latest.json from the repo (SSR / build time). Null when missing or unreadable. */

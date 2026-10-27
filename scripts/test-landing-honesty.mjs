@@ -39,6 +39,17 @@
  *      licence text, the CC BY ones with the licence the ranking build
  *      recorded, a TLP marking is never shown as a licence, and the app's
  *      Settings link lands on that section.
+ *  19. The benchmark page never presents VirusTotal or Google Safe Browsing
+ *      as compared services — their free APIs bar a commercial product, and
+ *      the weekly run stopped asking them on 2026-10-24 — in any language,
+ *      even while latest.json is an older snapshot that still has their rows.
+ *  20. The methodology page says which list a snapshot's real-site sample was
+ *      taken from outside of — Tranco's top 100k before 2026-10-23, the
+ *      Majestic Million + Chrome UX Report ranking since — as the snapshot's
+ *      own sources.legit names it, never the server's list of today.
+ *  21. A free account on /account is offered plans only where /pricing sells
+ *      one to its country, and the home page's link to plans promises none
+ *      in a country /pricing has none for.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -49,7 +60,10 @@ import { fileURLToPath } from "node:url";
 import {
   MIN_PHISHING_CLASSIFIED,
   MIN_PHISHING_SAMPLE,
+  RETIRED_RESOLVERS,
+  comparedRows,
   falsePositiveRateIsPublishable,
+  legitSampleRanking,
   recallIsPublishable,
   MIN_SAFE_CLASSIFIED,
   MAX_UNKNOWN_RATE,
@@ -202,12 +216,103 @@ check("committed latest.json: false-positive rate is shown only by its own numbe
   }
 });
 
+console.log("legitSampleRanking (the list the real-site sample was taken outside of)");
+const METHODOLOGY_PAGE = path.join(ROOT, "landing", "app", "[locale]", "transparency", "methodology", "page.tsx");
+const CURATED_KEYS = ["dataset_safe_desc_curated", "caveat_allowlist_curated"];
+check("a sample described as outside Tranco's list predates the Majestic + CrUX ranking; any other is today's", () => {
+  const described = (legit) => ({ ...snapshot(), sources: { legit_outside_allowlist: true, legit } });
+  // eval_fresh_urls.pick_legit's text before #284 (2026-10-23) and since.
+  assert.equal(legitSampleRanking(described("data/benchmark_legit_ru.txt: 200 of 270 real Russian sites outside the Tranco top-100k (regional …)")), "tranco");
+  assert.equal(legitSampleRanking(described("data/benchmark_legit_ru.txt: 200 of 270 real Russian sites outside the allowlist's top 100,000 (Majestic Million + Chrome UX Report; regional …)")), "majestic_crux");
+  // Rewording today's text (a ranking rebuild) must not send a new run back
+  // to Tranco's copy: only the frozen pre-2026-10-23 snapshots name Tranco.
+  assert.equal(legitSampleRanking(described("data/benchmark_legit_ru.txt: 200 of 270 real Russian sites outside the allowlist's top 100,000 (regional …)")), "majestic_crux");
+  assert.equal(legitSampleRanking(snapshot()), "majestic_crux");
+  assert.equal(legitSampleRanking(null), "majestic_crux");
+});
+check("every committed real-site run made before 2026-10-23 is read as taken outside Tranco's list", () => {
+  const dir = path.dirname(LATEST);
+  const runs = fs.readdirSync(dir).filter((name) => /^\d{4}-\d{2}-\d{2}-fresh-urls\.json$/.test(name));
+  let curatedBefore = 0;
+  for (const name of runs) {
+    const run = JSON.parse(fs.readFileSync(path.join(dir, name), "utf-8"));
+    if (name.slice(0, 10) >= "2026-10-23" || run.sources?.legit_outside_allowlist !== true) continue;
+    curatedBefore += 1;
+    assert.equal(legitSampleRanking(run), "tranco", name);
+  }
+  assert.ok(curatedBefore >= 3, `found ${curatedBefore} curated runs before 2026-10-23`);
+});
+check("each ranking's copy names that ranking, in every language", () => {
+  for (const locale of LOCALES) {
+    const methodology = landingSource(locale).methodology;
+    for (const key of CURATED_KEYS) {
+      assert.match(methodology[key], /Majestic Million/, `${locale} ${key}`);
+      assert.doesNotMatch(methodology[key], /Tranco/, `${locale} ${key}`);
+      // The run was made against Tranco's list; the server's list changed later.
+      assert.match(methodology[`${key}_tranco`], /Tranco/, `${locale} ${key}_tranco`);
+    }
+    assert.doesNotMatch(methodology.dataset_safe_desc_curated_tranco, /Majestic/, `${locale} dataset_safe_desc_curated_tranco`);
+  }
+});
+check("the committed snapshot's sample is described by the list its own sources.legit names", () => {
+  const committed = JSON.parse(fs.readFileSync(LATEST, "utf-8"));
+  const legit = String(committed.sources?.legit ?? "");
+  const ranking = legitSampleRanking(committed);
+  if (committed.sources?.legit_outside_allowlist === true) {
+    assert.match(legit, ranking === "tranco" ? /Tranco/ : /Majestic Million/);
+  }
+  const code = fs.readFileSync(METHODOLOGY_PAGE, "utf-8");
+  assert.match(code, /legitSampleRanking\(data\)/, "the page picks the copy by the snapshot");
+  for (const key of CURATED_KEYS) assert.match(code, new RegExp(`"${key}_tranco"`), key);
+});
+
+console.log("benchmark comparison (no service whose free API bars a commercial product)");
+check("an older snapshot's VirusTotal and Safe Browsing rows are left out, the rest keep their order", () => {
+  const batch = Object.fromEntries(
+    ["cleanway", "gsb", "phishtank", "cloudflare_families", "virustotal"].map((name) => [name, stats({})]),
+  );
+  assert.deepEqual(comparedRows(batch).map(([name]) => name), ["cleanway", "phishtank", "cloudflare_families"]);
+  assert.deepEqual(comparedRows(undefined), []);
+  assert.deepEqual([...RETIRED_RESOLVERS].sort(), ["gsb", "virustotal"]);
+});
+check("the methodology page names neither as a compared service, in any language", () => {
+  // Every Methodology string the page (and its Data sources section) renders.
+  const dir = path.join(ROOT, "landing", "app", "[locale]", "transparency", "methodology");
+  const code = ["page.tsx", "DataSources.tsx"].map((f) => fs.readFileSync(path.join(dir, f), "utf-8")).join("\n");
+  assert.doesNotMatch(code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, ""), /VirusTotal|Safe Browsing/);
+  for (const locale of LOCALES) {
+    const methodology = landingSource(locale).methodology;
+    const used = [...code.matchAll(/"([a-z][a-z0-9_]*)"/g)].map((m) => m[1]).filter((key) => key in methodology);
+    assert.ok(used.includes("caveat_phishtank") && used.includes("mapping_cloudflare"), "the scan finds the page's keys");
+    for (const key of used) {
+      assert.doesNotMatch(String(methodology[key]), /VirusTotal|Safe Browsing/, `${locale} methodology.${key}`);
+    }
+  }
+});
+
 console.log("paidPlansOffered");
 check("Russian page → free only", () => assert.equal(paidPlansOffered({ locale: "ru" }), false));
 check("Russian page abroad → still free only", () => assert.equal(paidPlansOffered({ locale: "ru", country: "DE" }), false));
 check("English page from Russia → free only", () => assert.equal(paidPlansOffered({ locale: "en", country: "ru" }), false));
 check("English page, unknown country → paid plans shown", () => assert.equal(paidPlansOffered({ locale: "en", country: null }), true));
 check("German page from Germany → paid plans shown", () => assert.equal(paidPlansOffered({ locale: "de", country: "DE" }), true));
+check("/account offers plans by the visitor's country too, as /pricing and /business do", () => {
+  // By the page's language alone, a free account in Russia on /account (en,
+  // de, …) got "See plans" once Stripe was live, to a /pricing that said there
+  // are none in its country.
+  const account = fs.readFileSync(path.join(ROOT, "landing", "app", "[locale]", "account", "page.tsx"), "utf-8");
+  assert.match(account, /\.get\("x-vercel-ip-country"\)/);
+  assert.match(account, /pricingVariantFor\(\{ locale, country \}\)/);
+});
+// The home page is one static page for every country, so it cannot know the
+// visitor's: its link leads to the plans of "your country", which /pricing
+// answers for — with plans, or with "no paid plans in your country right now".
+const COUNTRY_WORD = { en: /country/, ru: /стран/, es: /país/, pt: /país/, fr: /pays/, de: /Land/, it: /paese/, id: /negara/, hi: /देश/, ar: /بلد/ };
+check("the home page's link to plans promises them only for the visitor's country, in every language", () => {
+  for (const locale of LOCALES) {
+    assert.match(landingSource(locale).pricing_teaser.plans_link, COUNTRY_WORD[locale], locale);
+  }
+});
 
 console.log("isFlagOn (NEXT_PUBLIC_SUPPORT_EMAIL_LIVE)");
 check("unset / empty / 0 → off", () => {

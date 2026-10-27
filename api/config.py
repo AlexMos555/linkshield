@@ -30,6 +30,18 @@ class Settings(BaseSettings):
     # first deploy with strict_config=false, watch logs for missing vars, set
     # them one by one, flip to true once the error log is clean.
     strict_config: bool = False
+    # Which part of the service this process is (SERVICE_ROLE), so the same
+    # image can run DNS in a Railway service of its own
+    # (docs/runbooks/dns-service-split.md, capacity.md):
+    #   all (default) — everything, as the single `web` service always did;
+    #   dns — /dns-query and its probes (/health, /health/doh) under every
+    #         host name, 404 for the rest; no ML warm-up, no retention loop,
+    #         and startup validation without the API's secrets;
+    #   api — everything but DNS: /dns-query and /health/doh answer 404 except
+    #         under dns.cleanway.ai, and no in-memory blocklist filter.
+    # Routing: api/services/request_guards.py. Not ROLE (api | billing), which
+    # picks the Russian billing deployment (api/billing/settings.py).
+    service_role: Literal["all", "api", "dns"] = "all"
 
     # Supabase
     supabase_url: str = ""
@@ -254,9 +266,18 @@ class Settings(BaseSettings):
     # slot (inside the analysis budget); sized so that at the default fresh
     # budget nothing ever waits (32 x 13 licensed checks = 416).
     load_shed_outbound_max_inflight: int = 512
-    # A request body must arrive within this many seconds, plus its size at
-    # ~0.5 Mbit/s, or the request gets 408. It is read BEFORE the request
-    # takes a slot, so a slow client holds none.
+    # Request bodies over 64 KiB at once: read to their end BEFORE the
+    # request takes its slot (the voice upload: as its route reads it,
+    # instead of the API slot), so a slow upload holds only one of these.
+    # They are what bounds the memory big bodies take: 16 x the 4 MiB cap of
+    # /email/analyze = 64 MiB per worker. Past it: 503. Legit ones are rare
+    # (the opt-in webmail scanner, voice uploads).
+    load_shed_upload_max_inflight: int = 16
+    # A request body must keep up with ~0.5 Mbit/s after this many seconds
+    # (byte n due this + n / 64 KiB/s after the request came in), or the
+    # request gets 408: a client that stops sending is cut this long after
+    # it falls behind, whatever size it declared. No body is waited for on a
+    # request class's slot (only, past 64 KiB, on an uploads slot).
     load_shed_body_timeout_s: float = 10.0
     load_shed_retry_after_s: int = 2
 
@@ -401,6 +422,16 @@ class Settings(BaseSettings):
             )
         return v
 
+    @field_validator("service_role", mode="before")
+    @classmethod
+    def normalise_service_role(cls, v: object) -> object:
+        """Case and spaces do not matter, blank means unset. Anything else
+        that is not a role fails the boot: Railway then keeps the previous
+        deployment instead of a DNS service that serves the whole API."""
+        if isinstance(v, str):
+            return v.strip().lower() or "all"
+        return v
+
     @field_validator(
         "sms_text_model_caution_threshold_override",
         "sms_text_model_danger_threshold_override",
@@ -425,6 +456,14 @@ class Settings(BaseSettings):
     def get_allowed_origins(self) -> list[str]:
         """Parse comma-separated origins into a list."""
         return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
+
+    def serves_api(self) -> bool:
+        """This process runs the API: checks, accounts, retention, ML."""
+        return self.service_role != "dns"
+
+    def serves_dns(self) -> bool:
+        """This process is meant to answer /dns-query (with its blocklist filter)."""
+        return self.service_role != "api"
 
 
 class ConfigError(RuntimeError):
@@ -464,6 +503,20 @@ def validate_settings(settings: "Settings") -> None:
             f"debug=True is not allowed in environment={env}. "
             "Set DEBUG=false in your env config."
         )
+
+    # 1b) A DNS-only process (SERVICE_ROLE=dns) never reads the API's secrets
+    # — Supabase, Stripe, the webhooks — so it is not asked for them: the most
+    # exposed service should not hold them. What the DNS path does use is
+    # still required (docs/runbooks/dns-service-split.md).
+    if settings.service_role == "dns":
+        _require_sentry_in_production(settings)
+        _require_trusted_proxies_in_production(settings)
+        logger.info(
+            "config.validated",
+            extra={"environment": env, "debug": settings.debug, "service_role": "dns",
+                   "has_sentry": bool(settings.sentry_dsn)},
+        )
+        return
 
     # 2) JWT secret rules per env
     if env == "development":
@@ -534,11 +587,7 @@ def validate_settings(settings: "Settings") -> None:
             logger.warning("stripe_secret_key doesn't match sk_live_* or sk_test_* format")
 
     # 5) Sentry DSN required in prod
-    if env == "production" and not _is_safe_nonempty(settings.sentry_dsn):
-        raise ConfigError(
-            "Production requires SENTRY_DSN for error tracking. "
-            "Sign up at sentry.io and set the DSN env var."
-        )
+    _require_sentry_in_production(settings)
 
     # 5b) Rate limiter fail-mode in prod (audit backend HIGH).
     #
@@ -560,14 +609,7 @@ def validate_settings(settings: "Settings") -> None:
         )
 
     # 5c) X-Forwarded-For trust list in prod (audit backend-security HIGH).
-    if env == "production" and not _is_safe_nonempty(settings.trusted_proxy_cidrs):
-        raise ConfigError(
-            "Production requires TRUSTED_PROXY_CIDRS (comma-separated). "
-            "Without it the rate limiter trusts whatever X-Forwarded-For "
-            "value the client sends — an attacker can rotate IPs in the "
-            "header and bypass per-IP quotas. Set this to Railway's "
-            "egress CIDR (or your fronting proxy's range) and redeploy."
-        )
+    _require_trusted_proxies_in_production(settings)
 
     # 5d) Stripe webhook secret in prod (audit backend MEDIUM).
     #
@@ -628,6 +670,7 @@ def validate_settings(settings: "Settings") -> None:
         extra={
             "environment": env,
             "debug": settings.debug,
+            "service_role": settings.service_role,
             "has_supabase": bool(settings.supabase_url),
             "supabase_server_key_kind": _supabase_server_key_kind(settings),
             "has_stripe": bool(settings.stripe_secret_key),
@@ -635,6 +678,25 @@ def validate_settings(settings: "Settings") -> None:
             "has_sentry": bool(settings.sentry_dsn),
         },
     )
+
+
+def _require_sentry_in_production(settings: Settings) -> None:
+    if settings.environment == "production" and not _is_safe_nonempty(settings.sentry_dsn):
+        raise ConfigError(
+            "Production requires SENTRY_DSN for error tracking. "
+            "Sign up at sentry.io and set the DSN env var."
+        )
+
+
+def _require_trusted_proxies_in_production(settings: Settings) -> None:
+    if settings.environment == "production" and not _is_safe_nonempty(settings.trusted_proxy_cidrs):
+        raise ConfigError(
+            "Production requires TRUSTED_PROXY_CIDRS (comma-separated). "
+            "Without it the rate limiter trusts whatever X-Forwarded-For "
+            "value the client sends — an attacker can rotate IPs in the "
+            "header and bypass per-IP quotas. Set this to Railway's "
+            "egress CIDR (or your fronting proxy's range) and redeploy."
+        )
 
 
 def _supabase_server_key_kind(settings: Settings) -> str:

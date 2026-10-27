@@ -11,7 +11,9 @@ ONE ranked list of registrable domains, built here and nowhere else:
   data/top_10k.json              {name: rank} for the first 10,000 — OTX
                                  gating, "Ranked #N", the phone's veto
   data/public_suffixes_in_top.json  PSL rules whose base is in the 100,000
-                                 or in data/infrastructure_domains.txt
+                                 or in data/infrastructure_domains.txt, and
+                                 the tenant zones of data/tenant_zones.json
+                                 whatever their rank
                                  (scripts/build_public_suffixes_in_top.py)
   data/top_domains_reported.json {name: rank} for the names step 4 kept off
                                  the allowlist that the Redis top 1,000,000
@@ -627,7 +629,7 @@ def render(ranking: Ranking, sources: Sources, today: datetime.date) -> dict[str
     top = ranking.names[:TOP_N]
     if len(top) < TOP_N:
         raise ValueError(f"ranking has {len(ranking.names)} names, need {TOP_N}")
-    rules = psl_in_top.rules_in_top(set(top) | psl_in_top.load_infrastructure(), sources.psl.text)
+    rules = psl_in_top.shared_suffix_rules(set(top), sources.psl.text)
     if len(rules) < MIN_PSL_IN_TOP:
         raise ValueError(f"only {len(rules)} public-suffix rules in the top {TOP_N}, need {MIN_PSL_IN_TOP}")
     reported = reported_popular(ranking)

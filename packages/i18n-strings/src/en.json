@@ -32,12 +32,12 @@
         }
       },
       "status_warning_title": {
-        "text": "Some links look suspicious"
+        "text": "This site looks suspicious"
       },
       "status_warning_subtitle": {
-        "text": "$N$ links on this page need a closer look",
+        "text": "$DOMAIN$ shows some signs of a scam. Don't enter passwords or card details here unless you trust this site.",
         "placeholders": {
-          "n": {
+          "domain": {
             "content": "$1"
           }
         }
@@ -1652,8 +1652,8 @@
       "free_only_heading": "Protection is free",
       "free_only_body": "Blocking scam sites and checking links and messages cost nothing and need no account. There are no paid plans in your country right now.",
       "free_only_cta": "Get the Android app",
-      "free_body_with_plans": "Blocking scam sites and checking links and messages cost nothing and need no account. Paid plans are optional and never switch the protection itself off.",
-      "plans_link": "See paid plans",
+      "free_body_with_plans": "Blocking scam sites and checking links and messages cost nothing and need no account. Where paid plans are offered, they are optional and never switch the protection itself off.",
+      "plans_link": "Paid plans in your country",
       "operator": {
         "heading": "A subscription billed to your phone account",
         "body": "Blocking scam sites from the list always works, with nothing to pay. The subscription lifts the limit on detailed checks: {price} ₽ a month for {devices, plural, one {# device} other {# devices}}, billed to your mobile phone account — no bank card.",
@@ -2106,6 +2106,7 @@
       "dataset_phishing_desc": "fresh links from the PhishTank public feed (until October 2026 also URLhaus), downloaded at each run and de-duplicated by domain.",
       "dataset_safe_desc": "random domains from the Tranco top-1M list, ranks 100 to 100,000, with a fixed random seed so the sample can be reproduced.",
       "dataset_safe_desc_curated": "real Russian sites outside our top 100,000 (the most popular sites by the Majestic Million and the Chrome UX Report) — regional and city administrations, universities, .рф sites, small banks and businesses, museums and theatres — from a published list that gives the source of every site, sampled with a fixed random seed.",
+      "dataset_safe_desc_curated_tranco": "real Russian sites outside the Tranco top 100,000, the list our server trusted without analysis when this run was made — regional and city administrations, universities, .рф sites, small banks and businesses, museums and theatres — from a published list that gives the source of every site, sampled with a fixed random seed.",
       "mapping_cleanway": "Cleanway: \"dangerous\" counts as dangerous, \"safe\" as safe, \"caution\" as unknown.",
       "mapping_cloudflare": "Cloudflare 1.1.1.1 for Families: a blocked answer (NXDOMAIN or 0.0.0.0 / ::) counts as dangerous, a normal answer as safe.",
       "mapping_virustotal": "VirusTotal: dangerous when at least 2 of its vendors flag the link; a single vendor is ignored as too noisy.",
@@ -2117,6 +2118,7 @@
       "caveat_latency": "Response times are measured from the machine that runs the script (a cloud runner in the US or EU); from other regions they will differ.",
       "caveat_allowlist": "Our server treats sites in the Tranco top 100,000 as safe without analysing them, and the sample of real sites above comes from that same range. So it cannot show how often Cleanway wrongly calls a less famous real site dangerous, and we publish no false-alarm rate from it. We will once the sample includes real sites outside that list.",
       "caveat_allowlist_curated": "Our server treats the 100,000 most popular sites (by the Majestic Million and the Chrome UX Report) as safe without analysing them, so the sample of real sites above is taken from outside that list: every one of them is really analysed. Our server is outside Russia, and some of these sites do not answer foreign visitors; the weekly results on GitHub show the false alarms on those sites separately.",
+      "caveat_allowlist_curated_tranco": "When this run was made, our server treated the Tranco top 100,000 as safe without analysing them, so the sample of real sites above was taken from outside that list: every one of them was really analysed. Since 23 October 2026 the server trusts the 100,000 most popular sites by the Majestic Million and the Chrome UX Report instead; some sites of this sample are in that list, and the next run leaves them out. Our server is outside Russia, and some of these sites do not answer foreign visitors; the weekly results on GitHub show the false alarms on those sites separately.",
       "sources_heading": "Data sources",
       "sources_intro": "Cleanway is built in part from open data. These are the main sources and the licences they come under.",
       "sources_popularity_heading": "Popular sites",
@@ -2409,7 +2411,7 @@
           "paragraphs": [
             "When you turn on protection, Cleanway starts a local filter using Android's VPN mechanism. Only DNS queries pass through it — the questions your phone asks to find a site's address, such as \"where is example.com?\". The contents of pages, your messages and calls do not go through the filter and are not read.",
             "Each site name is compared with the list of scam sites stored on the phone. If it is on the list, the phone doesn't open the site, and a note (the site's name, the time and what happened) is saved on the phone for the app's History.",
-            "Names that are not on the list are passed on to find the site's address: first to the DNS server of the network the phone is on — your mobile operator's or your Wi-Fi router's — as without Cleanway. Only if it does not answer do they go to Cloudflare (1.1.1.1), then Quad9 (9.9.9.9), and as a last resort Cloudflare's encrypted DNS-over-HTTPS. This is how app versions 1.0.2 to 1.0.5 work; version 1.0.1 asked Cloudflare first. These services see the site name and your connection's IP address, as any DNS service does; their own privacy policies apply. Cleanway does not receive or store these queries.",
+            "Names that are not on the list are passed on to find the site's address: first to the DNS server of the network the phone is on — your mobile operator's or your Wi-Fi router's — as without Cleanway. Only if it does not answer do they go to Cloudflare (1.1.1.1), then Quad9 (9.9.9.9), and as a last resort Cloudflare's encrypted DNS-over-HTTPS. This is how app versions 1.0.2 to 1.0.6 work; version 1.0.1 asked Cloudflare first. These services see the site name and your connection's IP address, as any DNS service does; their own privacy policies apply. Cleanway does not receive or store these queries.",
             "From version 1.0.2 the app carries a copy of the scam-site list, used only until the phone downloads a fresh one."
           ]
         },

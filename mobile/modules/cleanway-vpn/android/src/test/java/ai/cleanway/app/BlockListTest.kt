@@ -231,6 +231,42 @@ class BlockListVetoTest {
     }
 
     @Test
+    fun `the platform's own names under its suffix are vetoed like its apex`() {
+        // assets/shared_suffixes.txt: the zones, then the platforms' own names as '!' lines.
+        val veto = setOf("secureserver.net", "teachable.com", "tumblr.com")
+        val shared = setOf("secureserver.net", "teachable.com", "tumblr.com", "unranked-host.net",
+                           "!login.secureserver.net", "!prod.iad2.secureserver.net", "!m.teachable.com",
+                           "!panel.unranked-host.net")
+        val names = listOf(
+            "login.secureserver.net", "a2plcpnl0019.prod.iad2.secureserver.net", "m.teachable.com",
+            "www.tumblr.com", "panel.unranked-host.net",
+            "0.232.205.92.host.secureserver.net", "exodus-help.teachable.com", "xm.teachable.com",
+            "evil.tumblr.com", "x.www.tumblr.com",
+        )
+        val hashes = names.map { BlockList.hashOf(it) }.distinct().sorted()
+        val out = java.io.ByteArrayOutputStream()
+        out.write("CWBL2\n".toByteArray())
+        out.write("# cleanway-dns-blocklist v2 generated=1 count=${hashes.size} status=ok\n".toByteArray())
+        for (h in hashes) for (b in BlockList.HASH_BYTES - 1 downTo 0) out.write(((h shr (8 * b)) and 0xFF).toInt())
+        val bl = BlockList.parse(out.toByteArray(), veto, nowMs = 0L, sharedSuffixes = shared)!!
+
+        assertNull(bl.match("login.secureserver.net"))
+        assertNull(bl.match("a2plcpnl0019.prod.iad2.secureserver.net"))
+        // A listed platform zone covers the names under it, and so does the veto.
+        assertNull(bl.match("email.m.teachable.com"))
+        assertNull(bl.match("www.tumblr.com"))
+        // The customers next to them still block: a GoDaddy customer's own
+        // server, a Teachable school, a look-alike label, a tenant's www.
+        assertEquals("0.232.205.92.host.secureserver.net", bl.match("0.232.205.92.host.secureserver.net"))
+        assertEquals("exodus-help.teachable.com", bl.match("exodus-help.teachable.com"))
+        assertEquals("xm.teachable.com", bl.match("xm.teachable.com"))
+        assertEquals("evil.tumblr.com", bl.match("evil.tumblr.com"))
+        assertEquals("x.www.tumblr.com", bl.match("x.www.tumblr.com"))
+        // The veto is the registrable's: an unpopular platform's own name never had one.
+        assertEquals("panel.unranked-host.net", bl.match("panel.unranked-host.net"))
+    }
+
+    @Test
     fun `without the shared-suffix asset the veto stays conservative`() {
         val hashes = listOf(BlockList.hashOf("x.blob.core.windows.net")).sorted()
         val out = java.io.ByteArrayOutputStream()

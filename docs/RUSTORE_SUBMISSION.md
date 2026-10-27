@@ -7,7 +7,7 @@ no third-party ad/analytics SDKs; the DNS shield forwards ordinary lookups to th
 network's own resolver, see §4). A declaration that doesn't match the code is a
 rejection (and, on Play, a takedown) trigger.
 
-**The RuStore listing for the first submission, 1.0.5 (Russian, ready to paste), is §7.** The Google
+**The RuStore listing for the first submission, 1.0.6 (Russian, ready to paste), is §7.** The Google
 Play drafts (EN + RU) are in `docs/STORES.md` → "Google Play (Android app)".
 `mobile/STORE_LISTING.md` keeps the shared metadata and the history of removed
 claims.
@@ -41,7 +41,7 @@ required. The developer console signs in with **VK ID** (Госуслуги / Я
 
 | | Task |
 |---|---|
-| **[F] Founder only** | Keep the keystore backup safe (§1). Create the RuStore developer account (VK ID, физлицо). Wire transactional SMTP for sign-in mail before submitting (§5). Confirm `support@cleanway.ai` receives mail. Upload the artifact + paste the answers below. Close the TODOs in §7.0 before submitting 1.0.5. |
+| **[F] Founder only** | Keep the keystore backup safe (§1). Create the RuStore developer account (VK ID, физлицо). Wire transactional SMTP for sign-in mail before submitting (§5). Confirm `support@cleanway.ai` receives mail. Upload the artifact + paste the answers below. Close the TODOs in §7.0 before submitting 1.0.6. |
 | **[C] Claude — done** | Release-signing + ABI plugins, explicit `versionCode`, honest listing, this runbook, the `/android` funnel page, the in-app update check, **the keystore and the signed APK itself** (§1–2). |
 
 The keystore is **permanent identity material**: lose it and every user must
@@ -131,37 +131,54 @@ Keep them in step with the update-check server
 prompt is truthful. The three builds below (site, RuStore, Google Play) carry
 the same versionName and versionCode; each store counts its own.
 
-**Next Android release: 1.0.5 (versionCode 106)** — what `mobile/app.json`
+**Next Android release: 1.0.6 (versionCode 107)** — what `mobile/app.json`
 says. The last published one is **1.0.3 (103)**: GitHub release `v1.0.3`, the
 APK that cleanway.ai/android and the update check serve today. 1.0.4 was built
 (104, then 105 with the Supabase sign-in config and the SQLite reopen fix,
-#184) and tested, but never published — no GitHub release, no store; its
-changes reach phones with 1.0.5 (`CHANGELOG.md`). Asset names for 1.0.5:
+#184) and tested, but never published — no GitHub release, no store. 1.0.5
+(106) was not published on Android either (no GitHub release `v1.0.5`); a 106
+file, if one was built, is not uploaded anywhere — 107 replaces it. Their
+changes reach phones with 1.0.6 (`CHANGELOG.md`). Asset names for 1.0.6:
 
 | Build | File to upload | Where |
 |---|---|---|
-| A — site | `cleanway-1.0.5-106-arm.apk` | GitHub release `v1.0.5` (cleanway.ai/android and the update check point at it) |
-| B — RuStore | `cleanway-1.0.5-106-rustore.apk` | RuStore console only |
-| C — Google Play | `cleanway-1.0.5-106-play.aab` | Play Console only |
+| A — site | `cleanway-1.0.6-107-arm.apk` | GitHub release `v1.0.6` (cleanway.ai/android and the update check point at it) |
+| B — RuStore | `cleanway-1.0.6-107-rustore.apk` | RuStore console only |
+| C — Google Play | `cleanway-1.0.6-107-play.aab` | Play Console only |
+
+> ⛔ **Never upload a 1.0.6 (107) file built before #318 was merged — delete
+> it and rebuild.** The site and RuStore APKs built on 2026-10-24 at
+> 00:29–00:33 (and their `SHA256SUMS-1.0.6.txt`, `9ae6396b…` / `bdb2ce33…`)
+> carry the unpatched `expo-share-intent` 5.1.1: any app on the phone can
+> write into Cleanway's private files through them
+> (docs/EXPO_UPGRADE_PLAN.md §1.2). Their names and versionCode are exactly
+> the ones above, so by version a fixed and an unfixed 1.0.6 look the same,
+> and the CHANGELOG already announces the fix. Rebuild all three (site,
+> RuStore, Play AAB) from `main` after #318, regenerate the checksums
+> (`NEXT_PUBLIC_APK_SHA256` too), and run the share-filter check below on
+> every APK before uploading it.
 
 Change the server **only after** the signed site APK (A) is attached to the
-GitHub release `v1.0.5` — announcing a version nobody can download sends every
+GitHub release `v1.0.6` — announcing a version nobody can download sends every
 phone to a 404. Then, in Railway (API service → Variables), set:
 
 ```
-MOBILE_LATEST_VERSION_NAME=1.0.5
-MOBILE_LATEST_VERSION_CODE=106
-MOBILE_APK_URL=https://github.com/AlexMos555/linkshield/releases/download/v1.0.5/cleanway-1.0.5-106-arm.apk
+MOBILE_LATEST_VERSION_NAME=1.0.6
+MOBILE_LATEST_VERSION_CODE=107
+MOBILE_APK_URL=https://github.com/AlexMos555/linkshield/releases/download/v1.0.6/cleanway-1.0.6-107-arm.apk
 ```
 
 (the URL must be the exact asset name you uploaded — the site APK, never the
 RuStore one; the app opens only `https://` URLs). Optionally
 `MOBILE_RELEASE_NOTES=<one line>`. `MOBILE_MIN_SUPPORTED_VERSION_*` stays
-empty/0 unless you decide to force the update (1.0.5 carries the link-guard
-fix #201 that 1.0.3 lacks). In Vercel, point `NEXT_PUBLIC_APK_URL` at the same
-asset URL and redeploy without the build cache (see docs/GO_LIVE_CHECKLIST.md).
-Check: `curl -s https://api.cleanway.ai/api/v1/mobile/version` shows `1.0.5`
-(the answer is cached up to 15 minutes).
+empty/0 unless you decide to force the update (1.0.6 carries the link-guard
+fix #201 that 1.0.3 lacks). In Vercel, point `NEXT_PUBLIC_APK_URL` (and
+`NEXT_PUBLIC_APK_SHA256`) at the same asset and redeploy the deployment marked
+**Current** with both "Use existing Build Cache" and "Use project's Ignore Build
+Step" unticked (see docs/GO_LIVE_CHECKLIST.md): the newest row is often a
+canceled push, and its Redeploy would run the ignore step again.
+Check: `curl -s https://api.cleanway.ai/api/v1/mobile/version` shows `1.0.6`
+(the answer is cached up to 15 minutes), and `/ru/android` links the 1.0.6 asset.
 
 **SMS text model kill switch (1.0.4+).** The same answer carries
 `remote_config`, driven by Railway env — no APK needed:
@@ -195,7 +212,16 @@ Turning the model back on = unset `SMS_TEXT_MODEL_ENABLED` (or `true`).
 > Gradle downloads the NDK on the first build (≈2.5 GB, slow). The first full
 > build took ~22 min on the 6-core Intel Mac, later ones ~2 min.
 > `mobile/package-lock.json` is the lock of the verified mirror (its
-> `@cleanway/*` entries point at `vendor/`).
+> `@cleanway/*` entries point at `vendor/`). npm workspaces and CI's `npm ci`
+> never touch it, and Dependabot's weekly version updates change only the root
+> lock — but Dependabot's **security** updates do open PRs against it (#329,
+> undici): made outside the mirror, they rewrite the `@cleanway/*` entries to
+> `"*"`. Do not merge such a PR; make the bump in the mirror and close it. CI
+> checks that the lock's root ranges match `mobile/package.json` and that every
+> direct dependency resolves to the same version as in the root lock CI tests
+> (`mobile/scripts/check-mirror-lock.mjs`). After any change to
+> `mobile/package.json` or to a mobile dependency in the root lock, regenerate
+> it ("When `mobile/package.json` changes", at the end of this section).
 
 ```bash
 # 1) Toolchain. (The older sandbox toolchain — $HOME/Library/Caches/cleanway-dev
@@ -207,7 +233,12 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 # 2) The mirror: a copy of mobile/ outside the repo with the two workspace
 #    packages vendored. Its node_modules/ survives between runs; everything
-#    else is overwritten from the repo.
+#    else is overwritten from the repo — mobile/.env included (not in the
+#    repo, mobile/.env.example). It must hold EXPO_PUBLIC_SUPABASE_URL,
+#    EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY (sb_publishable_…), the legacy
+#    EXPO_PUBLIC_SUPABASE_ANON_KEY and EXPO_PUBLIC_CAPTCHA_URL. A build
+#    without the publishable key signs everyone out once the legacy keys are
+#    turned off (docs/MOBILE_AUTH.md §1); the check after the builds catches it.
 REPO="$HOME/Desktop/linkshield"            # your checkout
 M="$HOME/Library/Caches/cleanway-dev/cwmobile"
 mkdir -p "$M/vendor"
@@ -225,9 +256,15 @@ p.dependencies["@cleanway/api-client"] = "file:./vendor/api-client";
 p.dependencies["@cleanway/api-types"] = "file:./vendor/api-types";
 fs.writeFileSync(m + "/package.json", JSON.stringify(p, null, 2) + "\n");' "$REPO" "$M"
 cp "$REPO/mobile/package-lock.json" "$M/package-lock.json"
+node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"; "out of step" = STOP, regenerate the lock (end of §2)
 
 cd "$M"
-npm install
+npm install                # postinstall applies patches/ ("expo-share-intent@5.1.1 ✔"). Exit ≠ 0 = STOP, fix it first
+cmp "$REPO/mobile/package-lock.json" package-lock.json && echo "installed exactly the committed lock"   # a difference = STOP, regenerate the lock (end of §2)
+node scripts/check-share-intent.mjs   # 3× "ok:"; "CHECK FAILED" = STOP (docs/EXPO_UPGRADE_PLAN.md §1.2)
+# (This block has no `set -e`, so the lines below would still run. A release
+# build refuses to start anyway without the fix — plugins/withShareIntentGuard.js
+# re-runs the check before compiling — but do not count on getting that far.)
 npx expo install --check   # "Dependencies are up to date" (reanimated is excluded on purpose)
 
 # 3) The starter blocklist (1.0.2+): download + verify it into the module's
@@ -243,8 +280,8 @@ bash scripts/fetch-seed-blocklist.sh
 #    succeeds but is signed with the DEBUG key (big warning in the log).
 KEYS="/path/to/the/folder/with/keystore.properties"
 OUT="$HOME/Desktop/cleanway-android-out"; mkdir -p "$OUT"
-V=$(node -p "require('./app.json').expo.version")                  # 1.0.5
-VC=$(node -p "require('./app.json').expo.android.versionCode")     # 106
+V=$(node -p "require('./app.json').expo.version")                  # 1.0.6
+VC=$(node -p "require('./app.json').expo.android.versionCode")     # 107
 
 # 5) One build per store. EXPO_PUBLIC_DISTRIBUTION decides the paywall (a web
 #    checkout link or not), the "download the new version" banner and whether
@@ -259,6 +296,7 @@ cw_build() {   # cw_build <site|rustore|play> <gradle task>...
   CI=1 npx expo prebuild -p android --clean       # CI=1: the mirror is not a git repo
   grep -n "cleanwayKeystoreProps" android/app/build.gradle          # release signing wired
   grep -n "cleanway-seed-guard" android/app/build.gradle            # seed guard wired
+  grep -n "cleanway-share-intent-guard" android/app/build.gradle    # share-intent fix guard wired
   grep -n "cleanwayPrebuildDistribution = '$EXPO_PUBLIC_DISTRIBUTION'" android/app/build.gradle
   cp "$KEYS/keystore.properties" "$KEYS/cleanway-release.jks" android/
   (cd android && ./gradlew "$@")                  # prints "Cleanway: building the … build"
@@ -303,7 +341,27 @@ unset EXPO_PUBLIC_DISTRIBUTION EXPO_PUBLIC_REVENUECAT_ANDROID_KEY EXPO_PUBLIC_RE
 
 # The seed is inside every build (≈2.8 MB):
 for f in "$OUT"/cleanway-$V-$VC-*.apk; do unzip -l "$f" | grep -c dns-blocklist-v2.seed.bin; done   # → 1 each
+
+# The Supabase publishable key is inside every build's JS bundle (prints no
+# key). Not a bare `grep sb_publishable_`: the app's own prefix check puts that
+# string into every bundle, key or no key — the 1.0.6 files built before
+# 2026-10-25 match it and still carry no key.
+PK=$(sed -n 's/^EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=//p' "$M/.env")
+for f in "$OUT"/cleanway-$V-$VC-*.apk "$OUT"/cleanway-$V-$VC-play.aab; do
+  e=assets/index.android.bundle; case "$f" in *.aab) e=base/$e ;; esac
+  case "$PK" in
+    *REPLACE*) echo "STOP: $M/.env has the .env.example placeholder, not the key" ;;
+    sb_publishable_?*) unzip -p "$f" "$e" | LC_ALL=C grep -aqF "$PK" && echo "$f: publishable key ok" || echo "$f: STOP, no publishable key" ;;
+    *) echo "STOP: no EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY in $M/.env" ;;
+  esac
+done   # → "publishable key ok" for each
 ```
+
+A `STOP` there means the file would sign everyone out once the legacy Supabase
+keys are disabled (docs/MOBILE_AUTH.md §1): add the key to `mobile/.env` and
+rebuild that file with `cw_build`. Every 1.0.6 (107) file built before
+2026-10-25 fails it (`mobile/.env` had no publishable key until then) — one
+more reason those are rebuilt, together with the #318 rebuild above.
 
 **Play Billing only in the Play build** — check before uploading anything:
 
@@ -318,6 +376,27 @@ cd "$OUT"
 A `1` for the site or RuStore APK, or a `0` for the Play one, means that build
 is not what its name says: rebuild it with `cw_build` (never re-run gradle in an
 `android/` generated for another store — the guard refuses that too).
+
+**The share filter is `text/plain` only (1.0.6+, #318)** — the visible sign
+that the APK was built with the `expo-share-intent` fix:
+
+```bash
+for f in cleanway-$V-$VC-arm.apk cleanway-$V-$VC-rustore.apk cleanway-$V-$VC-play-check.apk; do
+  x=$("$BT/aapt2" dump xmltree --file AndroidManifest.xml "$f")
+  echo "$f  text/*: $(grep -c 'mimeType.*"text/\*"' <<<"$x")  text/plain: $(grep -c 'mimeType.*"text/plain"' <<<"$x")"
+done   # → text/*: 0  text/plain: 1, for each
+```
+
+A `text/*` means the file was built without the fix (a 1.0.6 from before #318
+merged): delete it, and rebuild with `cw_build`. The `*/*` line in the
+manifest is the `<queries>` block, not a filter; it was always there.
+
+Checksums of exactly the files you upload (the site line is
+`NEXT_PUBLIC_APK_SHA256`, `.env.example`), regenerated after every rebuild:
+
+```bash
+shasum -a 256 cleanway-$V-$VC-arm.apk cleanway-$V-$VC-rustore.apk cleanway-$V-$VC-play.aab > "SHA256SUMS-$V.txt"
+```
 
 Confirm the **target API, the signer and 16 KB alignment** before uploading —
 for each of the three APKs (the Play one stands in for its AAB):
@@ -360,7 +439,8 @@ in place (no "App not installed"). That proves B2 is fixed end-to-end.
 > BundleConfig asks for `PAGE_ALIGNMENT_16K`. The merged manifest keeps the
 > VpnService (`foregroundServiceType="specialUse"` + the `vpn` subtype
 > property), BootReceiver in `:boot`, ShieldWatchdog, the alarm receiver, the
-> link-guard activity and the `text/*` share filter unchanged;
+> link-guard activity and the `text/*` share filter unchanged (since 1.0.6
+> it is `text/plain` only, #318);
 > `enableOnBackInvokedCallback="false"` is new (below), and the unused
 > `ai.cleanway.app://` deep-link scheme is gone (Expo SDK 53 stopped adding the
 > package name as a scheme; nothing links to it — `cleanway://` is the scheme).
@@ -427,6 +507,68 @@ in place (no "App not installed"). That proves B2 is fixed end-to-end.
   needs the New Architecture). Expo SDK 54 is the last SDK that allows this —
   moving to SDK 55+ means switching to the New Architecture first.
 
+### When `mobile/package.json` changes: regenerate the mirror lock
+
+Any dependency change in `mobile/package.json` — Dependabot's included, which
+updates only the root `package-lock.json` — needs `mobile/package-lock.json`
+regenerated in the mirror and committed in the same PR. Until then CI's "Build
+mirror lock matches mobile/package.json" is red, and every build resolves the
+new range afresh on its day: #303 bumped i18next to `^26.5.3` without it, and
+three 1.0.6 builds got 26.5.7, 26.5.8 and 26.5.10. Run the build block's steps
+1–2 up to and including the `cp …/package-lock.json` line (its check reports
+the mismatch), then:
+
+```bash
+cd "$M"
+npm install --package-lock-only --ignore-scripts   # or a plain `npm install` when you build anyway
+node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"
+cp "$M/package-lock.json" "$REPO/mobile/package-lock.json"     # and commit it
+```
+
+Only the ranges that changed are resolved again; everything else stays as
+locked. (Done this way on 2026-10-25 for #303's i18next and #230's
+react-native-web: i18next 26.5.10 and react-native-web 0.21.4, the same tree
+iOS 1.0.6 (6) was built with.)
+
+**`overrides` in `mobile/package.json` are read only by the mirror** (npm
+ignores them in a workspace; the root `package.json` carries the same ones for
+CI). Keep the two sets equal. `xcode` stays at `3.0.1` because
+`patches/xcode+3.0.1.patch` and `plugins/withSafariExtension.js` depend on it:
+`@expo/config-plugins` 54.0.6 asks for `xcode ^4.0.0`, and without the override
+the mirror got an unpatched `xcode` 4.0.0 nested under it while CI kept testing
+3.0.1 — a difference `check-mirror-lock.mjs` cannot see, since it compares
+direct dependencies only (#338). After a regeneration,
+`grep '/node_modules/xcode"' "$M/package-lock.json"` should find nothing.
+
+**The check names a version, not a range** (`<name>: mirror lock X, root
+package-lock.json Y`): the ranges match, but CI tests one release and the store
+builds ship another. Bring the older lock up to the newer release with
+`npm update <name> --package-lock-only --ignore-scripts` — in the mirror (then
+the check and the `cp` above), or at the repo root. At the root on a Mac the
+same command also drops the Linux-only `"libc"` lines and reorders a few
+entries, so commit only `<name>`'s hunk (`git add -p package-lock.json`); CI's
+`npm ci` verifies the result. If a newer release came out in between, run it in
+the other lock too. (2026-10-25: the root lock moved from i18next 26.5.3 to the
+mirror's 26.5.10; mobile typecheck and the plural keys rendered with and
+without `Intl.PluralRules` — all 10 locales, no log lines — pass on 26.5.10.)
+
+**A Dependabot security PR against `mobile/package-lock.json`** (title "… in
+/mobile"): do not merge it — it was made outside the mirror, so it rewrites the
+`@cleanway/*` entries to `"*"` and CI's check fails on it. Make the same bump in
+the mirror instead, for a transitive dependency too (`npm update` takes the
+newest release its dependents allow):
+
+```bash
+cd "$M"                     # after steps 1–2, up to and including the `cp` line
+npm update <name> --package-lock-only --ignore-scripts
+node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"
+diff "$REPO/mobile/package-lock.json" package-lock.json        # only <name>'s entries
+cp "$M/package-lock.json" "$REPO/mobile/package-lock.json"     # commit it, then close the Dependabot PR
+```
+
+(2026-10-25, #329: undici 6.29.0 → 6.29.1 — the same entry Dependabot wrote,
+without its `"*"`; #329 closed unmerged.)
+
 ---
 
 ## 3. Data-collection declaration (RuStore + Play "Data safety")
@@ -486,7 +628,7 @@ The "removed" rows are blocked in `mobile/app.json`
 (`expo.android.blockedPermissions` + `expo-camera` → `recordAudioAndroid: false`),
 which makes `expo prebuild` write `tools:node="remove"` entries so library
 manifests cannot re-add them. Only v1.0.0 (versionCode 100) still declared them.
-Before uploading 1.0.5, run `aapt2 dump permissions` on the RuStore APK (§2 build B)
+Before uploading 1.0.6, run `aapt2 dump permissions` on the RuStore APK (§2 build B)
 and confirm the list matches this table (and that `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`
 is there, and `com.android.vending.BILLING` is not).
 
@@ -594,17 +736,17 @@ older APK without the field, say only that login is optional.
 
 ---
 
-## 7. Листинг RuStore — версия 1.0.5, первая публикация (вставлять как есть)
+## 7. Листинг RuStore — версия 1.0.6, первая публикация (вставлять как есть)
 
 Copy below is the paste-ready text. Notes, TODOs and character counts are
 outside the text blocks — never paste them. Every claim was checked against
 the code on 2026-10-08 (`main` @ `9aff8ee`); the evidence is listed in §7.7.
 
-### 7.0 TODO for the founder before submitting 1.0.5
+### 7.0 TODO for the founder before submitting 1.0.6
 
-- [x] **Version.** `mobile/app.json` says `1.0.5` / versionCode `106`. The
+- [x] **Version.** `mobile/app.json` says `1.0.6` / versionCode `107`. The
       update-check env in Railway follows the site APK (§2), not RuStore.
-- [ ] **Upload build B only** — `cleanway-1.0.5-106-rustore.apk` from §2, never
+- [ ] **Upload build B only** — `cleanway-1.0.6-107-rustore.apk` from §2, never
       the site APK (it links to the web checkout and offers its own updates
       from our server; the RuStore build does neither). Its `aapt2` check shows no
       `com.android.vending.BILLING`; gradle refuses a release build without
@@ -627,12 +769,13 @@ the code on 2026-10-08 (`main` @ `9aff8ee`); the evidence is listed in §7.7.
       line. The paywall does not promise it either: `smsBenefitShown()`
       (`mobile/src/utils/freemium.ts`) is false in every build until that branch
       merges.
-- [ ] **Pricing line.** Phones in Russia see no paid plans
-      (`mobile/src/utils/freemium.ts` `paidPlansVisible`: region RU, or Russian
-      with no region — where the paywall can only say "coming soon"), the
-      daily free-check limit and the 7-day trial are not in the app, and RuStore
-      in-app payments are not wired. So the copy says only "Основная защита —
-      бесплатно." When paid is live in the build, replace the "СКОЛЬКО СТОИТ"
+- [ ] **Pricing line.** The RuStore build shows no paid plans to anyone — no
+      Upgrade or Plan row (`mobile/src/utils/freemium.ts` `paidPlansVisible`:
+      region RU, or Russian with no region, and every phone in a build that
+      cannot sell — RuStore in-app payments are not wired), the daily
+      free-check limit and the 7-day trial are not in the app. So the copy
+      says only "Основная защита — бесплатно." When paid is live in the build,
+      replace the "СКОЛЬКО СТОИТ"
       block with (numbers from `docs/ACCOUNTS_BILLING_PLAN.md` §5 — confirm them):
       "Блокировка опасных сайтов по списку — бесплатно и без ограничений. 3
       подробные проверки в день — бесплатно, первые 7 дней — без ограничений.
@@ -646,12 +789,14 @@ the code on 2026-10-08 (`main` @ `9aff8ee`); the evidence is listed in §7.7.
       scam-text explanation, devices (not an automatic SMS check, which no build
       has, nor call protection, which is free for everyone) — and the APK has no
       Google Play Billing library and no `com.android.vending.BILLING`
-      permission. Still
-      decide whether a RuStore user with a non-Russian phone should see the
-      "$0.99" paywall at all (`paidPlansVisible` in `mobile/src/utils/freemium.ts`).
+      permission. A RuStore user with a non-Russian phone no longer sees it
+      from Settings or Account either (decided 2026-10-25: `paidPlansVisible`
+      hides Upgrade in a build that cannot sell), and if the sheet opens anyway
+      it says "coming soon" with the button off — no sign-in first
+      (`paywallSaleOff`).
 - [ ] **Screenshots** are from v1.0.0. Since 1.0.4 the home screen has the "Мне
       звонят" button and the "Чтобы защита не выключалась" card. Recapture
-      `01`–`04` on the signed 1.0.5 RuStore APK and add the three new frames in §7.6.
+      `01`–`04` on the signed 1.0.6 RuStore APK and add the three new frames in §7.6.
 - [ ] **RuStore field limits** for the app name and keywords/tags: confirm in the
       console (the counts below are given so you can trim if needed).
 - [ ] **Keep-alive on real phones.** The "щит сам пробует включиться снова"
@@ -723,7 +868,7 @@ Character count: see §7.7 (re-run the snippet there after any edit).
 Every keyword maps to a feature in the build (no "антивирус", no "VPN" as a
 selling word — the app is neither an antivirus nor a privacy VPN).
 
-### 7.5 Что нового (1.0.5)
+### 7.5 Что нового (1.0.6)
 
 <!-- count: rustore_whatsnew max=500 -->
 ```text
@@ -734,9 +879,10 @@ selling word — the app is neither an antivirus nor a privacy VPN).
 • Понятнее сообщения при входе по email.
 ```
 
-The text is the change since 1.0.3, the last APK people have: 1.0.4 was never
-published, so its changes arrive with 1.0.5 (1.0.5's own additions are in
-`CHANGELOG.md` → App 1.0.5; add one only if it fits the 500 target).
+The text is the change since 1.0.3, the last APK people have: 1.0.4 and 1.0.5
+were never published on Android, so their changes arrive with 1.0.6 (the
+additions of 1.0.5 and 1.0.6 are in `CHANGELOG.md` → App 1.0.5 and App 1.0.6;
+add one only if it fits the 500 target).
 Source (all merged to `main` after the 1.0.3 commit `6aec2ed`): #69 call
 stop screen + after-call reminder; #81, #86, #91, #92, #96, #99 SMS rules,
 links without `http://`, on-device text model; #105 keep-alive checklist,
@@ -746,7 +892,7 @@ target (RuStore allows more); short notes get read.
 
 ### 7.6 Подписи к скриншотам
 
-Existing frames (v1.0.0 — recapture on 1.0.5, see §7.0):
+Existing frames (v1.0.0 — recapture on 1.0.6, see §7.0):
 
 | File | Screen | Caption |
 |---|---|---|
@@ -755,7 +901,7 @@ Existing frames (v1.0.0 — recapture on 1.0.5, see §7.0):
 | `03.png` | История | `Сайты мошенников блокируются во всех приложениях` |
 | `04.png` | Оценка | `Советы, как обезопасить себя` |
 
-New frames to capture on 1.0.5 (TODO):
+New frames to capture on 1.0.6 (TODO):
 
 | File | Screen | Caption |
 |---|---|---|
@@ -792,4 +938,4 @@ What each claim rests on:
 | Call warning + after-call reminder | `mobile/src/utils/call-guard.ts:1-20`; `CallGuard.kt` (`noteEvent` from `CleanwayVpnService.kt:737`, `MessageCheck.kt:49`, `LinkCheckService.kt:132`) |
 | Battery checklist | `mobile/src/components/shield/KeepAliveCard.tsx`; module manifest line 31 |
 | Account: devices, unlink, delete | `mobile/app/account.tsx`; `mobile/app/(tabs)/settings.tsx:321-332` |
-| Paid plans hidden in Russia | `mobile/src/utils/freemium.ts` (`paidPlansVisible`) |
+| Paid plans hidden in Russia and in the whole RuStore build | `mobile/src/utils/freemium.ts` (`paidPlansVisible`, `paywallSaleOff`) |

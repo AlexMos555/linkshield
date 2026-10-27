@@ -1,22 +1,30 @@
 #!/usr/bin/env python3
-"""Fresh-URL benchmark against Cleanway + 4 public competitors.
+"""Fresh-URL benchmark against Cleanway + public competitors.
 
 Strategy doc reference: "Validation as step-zero" — measure
 real-world recall and FPR against URLs the model has NEVER seen
-at training time, side-by-side with Google Safe Browsing,
-PhishTank, Cloudflare 1.1.1.1 for Families and VirusTotal's
-70-vendor aggregate.
+at training time, side-by-side with PhishTank and Cloudflare
+1.1.1.1 for Families. Until 2026-10-24 also Google Safe Browsing
+and VirusTotal's 70-vendor aggregate, whose free APIs bar a
+commercial product (NON_COMMERCIAL_RESOLVERS): they now run only
+when asked for by name, and such a run is never published. Neither
+is a --local-analyzer run whose in-process analyzer asks Safe
+Browsing v4 (non_commercial_asked).
 
-Output goes to docs/benchmarks/<YYYY-MM>-fresh-urls.json (raw)
+Output goes to docs/benchmarks/<YYYY-MM-DD>-fresh-urls.json (raw)
 and .md (human-readable table). This is the source-of-truth
-for any "X% detection rate" claim on the landing page.
+for any "X% detection rate" claim on the landing page. A run that
+is not published, on a day whose report latest.json already points
+to, goes to <YYYY-MM-DD>T<HHMMSS>Z-fresh-urls.json instead.
 
 Usage:
-    # Free-tier run (Cleanway + GSB + PhishTank + Cloudflare):
+    # The published run (Cleanway + PhishTank + Cloudflare):
     python3 scripts/eval_fresh_urls.py
 
-    # Include VirusTotal aggregate (needs free API key):
-    VT_API_KEY=... python3 scripts/eval_fresh_urls.py
+    # A non-commercial rerun that also asks VirusTotal and Google Safe
+    # Browsing, with your own keys (never becomes latest.json):
+    VT_API_KEY=... GOOGLE_SAFE_BROWSING_KEY=... \\
+        python3 scripts/eval_fresh_urls.py --virustotal --gsb
 
     # Small smoke run (50 URLs each side):
     python3 scripts/eval_fresh_urls.py --sample 50
@@ -89,10 +97,49 @@ VT_KEY = os.environ.get("VT_API_KEY")
 # (scripts/refresh_dangerous_domains.py), and its FAQ allows commercial use.
 PHISHTANK_FEED_URL = "https://data.phishtank.com/data/online-valid.csv.gz"
 
+# Services whose free API bars a commercial product, with the clause that
+# does (both read 2026-10-24). Cleanway sells plans, so the published run
+# asks neither: until 2026-10-24 a key in the environment was enough to bring
+# them in, and the weekly job had both keys. They stay available by name
+# (--virustotal / --gsb) for a non-commercial rerun with your own key, and a
+# report holding either never becomes docs/benchmarks/latest.json
+# (check_quality_gate). Cloudflare 1.1.1.1 for Families stays, pending the
+# founder: its terms (the Website and Online Services Terms of Use,
+# cloudflare.com/website-terms, effective 2025-08-01) name the resolver as an
+# Online Service and carry no non-commercial clause, but their §6 bars use of
+# the services' "information, data" except as Cloudflare authorizes, and
+# whether a published block rate is such a use they do not say
+# (docs/THIRD_PARTY_FEEDS.md §2b). PhishTank's FAQ allows commercial use.
+NON_COMMERCIAL_RESOLVERS: dict[str, tuple[str, str]] = {
+    "virustotal": ("VirusTotal",
+                   'its public API "must not be used in commercial products or services" '
+                   "— docs.virustotal.com/reference/public-vs-premium-api"),
+    "gsb": ("Google Safe Browsing",
+            'its v4 API is "for non-commercial use only", Google sells the same lookup '
+            "as Web Risk — developers.google.com/safe-browsing/v4"),
+}
+
+# report["sources"] key: which Google lookup the --local-analyzer row made
+# (local_google_lookup). Absent from a run without that row.
+LOCAL_GOOGLE_LOOKUP = "cleanway_local_google_lookup"
+
+
+def non_commercial_asked(report: dict) -> list[str]:
+    """The NON_COMMERCIAL_RESOLVERS a report asked: as a column of their own,
+    or Safe Browsing v4 inside the --local-analyzer row. That row is the
+    server's own analyzer, which asks v4 whenever a v4 key is set and Web
+    Risk's is not (safe_browsing.get_client). A row whose lookup the report
+    does not record counts as having asked it."""
+    asked = set(report.get("phishing") or {}) | set(report.get("safe") or {})
+    if ("cleanway_local" in asked
+            and (report.get("sources") or {}).get(LOCAL_GOOGLE_LOOKUP) not in ("web_risk", "none")):
+        asked.add("gsb")
+    return [name for name in NON_COMMERCIAL_RESOLVERS if name in asked]
+
 # Rough per-request budget. Cleanway is hot and on-network so we
 # can run it concurrently with -c 20; Google SB has tight quotas;
 # Cloudflare 1.1.1.1 for Families is generous; VirusTotal free
-# tier is 4 req/min.
+# tier is 4 req/min (both of those two only when asked for by name).
 CONCURRENCY = {
     "cleanway": 1,
     "gsb": 4,
@@ -122,7 +169,7 @@ MIN_INTERVAL_S = {
     # VT free tier: 4 lookups a minute and 500 a day. At 16 s a lookup, VT is
     # the slowest resolver by far — 2 x 200 URLs take ~105 min (measured
     # 15.75 s a URL on 2026-09-21) — which is why resolvers run side by side
-    # (main) and the weekly workflow's timeout is sized for VT, not Cleanway.
+    # (main). The weekly run no longer asks it (NON_COMMERCIAL_RESOLVERS).
     "virustotal": 16.0,
 }
 
@@ -560,17 +607,37 @@ async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
 _analyze_domain = None
 
 
+def _repo_on_path() -> None:
+    """Put the repo root on sys.path so 'api.*' imports resolve."""
+    repo_root = str(ROOT)
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+
+
 def _load_analyzer():
     global _analyze_domain
     if _analyze_domain is not None:
         return _analyze_domain
-    # Ensure repo root is on sys.path so 'api.*' imports resolve.
-    repo_root = str(ROOT)
-    if repo_root not in sys.path:
-        sys.path.insert(0, repo_root)
+    _repo_on_path()
     from api.services.analyzer import analyze_domain  # noqa: E402
     _analyze_domain = analyze_domain
     return _analyze_domain
+
+
+def local_google_lookup() -> str:
+    """The Google lookup the in-process analyzer will make, by the rule
+    safe_browsing.get_client() applies to the same settings (environment or
+    .env): "web_risk" with WEB_RISK_API_KEY, else "safe_browsing_v4" with
+    GOOGLE_SAFE_BROWSING_API_KEY or GOOGLE_SAFE_BROWSING_KEY, else "none"."""
+    _repo_on_path()
+    from api.config import get_settings  # noqa: E402
+
+    settings = get_settings()
+    if settings.web_risk_api_key:
+        return "web_risk"
+    if settings.google_safe_browsing_key:
+        return "safe_browsing_v4"
+    return "none"
 
 
 async def check_cleanway_local(client: httpx.AsyncClient, url: str) -> Verdict:
@@ -1000,8 +1067,12 @@ def render_md(report: dict) -> str:
         lines.append("- Legit samples are random entries of the top 100,000 the server trusts on sight. "
                      "The server answers those 'safe' without analysis, so this run's "
                      "false-positive rate is NOT a measurement.")
-    lines.append("- We send DOMAIN only to Cleanway (server-blind invariant). "
-                 "GSB / PhishTank / VT receive the full URL.")
+    resolvers = set(report["phishing"])
+    full_url = [label for name, label in (("gsb", "GSB"), ("phishtank", "PhishTank"), ("virustotal", "VT"))
+                if name in resolvers]
+    receive = "receives" if len(full_url) == 1 else "receive"
+    lines.append("- We send DOMAIN only to Cleanway (server-blind invariant) and to Cloudflare "
+                 "(a DNS lookup)." + (f" {' / '.join(full_url)} {receive} the full URL." if full_url else ""))
     window = report.get("cleanway_window_utc") or {}
     ran = (f" The Cleanway checks ran {window['start']} – {window['end']}."
            if window.get("start") and window.get("end") else "")
@@ -1014,7 +1085,19 @@ def render_md(report: dict) -> str:
     lines.append("- 'Unknown' = the resolver didn't return a definitive verdict "
                  "(rate-limited, not indexed, error). 'Unknown' is NOT counted as "
                  "either correct or incorrect — it's reported separately.")
-    lines.append("- VirusTotal verdict is 'dangerous' iff ≥2 vendors out of 70+ flag the URL.")
+    if "virustotal" in resolvers:
+        lines.append("- VirusTotal verdict is 'dangerous' iff ≥2 vendors out of 70+ flag the URL.")
+    asked_names = non_commercial_asked(report)
+    asked = [f"{label}{'' if name in resolvers else ' through the in-process analyzer'} ({clause})"
+             for name, (label, clause) in NON_COMMERCIAL_RESOLVERS.items() if name in asked_names]
+    left_out = [f"{label} ({clause})" for name, (label, clause) in NON_COMMERCIAL_RESOLVERS.items()
+                if name not in asked_names]
+    if asked:
+        lines.append(f"- This run also asked {' and '.join(asked)}. That makes it a non-commercial "
+                     "rerun, not a Cleanway publication: it never becomes latest.json.")
+    if left_out:
+        lines.append(f"- Not compared: {' and '.join(left_out)}. Cleanway is a commercial product. "
+                     "Earlier runs in docs/benchmarks/ include them.")
     lines.append("- Cloudflare 1.1.1.1 for Families is treated as 'dangerous' on a "
                  "0.0.0.0 sinkhole, or on NXDOMAIN only when Cloudflare's unfiltered "
                  "resolver still resolves the name. A domain that no longer exists "
@@ -1023,8 +1106,7 @@ def render_md(report: dict) -> str:
                  "binary comparison is apples-to-apples. The raw JSON shows the per-"
                  "resolver level distribution.")
     lines.append("")
-    lines.append("**Reproduce**: `python3 scripts/eval_fresh_urls.py` "
-                 "(set `VT_API_KEY` for VirusTotal).")
+    lines.append("**Reproduce**: `python3 scripts/eval_fresh_urls.py`.")
     return "\n".join(lines)
 
 
@@ -1058,6 +1140,7 @@ def _log_unknown_rate(resolver: str, batch: str, verdicts: list[Verdict]) -> Non
 _QG_MIN_PHISHING = 100
 _QG_MIN_CLASSIFIED_PHISHING = 50
 _QG_MAX_UNKNOWN_RATE = 0.30
+NON_COMMERCIAL_GATE = "non_commercial_resolver"
 
 
 @dataclass(frozen=True)
@@ -1077,7 +1160,22 @@ def check_quality_gate(report: dict) -> QualityGateResult:
     for logging. Runs that fail the gate are still written to their
     dated file — we lose no history, we just don't poison the public
     pointer with junk.
+
+    A report that asked a NON_COMMERCIAL_RESOLVERS service fails first
+    (non_commercial_asked, the --local-analyzer row included), and main()
+    honours that one even under --no-enforce-quality-gate: latest.json is
+    what the site publishes.
     """
+    columns = set(report.get("phishing") or {}) | set(report.get("safe") or {})
+    non_commercial = [name if name in columns else f"{name} (through cleanway_local)"
+                      for name in non_commercial_asked(report)]
+    if non_commercial:
+        return QualityGateResult(
+            passed=False,
+            failed_gate=NON_COMMERCIAL_GATE,
+            detail=f"asked {', '.join(non_commercial)}, whose free API bars a commercial product",
+        )
+
     n_phishing = report.get("n_phishing", 0)
     if n_phishing < _QG_MIN_PHISHING:
         return QualityGateResult(
@@ -1177,18 +1275,41 @@ def _update_latest_pointer(json_out: Path) -> None:
                 pass
 
 
+def _is_published(json_out: Path) -> bool:
+    """True when latest.json, next to `json_out`, points to it.
+
+    latest.json is a symlink (_update_latest_pointer), so rewriting the file it
+    names changes what the site shows exactly as moving the pointer would. The
+    plain-copy fallback is a file of its own: rewriting the original leaves it be.
+    """
+    latest = json_out.parent / "latest.json"
+    try:
+        return latest.exists() and json_out.exists() and os.path.samefile(latest, json_out)
+    except OSError:
+        return False
+
+
 async def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--sample", type=int, default=500,
                    help="URLs per side (phishing + legit). Default 500.")
     p.add_argument("--out-tag", default=None,
                    help="Tag appended to output filename. Default: timestamp.")
-    p.add_argument("--no-virustotal", action="store_true",
-                   help="Skip VT even if VT_API_KEY is set.")
+    p.add_argument("--virustotal", action=argparse.BooleanOptionalAction, default=False,
+                   help="Also ask VirusTotal (needs VT_API_KEY). Off by default: its public API "
+                        "bars commercial products (NON_COMMERCIAL_RESOLVERS), so such a run "
+                        "never becomes latest.json.")
+    p.add_argument("--gsb", action=argparse.BooleanOptionalAction, default=False,
+                   help="Also ask Google Safe Browsing v4 (needs GOOGLE_SAFE_BROWSING_KEY). Off by "
+                        "default, for the same reason as --virustotal.")
     p.add_argument("--local-analyzer", action="store_true",
                    help="ALSO run full in-process analyzer (16 sources). "
                         "Requires repo dependencies + free intel sources. "
-                        "Doubles wall-clock but gives authed-endpoint baseline.")
+                        "Doubles wall-clock but gives authed-endpoint baseline. "
+                        "It is the server's own code: it asks Safe Browsing v4 when "
+                        "GOOGLE_SAFE_BROWSING_API_KEY/_KEY is set, Web Risk with WEB_RISK_API_KEY. "
+                        "A run whose analyzer asked Safe Browsing v4 never becomes latest.json, "
+                        "like --gsb.")
     p.add_argument("--enforce-quality-gate", dest="enforce_quality_gate",
                    action="store_true", default=True,
                    help="Only update docs/benchmarks/latest.json if the run "
@@ -1236,16 +1357,36 @@ async def main() -> int:
              len(phishing_urls), len(legit_urls))
 
     # ── Run each resolver against both batches ───────────────────
-    resolvers = ["cleanway", "gsb", "phishtank", "cloudflare_families"]
+    # A key in the environment no longer brings a NON_COMMERCIAL_RESOLVERS
+    # service in: only its flag does, and then only with its key.
+    resolvers = ["cleanway", "phishtank", "cloudflare_families"]
+    for name, wanted, key, env in (("gsb", args.gsb, GSB_KEY, "GOOGLE_SAFE_BROWSING_KEY"),
+                                   ("virustotal", args.virustotal, VT_KEY, "VT_API_KEY")):
+        if wanted and not key:
+            log.warning("--%s without %s: %s skipped", name, env, name)
+        elif wanted:
+            log.warning("asking %s: %s — a non-commercial rerun, it never becomes latest.json",
+                        name, NON_COMMERCIAL_RESOLVERS[name][1])
+            # The historical column order: cleanway, gsb, phishtank, cloudflare, virustotal.
+            if name == "gsb":
+                resolvers.insert(1, name)
+            else:
+                resolvers.append(name)
+    # Read before the run, so settings that do not load stop it before any lookup.
+    local_lookup: dict[str, str] = {}
     if args.local_analyzer:
         resolvers.insert(1, "cleanway_local")
-    if VT_KEY and not args.no_virustotal:
-        resolvers.append("virustotal")
+        local_lookup[LOCAL_GOOGLE_LOOKUP] = local_google_lookup()
+        if local_lookup[LOCAL_GOOGLE_LOOKUP] == "safe_browsing_v4":
+            log.warning("--local-analyzer asks Safe Browsing v4 (a v4 key is set, WEB_RISK_API_KEY "
+                        "is not): %s — a non-commercial rerun, it never becomes latest.json",
+                        NON_COMMERCIAL_RESOLVERS["gsb"][1])
 
     # Resolvers run side by side: each paces itself and talks to a different
-    # service, so the run takes as long as the slowest one (VirusTotal, at
-    # 16 s a lookup) instead of the sum of all of them. Within a resolver the
-    # two batches are interleaved (interleave_batches).
+    # service, so the run takes as long as the slowest one (Cleanway's paced
+    # installs; VirusTotal, at 16 s a lookup, when asked) instead of the sum
+    # of all of them. Within a resolver the two batches are interleaved
+    # (interleave_batches).
     async def _both(r: str) -> tuple[list[Verdict], list[Verdict], dict[str, str]]:
         start = _utc_now()
         phish, safe = await run_resolver_on_both(r, phishing_urls, legit_urls)
@@ -1272,6 +1413,7 @@ async def main() -> int:
             **legit_sources,
             "cleanway_api": CLEANWAY_API,
             "cleanway_identity": cleanway_identity_note(),
+            **local_lookup,
         },
         # When the Cleanway checks ran: the UTC day whose paid-source budgets
         # (IPQS, LLM judge) they could spend.
@@ -1302,8 +1444,26 @@ async def main() -> int:
         },
     }
 
+    # ── Pre-publish quality gate ─────────────────────────────────
+    # The dated files are always written — history is cheap. `latest.json`
+    # is what the landing page + methodology page render, so we only flip
+    # it when the run is trustworthy. A rate-limit blowout that shows
+    # 30/50 unknown and FPR=null must NOT become the public number.
+    gate = check_quality_gate(report)
+    publish = gate.passed or (not args.enforce_quality_gate and gate.failed_gate != NON_COMMERCIAL_GATE)
+
     tag = args.out_tag or time.strftime("%Y-%m-%d", time.gmtime())
     json_out = out_dir / f"{tag}-fresh-urls.json"
+    if not publish and _is_published(json_out):
+        # A second run the same UTC day, whose tag names the very file
+        # latest.json points to: writing it would publish the run the gate
+        # just refused (or a VirusTotal / Safe Browsing rerun) through the
+        # pointer it never moved. It keeps the day's tag plus the time, a name
+        # that sorts after the published one.
+        tag = f"{tag}T{time.strftime('%H%M%S', time.gmtime())}Z"
+        log.warning("latest.json points to %s, and this run is not published: writing it as %s instead",
+                    json_out.name, f"{tag}-fresh-urls.json")
+        json_out = out_dir / f"{tag}-fresh-urls.json"
     md_out = out_dir / f"{tag}-fresh-urls.md"
     with open(json_out, "w") as f:
         json.dump(report, f, indent=2)
@@ -1313,14 +1473,7 @@ async def main() -> int:
     log.info("wrote %s", json_out)
     log.info("wrote %s", md_out)
 
-    # ── Pre-publish quality gate ─────────────────────────────────
-    # The dated files above are always written — history is cheap and
-    # nothing external reads dated files by mistake. `latest.json` is
-    # what the landing page + methodology page render, so we only flip
-    # it when the run is trustworthy. A rate-limit blowout that shows
-    # 30/50 unknown and FPR=null must NOT become the public number.
-    gate = check_quality_gate(report)
-    if not args.enforce_quality_gate:
+    if not args.enforce_quality_gate and gate.failed_gate != NON_COMMERCIAL_GATE:
         log.warning(
             "quality gate DISABLED via --no-enforce-quality-gate — "
             "flipping latest.json regardless of result (passed=%s)",

@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
           cache: pip
@@ -186,6 +186,21 @@ jobs:
       # way — so the transforms are asserted here, in CI, not by hand.
       - name: Expo config plugins (release signing + ABI filters)
         run: node mobile/plugins/__tests__/plugins.test.js
+
+      - name: Build mirror lock matches mobile/package.json
+        # Store builds install from mobile/package-lock.json in a mirror outside
+        # the monorepo (docs/RUSTORE_SUBMISSION.md §2), not from the root lock
+        # this job's npm ci installs. #303 bumped i18next without it, and three
+        # 1.0.6 builds resolved three different 26.x releases; then the mirror
+        # locked 26.5.10 while this job kept testing 26.5.3. Ranges and the
+        # direct dependencies' resolved versions must both match.
+        run: node mobile/scripts/check-mirror-lock.mjs
+
+      - name: Mirror lock check table test
+        # The check itself: a range bump without the mirror lock (#303), equal
+        # ranges at different releases, a Dependabot security PR's "*" for the
+        # vendored packages (#329), and no root lock = STOP, not a pass.
+        run: node mobile/scripts/test-check-mirror-lock.mjs
 
       - name: Host parser table test
         run: node mobile/scripts/test-host-parser.mjs
@@ -419,7 +434,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
 
@@ -482,7 +497,7 @@ jobs:
       SUPABASE_JWT_SECRET: "test-secret-for-development-only-not-for-production-use"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
           cache: pip
