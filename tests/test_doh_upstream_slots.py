@@ -888,6 +888,26 @@ async def test_room_in_a_zone_is_handed_on_when_the_query_woken_for_it_gives_up_
     await asyncio.gather(*held, return_exceptions=True)
 
 
+@pytest.mark.asyncio
+async def test_an_attempt_given_up_before_its_task_runs_gives_its_slot_back_unasked(holding_upstream, monkeypatch):
+    """A request whose slot _take took in the round that reached the deadline
+    (a hedge or a failover due just then; with UPSTREAM_TIMEOUT_S = 10 x
+    HEDGE_AFTER_S, the tenth hedge check is the deadline) is given up before
+    its task first runs. Its slot and its zone's room must still come back:
+    with the check that ends it moved above the try/finally that releases
+    them, the slot and resilience tests all passed and a fuzz run lost 4-8 of
+    40 slots in 3000 queries (review 2026-10-28). The upstream was never asked: no breaker
+    failure, no upstream_abandoned."""
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 0.0)
+    assert await doh_upstream.proxy_to_upstream(query("www.example.org")) is None
+    assert len(doh_upstream._abandoned) == 1  # referenced until it has run and given the slot back
+    await asyncio.sleep(0.01)
+    _assert_idle()
+    assert holding_upstream.posted == []
+    assert doh_upstream.status()[0]["failed"] == 0
+    assert doh_metrics.METRICS.counts.get("upstream_abandoned", 0) == 0
+
+
 def _flaky_client():
     rng = random.Random(11)
 

@@ -270,12 +270,13 @@ class Upstream:
 class _Attempt:
     """One query's request to one upstream."""
 
-    __slots__ = ("up", "sent", "sent_at", "abandoned", "client")
+    __slots__ = ("up", "sent", "sent_at", "started", "abandoned", "client")
 
     def __init__(self, up: Upstream, loop: asyncio.AbstractEventLoop) -> None:
         self.up = up
         self.sent = loop.create_future()  # done once it is at the upstream
         self.sent_at: Optional[float] = None  # holds a slot (and a stream) there since
+        self.started = False  # its task has run (_ask)
         self.abandoned = False  # the query has its outcome without this answer
         self.client: Optional[httpx.AsyncClient] = None  # the one its request went out on
 
@@ -534,13 +535,17 @@ def _unref(zone: str, z: _Zone) -> None:
 async def _ask(attempt: _Attempt, wire: bytes, zone: str, z: Optional[_Zone]) -> Optional[bytes]:
     """`z`: the room _take already took for this attempt, if any."""
     up = attempt.up
+    attempt.started = True
     body: Optional[bytes] = None
     try:
         if z is None:
             z = await _acquire(zone, attempt)
             attempt.mark_sent(asyncio.get_running_loop().time())
         try:
-            if attempt.abandoned:  # its query ended before its task started
+            # Its query ended before its task started (_take took its room in
+            # the round that reached the deadline). Inside the try: its slot
+            # and its room still come back.
+            if attempt.abandoned:
                 return None
             resp = await asyncio.wait_for(_post(attempt, wire), REQUEST_TIMEOUT_S)
         finally:
@@ -663,15 +668,20 @@ async def proxy_to_upstream(wire: bytes) -> Optional[bytes]:
                 if attempt.sent_at is None:
                     task.cancel()  # still waiting for its turn: nothing at the upstream yet
                     continue
+                attempt.abandoned = True
+                _abandoned.add(task)
+                task.add_done_callback(_abandoned.discard)
+                if not attempt.started:
+                    # Launched in the round that reached the deadline: its
+                    # task gives the slot back without asking (_ask), so it
+                    # says nothing about the upstream.
+                    continue
                 # Lost a hedge race or ran out of time: counts toward the
                 # breaker, so a black-holed upstream stops costing every query
                 # the hedge delay. The request itself runs on, holding its slot:
                 # cancelled, its stream would stay open at the upstream anyway.
-                attempt.abandoned = True
                 attempt.up.record(False)
                 doh_metrics.METRICS.inc("upstream_abandoned")
-                _abandoned.add(task)
-                task.add_done_callback(_abandoned.discard)
     except Exception as exc:  # noqa: BLE001 — the caller decides what to answer
         logger.warning("DoH upstream dispatch failed: %s", type(exc).__name__)
         return None
