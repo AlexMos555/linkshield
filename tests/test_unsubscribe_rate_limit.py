@@ -191,7 +191,7 @@ def test_invalid_tokens_from_another_address_have_their_own_budget(client, setti
 
 # ── Redis down ──
 
-def test_valid_links_fail_open_when_redis_is_down(client, settings, recorded, monkeypatch):
+def test_valid_links_are_admitted_within_budget_when_redis_is_down(client, settings, recorded, monkeypatch):
     """An unsubscribe must not be lost to a Redis blip: the signed link is
     the credential. A link that does not verify keeps the fail-closed
     posture production runs with."""
@@ -205,3 +205,50 @@ def test_valid_links_fail_open_when_redis_is_down(client, settings, recorded, mo
     assert _scan(client, eu.mint_token("user-2", "welcome")).status_code == 200
     assert _one_click(client, "not-a-token").status_code == 503
     assert recorded == [("user-1", "welcome")]
+
+
+def test_one_link_keeps_a_budget_while_redis_is_down(client, link_limit, recorded, monkeypatch):
+    """Each admitted POST is a Supabase read and write with the service key,
+    and any free signup gets a link in its welcome email. 2026-10-27: with
+    Redis down and rate_limit_fail_closed on, 50 one-clicks of one link were
+    50 persistence calls. The link's budget now holds per worker process."""
+    async def _down():
+        raise ConnectionError("simulated Redis outage")
+
+    monkeypatch.setattr(rate_limiter, "get_redis", _down)
+    monkeypatch.setattr(rate_limiter.get_settings(), "rate_limit_fail_closed", True)
+    token = eu.mint_token("user-flood", "welcome")
+
+    posts = [_one_click(client, token, _ip(n)) for n in range(link_limit + 1)]
+
+    assert [r.status_code for r in posts] == [200] * link_limit + [429]
+    assert int(posts[-1].headers["Retry-After"]) >= 1
+    assert len(recorded) == link_limit
+    # GET and POST keep separate budgets, as with Redis up.
+    assert _scan(client, token).status_code == 200
+
+
+def test_without_redis_each_link_and_method_keeps_its_own_budget(client, link_limit, recorded, monkeypatch):
+    """The in-process fallback must key like Redis does: by subscription and
+    method. One process-wide or per-method count would let a single free
+    account's link, flooded during an outage, 429 every other subscriber's
+    one-click on that worker; a shared GET/POST count would let link
+    scanners spend the POST budget."""
+    async def _down():
+        raise ConnectionError("simulated Redis outage")
+
+    monkeypatch.setattr(rate_limiter, "get_redis", _down)
+    monkeypatch.setattr(rate_limiter.get_settings(), "rate_limit_fail_closed", True)
+    flooded = eu.mint_token("user-flood", "welcome")
+    other_user = eu.mint_token("user-2", "welcome")
+    other_template = eu.mint_token("user-flood", "weekly_report")
+
+    assert [_one_click(client, flooded, _ip(n)).status_code for n in range(link_limit + 1)] == (
+        [200] * link_limit + [429]
+    )
+    assert _one_click(client, other_user).status_code == 200
+    assert _one_click(client, other_template).status_code == 200
+
+    scanned = eu.mint_token("user-3", "welcome")
+    assert [_scan(client, scanned).status_code for _ in range(link_limit + 1)] == [200] * link_limit + [429]
+    assert [_one_click(client, scanned, SAFE_LINKS).status_code for _ in range(link_limit)] == [200] * link_limit

@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "doc": "Brand favicon gallery for Strategy #2 brand-clone detection. Each brand entry has verified_hosts (the domains that legitimately serve this brand's favicon) and known_favicon_hashes (24-char SHA-256 hex prefixes = 96 bits, see api/services/favicon_hash.py HASH_HEX_LEN). Populate hashes via scripts/refresh_brand_favicons.py. Empty hash arrays mean the brand is tracked but no detection happens yet \u2014 safe default.",
+    "doc": "Brand favicon gallery for Strategy #2 brand-clone detection. Each brand entry has verified_hosts (the domains that legitimately serve this brand's favicon) and known_favicon_hashes (24-char SHA-256 hex prefixes = 96 bits, see api/services/favicon_hash.py HASH_HEX_LEN). Populate hashes via scripts/refresh_brand_favicons.py. The script takes bytes only from a brand's own hosts: it follows a redirect only while every hop is https and on verified_hosts or on the optional asset_hosts, the brand's own asset domains (checked by hand: the TLS certificate names the brand), which the runtime ignores. Empty hash arrays mean the brand is tracked but no detection happens yet \u2014 safe default.",
     "schema_version": 1
   },
   "paypal": {
@@ -117,6 +117,9 @@
       "www.bankofamerica.com",
       "secure.bankofamerica.com"
     ],
+    "asset_hosts": [
+      "www.bac-assets.com"
+    ],
     "known_favicon_hashes": [
       "1776ec2d36cfe2cab1aeffeb"
     ]
@@ -155,7 +158,10 @@
     "verified_hosts": [
       "santander.com",
       "santander.co.uk",
-      "santanderbank.com"
+      "santanderbank.com",
+      "www.santander.com",
+      "www.santander.co.uk",
+      "www.santanderbank.com"
     ],
     "known_favicon_hashes": [
       "a8b5b50713f6846cc38b2c0a"
@@ -176,9 +182,7 @@
       "www.ups.com"
     ],
     "known_favicon_hashes": [
-      "9ca2236bb4ec1714e173cecb",
-      "5c2b47f43cadef4d9e8727e3",
-      "279419b97fa7c89075bb3145"
+      "9ca2236bb4ec1714e173cecb"
     ]
   },
   "fedex": {
@@ -187,9 +191,7 @@
       "www.fedex.com"
     ],
     "known_favicon_hashes": [
-      "f644a556676907e89b2144cf",
-      "ece22f1455bba697ca6b50db",
-      "437ef929a63eac5b2c5be708"
+      "eab1b9a0ef942d84e3a8ed8c"
     ]
   },
   "linkedin": {
@@ -198,9 +200,7 @@
       "www.linkedin.com"
     ],
     "known_favicon_hashes": [
-      "19b079c09197fba68d021fa3",
-      "19afb2a51408c29a7c654967",
-      "254a2a36f43cc539cb6864b9"
+      "19b079c09197fba68d021fa3"
     ]
   },
   "twitter": {

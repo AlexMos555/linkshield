@@ -6,6 +6,7 @@ import path drags in the redis/pydantic api chain and crashed the job for 4 week
 This test ensures the hardcoded literal never silently diverges from the runtime
 constant (which would make the cron populate hashes the runtime can't recognise).
 """
+import ast
 import importlib.util
 import pathlib
 import re
@@ -48,6 +49,24 @@ def test_favicon_refresh_image_check_matches_runtime():
     assert script._RASTER_MAGIC == favicon_hash._RASTER_MAGIC
     for kind, body in {**ICON_SAMPLES, **NOT_ICONS}.items():
         assert script.looks_like_favicon(body) == favicon_hash.looks_like_favicon(body), kind
+
+
+def _function_body(path: pathlib.Path, name: str) -> str:
+    fn = next(n for n in ast.parse(path.read_text()).body
+              if isinstance(n, ast.FunctionDef) and n.name == name)
+    body = fn.body
+    if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
+        body = body[1:]  # the docstring may differ
+    return ast.dump(ast.Module(body=body, type_ignores=[]))
+
+
+def test_favicon_refresh_image_check_is_the_runtime_code():
+    """Samples miss edits they do not exercise (2026-10-27: dropping the <html
+    guard or shrinking the 1 KB window in the script alone kept the test above
+    green), so the two definitions must also be the same code."""
+    assert _function_body(SCRIPT, "looks_like_favicon") == _function_body(
+        pathlib.Path(favicon_hash.__file__), "looks_like_favicon"
+    )
 
 
 @pytest.mark.asyncio

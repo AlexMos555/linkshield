@@ -230,10 +230,7 @@ async def check_burst_only(user: AuthUser) -> None:
 
 
 # Categories whose availability outranks limiter strictness (see below).
-# unsubscribe_get / _post: links that verified (unsubscribe_rate_limit).
-FAIL_OPEN_CATEGORIES: frozenset[str] = frozenset(
-    {"doh", "blocklist", "unsubscribe_get", "unsubscribe_post"}
-)
+FAIL_OPEN_CATEGORIES: frozenset[str] = frozenset({"doh", "blocklist"})
 
 
 def ip_rate_key(ip: Optional[str]) -> str:
@@ -309,8 +306,13 @@ async def _check_window_limit(
     window_seconds: int,
     who: dict,
     error: str,
+    fallback: Optional[Callable[[], Optional[int]]] = None,
 ) -> int:
-    """The fixed window both limiters share, with the fail-open/closed policy."""
+    """The fixed window both limiters share, with the fail-open/closed policy.
+
+    `fallback`, when given, decides instead of that policy while Redis is
+    unavailable: None admits the request, a number of seconds is a 429.
+    """
     try:
         r = await get_redis()
         current = await _incr_with_ttl_on_first(r, key, window_seconds)
@@ -327,18 +329,7 @@ async def _check_window_limit(
                 },
             )
             await security_alerts.record("rate_limited", key=category)
-            retry = max(ttl, 1)
-            raise HTTPException(
-                status_code=429,
-                detail={
-                    "error": error,
-                    "category": category,
-                    "retry_after_seconds": retry,
-                },
-                # The standard header too: the extension pauses its link
-                # lookups until then instead of retrying into the limit.
-                headers={"Retry-After": str(retry)},
-            )
+            raise _limited(category, error, max(ttl, 1))
 
         return limit - current
 
@@ -346,11 +337,17 @@ async def _check_window_limit(
         raise
     except Exception as e:
         logger.warning("ip_rate_limiter_redis_unavailable", extra={"error": str(e), "category": category})
-        # DNS is the one path that must never 503: for anyone whose phone
-        # points at /dns-query, "rate limiter unavailable" would mean "no
-        # site on the internet resolves" for the length of a Redis blip.
-        # A verified unsubscribe link must not be lost to one either.
-        # Everything else keeps the production fail-closed posture.
+        if fallback is not None:
+            retry = fallback()
+            if retry is None:
+                return limit
+            logger.warning("ip_rate_limit_exceeded", extra={**who, "category": category, "fallback": True})
+            raise _limited(category, error, retry)
+        # FAIL_OPEN_CATEGORIES only: the blocklist download (routers/blocklist
+        # — an unprotected phone is worse than a served byte) and "doh"
+        # (/dns-query itself now counts in process, doh_rate_limit, and never
+        # reaches this). Everything else keeps the production fail-closed
+        # posture.
         if category in FAIL_OPEN_CATEGORIES:
             return limit
         if get_settings().rate_limit_fail_closed:
@@ -362,6 +359,20 @@ async def _check_window_limit(
                 },
             )
         return limit
+
+
+def _limited(category: str, error: str, retry: int) -> HTTPException:
+    return HTTPException(
+        status_code=429,
+        detail={
+            "error": error,
+            "category": category,
+            "retry_after_seconds": retry,
+        },
+        # The standard header too: the extension pauses its link
+        # lookups until then instead of retrying into the limit.
+        headers={"Retry-After": str(retry)},
+    )
 
 
 async def check_sensitive_action_limit(
@@ -742,9 +753,13 @@ def unsubscribe_rate_limit(verify: Callable[[str], Optional[dict]]) -> Callable:
     real one-click got 429 and was lost. The signed link is the only
     credential, so the subscription is what bounds its holder (each POST is
     a Supabase read and write). The key is a hash of the verified payload,
-    not the link as sent: lenient base64 gives one link many spellings. These
-    buckets fail open (FAIL_OPEN_CATEGORIES) — an unsubscribe must not be
-    lost to a Redis blip.
+    not the link as sent: lenient base64 gives one link many spellings.
+
+    While Redis is down the same budget is counted in this worker process
+    (_unsubscribe_fallback): an unsubscribe must not be lost to a Redis blip,
+    and one link must not become unlimited Supabase traffic either. Plain
+    fail-open (#313) let 50 one-clicks of one link through as 50 reads and
+    writes with rate_limit_fail_closed on (measured 2026-10-27).
 
     A link that does not verify (forged, tampered, expired) is limited per
     IP, both methods together, under the usual fail-open/closed policy.
@@ -763,13 +778,34 @@ def unsubscribe_rate_limit(verify: Callable[[str], Optional[dict]]) -> Callable:
             )
             return
         subscription = f"{payload['uid']}\0{payload['template']}".encode("utf-8")
+        key = hashlib.sha256(subscription).hexdigest()[:32]
         method = request.method.lower()
+        limit = settings.unsubscribe_link_limit_per_window
         await _check_window_limit(
-            f"rate:unsubscribe:{method}:{hashlib.sha256(subscription).hexdigest()[:32]}",
+            f"rate:unsubscribe:{method}:{key}",
             f"unsubscribe_{method}",
-            settings.unsubscribe_link_limit_per_window,
+            limit,
             window,
             who={}, error="Too many requests for this unsubscribe link. Please wait.",
+            fallback=lambda: _unsubscribe_fallback(method, limit, window).check(key),
         )
 
     return dep
+
+
+# Per-process windows for verified unsubscribe links while Redis is down, one
+# per method. With N workers in all, one link gets at most N times its budget.
+_unsubscribe_windows: dict = {}
+
+
+def _unsubscribe_fallback(method: str, limit: int, window: int):
+    from api.services.doh_metrics import WindowLimiter
+
+    lim = _unsubscribe_windows.get(method)
+    if lim is None or lim.limit != limit or lim.window_s != window:
+        lim = _unsubscribe_windows[method] = WindowLimiter(limit, window)
+    return lim
+
+
+def reset_for_tests() -> None:
+    _unsubscribe_windows.clear()

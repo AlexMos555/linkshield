@@ -86,8 +86,8 @@ from api.models.schemas import DomainResult, DomainReason, RiskLevel, Confidence
 logger = logging.getLogger("cleanway.analyzer")
 
 # Every check the analyzer knows. The number a verdict is measured against
-# is licensed_intel.total_checks(TOTAL_CHECKS): fewer when sources are
-# switched off for their licence.
+# is TOTAL_CHECKS minus _not_consulted(domain): fewer when sources are
+# switched off for their licence, and for an IP literal (_NOT_FOR_IPS).
 TOTAL_CHECKS = 19
 # The checks that connect to the site itself. They are skipped when the SSRF
 # guard could not finish (we would not know where we are connecting), and an
@@ -173,7 +173,7 @@ async def _judge(
 ) -> DomainResult:
     """Score the gathered evidence, let the LLM judge use what budget is left,
     and assemble the result."""
-    total = licensed_intel.total_checks(TOTAL_CHECKS)
+    total = TOTAL_CHECKS - len(_not_consulted(domain))
     signals = _build_signals(domain, raw_url, is_ip, outcomes, total)
     whois_age = signals["domain_age_days"]
     measured = _measured_checks(outcomes, signals["site_reachable"])
@@ -306,7 +306,7 @@ def _check_calls(domain: str, probes_allowed: bool) -> dict[str, Any]:
     Built per call rather than at import so a monkeypatched check function
     is the one that runs.
     """
-    skipped = licensed_intel.skipped_checks()
+    skipped = _not_consulted(domain)
     plan = {
         # Blocklist sources (11)
         "safe_browsing": (safe_browsing_breaker, check_safe_browsing),
@@ -336,6 +336,26 @@ def _check_calls(domain: str, probes_allowed: bool) -> dict[str, Any]:
         for name, (breaker, fn) in plan.items()
         if (probes_allowed or name not in _SITE_PROBES) and name not in skipped
     }
+
+
+# Checks that cannot look up an IP literal, which the analyzer accepts as a
+# host. OTX's domain endpoint answers 400 "Invalid domain (8.8.8.8)" for every
+# IP (measured 2026-10-27); since #349 a non-2xx is a breaker failure, so three
+# IP checks switched OTX off for 60 s for every domain. Its IPv4 endpoint does
+# answer, but not with the same thing: shared hosting addresses carry bulk
+# IOC dumps and honeypot feeds (Vercel 76.76.21.21, GitHub Pages
+# 185.199.109.153, Microsoft 13.107.42.14: 50 pulses each; example.com's
+# 93.184.215.14: 9), which scoring would read as +60. Not consulted, OTX is
+# not counted as measured, nor among the checks a verdict is measured
+# against, as for a source switched off.
+_NOT_FOR_IPS = frozenset({"alienvault"})
+
+
+def _not_consulted(domain: str) -> frozenset:
+    """The checks an analysis of `domain` does not run: switched off for
+    their licence (licensed_intel), or unable to look up an IP literal."""
+    skipped = licensed_intel.skipped_checks()
+    return skipped | _NOT_FOR_IPS if _is_ip_address(domain) else skipped
 
 
 def _through_outbound_gate(fn: Any) -> Any:
