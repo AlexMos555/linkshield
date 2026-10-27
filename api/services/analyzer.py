@@ -923,14 +923,17 @@ async def check_alienvault_otx(domain: str) -> dict:
     Returns reputation data including pulse count (community threat reports),
     how many of those pulses are distinct reports and how many days ago the
     newest of them was made (_otx_reports).
+
+    Without a key OTX allows 100 lookups an hour per IP, then answers 429
+    (measured 2026-10-26). A non-2xx answer raises — a failed, unmeasured
+    check the breaker counts — never reads as "no pulses".
     """
     async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.get(
             f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/general",
             headers={"Accept": "application/json"},
         )
-        if resp.status_code != 200:
-            return {}
+        resp.raise_for_status()
         data = resp.json()
         pulse_info = data.get("pulse_info") or {}
         pulse_count = pulse_info.get("count", 0) or 0
