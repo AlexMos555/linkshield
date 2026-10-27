@@ -26,13 +26,14 @@ A per-upstream breaker (3 consecutive failures or lost hedges → skipped for
 times, not on every query. A skipped upstream is still tried last.
 
 Requests at the upstreams are limited per upstream (MAX_IN_FLIGHT, the streams
-of its one connection) and per zone (ZONE_MAX_IN_FLIGHT): random subdomains of
-a zone whose servers never answer each wait the whole budget, and until
-2026-10-23 ~4-8 of them a second took all 32 slots a worker then had, while
-every other cache miss queued behind them (docs/runbooks/doh-gateway.md, «A
-zone that never answers»). A query waits for room in its zone holding no
-slot, and for a slot without taking its zone's room; a freed slot goes to the
-newest waiting query whose zone has room.
+of its one connection) and per zone (ZONE_MAX_IN_FLIGHT, plus half of the
+upstream's free slots): random subdomains of a zone whose servers never answer
+each wait the whole budget, and until 2026-10-23 ~4-8 of them a second took
+all 32 slots a worker then had, while every other cache miss queued behind
+them (docs/runbooks/doh-gateway.md, «A zone that never answers»). A query
+waits for room in its zone holding no slot, and for a slot without taking its
+zone's room; a freed slot goes to the newest waiting query whose zone has
+room.
 
 Responses are validated before they are believed: HTTP 200, 12..65535 bytes,
 the query's transaction ID. Query bytes are forwarded exactly as received —
@@ -112,13 +113,20 @@ except ImportError:  # pragma: no cover - depends on the environment
 _UPSTREAM_MAX_CONNECTIONS = 32
 _UPSTREAM_KEEPALIVE = 32
 MAX_IN_FLIGHT = 96
-# One zone, both upstreams and hedges included. The zone is the query name's
-# parent, never shorter than its registrable domain (_zone_of). The limit
-# applies to zones that answer too: one answering in 20 ms reaches it at
-# ~800 queries/s from one worker, one answering in 0.3 s at ~50/s (8 capped
-# such a zone at ~25/s: 13-18 % of its queries lost at 30/s, review
-# 2026-10-27). A zone that never answers holds 16 of the 192 slots, and
-# nothing more.
+# A zone's room at an upstream (_Zone.has_room): ZONE_MAX_IN_FLIGHT requests
+# at the upstreams (both upstreams and hedges counted), plus half of the slots
+# that upstream has free. The zone is the query name's parent, never shorter
+# than its registrable domain (_zone_of). Alone, a zone gets 43 of an
+# upstream's 96 slots: one nobody answers leaves the other names 53, one that
+# answers in 1 s is answered up to ~40 queries a second per worker (~140 at
+# 0.3 s). The more of the slots other names use, the less a zone gets past
+# its 16. A fixed 16 gave a zone answering in 1 s at 40 queries/s 62 %
+# SERVFAIL while the upstream had 60 slots free (stand, row e; final review
+# 2026-10-27); main's semaphore answered such a zone up to its 32 slots.
+# Six or more zones nobody answers, each sent enough names to fill its 16,
+# take every slot of an upstream, as six did with a fixed 16 (virtual-clock
+# model, 2026-10-28: healthy misses 0 % SERVFAIL with five, 54 % with six on
+# one upstream, 0 % with ten on two).
 ZONE_MAX_IN_FLIGHT = 16
 _HEADERS = {"Content-Type": DOH_CONTENT_TYPE, "Accept": DOH_CONTENT_TYPE}
 
@@ -198,8 +206,12 @@ class _Zone(_Waiters):
         self.used = 0  # requests at the upstreams
         self.refs = 0  # attempts holding or waiting for room here
 
-    def has_room(self) -> bool:
-        return self.used < ZONE_MAX_IN_FLIGHT
+    def has_room(self, slots: _Slots, held: int = 0) -> bool:
+        """Room for one more request at the upstream `slots` belong to: the
+        zone's ZONE_MAX_IN_FLIGHT, plus half of the slots that upstream has
+        free (`held`: a slot the asking query has taken already, counted as
+        free)."""
+        return self.used < ZONE_MAX_IN_FLIGHT + (slots.free + held) // 2
 
     async def wait_for_room(self) -> None:
         await self._park()
@@ -415,7 +427,8 @@ async def _acquire(zone: str, attempt: _Attempt) -> _Zone:
     _release. Waiting for one holds neither: a query waiting for room in its
     zone holds no slot, and one waiting for a slot does not take its zone's
     room — taken first, a busy zone's queued queries filled it while every
-    freed slot went to other zones (review 2026-10-27)."""
+    freed slot went to other zones (review 2026-10-27). The room is checked
+    again once the slot is ours: it depends on the upstream's free slots."""
     z = _zones.get(zone)
     if z is None:
         z = _zones[zone] = _Zone()
@@ -424,7 +437,7 @@ async def _acquire(zone: str, attempt: _Attempt) -> _Zone:
     waited_zone = waited_slot = False
     try:
         while True:
-            if not z.has_room():
+            if not z.has_room(slots):
                 if not waited_zone:
                     doh_metrics.METRICS.inc("upstream_zone_wait")
                     waited_zone = True
@@ -434,12 +447,12 @@ async def _acquire(zone: str, attempt: _Attempt) -> _Zone:
                 doh_metrics.METRICS.inc("upstream_slot_wait")
                 waited_slot = True
             await slots.acquire()
-            if z.has_room():
+            if z.has_room(slots, held=1):
                 z.used += 1
                 return z
             slots.release()  # the zone filled while we waited for the slot: pass it on
     except BaseException:
-        if z.has_room():
+        if z.has_room(slots):
             z._wake()  # it may have been woken for this room: hand it on
         _unref(zone, z)
         raise
@@ -462,7 +475,7 @@ def _take(zone: str, up: Upstream, spare: bool = False) -> Optional[_Zone]:
     if spare:
         if slots.free * 2 <= slots.size or used * 2 >= ZONE_MAX_IN_FLIGHT or (z is not None and z.waiting()):
             return None
-    elif slots.free == 0 or used >= ZONE_MAX_IN_FLIGHT:
+    elif slots.free == 0 or (z is not None and not z.has_room(slots)):
         return None
     if z is None:
         z = _zones[zone] = _Zone()
@@ -636,7 +649,7 @@ def slots_status() -> dict:
     their limit and the queries waiting for room in them, requests no query
     waits for still open, connections being dropped (REQUEST_TIMEOUT_S)."""
     zones = list(_zones.values())
-    return {"zones_full": sum(1 for z in zones if not z.has_room()),
+    return {"zones_full": sum(1 for z in zones if z.waiting()),
             "zone_waiting": sum(z.waiting() for z in zones),
             "abandoned": len(_abandoned),
             "dropping": len(_closing)}

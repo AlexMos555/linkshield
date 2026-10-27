@@ -24,11 +24,16 @@ taken when DOH_FAST_PATH=false; both call the same resolve().
 Fail-open, by decision: nothing that goes wrong on OUR side (filter, cache,
 Redis, a bug) may stop a query from being forwarded. The only SERVFAIL we
 ever send means "no upstream answered in 4 s and nothing was cached" — or
-that in those 4 s the query got no turn at the upstreams, which only
-overload causes: LOAD_SHED_DNS_UPSTREAM_MAX_INFLIGHT queries already waiting
-(upstream_shed), every stream of the upstream connections taken (one more
-request would fail at once), or its zone's share taken by names nobody
-answers (docs/runbooks/doh-gateway.md, «A zone that never answers»).
+that in those 4 s the query got no turn at the upstreams:
+LOAD_SHED_DNS_UPSTREAM_MAX_INFLIGHT queries already waiting (upstream_shed),
+every stream of the upstream connections taken (one more request would fail
+at once), or its zone's room at the upstreams taken the whole time. A zone's
+room is 16 requests plus half of the upstream's free slots: a zone nobody
+answers fills it, and so does a zone that answers, but too slowly for the
+rate of its queries: with 1 s answers, past ~40 unique names a second per
+worker while the slots are otherwise free, past 16 a second when other names
+hold most of them (docs/runbooks/doh-gateway.md, «A zone that never
+answers»).
 """
 
 from __future__ import annotations

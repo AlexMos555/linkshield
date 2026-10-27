@@ -145,6 +145,13 @@ async def _ask_many(names: list[str]) -> list[asyncio.Task]:
     return tasks
 
 
+async def _fill(n: int, tag: str = "o") -> list[asyncio.Task]:
+    """`n` slots taken by names nobody answers, one zone each: past its
+    ZONE_MAX_IN_FLIGHT a zone only gets half of its upstream's free slots, so
+    a test that needs a zone at its limit takes most of the slots first."""
+    return await _ask_many([f"{tag}{i}.dead{tag}{i}.example" for i in range(n)])
+
+
 # ── a zone that never answers ───────────────────────────────────────
 
 @pytest.mark.asyncio
@@ -152,12 +159,13 @@ async def test_queries_held_by_a_dead_zone_do_not_hold_up_other_names(holding_up
     """Random subdomains of a zone whose servers never answer: each one waits
     the whole budget. A name in another zone must not queue behind them."""
     monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 1.0)
-    held = await _ask_many([f"r{i}.dead.example" for i in range(40)])
+    held = await _ask_many([f"r{i}.dead.example" for i in range(120)])
+    assert len(holding_upstream.posted) < 120  # the zone is at its limit
     started = time.monotonic()
     out = await doh_upstream.proxy_to_upstream(query("example.org"))
     assert out is not None
     assert time.monotonic() - started < 0.1
-    assert await asyncio.gather(*held) == [None] * 40  # still nothing from the dead zone
+    assert await asyncio.gather(*held) == [None] * 120  # still nothing from the dead zone
 
 
 @pytest.mark.asyncio
@@ -180,12 +188,13 @@ async def test_a_slow_zone_answers_every_query_once_it_answers(holding_upstream,
     """The queries over a zone's share wait without being sent, and are sent
     as soon as the zone answers — none of them is dropped."""
     monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 2.0)
-    tasks = await _ask_many([f"r{i}.dead.example" for i in range(40)])
+    tasks = await _ask_many([f"r{i}.dead.example" for i in range(100)])
+    assert len(holding_upstream.posted) < 100  # the zone is at its limit
     while not all(t.done() for t in tasks):
         holding_upstream.release_one()
         await asyncio.sleep(0.001)
     assert all(t.result() is not None for t in tasks)
-    assert sorted(holding_upstream.posted) == sorted(f"r{i}.dead.example" for i in range(40))
+    assert sorted(holding_upstream.posted) == sorted(f"r{i}.dead.example" for i in range(100))
 
 
 @pytest.mark.asyncio
@@ -194,7 +203,7 @@ async def test_a_query_that_gave_up_waiting_for_its_turn_does_not_count_against_
     """It never reached the upstream, so it says nothing about the upstream's
     health — counted, a few of them in a row would open the breaker."""
     monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 2.0)
-    held = await _ask_many([f"r{i}.dead.example" for i in range(40)])
+    held = await _ask_many([f"r{i}.dead.example" for i in range(100)])
     monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 0.1)
     impatient = await _ask_many([f"s{i}.dead.example" for i in range(10)])
     assert await asyncio.gather(*impatient) == [None] * 10
@@ -258,7 +267,7 @@ async def test_a_freed_slot_goes_to_the_query_with_the_most_time_left(holding_up
     names = [f"r{i}.{zone.format(i=i)}" for i in range(doh_upstream.MAX_IN_FLIGHT + 16)]
     held = await _ask_many(names)
     waiting = [n for n in names if n not in holding_upstream.posted]
-    assert waiting  # the slots are full
+    assert waiting  # the slots, or the zone's room, are full
     holding_upstream.release_one()
     await asyncio.sleep(0.01)
     assert holding_upstream.posted[-1] == waiting[-1]
@@ -301,27 +310,33 @@ async def test_a_busy_zone_is_not_passed_over_while_none_of_its_requests_is_at_t
 @pytest.mark.asyncio
 async def test_a_query_waiting_on_our_side_is_not_hedged_before_its_first_request_is_sent(
         holding_upstreams, monkeypatch):
-    """The hedge timer measures the upstream, not our queue: a query waiting
-    for its zone gets no second request in the same queue — which, newer, was
-    sent first, and then charged the primary a lost hedge it never had."""
+    """The hedge timer measures the upstream, not our queue: a query that
+    waited for a slot is hedged HEDGE_AFTER_S after its request was sent,
+    not at once because it has been waiting longer than that. Timed from
+    the query's start, the hedge went out together with the request, and the
+    primary was charged a lost hedge it never had."""
     holding_upstreams.hold = staticmethod(lambda name: True)
     monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 2.0)
     monkeypatch.setattr(doh_upstream, "HEDGE_AFTER_S", 100.0)  # the fillers: no hedges
-    fillers = await _ask_many([f"f{i}.slow.example" for i in range(doh_upstream.ZONE_MAX_IN_FLIGHT)])
+    fillers = await _fill(2 * doh_upstream.MAX_IN_FLIGHT)  # every slot of A, then of B
     monkeypatch.setattr(doh_upstream, "HEDGE_AFTER_S", 0.2)
-    q = _ask("q.slow.example")
+    q = _ask("q.slow.example")  # waits for a slot of A
     try:
-        await asyncio.sleep(0.3)  # q has waited past HEDGE_AFTER_S without being sent
-        holding_upstreams.release(lambda url, name: name.startswith("f"))
+        await asyncio.sleep(0.1)
+        for _ in range(doh_upstream.MAX_IN_FLIGHT):  # B is free now: room for a hedge
+            holding_upstreams.release(lambda url, name: url == B)
+        await asyncio.sleep(0.2)  # q has waited past HEDGE_AFTER_S without being sent
+        assert not [s for s in holding_upstreams.sent if s[1] == "q.slow.example"]
+        holding_upstreams.release(lambda url, name: url == A)  # q gets this slot
         await asyncio.sleep(0.01)
         first = [s for s in holding_upstreams.sent if s[1] == "q.slow.example"]
-        holding_upstreams.release(lambda url, name: name.startswith("f"))
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0.3)
         sent = [s for s in holding_upstreams.sent if s[1] == "q.slow.example"]
-        holding_upstreams.release(lambda url, name: name == "q.slow.example" and url == sent[0][0])
+        holding_upstreams.release(lambda url, name: name == "q.slow.example" and url == A)
         assert await q is not None
         failed = {s["url"]: s["failed"] for s in doh_upstream.status()}
         assert first == [(A, "q.slow.example")], f"first request for q: {first}; all sent: {sent}"
+        assert sent == [(A, "q.slow.example"), (B, "q.slow.example")]  # the hedge, once due
         assert failed[A] == 0, f"primary charged {failed[A]} lost hedge(s); sent: {sent}"
     finally:
         holding_upstreams.release_all()
@@ -488,6 +503,61 @@ async def test_a_slow_but_alive_zone_is_fully_answered(monkeypatch):
     out = await asyncio.gather(*tasks)
     answered = sum(o is not None for o in out) / len(out)
     assert answered >= 0.99, f"{answered:.1%} of {len(out)} answered"
+
+
+@pytest.mark.asyncio
+async def test_a_zone_answering_in_one_second_is_answered_while_its_upstream_has_free_slots(monkeypatch):
+    """1 s answers at 36 unique names a second from one worker, one
+    upstream (timings scaled by 1/4): ~36 requests at the upstream at once,
+    the upstream's other 60 slots free. A fixed share of 16 answered ~16 a
+    second of them and gave the rest SERVFAIL (stand, row e 1 s: 62 %; final
+    review 2026-10-27), where main's 32 slots answered up to 32."""
+    from api import config
+    monkeypatch.setattr(config.get_settings(), "doh_upstreams", A)
+    rng = random.Random(5)
+    monkeypatch.setattr(doh_upstream.httpx, "AsyncClient", _timed_client(lambda n: 0.25 * rng.uniform(0.9, 1.1)))
+    doh_upstream._reset_upstream_client_for_tests()
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 1.0)
+    loop = asyncio.get_running_loop()
+    end = loop.time() + 2.5
+    tasks, i = [], 0
+    while loop.time() < end:
+        tasks.append(_ask(f"u{i}.cdn-slow.example"))
+        i += 1
+        await asyncio.sleep(rng.expovariate(36 * 4))
+    out = await asyncio.gather(*tasks)
+    answered = sum(o is not None for o in out) / len(out)
+    assert answered >= 0.99, f"{answered:.1%} of {len(out)} answered"
+
+
+@pytest.mark.asyncio
+async def test_a_zone_nobody_answers_leaves_more_than_half_of_its_upstreams_slots_to_the_rest(
+        holding_upstreams, monkeypatch):
+    """Past its 16, a zone takes only half of what its upstream has free:
+    alone, a zone nobody answers ends up with less than half of the slots,
+    and only on the upstream it was sent to."""
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 1.0)
+    held = await _ask_many([f"r{i}.dead.example" for i in range(200)])
+    a, b = doh_upstream.status()
+    assert a["in_flight"] > doh_upstream.ZONE_MAX_IN_FLIGHT  # it did get more than its share...
+    assert a["in_flight"] < doh_upstream.MAX_IN_FLIGHT // 2  # ...but not half of the upstream
+    assert b["in_flight"] == 0
+    started = time.monotonic()
+    assert await doh_upstream.proxy_to_upstream(query("example.org")) is not None
+    assert time.monotonic() - started < 0.1
+    await asyncio.gather(*held)
+
+
+@pytest.mark.asyncio
+async def test_a_zone_gets_only_its_share_once_its_upstream_is_short_of_slots(holding_upstream, monkeypatch):
+    """With the upstream's slots mostly taken by other names, a zone's
+    requests stop at ZONE_MAX_IN_FLIGHT."""
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 1.0)
+    others = doh_upstream.MAX_IN_FLIGHT - doh_upstream.ZONE_MAX_IN_FLIGHT
+    held = await _ask_many([f"o{i}.dead{i}.example" for i in range(others)])
+    held += await _ask_many([f"r{i}.dead.example" for i in range(40)])
+    assert sum(n.endswith(".dead.example") for n in holding_upstream.posted) == doh_upstream.ZONE_MAX_IN_FLIGHT
+    await asyncio.gather(*held)
 
 
 @pytest.mark.asyncio
@@ -722,12 +792,16 @@ async def test_room_in_a_zone_freed_for_a_waiter_that_gives_up_goes_to_the_next(
     while the zone's other queries wait."""
     monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 1.0)
     share = doh_upstream.ZONE_MAX_IN_FLIGHT
-    held = await _ask_many([f"r{i}.dead.example" for i in range(share + 2)])
+    held = await _fill(doh_upstream.MAX_IN_FLIGHT - share)
+    held += await _ask_many([f"r{i}.dead.example" for i in range(share + 2)])
+    assert sum(n.endswith(".dead.example") for n in holding_upstream.posted) == share
     newest = held[-1]
-    holding_upstream.release_one()  # room for one: the newest waiter is woken...
-    newest.cancel()                 # ...and gives up before it runs
+    # Room for one: the newest waiter is woken, and gives up before it runs.
+    holding_upstream.release(lambda url, name: name.endswith(".dead.example"))
+    newest.cancel()
     await asyncio.sleep(0.02)
     assert f"r{share}.dead.example" in holding_upstream.posted
+    assert f"r{share + 1}.dead.example" not in holding_upstream.posted
     await asyncio.gather(*held, return_exceptions=True)
 
 
@@ -810,10 +884,11 @@ async def test_slot_gauges_show_slots_in_use_and_queries_waiting(holding_upstrea
     different from a slow upstream."""
     monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 0.3)
     share = doh_upstream.ZONE_MAX_IN_FLIGHT
-    held = await _ask_many([f"r{i}.dead.example" for i in range(share + 4)]
-                           + [f"r{i}.dead{i}.example" for i in range(doh_upstream.MAX_IN_FLIGHT)])
+    held = await _fill(doh_upstream.MAX_IN_FLIGHT - share)
+    held += await _ask_many([f"r{i}.dead.example" for i in range(share + 4)])
+    held += await _ask_many([f"r{i}.dead{i}.example" for i in range(6)])
     up = doh_upstream.status()[0]
-    assert (up["in_flight"], up["waiting"]) == (doh_upstream.MAX_IN_FLIGHT, share)
+    assert (up["in_flight"], up["waiting"]) == (doh_upstream.MAX_IN_FLIGHT, 6)
     assert doh_upstream.slots_status() == {"zones_full": 1, "zone_waiting": 4, "abandoned": 0, "dropping": 0}
     await asyncio.gather(*held)
     assert doh_upstream.slots_status()["abandoned"] == doh_upstream.MAX_IN_FLIGHT
