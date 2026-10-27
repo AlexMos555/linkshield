@@ -68,25 +68,42 @@ def leaves(node: object, path: str = "") -> Iterator[tuple[str, str]]:
             yield from leaves(value, f"{path}[{index}]")
 
 
-def source_strings(node: object, path: str = "") -> Iterator[tuple[str, str]]:
+# The namespaces of chrome.i18n-shaped {"text", "description"?,
+# "placeholders"?} leaves: extension.* (scripts/build-i18n.py
+# flatten_for_extension) and email.* (t() in
+# packages/email-templates/src/helpers/i18n.ts). Both render `text`.
+TEXT_LEAF_NAMESPACES = frozenset({"extension", "email"})
+
+
+def source_strings(node: object, path: str = "", text_leaves: bool = False) -> Iterator[tuple[str, str]]:
     """(dotted key, text) for every string a surface renders from the source.
 
-    A {"text": …} leaf (extension, email) renders its text only: its
-    `description` is chrome.i18n's note for translators, which no browser
-    shows, and `placeholders` are substitution specs. Landing and mobile
-    values are plain strings, and landing lists go item by item as key[i].
+    In TEXT_LEAF_NAMESPACES a {"text": …} leaf goes by its own key, and only
+    its `description` is left out: that is chrome.i18n's note for
+    translators, which no browser shows. Its other strings (placeholder
+    contents, which chrome.i18n substitutes) are checked under their paths.
+    Landing values go to next-intl as they are and mobile values are plain
+    strings, so a "text" key there is one more string beside its siblings
+    (the PR #350 review, F1). Lists go item by item as key[i].
     """
     if isinstance(node, str):
         yield path, node
     elif isinstance(node, dict):
-        if isinstance(node.get("text"), str):
+        if text_leaves and isinstance(node.get("text"), str):
             yield path, node["text"]
+            for key, value in node.items():
+                if key not in ("text", "description"):
+                    yield from source_strings(value, f"{path}.{key}", text_leaves)
             return
         for key, value in node.items():
-            yield from source_strings(value, f"{path}.{key}" if path else key)
+            yield from source_strings(
+                value,
+                f"{path}.{key}" if path else key,
+                text_leaves or (not path and key in TEXT_LEAF_NAMESPACES),
+            )
     elif isinstance(node, list):
         for index, value in enumerate(node):
-            yield from source_strings(value, f"{path}[{index}]")
+            yield from source_strings(value, f"{path}[{index}]", text_leaves)
 
 
 def translator_notes(source: dict) -> list[str]:

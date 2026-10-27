@@ -11,7 +11,7 @@ shipped to users through mobile.*: ar `mobile.report.times_one` as
 \"…\"" on the breach card.
 
 Every rule below matched nothing in any of the 10 locales on 2026-10-27
-(23,732 strings of the source).
+(24,292 strings of the source, placeholder contents included).
 """
 from __future__ import annotations
 
@@ -25,19 +25,32 @@ PLURAL_SUFFIX_RE = "_(?:zero|one|two|few|many|other|plural)"
 # a lookbehind that skipped any _one right after a letter, so those four
 # shapes passed the check (the #310 review, F1). UI text never carries one.
 PLURAL_TOKEN = re.compile(PLURAL_SUFFIX_RE + r"\b")
-# A note saying what it is ("Plural variants: …", "Single-string fallback: …").
-NOTE_PHRASE = re.compile(r"plural (?:variant|form)s?|single[- ]string fallback|translator", re.IGNORECASE)
-# A marker left in the value. Upper case and whole words only: "todo" is
-# "all" in es/pt ("Todo lo que escribas…", "Excluir todo o histórico…") and
-# sits inside id "metodologi".
-MARKER = re.compile(r"\b(?:TODO|FIXME)\b")
+# A note saying what it is ("Plural variants: …", "Single-string fallback: …",
+# "Translator: …", "Note to the translators: …", "for translators",
+# "translator's note"). Not the bare word: copy may say "Translators wanted"
+# (the PR #350 review, F3).
+NOTE_PHRASE = re.compile(
+    r"plural (?:variant|form)s?|single[- ]string fallback"
+    r"|\btranslators?\s*:"
+    r"|\bnote to (?:the )?translators?\b|\bfor (?:the )?translators?\b"
+    r"|\btranslator(?:['’]?s|s['’])? notes?\b",
+    re.IGNORECASE,
+)
+# A marker left in the value, upper case only: "todo" is "all" in es/pt
+# ("Todo lo que escribas…", "Excluir todo o histórico…") and sits inside id
+# "metodologi". TODO only as a marker, before a colon or an owner ("TODO:",
+# "TODO :", "TODO(alex)"): an upper-case es/pt button or badge reads
+# "VER TODO", "TODO INCLUIDO" (the PR #350 review, F3). FIXME is a word in
+# none of the 10 languages, so it counts anywhere.
+MARKER = re.compile(r"\bTODO\s*[:(]|\bFIXME\b")
 # A dotted key mid-sentence ("see mobile.breach.title") is left alone: in a
 # product about links, copy may name a host like email.mg.example.com or
 # mobile.<brand>.com, which a namespace-prefix rule would flag. A key the
 # value opens with is caught below, and any variant key by PLURAL_TOKEN.
 #
-# The leading token of a value, bare, quoted or dotted, followed by a colon.
-OPENING_TOKEN = re.compile(r"[\"'«“]?([A-Za-z0-9_.]+)[\"'»”]?\s*:")
+# The leading token of a value, bare, dotted, quoted, in backticks or in
+# spaced guillemets, followed by a colon (the PR #350 review, F2).
+OPENING_TOKEN = re.compile(r"[\"'«“‘`]?\s*([A-Za-z0-9_.]+)\s*[\"'»”’`]?\s*:")
 PLURAL_SUFFIX_END = re.compile(PLURAL_SUFFIX_RE + "$")
 LIST_INDEX_END = re.compile(r"\[\d+\]$")
 
@@ -52,7 +65,8 @@ def is_translator_note(key: str, value: str) -> bool:
     # The value opening with its own key, with or without a plural suffix,
     # then a colon: "times_one: …" on mobile.report.times_one,
     # "found_body_one: …" on mobile.breach.found_body,
-    # "mobile.breach.found_body: …", "\"title\": …", "title_part1 : « … »".
+    # "mobile.breach.found_body: …", "\"title\": …", "`subject`: …",
+    # "title_part1 : « … »", "« title_part1 » : …".
     # One pattern and a string comparison, not a pattern per key: one per
     # string (23,732) against re's 512-entry cache took the parity check from
     # 0.3 s to 8-10 s (2026-10-27).

@@ -18,16 +18,20 @@ Pinned here, running each script the way CI runs it:
   * scripts/check-mobile-i18n.py (mobile job) fails on the shapes the #310
     review found passing: the variant key quoted, dotted, with no colon, or
     mid-sentence;
-  * a {"text": …} leaf's `description` stays free text: it is chrome.i18n's
-    note for translators, and no browser renders it;
+  * in extension.* and email.* a {"text": …} leaf's `description` stays
+    free text: it is chrome.i18n's note for translators, and no browser
+    renders it; its other strings, and every key of a landing dict that has
+    a "text", are checked;
   * the shared heuristic (scripts/i18n_notes.py) flags none of today's
-    strings in the 10 locales, and leaves words like es/pt "todo" and id
-    "metodologi" alone.
+    strings in the 10 locales, and leaves words like es/pt "todo" (upper
+    case too) and id "metodologi", and copy like "Translators wanted", alone;
+  * the pre-commit hook runs the parity check on a source edit.
 """
 from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -172,6 +176,25 @@ OTHER_NAMESPACE_NOTES = {
         "ar", ("mobile", "history", "hours_ago"),
         "hours_ago_one «قبل ساعة», hours_ago_two «قبل ساعتين», hours_ago_other «قبل {{hours}} ساعة»",
     ),
+    # Two openings the PR #350 review found passing (F2).
+    "email subject opens with its key in backticks": (
+        "ru", ("email", "breach_alert", "subject", "text"),
+        "`subject`: Ваш адрес нашёлся в утечке паролей",
+    ),
+    "landing value opens with its key in spaced guillemets": (
+        "fr", ("landing", "hero", "title_part1"),
+        "« title_part1 » : Une protection contre le phishing qui",
+    ),
+}
+
+# What the TODO/FIXME and translator rules still catch after the PR #350
+# review (F3) narrowed them to the shapes of a note.
+NOTE_SHAPES = {
+    "TODO with an owner": ("landing.hero.badge", "TODO(alex): Bloquea los sitios fraudulentos"),
+    "TODO with French spacing": ("landing.hero.badge", "Bloque les sites frauduleux (TODO : vérifier)"),
+    "note to the translators": ("landing.hero.badge", "Note to the translators: formal tone. Блокирует сайты-мошенники"),
+    "for translators": ("extension.popup.status_safe_title", "For translators — keep the brand. Esta página es segura"),
+    "translator's note": ("email.welcome.subject", "Bienvenido a Cleanway (translator's note: usted, not tú)"),
 }
 
 # Real strings from the source, plus one made-up host on an email.* subdomain
@@ -196,6 +219,13 @@ LEGIT = {
     ),
     "a host that looks like a namespace": ("extension.webmail.finding_example", "Links go to email.mg.example.com, not to the sender's site"),
     "a word that is a key": ("landing.faq.items[0].q", "What does Cleanway learn about me?"),
+    # Copy the PR #350 review found flagged (F3): "todo" is "all" in es/pt,
+    # and upper-case buttons and badges are ordinary there.
+    "es upper-case 'see all'": ("extension.popup.view_all", "VER TODO"),
+    "es upper-case 'all included'": ("landing.pricing.badge", "TODO INCLUIDO"),
+    "pt upper-case 'all' mid-sentence": ("landing.pricing.cta", "PROTEJA TODO O SEU CELULAR"),
+    "translators wanted": ("landing.footer.translators", "Translators wanted: help bring Cleanway to your language"),
+    "volunteer translators": ("landing.about.team", "Our volunteer translators check every language before it ships."),
 }
 
 
@@ -227,10 +257,43 @@ def test_notes_in_other_namespaces_are_notes(notes, case):
     assert notes.is_translator_note(_dotted(keys), value)
 
 
+@pytest.mark.parametrize("case", sorted(NOTE_SHAPES))
+def test_marker_and_translator_shapes_are_notes(notes, case):
+    key, value = NOTE_SHAPES[case]
+    assert notes.is_translator_note(key, value)
+
+
 @pytest.mark.parametrize("case", sorted(LEGIT))
 def test_legit_strings_are_not_notes(notes, case):
     key, value = LEGIT[case]
     assert not notes.is_translator_note(key, value)
+
+
+def test_only_chrome_i18n_leaves_render_their_text_alone(parity):
+    # extension.* goes to chrome.i18n and email.* to the email templates'
+    # t(), both of which render a {text} leaf's `text` only. landing.* is
+    # handed to next-intl whole and mobile.* is plain strings, so there a
+    # "text" key is one more string beside its siblings (PR #350 review, F1).
+    source = {
+        "extension": {
+            "meta": {"description": {"text": "Short", "description": "Store note"}},
+            "popup": {"x": {"text": "A", "description": "note", "placeholders": {"d": {"content": "$1"}}, "hint": "B"}},
+        },
+        "email": {"common": {"y": {"text": "C", "description": "note"}}},
+        "landing": {"card": {"title": "T", "text": "Body"}},
+        "mobile": {"tip": {"text": "M", "hint": "H"}},
+    }
+    assert dict(parity.source_strings(source)) == {
+        "extension.meta.description": "Short",
+        "extension.popup.x": "A",
+        "extension.popup.x.placeholders.d.content": "$1",
+        "extension.popup.x.hint": "B",
+        "email.common.y": "C",
+        "landing.card.title": "T",
+        "landing.card.text": "Body",
+        "mobile.tip.text": "M",
+        "mobile.tip.hint": "H",
+    }
 
 
 @pytest.mark.parametrize("locale", LOCALES)
@@ -278,6 +341,39 @@ def test_parity_check_leaves_the_translators_description_alone(tmp_path):
     note = "Translator: keep it under 45 characters (the store's limit); no plural forms needed"
     result = _run(tmp_path, "check-i18n-parity.py", PARITY_DATA, {(_src("en"), keys): note})
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+NOTES_BESIDE_TEXT = {
+    "landing": (
+        "fr", ("landing", "hero", "title_part1"),
+        {"title": "Translator: keep it short", "text": "Une protection contre le phishing qui"},
+        "landing.hero.title_part1.title",
+    ),
+    "extension": (
+        "de", ("extension", "popup", "status_safe_title"),
+        {"text": "Diese Seite ist sicher", "hint": "Translator: keep it short"},
+        "extension.popup.status_safe_title.hint",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(NOTES_BESIDE_TEXT))
+def test_parity_check_fails_on_a_note_beside_a_text_key(tmp_path, case):
+    locale, keys, value, flagged = NOTES_BESIDE_TEXT[case]
+    result = _run(tmp_path, "check-i18n-parity.py", PARITY_DATA, {(_src(locale), keys): value})
+    output = result.stdout + result.stderr
+    assert result.returncode == 1, f"{case} passed: {output}"
+    assert f"{locale}: {flagged}" in output, output
+
+
+def test_the_pre_commit_hook_runs_on_a_source_edit():
+    # The parity check reads packages/i18n-strings/src since PR #350; a note
+    # put in an extension.* or email.* key changes no landing/messages file.
+    config = (ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+    hook = config.split("- id: i18n-parity", 1)[1].split("- id:", 1)[0]
+    files = re.compile(re.search(r"^\s*files:\s*['\"]?(.+?)['\"]?\s*$", hook, re.MULTILINE).group(1))
+    for path in ("landing/messages/ru.json", "packages/i18n-strings/src/ar.json"):
+        assert files.search(path), f"{files.pattern} skips {path}"
 
 
 def test_mobile_baseline_passes(tmp_path):

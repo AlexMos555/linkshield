@@ -65,5 +65,7 @@ repos:
         entry: python3 scripts/check-i18n-parity.py
         language: system
         pass_filenames: false
-        # Only triggers when landing message files change
-        files: ^landing/messages/.*\.json$
+        # Triggers when landing message files or the string source change:
+        # the translator-note check reads every namespace of the source, and
+        # an extension.* or email.* edit changes no landing message file
+        files: ^(landing/messages|packages/i18n-strings/src)/.*\.json$
