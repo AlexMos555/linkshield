@@ -120,8 +120,95 @@ def test_tenants_of_shared_platforms_under_compound_suffixes_are_not_trusted(hos
     assert is_trusted_top_domain(host) is False
 
 
-@pytest.mark.parametrize("host", ["sakura.ne.jp", "www.sakura.ne.jp", "dothome.co.kr", "www.dothome.co.kr"])
+@pytest.mark.parametrize("host", [
+    # Review of 2026-10-27. Woobi's free hosting hands out <name>.woobi.co.kr
+    # (per-user records: test., kim., shop. resolve, a random label does not).
+    "paypal-verify.woobi.co.kr", "kim.woobi.co.kr",
+    # HostGator Brasil's store builder: https://<store code>.hostgator.com.br
+    # (a random label answers "sua loja não foi encontrada").
+    "12345.hostgator.com.br", "zq8wildprobe7k.hostgator.com.br",
+    # Zen Internet's customer hosting: c<account>.myzen.co.uk and the sites
+    # under it; burycatholicprepschool. is a Phishing.Database host that
+    # production put at "caution 30" that day.
+    "burycatholicprepschool.myzen.co.uk", "abbeyindustrial.c7501665.myzen.co.uk",
+])
+def test_tenants_of_hosting_zones_found_in_review_are_not_trusted(host):
+    assert is_trusted_top_domain(host) is False
+
+
+@pytest.mark.parametrize("host", [
+    # ISP personal pages, one host shared by path (/~user/): both in the
+    # Phishing.Database feed of 2026-10-24 (/~dshelley/ed/zin.html,
+    # /~jhuntman@netspace.net.au/tt/squ.php).
+    "members.iinet.net.au", "homepage.powerup.com.au",
+])
+def test_path_shared_personal_page_hosts_are_not_trusted(host):
+    assert is_trusted_top_domain(host) is False
+
+
+@pytest.mark.parametrize("host", [
+    "sakura.ne.jp", "www.sakura.ne.jp", "dothome.co.kr", "www.dothome.co.kr",
+    "woobi.co.kr", "www.woobi.co.kr", "hostgator.com.br", "www.hostgator.com.br",
+    "iinet.net.au", "www.iinet.net.au", "powerup.com.au",
+])
 def test_the_platforms_own_hosts_stay_trusted(host):
+    assert is_trusted_top_domain(host) is True
+
+
+# ── URL shorteners and Google's proxy services, under every suffix ──
+
+@pytest.mark.parametrize("host", [
+    # Public shortener in the top 100k ("Encurtador de URL"), Phishing.Database
+    # listed; the guard cut the key to its last two labels, 'com.br'.
+    "encurtador.com.br", "www.encurtador.com.br",
+    # Singapore's government shortener and the Indonesian health ministry's
+    # (PhishTank: three Netflix/Amazon phishing redirects through it, 2026).
+    "go.gov.sg", "s.kemkes.go.id",
+    # Universities' short-link hosts, Phishing.Database-listed by short code
+    # (link.uinsgd.ac.id/lps9m, s.umj.ac.id/ca6m8n).
+    "link.uinsgd.ac.id", "link.upnyk.ac.id", "s.ecu.edu.au", "s.umj.ac.id",
+    # Listed since before 2026-10-27 and still trusted then: the guard read
+    # its last two labels, 'infini.fr'.
+    "link.infini.fr",
+])
+def test_shorteners_under_any_suffix_are_not_trusted(host):
+    assert is_trusted_top_domain(host) is False
+
+
+@pytest.mark.parametrize("entry", sorted(scoring._URL_SHORTENERS))
+def test_no_listed_shortener_is_trusted(entry):
+    assert is_trusted_top_domain(entry) is False
+    assert is_trusted_top_domain(f"www.{entry}") is False
+
+
+@pytest.mark.parametrize("host", ["kemkes.go.id", "www.kemkes.go.id", "infini.fr", "www.gov.sg"])
+def test_the_shorteners_parent_sites_stay_trusted(host):
+    assert is_trusted_top_domain(host) is True
+
+
+def test_the_models_shortener_feature_still_reads_the_last_two_labels():
+    """is_url_shortener is a feature of the served model (ml_features), so a
+    compound entry must not reach it before a retrain: 'com.br' is no
+    shortener."""
+    assert scoring._is_url_shortener("encurtador.com.br") is False
+    assert scoring._is_url_shortener("bit.ly") is True
+
+
+@pytest.mark.parametrize("host", [
+    # translate.google.<cc>/translate?u= proxies any site (302 to
+    # <site>.translate.goog, measured 2026-10-27 for .co.uk and .co.jp), as
+    # translate.google.com does.
+    "translate.google.co.uk", "translate.google.co.jp", "translate.google.co.in",
+    "translate.google.de", "translate.google.com.br",
+    "docs.google.co.uk", "sites.google.co.jp", "forms.google.co.uk", "drive.google.co.in",
+    "a.docs.google.co.uk",
+])
+def test_abused_google_services_are_not_trusted_under_any_google_domain(host):
+    assert is_trusted_top_domain(host) is False
+
+
+@pytest.mark.parametrize("host", ["www.google.co.uk", "google.co.jp", "www.google.de", "google.com.br", "maps.google.co.kr"])
+def test_googles_own_hosts_stay_trusted(host):
     assert is_trusted_top_domain(host) is True
 
 

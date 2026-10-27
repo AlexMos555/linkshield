@@ -307,21 +307,73 @@ def top_domain_key(domain: str) -> Optional[str]:
 # (scripts/build_public_suffixes_in_top.py keys rules by their last two
 # labels, 'ne.jp'), 85 tenant names in the Chrome UX Report top origins and
 # the feeds, 5 of them phishing; dothome.co.kr (15 phishing tenants in the
-# feeds: conditions2auth., instagram.) and isweb.co.kr (3) are free hosting;
-# lojaintegrada.com.br and lojavirtualnuvem.com.br (3 each) and
-# shop2000.com.tw are shop builders, webeden.co.uk a site builder (1). With
-# them refused, 156 of 664,780 feed hosts become trusted, all subdomains of
-# universities, ministries and companies (17 under ulm.ac.id, articulo.
-# mercadolibre.com.mx), as under .com. Allowlist only: data/hosting_platforms.json
-# and public_suffixes_in_top.json are ML model inputs (ml_features.
-# shared_tenant), so these move there with the next retrain. service.gov.uk and
+# feeds: conditions2auth., instagram.), isweb.co.kr (3) and woobi.co.kr
+# ("무료 도메인 .woobi.co.kr", per-user records) are free hosting;
+# lojaintegrada.com.br and lojavirtualnuvem.com.br (3 each), shop2000.com.tw
+# and hostgator.com.br (https://<store code>.hostgator.com.br; a random label
+# answers "sua loja não foi encontrada") are shop builders, webeden.co.uk a
+# site builder (1); myzen.co.uk is Zen Internet's customer hosting
+# (c<account>.myzen.co.uk), where burycatholicprepschool.myzen.co.uk, a
+# Phishing.Database host, was "caution 30" in production. Checked and left
+# out for lack of tenants in the feeds, crt.sh or a wildcard: blog.co.uk,
+# freeserve.co.uk, free-online.co.uk, home.ne.jp. service.gov.uk and
 # campaign.gov.uk, the other two PSL rules the builder misses, are GDS-run
 # zones for government services and stay trusted.
+#
+# With these, the hosts and the shorteners below refused, 292 of the
+# 1,057,017 feed hosts of 2026-10-24 become trusted and none loses it: 229
+# subdomains of universities and government bodies (29 under ulm.ac.id),
+# compromised sites of the kind already trusted under .edu and .com; 17
+# Google ccTLD hosts; companies' own hosts the feeds list by mistake
+# (www.tsb.co.uk, articulo.mercadolibre.com.mx); and pages users fill on real
+# services (qr.paypay.ne.jp, pay.kiwify.com.br).
+#
+# Allowlist only: data/hosting_platforms.json and public_suffixes_in_top.json
+# are ML model inputs (ml_features.shared_tenant), so these move there with
+# the next retrain.
 _ALLOWLIST_TENANT_ZONES: frozenset[str] = frozenset({
     "sakura.ne.jp", "dothome.co.kr", "isweb.co.kr",
     "lojaintegrada.com.br", "lojavirtualnuvem.com.br", "shop2000.com.tw",
-    "webeden.co.uk",
+    "webeden.co.uk", "woobi.co.kr", "hostgator.com.br", "myzen.co.uk",
 })
+
+# Hosts under a newly reached compound-suffix entry that many people publish
+# to by path: ISP personal pages (/~user/). Both were in the Phishing.Database
+# feed of 2026-10-24 (/~dshelley/ed/zin.html, /~jhuntman@…/tt/squ.php). The
+# same allowlist-only reason as above keeps them out of data/hosting_platforms.json
+# user_content_hosts (ml/train_model.py filters its synthetic hosts with it).
+_ALLOWLIST_PATH_SHARED_HOSTS: frozenset[str] = frozenset({
+    "members.iinet.net.au", "homepage.powerup.com.au",
+})
+
+# The service label of each GOOGLE_ABUSED_SUBDOMAINS host ('translate'), so
+# the guard holds under every Google domain, not only .com spellings. The
+# literal list stays as it is: ml/train_model.py reads it.
+_GOOGLE_ABUSED_SERVICES: frozenset[str] = frozenset(g.split(".")[0] for g in GOOGLE_ABUSED_SUBDOMAINS)
+
+
+def _is_abused_google_service(domain: str, key: str) -> bool:
+    """docs/forms/sites/drive/translate.google.<any Google entry>, or a name
+    under one. The literal startswith() test matched google.com and
+    google.com.* only; once the allowlist reached google.co.uk and
+    google.co.jp (2026-10-27), translate.google.co.uk — whose /translate?u=
+    proxies any site, a 302 to <site>.translate.goog — became instant-safe.
+    translate.google.de was trusted before that already."""
+    if domain in GOOGLE_ABUSED_SUBDOMAINS or any(domain.startswith(g) for g in GOOGLE_ABUSED_SUBDOMAINS):
+        return True
+    if key.split(".")[0] != "google" or not domain.endswith("." + key):
+        return False
+    return domain[: -(len(key) + 1)].split(".")[-1] in _GOOGLE_ABUSED_SERVICES
+
+
+def _is_listed_shortener_host(domain: str) -> bool:
+    """`domain` or a name it is under is in _URL_SHORTENERS, whatever its
+    length. For the allowlist only: _is_url_shortener() reads the last two
+    labels because it is the model's is_url_shortener feature, so it never
+    matched a compound entry ('com.br' for encurtador.com.br) nor
+    link.infini.fr ('infini.fr', trusted until 2026-10-27)."""
+    parts = domain.split(".")
+    return any(".".join(parts[i:]) in _URL_SHORTENERS for i in range(len(parts) - 1))
 
 
 def is_trusted_top_domain(domain: str) -> bool:
@@ -342,11 +394,13 @@ def is_trusted_top_domain(domain: str) -> bool:
     key = top_domain_key(d)
     if key is None:
         return False
-    if _is_url_shortener(key):
+    if _is_url_shortener(key) or _is_listed_shortener_host(d):
         return False
-    if d in GOOGLE_ABUSED_SUBDOMAINS or any(d.startswith(g) for g in GOOGLE_ABUSED_SUBDOMAINS):
+    if _is_abused_google_service(d, key):
         return False
     if _is_under_shared_suffix(d) or tenant_suffix_of(d, _ALLOWLIST_TENANT_ZONES):
+        return False
+    if any(d == h or d.endswith("." + h) for h in _ALLOWLIST_PATH_SHARED_HOSTS):
         return False
     # A customer's name on a dynamic-DNS service in the top-100k (ns01.info).
     if _dynamic_dns_suffix_of(d):
@@ -653,6 +707,15 @@ _URL_SHORTENERS = {
     # answered instant-safe: a shortener's popularity vouches for no link.
     "s.gy", "short.gy", "l1nq.com", "bityli.com", "me2.do", "chilp.it",
     "abrir.link", "encurtador.dev", "beam.to", "jii.li", "buly.kr", "mpago.la",
+    # Under a compound suffix, so the allowlist only reached them on
+    # 2026-10-27 (top_domain_key): a public shortener in the top 100k; two
+    # government ones, the Indonesian health ministry's abused for phishing
+    # redirects (three PhishTank URLs, 2026); and universities' short-link
+    # hosts that Phishing.Database lists by short code. Longer than two
+    # labels, so the model's is_url_shortener (_is_url_shortener, last two
+    # labels) never sees them; the allowlist does (_is_listed_shortener_host).
+    "encurtador.com.br", "go.gov.sg", "s.kemkes.go.id",
+    "link.uinsgd.ac.id", "link.upnyk.ac.id", "s.ecu.edu.au", "s.umj.ac.id",
 }
 
 
@@ -1084,8 +1147,10 @@ def _certificate_is_a_renewal(signals: dict) -> bool:
 def _is_url_shortener(domain: str) -> bool:
     """Check if domain is a known URL shortener."""
     # The last two labels on purpose: this is the ML feature is_url_shortener
-    # too (ml_features), and no _URL_SHORTENERS name sits under a compound
-    # suffix, so registrable_domain() would change no answer (2026-10-27).
+    # too (ml_features), and the served model learned this reading. The
+    # entries longer than two labels (link.infini.fr, encurtador.com.br) never
+    # match here; reading them is a feature change for the next retrain. The
+    # allowlist checks every ancestor instead (_is_listed_shortener_host).
     base = _extract_base_domain(domain)
     return base in _URL_SHORTENERS
 
