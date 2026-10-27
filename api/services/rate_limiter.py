@@ -230,7 +230,10 @@ async def check_burst_only(user: AuthUser) -> None:
 
 
 # Categories whose availability outranks limiter strictness (see below).
-FAIL_OPEN_CATEGORIES: frozenset[str] = frozenset({"doh", "blocklist"})
+# unsubscribe_get / _post: links that verified (unsubscribe_rate_limit).
+FAIL_OPEN_CATEGORIES: frozenset[str] = frozenset(
+    {"doh", "blocklist", "unsubscribe_get", "unsubscribe_post"}
+)
 
 
 def ip_rate_key(ip: Optional[str]) -> str:
@@ -346,6 +349,7 @@ async def _check_window_limit(
         # DNS is the one path that must never 503: for anyone whose phone
         # points at /dns-query, "rate limiter unavailable" would mean "no
         # site on the internet resolves" for the length of a Redis blip.
+        # A verified unsubscribe link must not be lost to one either.
         # Everything else keeps the production fail-closed posture.
         if category in FAIL_OPEN_CATEGORIES:
             return limit
@@ -725,20 +729,47 @@ async def doh_rate_limit(request: Request) -> None:
         )
 
 
-def unsubscribe_rate_limit() -> Callable:
+def unsubscribe_rate_limit(verify: Callable[[str], Optional[dict]]) -> Callable:
     """
-    Dedicated dependency for unsubscribe endpoints.
-    Uses its own (stricter) limit than generic public endpoints.
+    Dependency for the unsubscribe endpoints; `verify` is the router's token
+    check (api/routers/email_unsubscribe.verify_token).
+
+    A link that verifies is limited per subscription (user + template), GET
+    and POST counted apart, and never per IP. RFC 8058 one-click POSTs come
+    from Gmail's and Yahoo's shared egress addresses, and link scanners
+    (Safe Links, Proofpoint) GET from small pools of their own: one per-IP
+    budget let other people's one-clicks and scanner GETs spend it, and a
+    real one-click got 429 and was lost. The signed link is the only
+    credential, so the subscription is what bounds its holder (each POST is
+    a Supabase read and write). The key is a hash of the verified payload,
+    not the link as sent: lenient base64 gives one link many spellings. These
+    buckets fail open (FAIL_OPEN_CATEGORIES) — an unsubscribe must not be
+    lost to a Redis blip.
+
+    A link that does not verify (forged, tampered, expired) is limited per
+    IP, both methods together, under the usual fail-open/closed policy.
     """
 
-    async def dep(request: Request) -> None:
+    async def dep(request: Request, token: str) -> None:
         settings = get_settings()
-        ip = _extract_client_ip(request)
-        await check_ip_rate_limit(
-            ip,
-            "unsubscribe",
-            settings.unsubscribe_limit_per_window,
-            settings.unsubscribe_window_seconds,
+        window = settings.unsubscribe_window_seconds
+        payload = verify(token)
+        if payload is None:
+            await check_ip_rate_limit(
+                _extract_client_ip(request),
+                "unsubscribe",
+                settings.unsubscribe_limit_per_window,
+                window,
+            )
+            return
+        subscription = f"{payload['uid']}\0{payload['template']}".encode("utf-8")
+        method = request.method.lower()
+        await _check_window_limit(
+            f"rate:unsubscribe:{method}:{hashlib.sha256(subscription).hexdigest()[:32]}",
+            f"unsubscribe_{method}",
+            settings.unsubscribe_link_limit_per_window,
+            window,
+            who={}, error="Too many requests for this unsubscribe link. Please wait.",
         )
 
     return dep
