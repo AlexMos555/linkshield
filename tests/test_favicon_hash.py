@@ -37,11 +37,21 @@ ICON_SAMPLES = {
     "webp": b"RIFF\x24\x00\x00\x00WEBPVP8 " + b"\x00" * 16,
     "svg": b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"/>',
     "svg-xml": b'\xef\xbb\xbf<?xml version="1.0"?>\n<svg xmlns="http://www.w3.org/2000/svg"/>',
+    "svg-doctype": b'<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "x"><svg xmlns="http://www.w3.org/2000/svg"/>',
+    # The <svg tag may sit far into the first KB, after a prolog and a comment.
+    "svg-late-tag": b'<?xml version="1.0"?><!-- ' + b"x" * 900 + b' --><svg xmlns="http://www.w3.org/2000/svg"/>',
 }
 NOT_ICONS = {
     "akamai-denied": AKAMAI_DENIED,
     "waf-down": WAF_DOWN,
     "html-with-inline-svg": b"<!doctype html><html><body><svg></svg></body></html>",
+    # Pages that pass the SVG prefix check and contain an <svg>: only the
+    # <html guard turns them away.
+    "xhtml-with-svg": (
+        b'<?xml version="1.0"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "x">'
+        b'<html xmlns="http://www.w3.org/1999/xhtml"><body><svg/></body></html>'
+    ),
+    "comment-html-svg": b"<!-- x --><html><body><svg/></body></html>",
     "xml-not-svg": b'<?xml version="1.0"?><error>denied</error>',
     "json": b'{"error": "forbidden"}',
     "text": b"Forbidden",
