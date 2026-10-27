@@ -28,12 +28,12 @@ that in those 4 s the query got no turn at the upstreams:
 LOAD_SHED_DNS_UPSTREAM_MAX_INFLIGHT queries already waiting (upstream_shed),
 every stream of the upstream connections taken (one more request would fail
 at once), or its zone's room at the upstreams taken the whole time. A zone's
-room is 16 requests plus half of the upstream's free slots: a zone nobody
+room is 16 requests plus half of the upstream's free slots — 43 with the
+upstream otherwise idle, 16 when other names hold its slots: a zone nobody
 answers fills it, and so does a zone that answers, but too slowly for the
-rate of its queries: with 1 s answers, past ~40 unique names a second per
-worker while the slots are otherwise free, past 16 a second when other names
-hold most of them (docs/runbooks/doh-gateway.md, «A zone that never
-answers»).
+rate of its queries (stand: 1 s answers, 40 unique names a second per
+worker, 16 % of them SERVFAIL; docs/runbooks/doh-gateway.md, «A zone that
+never answers»).
 """
 
 from __future__ import annotations

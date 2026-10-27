@@ -125,12 +125,18 @@ MAX_IN_FLIGHT = 96
 # at the upstreams (both upstreams and hedges counted), plus half of the slots
 # that upstream has free. The zone is the query name's parent, never shorter
 # than its registrable domain (_zone_of). Alone, a zone gets 43 of an
-# upstream's 96 slots: one nobody answers leaves the other names 53, one that
-# answers in 1 s is answered up to ~40 queries a second per worker (~140 at
-# 0.3 s). The more of the slots other names use, the less a zone gets past
-# its 16. A fixed 16 gave a zone answering in 1 s at 40 queries/s 62 %
-# SERVFAIL while the upstream had 60 slots free (stand, row e; final review
-# 2026-10-27); main's semaphore answered such a zone up to its 32 slots.
+# upstream's 96 slots: one nobody answers leaves the other names 53. The more
+# of the slots other names use, the less a zone gets past its 16. A fixed 16
+# gave a zone answering in 1 s at 40 queries/s per worker 62-64 % SERVFAIL
+# while the upstream had 60 slots free (stand, row e; final review
+# 2026-10-27; main's semaphore answered such a zone up to its 32 slots); now
+# 16.5 %, its answers slowed to ~1.6 s with that many requests open on one
+# connection. Each open request slows the other answers on its connection:
+# httpcore reads it under one lock, taken in turn by every waiting stream.
+# With 43 requests open instead of 16, a zone nobody answers raised the other
+# cache misses' p50 from 30 to 70 ms (stand, row a, 2026-10-28); a quarter of
+# the free slots instead of half gave 55 ms and 32 % SERVFAIL for the 1 s
+# zone.
 # Six or more zones nobody answers, each sent enough names to fill its 16,
 # take every slot of an upstream, as six did with a fixed 16 (virtual-clock
 # model, 2026-10-28: healthy misses 0 % SERVFAIL with five, 54 % with six on
