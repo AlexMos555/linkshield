@@ -30,30 +30,30 @@
   ],
   "n_features": 27,
   "features_version": 6,
-  "train_samples": 52821,
-  "total_samples": 66256,
-  "test_auc": 0.912,
+  "train_samples": 52754,
+  "total_samples": 65931,
+  "test_auc": 0.9047,
   "test_names_only": {
-    "n_phishing": 3790,
-    "n_benign": 9551,
-    "auc": 0.9098,
-    "recall_at_0.6": 0.4253,
-    "recall_at_0.85": 0.2058,
-    "benign_flagged_at_0.6": 0.0094
+    "n_phishing": 3593,
+    "n_benign": 9494,
+    "auc": 0.9023,
+    "recall_at_0.6": 0.3535,
+    "recall_at_0.85": 0.1534,
+    "benign_flagged_at_0.6": 0.0087
   },
-  "phishing_names": 17795,
-  "phishing_ips": 461,
-  "benign_host_shapes": 10682,
+  "phishing_names": 17455,
+  "phishing_ips": 476,
+  "benign_host_shapes": 10666,
   "benign_tenants": 3329,
   "held_out_registrable_domains": 665,
   "phishing_sources": {
-    "CERT Polska": 5955,
-    "PhishDestroy": 5114,
-    "Phishunt": 1323,
-    "TweetFeed": 5864
+    "CERT Polska": 5957,
+    "PhishDestroy": 5070,
+    "Phishunt": 1155,
+    "TweetFeed": 5749
   },
   "benign_sources": {
-    "fetched": "2026-10-23",
+    "fetched": "2026-10-26",
     "majestic_million": {
       "url": "https://downloads.majestic.com/majestic_million.csv",
       "licence": "CC BY 3.0",
@@ -73,14 +73,14 @@
       }
     },
     "files": {
-      "benign-domains.csv": 1568368,
+      "benign-domains.csv": 1571433,
       "benign-hosts.csv": 1555774
     }
   },
   "benign_class_weight": 3.0,
   "ensemble_members": 3,
   "seed": 42,
-  "shared_suffixes": 1501,
+  "shared_suffixes": 1974,
   "feature_data": {
     "top_domains": {
       "file": "top_100k.json",
@@ -90,9 +90,10 @@
     },
     "public_suffixes_in_top": {
       "file": "public_suffixes_in_top.json",
-      "sha256": "8a40e6f92329ec95f1047e30512355b0a96569d877f905dadb71a6a7cc60ef72",
-      "entries": 1187,
+      "sha256": "1e06b1b9a23ca9dbffe81b8961e233c1ac851e9670af4e5f3143377eb05988bf",
+      "entries": 1662,
       "source": "Majestic Million + Chrome UX Report country/ru 202609, global 202609, built 2026-10-23 (data/top_domains_sources.json)"
-    }
+    },
+    "typosquat_rule": 2
   }
 }
