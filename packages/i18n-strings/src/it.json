@@ -3564,7 +3564,7 @@
       "placeholder": "tu@esempio.com",
       "submit": "Controlla",
       "found_title": "Trovato in una lista trapelata",
-      "found_body": "Questo indirizzo è comparso {{times}} volte nelle liste di password trapelate. Se lo usi come password da qualche parte, cambia subito quella password.",
+      "found_body": "Questo indirizzo compare nelle liste di password trapelate (occorrenze: {{times}}). Se lo usi come password da qualche parte, cambia subito quella password.",
       "clear_title": "Non è nelle liste trapelate",
       "clear_body": "Questo indirizzo non è comparso come password in nessuna fuga di dati che possiamo vedere. Potrebbe comunque essere finito in una violazione che non possiamo controllare.",
       "error_title": "Controllo non riuscito",

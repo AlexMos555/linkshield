@@ -32,7 +32,9 @@ Three invariants, each of which has been violated for real:
    …)"), then base keys did: ar `mobile.history.minutes_ago` showed "Add
    Arabic plural variants: … Single-string fallback: …" on every History
    row, and it `mobile.breach.found_body` showed "found_body_one: \"…\" /
-   found_body_other: \"…\"". And no v3 `<base>_plural` keys: i18next 24+
+   found_body_other: \"…\"". The rule lives in scripts/i18n_notes.py, which
+   check-i18n-parity.py also runs over every namespace of the source
+   (landing, extension and email too). And no v3 `<base>_plural` keys: i18next 24+
    never reads them, so they only mislead the next translator.
 
 Dynamic template-literal keys (`mobile.result.verdict_${level}`) cannot be
@@ -51,26 +53,11 @@ KEY_REF = re.compile(r'["`](mobile\.[a-z0-9_.]+)["`]')
 NATIVE_PREFIX = "mobile.android_native."
 LINK = re.compile(r"https?://|www\.|tel:", re.IGNORECASE)
 PHONE = re.compile(r"\+?\d[\d\s\-()]{6,}\d")
-PLURAL_SUFFIX_RE = "_(?:zero|one|two|few|many|other|plural)"
-# A translator note names the plural variants it talks about ("_two «…»",
-# "keep _other as …"), opens with the key it belongs to ("times_one: …",
-# "found_body_one: …") or says what it is ("Plural variants: …",
-# "Single-string fallback: …").
-PLURAL_NOTE = re.compile(r"(?<![A-Za-z0-9])" + PLURAL_SUFFIX_RE + r"\b")
-NOTE_PHRASE = re.compile(r"plural (?:variant|form)s?|single[- ]string fallback|translator", re.IGNORECASE)
+
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from i18n_notes import is_translator_note  # noqa: E402
 
 failures = []
-
-
-def is_translator_note(key, value):
-    # "times_one: …" on mobile.report.times_one and "found_body_one: …" on
-    # mobile.breach.found_body both open with the key's base name.
-    base = re.sub(PLURAL_SUFFIX_RE + "$", "", key.rsplit(".", 1)[-1])
-    return bool(
-        PLURAL_NOTE.search(value)
-        or NOTE_PHRASE.search(value)
-        or re.match(re.escape(base) + "(?:" + PLURAL_SUFFIX_RE + r")?\s*:", value)
-    )
 
 
 locales = {}
