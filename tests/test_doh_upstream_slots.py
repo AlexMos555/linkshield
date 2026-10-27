@@ -799,3 +799,15 @@ async def test_slot_gauges_show_slots_in_use_and_queries_waiting(holding_upstrea
     assert doh_upstream.slots_status()["abandoned"] == doh_upstream.MAX_IN_FLIGHT
 
 
+
+
+def test_every_upstream_counter_is_explained_in_the_runbook():
+    """/health/doh and the doh_stats line show every counter; the runbook's
+    table says what each one means and when to worry (review 2026-10-27: the
+    first version's three counters were in neither)."""
+    import re
+    from pathlib import Path
+    names = set(re.findall(r'METRICS\.inc\("([a-z_.]+)"\)', Path(doh_upstream.__file__).read_text()))
+    runbook = (Path(__file__).resolve().parents[1] / "docs" / "runbooks" / "doh-gateway.md").read_text()
+    assert names
+    assert [n for n in sorted(names) if f"| `{n}` |" not in runbook] == []

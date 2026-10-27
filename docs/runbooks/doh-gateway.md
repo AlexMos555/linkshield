@@ -15,9 +15,11 @@ DohFastPath (raw ASGI, outermost; api/services/doh_fastpath.py)
        hash of any suffix listed? → confirm with ONE Redis SISMEMBER → NXDOMAIN
   → response cache, in memory            (api/services/doh_cache.py)
   → upstreams: Cloudflare by name, then by IP; Quad9 opt-in    (api/services/doh_upstream.py)
-       HTTP/2 pool · immediate failover on error · hedge after 400 ms · breaker
+       HTTP/2, one connection each · ≤ 96 requests per upstream, ≤ 16 per zone
+       · immediate failover on error · hedge 400 ms after send, into spare room · breaker
   → stale cached answer (RFC 8767, TTL 30 s)
-  → SERVFAIL  (only when no upstream answered in 4 s and nothing was cached)
+  → SERVFAIL  (no upstream answered in 4 s and nothing was cached — or, under
+               overload, the query got no turn at the upstreams: "A zone that never answers")
 ```
 
 * **Blocklist in memory.** Each worker holds the same v2 artifact phones sync
@@ -40,7 +42,9 @@ DohFastPath (raw ASGI, outermost; api/services/doh_fastpath.py)
   are forwarded unchanged: EDNS0 and padding pass through, no ECS is added.
   An answer is believed only if it is HTTP 200, 12..65535 bytes and carries
   the query's ID. A pooled connection closed by the server (HTTP/2 GOAWAY) is
-  retried once in place.
+  retried once in place. Requests in flight are limited per upstream and per
+  zone, and a request once sent is never cancelled ("A zone that never
+  answers" below).
 
 ## Decision: fail open
 
@@ -52,7 +56,13 @@ install at once, and the user's remedy is to delete the app. A phishing name
 missed during an outage is bounded (the phone's own protections still run, the
 outage ends); a dark internet is not. The only SERVFAIL we send means "no
 upstream answered and nothing was cached" — a stub retries a SERVFAIL, but
-would believe (and negatively cache) an NXDOMAIN for every site.
+would believe (and negatively cache) an NXDOMAIN for every site. Under
+overload a cache miss can also get SERVFAIL without being forwarded, when in
+4 s it got no turn at the upstreams: `upstream_shed` (the worker's
+`LOAD_SHED_DNS_UPSTREAM_MAX_INFLIGHT`), or every stream of the upstream
+connections taken, or its zone's share taken by names nobody answers ("A
+zone that never answers"). Those limits are the upstream connections'
+capacity, not a failure on our side: one more request would fail at once.
 
 What still blocks during a Redis outage: everything on the last loaded list
 (`decision.filter_hit_unconfirmed` in the counters). What does not: names
@@ -141,6 +151,133 @@ A phone sends roughly 1–3k DNS queries a day (≈0.02–0.04 q/s, ×3 at peak)
 At ~900 req/s — half a worker's saturation point with this mix — one worker
 serves on the order of **10k phones at peak**. Latency stays low while a
 worker is below ~60% busy; above that, misses queue. Scale on CPU, not memory.
+
+## A zone that never answers (2026-10-23, reworked 2026-10-27)
+
+**The problem.** Random subdomains of a zone whose authoritative servers
+never answer (`r<hex>.dead.example`: a DGA, a broken app, a lame
+delegation) are never cached, and each waits the whole 4 s budget;
+Cloudflare answers them SERVFAIL after up to ~5.4 s (measured 2026-10-23).
+Until 2026-10-23 a worker had 32 upstream slots, hedges included, and ~4-8
+such names a second took all of them: every other cache miss queued behind
+them. Worse, a request cancelled at the deadline kept its HTTP/2 stream open
+at the upstream (httpcore sends no `RST_STREAM`), and at 100 open streams
+every new request on that connection failed at once (`LocalProtocolError:
+Max outbound streams is 100`). On the stand, 10 % such names in one zone gave
+84-90 % of the healthy cache misses SERVFAIL. The first fix (a zone limit of
+8, 96 slots shared by both upstreams) was reviewed on 2026-10-27; the
+reasons in the list below are what the review found it got wrong.
+
+**How it works** (`api/services/doh_upstream.py`, numbers per worker):
+
+* **A request, once sent, is not cancelled.** It runs until the upstream
+  answers, holding its slot, so the slots count the connection's open
+  streams. A request still unanswered `REQUEST_TIMEOUT_S` (10 s) after it was
+  sent is given up together with its connection; the requests still on that
+  connection are re-sent once on a new one. httpx's own read timeout does
+  not bound it over HTTP/2: it times one read on the shared connection, and
+  any other stream's data starts it again.
+* **Slots per upstream: 96** — each upstream is one HTTP/2 connection with
+  100 streams. Cloudflare by name and by IP: 2 × 96. A query goes to the
+  first upstream (healthy ones first) with a free slot. Without `h2` the cap
+  is the HTTP/1.1 pool's size, 32.
+* **Zone limit: 16 requests** at the upstreams, both upstreams and hedges
+  included. The zone is the query name's parent, never shorter than its
+  registrable domain: `r1.dead.example` → `dead.example`, `www.bank.com` →
+  `bank.com` but `r1.old.bank.com` → `old.bank.com`, `4.3.2.1.in-addr.arpa`
+  → `3.2.1.in-addr.arpa`. A query over its zone's limit waits for room
+  without holding a slot; a query waiting for a slot does not take its zone's
+  room (taken first, a busy zone's own queued queries filled it).
+* **A freed slot goes to the newest waiting query whose zone has room** —
+  the oldest is the closest to its deadline. So under any slot shortage
+  (names nobody answers, but also a slow upstream) the oldest waiting misses
+  get SERVFAIL at 4 s instead of every miss arriving late.
+* **Hedge: 400 ms after the request was sent, into spare room only** — more
+  than half of the target upstream's slots and of the zone's share free,
+  nobody waiting for the zone. Both default upstreams are one resolver: a
+  hedge helps when a connection stalls, not when a name is slow.
+* A request no query waits for any more is not re-sent after a GOAWAY.
+
+**Known limits** (not fixed):
+
+* Names nobody answers spread over many zones (one name per zone) are
+  bounded only by the slots: ~2 × 96 / 5.4 s ≈ 35 a second per worker at
+  Cloudflare's timing. On a virtual-clock model with 6 s answers: 0 %
+  SERVFAIL up to 30 a second, 3-6 % at 33-36. Past that the oldest waiting
+  misses get SERVFAIL; main answered late at those rates and failed with
+  `LocalProtocolError` from ~16 a second. Stand: 20 a second per worker over
+  200 zones, 2 upstreams (row c2+) — 8 % (main 78 %); 40 a second with one
+  upstream (rows c 10 %) — 64-70 % (main 77-89 %).
+* An upstream that never answers some names: each such request holds its
+  slot up to `REQUEST_TIMEOUT_S`, so ~96 / 10 s ≈ 10 a second per upstream,
+  and then costs the connection (at most one drop per 10 s per upstream:
+  the drop clears every unanswered stream on it). Rows d / d+ / d2: 8 a second per worker — 0-0.5 % (main 0.1 % while the
+  stub recycled its connections, which also closed main's leaked streams;
+  70-79 % without).
+* Dropping a connection (`upstream_dropped`) fails every request on it;
+  those a query still waits for are re-sent once, so it costs latency, not
+  answers: with the stub answering in 6 s and closing connections every
+  1000 requests, 2-3 drops per 30 s run (a request re-sent after a GOAWAY
+  passed 10 s), row c 2 %: 0.4 % SERVFAIL and a p95 of 0.3-1.8 s (main 0 %,
+  p50 1.2 s).
+* A zone that answers, but slowly, is capped too: ~16 / latency queries a
+  second per worker (~50 at 0.3 s, ~16 at 1 s), unique names only — the
+  same name is asked once (the router coalesces it). Row e 1 s: 40 such
+  names a second per worker; 62 % of them get SERVFAIL (main 86 %, and 9 %
+  of every other cache miss with them).
+* The zone is a heuristic. Shared parents (`cloudfront.net`, `github.io`,
+  `blogspot.com`, `s3.amazonaws.com`) are one zone each: fine at 20 ms
+  answers (~800 a second per worker). IPv6 reverse lookups are per /124,
+  i.e. practically unlimited per zone.
+* Queries waiting for their zone still hold the router's `dns_upstream`
+  budget: production's 1024 is ~250 queries a second per worker for one dead
+  zone before `upstream_shed`. With the one-machine 128 of
+  docs/runbooks/capacity.md it shows: row a128, 26 % (main 73 %).
+
+**Measured** (stand, 2026-10-27; docs/runbooks/capacity.md «Как повторить без
+Docker», 2 workers, 800 queries a second for 30 s after a 10 s warm-up, a
+fresh API per run, the same seeds for every variant). Cells: p50 / p95 / p99
+of never-cached names in 50 healthy zones, and the share of them that got
+SERVFAIL; medians over the runs. Rows: 10 % / 2 % of all queries are names
+the stub answers after 6 s ("slow") or never ("never"), in 1, 20 or 200
+zones; one upstream unless "2 upstreams"; "norecycle" — a stub that does not
+close its HTTP/2 connections after 1000 requests (hypercorn's default);
+a128 — `LOAD_SHED_DNS_MAX_INFLIGHT` and `_UPSTREAM_MAX_INFLIGHT` at 128;
+e — a zone that answers in 0.3 s / 1 s. "First version": the commit of
+2026-10-23 before the review. Direction only: the stub and the load run on
+the same machine, load average 2-25 from other work.
+
+| scenario | main | first version | final |
+|---|---|---|---|
+| b control (no slow names) (6 runs) | 16 / 32 / 93 ms, 0.0 % | 16 / 22 / 38 ms, 0.0 % | 16 / 28 / 57 ms, 0.0 % |
+| a 10% slow, 1 zone, 6 s (2 runs) | 4 / 3498 / 3719 ms, 86.6 % | 22 / 44 / 72 ms, 0.0 % | 30 / 66 / 100 ms, 0.0 % |
+| c 10% slow, 20 zones, 6 s (2 runs) | 3 / 3469 / 3620 ms, 88.9 % | 4002 / 4004 / 4017 ms, 79.8 % | 4001 / 4004 / 4010 ms, 63.6 % |
+| c 2% slow, 200 zones, 6 s (2 runs) | 1228 / 2016 / 2226 ms, 0.0 % | 88 / 4000 / 4004 ms, 5.4 % | 60 / 1074 / 3362 ms, 0.4 % |
+| c 10% slow, 200 zones, 6 s (2 runs) | 648 / 3676 / 3822 ms, 77.3 % | 4001 / 4004 / 4018 ms, 72.6 % | 4002 / 4004 / 4049 ms, 69.9 % |
+| d 10% never, 1 zone (2 runs) | 4 / 3490 / 3622 ms, 89.4 % | 23 / 121 / 240 ms, 0.0 % | 30 / 66 / 100 ms, 0.0 % |
+| d 2% never, 200 zones (2 runs) | 904 / 2536 / 2886 ms, 0.1 % | 110 / 4003 / 4004 ms, 23.0 % | 66 / 842 / 2462 ms, 0.4 % |
+| d+ 10% never, 1 zone, norecycle, 60s (1 run) | 3 / 2346 / 3548 ms, 96.1 % | 21 / 50 / 128 ms, 0.0 % | 32 / 73 / 116 ms, 0.0 % |
+| d+ 2% never, 200 zones, norecycle, 60s (1 run) | 3 / 1657 / 2252 ms, 79.4 % | 867 / 4004 / 4037 ms, 42.8 % | 84 / 1185 / 2158 ms, 0.0 % |
+| a+ 10% 6s, 1 zone, norecycle (1 run) | 3 / 3433 / 3592 ms, 80.2 % | 21 / 44 / 73 ms, 0.0 % | 29 / 66 / 95 ms, 0.0 % |
+| c+ 2% 6s, 200 zones, norecycle (1 run) | 1356 / 2099 / 2584 ms, 0.3 % | 82 / 266 / 489 ms, 0.0 % | 77 / 134 / 171 ms, 0.0 % |
+| a128 10% 6s, 1 zone, budgets 128 (1 run) | 2 / 2694 / 3572 ms, 72.9 % | 18 / 38 / 103 ms, 24.2 % | 27 / 69 / 128 ms, 26.3 % |
+| b2 control, 2 upstreams (2 runs) | 16 / 22 / 35 ms, 0.0 % | 16 / 29 / 67 ms, 0.0 % | 16 / 22 / 29 ms, 0.0 % |
+| a2 10% 6s, 1 zone, 2 upstreams (2 runs) | 7 / 3548 / 3705 ms, 88.5 % | 21 / 74 / 175 ms, 0.0 % | 27 / 60 / 94 ms, 0.0 % |
+| c2 2% 6s, 200 zones, 2 upstreams (2 runs) | 2370 / 3000 / 3159 ms, 0.0 % | 222 / 4003 / 4011 ms, 23.3 % | 66 / 202 / 1026 ms, 0.0 % |
+| c2n 2% 6s, 200 zones, 2 ups, norecycle (2 runs) | 2138 / 2828 / 3010 ms, 0.0 % | 130 / 4002 / 4068 ms, 10.8 % | 72 / 150 / 226 ms, 0.0 % |
+| c1n 1% 6s, 200 zones, 2 ups, norecycle (2 runs) | 606 / 2192 / 2572 ms, 0.0 % | 38 / 88 / 170 ms, 0.0 % | 36 / 79 / 115 ms, 0.0 % |
+| e 10% alive 0.3 s, 1 zone (1 run) | 25 / 74 / 169 ms, 0.0 % | — | 24 / 48 / 84 ms, 0.0 % |
+| e 10% alive 1 s, 1 zone (1 run) | 3516 / 4004 / 4026 ms, 9.2 % | — | 28 / 81 / 181 ms, 0.0 % |
+| c2+ 5% 6s, 200 zones, 2 ups (1 run) | 4011 / 4155 / 4512 ms, 77.6 % | — | 102 / 4002 / 4003 ms, 8.4 % |
+| d2 2% never, 200 zones, 2 ups, norecycle, 60s (1 run) | 5 / 2539 / 2987 ms, 70.0 % | — | 84 / 357 / 3350 ms, 0.5 % |
+
+`scripts/capacity/loadgen.py --mode doh` reports p95 over every HTTP 200,
+SERVFAIL included: ~4 s for both fixes in row a, because the slow names now
+wait the whole budget instead of failing in milliseconds (main: 3.1-3.6 s).
+The per-name split above comes from a scratch bench that is not in the repo.
+
+**Watch:** `upstream_zone_wait`, `upstream_slot_wait`, `upstream_dropped`
+(counters table below) and the slot gauges in `/health/doh`.
 
 ## Scaling on Railway
 
@@ -237,8 +374,22 @@ service. In order of value per effort:
 | `cache_hit` / `cache_miss` / `coalesced` | cache effectiveness | hit ratio < 50% → raise `DOH_CACHE_MAX_ENTRIES` |
 | `upstream_failed`, `served_stale`, `servfail` | upstreams unreachable | any sustained `servfail` |
 | `upstream_shed` | not forwarded: this worker already had `LOAD_SHED_DNS_UPSTREAM_MAX_INFLIGHT` queries waiting on the upstream; answered stale or SERVFAIL (docs/runbooks/capacity.md, «Сброс нагрузки») | rising → the upstream is slow; see `load_shed.dns_upstream` |
+| `upstream_zone_wait` | a query waited for room in its zone: `ZONE_MAX_IN_FLIGHT` (16) of the zone's requests were at the upstreams | rising with `servfail` → a zone nobody answers is being flooded; `upstream_slots.zones_full` |
+| `upstream_slot_wait` | a query waited for a slot: all 96 of an upstream's were taken | rising → slots are short; `upstreams[].in_flight` and `upstream_slots.abandoned` say by what |
+| `upstream_abandoned` | a sent request no query waited for any more — a hedge loser, or still out at the deadline; it runs on, holding its slot | has a baseline (every lost hedge); worry when it rises with `servfail` |
+| `upstream_hedge_skipped` | a hedge was due but no upstream had spare room for it (more than half its slots free) | rising → slots are short |
+| `upstream_dropped` | a request stayed unanswered for `REQUEST_TIMEOUT_S` (10 s): it was given up together with its connection | any, sustained → the upstream drops requests |
 | `rate_limited` | 429s sent | rising → a CGNAT address hit the ceiling; raise the limit |
 | `internal_error`, `filter_error`, `cache_error` | a bug, failed open | any |
+
+**Upstream slots now** (`/health/doh`, the worker that answered — the
+counters above are since start): `upstreams[].in_flight` / `waiting` —
+requests at that upstream (of 96) and queries waiting for one of its slots;
+`upstream_slots` — `zones_full` (zones at their limit), `zone_waiting`
+(queries waiting for room in them), `abandoned` (requests no query waits for,
+still open), `dropping` (connections being dropped after `upstream_dropped`).
+Slots full and most of them `abandoned`: names nobody answers. Slots full,
+few abandoned: the upstream itself is slow.
 
 **`filter.error`**: `no_artifact` (publisher never wrote one / it expired),
 `sha_mismatch` (body ≠ meta — publisher bug; the old list is kept),

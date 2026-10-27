@@ -15,14 +15,20 @@ Hot path (docs/runbooks/doh-gateway.md has the measurements):
   rate limit (in process) →
   resolve(): in-process blocklist filter → response cache → upstreams
   (Cloudflare, Quad9; HTTP/2, hedged failover; at most
-  LOAD_SHED_DNS_UPSTREAM_MAX_INFLIGHT waiting at once) → serve-stale →
-  SERVFAIL.
+  LOAD_SHED_DNS_UPSTREAM_MAX_INFLIGHT waiting at once; requests in flight
+  limited per upstream connection and per zone, doh_upstream.py) →
+  serve-stale → SERVFAIL.
 The FastAPI routes below stay for the OpenAPI contract and as the path
 taken when DOH_FAST_PATH=false; both call the same resolve().
 
 Fail-open, by decision: nothing that goes wrong on OUR side (filter, cache,
 Redis, a bug) may stop a query from being forwarded. The only SERVFAIL we
-ever send means "no upstream answered in 4 s and nothing was cached".
+ever send means "no upstream answered in 4 s and nothing was cached" — or
+that in those 4 s the query got no turn at the upstreams, which only
+overload causes: LOAD_SHED_DNS_UPSTREAM_MAX_INFLIGHT queries already waiting
+(upstream_shed), every stream of the upstream connections taken (one more
+request would fail at once), or its zone's share taken by names nobody
+answers (docs/runbooks/doh-gateway.md, «A zone that never answers»).
 """
 
 from __future__ import annotations
