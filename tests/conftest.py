@@ -679,6 +679,17 @@ def _fresh_health_deep_cache():
 
 
 @pytest.fixture(autouse=True)
+def _fresh_unsubscribe_fallback():
+    """Verified unsubscribe links count in process while Redis is down
+    (rate_limiter._unsubscribe_fallback); one test's count is not another's."""
+    from api.services import rate_limiter
+
+    rate_limiter.reset_for_tests()
+    yield
+    rate_limiter.reset_for_tests()
+
+
+@pytest.fixture(autouse=True)
 def _fresh_doh_gateway_state():
     """The DoH gateway keeps per-process state (the in-memory blocklist, the
     response cache, upstream breakers, metrics, the rate-limit window). A test

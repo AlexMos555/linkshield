@@ -29,7 +29,8 @@ a link that verifies gets 20 GETs and 20 POSTs an hour per subscription
 POSTs leave from shared provider addresses and link scanners (Safe Links,
 Proofpoint) GET from small pools, so a per-IP budget 429'd real one-clicks.
 A link that does not verify gets 20 attempts an hour per IP, GET and POST
-together, against brute force.
+together, against brute force. While Redis is down a verified link keeps its
+budget, counted in each worker process; an invalid one gets 503 in production.
 """
 from __future__ import annotations
 
