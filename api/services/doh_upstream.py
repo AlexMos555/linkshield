@@ -605,6 +605,10 @@ async def proxy_to_upstream(wire: bytes) -> Optional[bytes]:
             return None
         finally:
             for task in pending:
+                if task.done():
+                    # Finished in the same round as the answer we returned:
+                    # _ask has counted its outcome, and it holds nothing.
+                    continue
                 attempt = attempts[task]
                 if attempt.sent_at is None:
                     task.cancel()  # still waiting for its turn: nothing at the upstream yet

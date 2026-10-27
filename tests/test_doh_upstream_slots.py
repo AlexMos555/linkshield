@@ -329,6 +329,26 @@ async def test_a_query_waiting_on_our_side_is_not_hedged_before_its_first_reques
 
 
 @pytest.mark.asyncio
+async def test_answers_arriving_together_are_each_counted_once_as_answers(holding_upstreams, monkeypatch):
+    """The request and its hedge answered in the same wait round: both
+    answered, so neither is a lost hedge. Counted again in the query's
+    cleanup, the loser showed ok=1 and failed=1, and was counted abandoned
+    though nothing was left running (final review 2026-10-27)."""
+    holding_upstreams.hold = staticmethod(lambda name: True)
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 1.0)
+    monkeypatch.setattr(doh_upstream, "HEDGE_AFTER_S", 0.05)
+    q = _ask("q.slow.example")
+    await asyncio.sleep(0.1)
+    assert [url for url, _ in holding_upstreams.sent] == [A, B]
+    holding_upstreams.release(lambda url, name: url == A)
+    holding_upstreams.release(lambda url, name: url == B)
+    assert await q is not None
+    counts = {s["url"]: (s["ok"], s["failed"]) for s in doh_upstream.status()}
+    assert counts == {A: (1, 0), B: (1, 0)}
+    assert doh_metrics.METRICS.counts.get("upstream_abandoned", 0) == 0
+
+
+@pytest.mark.asyncio
 async def test_a_hedge_is_not_sent_to_an_upstream_with_half_its_slots_in_use(holding_upstreams, monkeypatch):
     """Both default upstreams are one resolver: a hedge helps when a
     connection stalls, not when a name is slow, so it only uses spare room.
