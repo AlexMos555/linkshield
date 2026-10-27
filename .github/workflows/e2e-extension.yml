@@ -52,8 +52,93 @@ jobs:
       - name: Install test dependencies
         run: npm install --prefix "$RUNNER_TEMP/extension-e2e" --no-audit --no-fund playwright@1.62.1 tweetnacl@1.0.3
 
+      # Chromium the way e2e-landing.yml installs its browsers (see the comment
+      # there): OS packages and browser in separate steps with step timeouts
+      # and up to 3 attempts of at most 3 minutes, because a slow apt mirror
+      # used to hold `install --with-deps` until the job timeout. The cache key
+      # is the playwright version installed above + Ubuntu release + arch +
+      # browser, and `playwright install` runs on every job, so a stale cache
+      # can't leave the browser missing.
+      - name: Resolve Playwright version
+        id: playwright
+        run: |
+          version=$(node -p 'require(process.env.RUNNER_TEMP + "/extension-e2e/node_modules/playwright/package.json").version')
+          os=$(. /etc/os-release && echo "$ID-$VERSION_ID")
+          echo "playwright $version on $os"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "os=$os" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        # A stuck restore must not hold the job: it gives up and the browser
+        # is downloaded instead.
+        timeout-minutes: 4
+        continue-on-error: true
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}-chromium
+
+      - name: Install Chromium OS dependencies
+        timeout-minutes: 12
+        run: |
+          # Playwright builds the apt-get command line itself, so the short
+          # network timeouts and retries go in an apt.conf.d drop-in.
+          sudo tee /etc/apt/apt.conf.d/99-ci-network > /dev/null <<'EOF'
+          Acquire::Retries "3";
+          Acquire::http::Timeout "20";
+          Acquire::https::Timeout "20";
+          DPkg::Lock::Timeout "60";
+          EOF
+          # sudo outside `timeout`: as root, Playwright runs apt-get without
+          # its own sudo, so `timeout` (root too) can kill apt-get. It does not
+          # reach dpkg: apt-get starts dpkg in a session of its own, so an
+          # attempt killed during the install phase leaves dpkg unpacking for
+          # a few more seconds, holding the dpkg lock.
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt of 3"
+            if sudo -H env "PATH=$PATH" DEBIAN_FRONTEND=noninteractive \
+                timeout --kill-after=15s 3m "$RUNNER_TEMP/extension-e2e/node_modules/.bin/playwright" install-deps chromium; then
+              exit 0
+            fi
+            echo "::warning::Chromium OS dependencies: attempt $attempt failed or ran past 3 minutes"
+            # Wait for a dpkg left over from the killed attempt, then let dpkg
+            # finish what that attempt was in the middle of. While the old dpkg
+            # still holds the lock, `--configure -a` fails, and the next
+            # attempt stops at once on "dpkg was interrupted".
+            for _ in $(seq 60); do pgrep -x dpkg > /dev/null || break; sleep 1; done
+            sudo env DEBIAN_FRONTEND=noninteractive dpkg --configure -a \
+              || echo "::warning::dpkg --configure -a failed; the next attempt may stop on an interrupted dpkg"
+            sleep 10
+          done
+          echo "::error::Chromium OS dependencies did not install in 3 attempts (slow or unreachable apt mirror)"
+          exit 1
+
       - name: Install Chromium
-        run: '"$RUNNER_TEMP/extension-e2e/node_modules/.bin/playwright" install --with-deps chromium'
+        timeout-minutes: 12
+        env:
+          CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
+        run: |
+          # Anything but an exact cache hit starts from an empty directory.
+          # actions/cache reports a failed restore (download error, broken or
+          # half-extracted tar) only as a warning and the step still succeeds,
+          # and a restore cut off by the step timeout stops midway. Either can
+          # leave a partial tree in which a browser's INSTALLATION_COMPLETE
+          # marker came out of the tar before its files, so `playwright
+          # install` would skip that browser.
+          if [ "$CACHE_HIT" != "true" ]; then rm -rf ~/.cache/ms-playwright; fi
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt of 3"
+            if timeout --kill-after=15s 3m "$RUNNER_TEMP/extension-e2e/node_modules/.bin/playwright" install chromium; then
+              exit 0
+            fi
+            echo "::warning::Chromium: attempt $attempt failed or ran past 3 minutes"
+            sleep 10
+          done
+          echo "::error::Chromium did not download in 3 attempts"
+          exit 1
 
       - name: Static extension checks
         run: node scripts/test-extension-core.mjs

@@ -39,7 +39,7 @@
 |---|
 | Refresh HN. If your post is on the front page or has >5 upvotes already, good signal. If 0 upvotes after 15 min — re-evaluate title and consider re-posting with a different angle (this is allowed once per topic). |
 | Refresh Twitter. Reply to any RTs with a personal "thanks". |
-| Check `cleanway.ai/transparency/methodology` is loading. If down → emergency fix. Cron benchmark runs every Monday — if it failed, you'll show stale data. |
+| Check `cleanway.ai/transparency/methodology` is loading. If down → emergency fix. Cron benchmark runs every Sunday (15:15 UTC) — if it failed, you'll show stale data. |
 | Check Railway / Vercel status pages. |
 
 ### T+30 min — First comment wave
@@ -103,7 +103,7 @@
 ### Pitfall: Someone finds a phishing URL Cleanway misses
 
 **Sign:** Top HN comment shows a screenshot.
-**Fix:** Welcome it. Reply with: "Good catch — added to our fresh-URL benchmark. Let's see where this lands by next Monday. Source feeds and verdict reasoning are at [link]." Then actually add it.
+**Fix:** Welcome it. Reply with: "Good catch — added to our fresh-URL benchmark. Let's see where this lands after next week's run. Source feeds and verdict reasoning are at [link]." Then actually add it.
 
 ### Pitfall: Someone questions the privacy architecture
 
@@ -118,7 +118,7 @@
 - Don't astroturf. Same.
 - Don't argue with bad-faith commenters. Save your energy for the curious ones.
 - Don't drop product roadmap on launch day. Focus on what's shipped.
-- Don't compare yourself to Norton/Bitdefender by name in copy. Stick to defaults (Cloudflare 1.1.1.1 for Families, Safe Browsing) — those are reproducible.
+- Don't compare yourself to Norton/Bitdefender by name in copy. Stick to the defaults the benchmark measures (Cloudflare 1.1.1.1 for Families, PhishTank) — those are reproducible.
 
 ---
 

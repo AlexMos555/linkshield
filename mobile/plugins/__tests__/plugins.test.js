@@ -463,4 +463,135 @@ class MainActivity : ReactActivity() {
   });
 }
 
+// --- expo-share-intent: a shared file stays in the cache (Android) ---------
+// 5.1.1 copied a shared file to cacheDir/<the sender's _display_name>, so any
+// app on the phone could send "../shared_prefs/…" and overwrite Cleanway's
+// private data (docs/EXPO_UPGRADE_PLAN.md §1.2). patches/expo-share-intent+5.1.1.patch
+// is upstream's 8.0.1 fix; scripts/check-share-intent.mjs proves it is in the
+// installed module and that the share sheet takes text/plain only. Here: it
+// passes, and it fails when the fix is missing or left behind.
+console.log("expo-share-intent (Android shared-file path traversal):");
+{
+  const { spawnSync } = require("node:child_process");
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const mobileDir = path.join(__dirname, "..", "..");
+  const script = path.join(mobileDir, "scripts", "check-share-intent.mjs");
+  const run = (...args) => spawnSync(process.execPath, [script, ...args], { encoding: "utf8" });
+  const KT = path.join("android", "src", "main", "java", "expo", "modules", "shareintent", "ExpoShareIntentModule.kt");
+  const installed = path.dirname(require.resolve("expo-share-intent/package.json", { paths: [mobileDir] }));
+  const patched = fs.readFileSync(path.join(installed, KT), "utf8");
+  // The patch's one hunk, both ways: what it replaces and what it writes.
+  const lines = fs.readFileSync(path.join(mobileDir, "patches", "expo-share-intent+5.1.1.patch"), "utf8").split("\n");
+  const hunk = lines.slice(lines.findIndex((l) => l.startsWith("@@")) + 1).filter((l) => l !== "");
+  const pre = hunk.filter((l) => l[0] !== "+").map((l) => l.slice(1)).join("\n");
+  const post = hunk.filter((l) => l[0] !== "-").map((l) => l.slice(1)).join("\n");
+  const withFakePackage = (version, source, fn) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cleanway-share-intent-"));
+    try {
+      fs.mkdirSync(path.join(dir, path.dirname(KT)), { recursive: true });
+      fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name: "expo-share-intent", version }));
+      fs.writeFileSync(path.join(dir, KT), source);
+      fn(run(`--package-dir=${dir}`));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  };
+  check("the installed module carries the fix, and the share sheet takes text/plain only", () => {
+    const r = run();
+    assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+    assert.ok(r.stdout.includes("applied cleanly"), r.stdout);
+  });
+  check("fails on the unpatched 5.1.1 file, i.e. a patch that did not apply", () => {
+    assert.ok(patched.includes(post), "the installed file holds the patch's result");
+    withFakePackage("5.1.1", patched.replace(post, pre), (r) => {
+      assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+      assert.ok(r.stdout.includes("File(context.cacheDir, fileName)"), r.stdout);
+      // "did not apply" = the installed file with the hunk undone is upstream
+      // 5.1.1 byte for byte, so the patch applies to 5.1.1 cleanly.
+      assert.ok(r.stdout.includes("expo-share-intent+5.1.1.patch did not apply"), r.stdout);
+    });
+  });
+  check("fails when a package that has the fix itself (1.1.0: >= 9.0.0) still has the 5.1.1 patch", () => {
+    withFakePackage("9.0.0", patched, (r) => {
+      assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+      assert.ok(r.stdout.includes("delete mobile/patches/expo-share-intent+5.1.1.patch"), r.stdout);
+      assert.ok(r.stdout.includes("only if its canonical path is inside cacheDir"), "its own code passes");
+    });
+  });
+
+  // --manifest: the AndroidManifest.xml a release build actually uses. An
+  // android/ generated before app.json narrowed the filter still says text/*.
+  const manifestWith = (types, fn) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cleanway-share-manifest-"));
+    const file = path.join(dir, "AndroidManifest.xml");
+    const data = types.map((t) => `<data android:mimeType="${t}"/>`).join("");
+    fs.writeFileSync(file, `<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application android:name=".MainApplication">
+    <activity android:name=".MainActivity" android:exported="true">
+      <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+      <intent-filter><action android:name="android.intent.action.VIEW"/><data android:scheme="cleanway"/></intent-filter>
+      <intent-filter><action android:name="android.intent.action.SEND"/><category android:name="android.intent.category.DEFAULT"/>${data}</intent-filter>
+    </activity>
+  </application>
+</manifest>
+`);
+    try {
+      fn(run(`--manifest=${file}`), file);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  };
+  check("--manifest passes a built manifest whose share filter is text/plain only", () => {
+    manifestWith(["text/plain"], (r, file) => {
+      assert.strictEqual(r.status, 0, r.stdout + r.stderr);
+      assert.ok(r.stdout.includes(`ok: ${file}: MainActivity takes SEND for text/plain only`), r.stdout);
+    });
+  });
+  check("--manifest fails an android/ generated with the old text/* filter, and a missing manifest", () => {
+    manifestWith(["text/*"], (r) => {
+      assert.strictEqual(r.status, 1, r.stdout + r.stderr);
+      assert.ok(r.stdout.includes('"types":["text/*"]'), r.stdout);
+      assert.ok(r.stdout.includes("expo prebuild -p android --clean"), r.stdout);
+    });
+    manifestWith(["text/plain", "text/html"], (r) => assert.strictEqual(r.status, 1, r.stdout + r.stderr));
+    const missing = run(`--manifest=${path.join(os.tmpdir(), "cleanway-no-such-dir", "AndroidManifest.xml")}`);
+    assert.strictEqual(missing.status, 1, missing.stdout + missing.stderr);
+    assert.ok(missing.stdout.includes("no such file"), missing.stdout);
+  });
+
+  // The release build runs that check itself: a failed or skipped postinstall
+  // leaves the mirror's old node_modules in place, and gradle never looks at
+  // the Kotlin source, so without this a signed release with the hole builds.
+  const { _patch: patchShare, SENTINEL: SHARE_SENTINEL } = require("../withShareIntentGuard.js");
+  const out = patchShare(TEMPLATE);
+  check("withShareIntentGuard: every non-debug pre<Variant>Build runs the check, before compiling", () => {
+    assert.ok(out.includes("tasks.matching { it.name ==~ /pre\\w+Build/ && !(it.name ==~ /(?i).*debug.*/) }"));
+    assert.ok(out.includes("task.doFirst {"));
+  });
+  check("withShareIntentGuard: runs scripts/check-share-intent.mjs from mobile/ on this android/'s manifest", () => {
+    assert.ok(out.includes('["node", "scripts/check-share-intent.mjs",'));
+    assert.ok(out.includes('"--manifest=" + cleanwayShareManifest'));
+    assert.ok(out.includes('def cleanwayShareManifest = file("src/main/AndroidManifest.xml").getAbsolutePath()'));
+    assert.ok(out.includes("def cleanwayShareCheckDir = rootDir.getAbsoluteFile().getParentFile()"));
+    assert.ok(out.includes(".execute(null, cleanwayShareCheckDir)"));
+    assert.ok(fs.existsSync(path.join(mobileDir, "scripts", "check-share-intent.mjs")));
+  });
+  check("withShareIntentGuard: a failed check fails the build, with no switch to skip it", () => {
+    assert.ok(out.includes("if (cleanwayShareCheck.exitValue() != 0) {"));
+    assert.ok(out.includes("throw new GradleException("));
+    assert.ok(!out.includes("hasProperty"), "no -P switch");
+  });
+  check("withShareIntentGuard: appended after the android block, idempotent", () => {
+    assert.ok(out.startsWith(TEMPLATE.trimEnd()));
+    assert.strictEqual(patchShare(out), out);
+    assert.strictEqual(out.split(`${SHARE_SENTINEL}:`).length, 2);
+  });
+  check("app.json registers withShareIntentGuard", () => {
+    const plugins = JSON.parse(fs.readFileSync(path.join(mobileDir, "app.json"), "utf8")).expo.plugins || [];
+    assert.ok(plugins.includes("./plugins/withShareIntentGuard"));
+  });
+}
+
 console.log(`\n${passed} assertions passed`);

@@ -17,8 +17,11 @@ as before); `LICENSED_INTEL=licensed` is the analyzer's default since
 not asked (§2); URLhaus is retired from the blocklist and from training
 since 2026-10-21 (§1, §3); Tranco left training on 2026-10-22 and the
 popularity ranking on 2026-10-23 (§2a, §3), though installed app and
-extension copies keep its lists until their next releases (§2a). Still
-open: Phishing.Database's provenance (§1). CSIRT Italia's terms were
+extension copies keep its lists until their next releases (§2a); the
+weekly benchmark compares neither VirusTotal nor Google Safe Browsing since
+2026-10-24 (§2b). Still open: Phishing.Database's provenance (§1), and
+whether Cloudflare's terms let us publish 1.1.1.1 for Families' block rate
+(§2b, their §6). CSIRT Italia's terms were
 settled on 2026-10-23 by leaving it out under the switch until ACN grants
 written permission (§1). The order of flipping, the numbers it cost and
 what replaced the loss are in the PR that added this file and in
@@ -134,7 +137,7 @@ PhishTank can be ingested and the public number stays measurable.
 | **crt.sh** (Watchtower) | `crt.sh/?q=…` | Sectigo's public CT log search, no terms beyond politeness | On |
 | **Anthropic Claude** (LLM judge, explainer) | `api.anthropic.com` | Commercial API terms; only a domain-free feature vector is sent | On with `ANTHROPIC_API_KEY`, daily budget |
 | **Have I Been Pwned** Pwned Passwords | `api.pwnedpasswords.com/range/…` | Free, k-anonymity range API; no key | On |
-| **Cloudflare DNS** (DoH gateway upstream; 1.1.1.1 for Families in the public comparison) | `cloudflare-dns.com/dns-query`, `family.cloudflare-dns.com` | Cloudflare public resolver terms | On |
+| **Cloudflare DNS** (DoH gateway upstream; 1.1.1.1 for Families in the public comparison) | `cloudflare-dns.com/dns-query`, `family.cloudflare-dns.com` | Cloudflare Website and Online Services Terms of Use (cloudflare.com/website-terms, effective 2025-08-01), which name the 1.1.1.1 resolver an Online Service; no non-commercial clause, but §6 reserves the services' "information, data" (read 2026-10-24, §2b) | On |
 
 ### What `LICENSED_INTEL=licensed` does, exactly
 
@@ -150,6 +153,15 @@ The six sources (SURBL, Spamhaus DBL, URLhaus, ThreatFox, MalwareBazaar,
 Feodo Tracker) are not in the analyzer's plan at all: not asked, so never
 "not listed", and they leave the total a verdict is measured against — an
 analysis is 13 checks of 13, not 13 of 19 with six that were never asked.
+
+Google Safe Browsing is not one of the six. Under the default the analyzer
+(and `POST /api/v1/email/analyze`) still asks it: `safe_browsing.get_client()`
+hands out the Web Risk client when `WEB_RISK_API_KEY` is set, and otherwise
+the Safe Browsing v4 client, which calls `threatMatches:find` whenever
+`GOOGLE_SAFE_BROWSING_API_KEY` (or `GOOGLE_SAFE_BROWSING_KEY`) is set and
+answers "unavailable" without a call when neither is. Moving to Web Risk is
+the founder's decision (§2, Web Risk row).
+
 Scores, levels and `confidence_pct` for the same evidence are identical
 with the switch on or off (pinned in `tests/test_licensed_intel.py`).
 
@@ -220,11 +232,11 @@ in `data/top_domains_sources.json`):
 | Consumer | Reads | Note |
 |---|---|---|
 | Instant-safe allowlist (`scoring.is_trusted_top_domain`, `/check`, `/public/check`, scorer Layer 2) | `data/top_100k.json` | 55% of the names are Tranco's; 45,036 enter, 45,036 leave |
-| "Ranked #N", OTX gating | `data/top_10k.json`, `data/top_100k.json` and the Redis rank of the host or its registrable (top 100k: OTX skipped; top 1M: skipped up to 5 pulses, halved above; an OTX mention of a ranked name is not a blocklist hit, so the LLM judge still runs) | |
+| "Ranked #N", OTX gating | `data/top_10k.json`, `data/top_100k.json` and the Redis rank of the host or its registrable (top 100k: OTX skipped; top 1M: skipped up to 5 pulses, halved above; an OTX mention of a ranked name is not a blocklist hit, so the LLM judge still runs). A customer's site on a hosting platform or a public-suffix zone is judged by its own name: the platform's rank and top-list place are not its tenant's (`scoring._platform_tenant_site`, 2026-10-25; not under an operator's own suffix such as `googleapis.com`, nor at an operator zone of `data/hosting_platforms.json` such as `login.secureserver.net`) | |
 | Popularity bonus −25/−15/−8/−3, unreachable-site vouch, LLM judge (`popularity_*`), publisher's top-1M guard, a company's own GitLab / Jira / Confluence | Redis `tranco:ranks` (key name kept) — the whole ranking, step 4 not applied — loaded daily by `scripts/refresh_tranco.py` from the same `rank()`; `tranco:ranks:meta` says what it was built from (`/health/deep` `components.popularity`); a CrUX month recorded in `data/top_domains_sources.json` that comes back with other bytes is refused | |
 | ML features `in_top_domains`, `is_homograph` and the tenant features | `data/top_100k.json`, `data/public_suffixes_in_top.json` — the copies named by hash in `model_meta.json` `feature_data` | see "Sequencing" |
 | Publisher popular / tenant guards, own-source lookalike gate | `data/top_100k.json` + `data/top_domains_reported.json` + `data/infrastructure_domains.txt`, `data/public_suffixes_in_top.json`, Redis top-1M | see "Blocklist" |
-| Android veto (`popular_veto.txt`, `shared_suffixes.txt`) and the extensions' `hostingTenantSuffixes` | `data/top_10k.json` + the reported names of that rank + `data/infrastructure_domains.txt`, `data/public_suffixes_in_top.json` | each file starts with the CC BY attribution of §5; ship with the next app / extension releases; installed copies keep Tranco's until then, and the methodology page says so (the committed `dist/store-artifacts/cleanway-0.2.2-*`, not uploaded yet, carry the new files since #286) |
+| Android veto (`popular_veto.txt`, `shared_suffixes.txt`) and the extensions' `hostingTenantSuffixes` | `data/top_10k.json` + the reported names of that rank + `data/infrastructure_domains.txt`, `data/public_suffixes_in_top.json`; `shared_suffixes.txt` is the publisher's whole shared set since 2026-10-25 (`scripts/blocklist_shared_zones.py`: also `data/hosting_platforms.json` and `UNRANKED_SHARED_DOMAINS`), then, as `!` lines, the platforms' own names under it (`operator_hosts`, `operator_zones`), which the publisher never lists and the phone vetoes by the platform's rank | each file starts with the CC BY attribution of §5; ship with the next app / extension releases; installed copies keep Tranco's until then, and the methodology page says so (the committed `dist/store-artifacts/cleanway-0.2.2-*`, not uploaded yet, carry the new files since #286) |
 
 **Sequencing.** The model reads the two data files as features, so a model
 must be served the copies it was trained on. `ml/train_model.py` records
@@ -329,6 +341,45 @@ Tranco's DNS tail (199 "dangerous"); the visible cost is ~190 brand-owned
 alternates (googlemail.com, outlook.de, yahoo.de, santander.pl,
 protonmail.ch, adobelogin.com, office365.us) that the typosquat rule now
 flags "caution" — they were exempt only because Tranco listed them.
+
+### 2b. The weekly public benchmark (since 2026-10-24)
+
+`scripts/eval_fresh_urls.py`, run every Sunday by
+`.github/workflows/weekly-benchmark.yml`, publishes each service's recall in
+`docs/benchmarks/` and on cleanway.ai/transparency/methodology. What it
+compares, under which terms (read 2026-10-24):
+
+| Service | Terms | In the published run |
+|---|---|---|
+| **PhishTank** checkurl (its online-valid dump is also the phishing sample) | FAQ: commercial use OK (read 2026-09-29, §2) | Yes |
+| **Cloudflare 1.1.1.1 for Families** (`family.cloudflare-dns.com`; the unfiltered `cloudflare-dns.com` tells a block from a dead domain) | developers.cloudflare.com/1.1.1.1/terms-of-use: using the resolver is agreeing to the Website and Online Services Terms of Use (cloudflare.com/website-terms, effective 2025-08-01), whose Online Services are the products "publicly available without a subscription or a Cloudflare account", the 1.1.1.1 resolver named. No personal-use or non-commercial clause, and no express licence to use the services either. The clause that decides it is §6 (Ownership; Proprietary Rights): its "Materials" include "information, data" and "all other elements of the Websites and Online Services", and "Except as expressly authorized by Cloudflare you may not make use of the Materials." Asking the resolver is what it is offered for; whether publishing a block rate computed from its answers (the page shows counts and percentages; the dated JSON in `docs/benchmarks/` also keeps each URL's verdict) is an authorized use of the Materials, the terms do not say (*uncertain*). §7 bars exceeding limits or overburdening the service (a run is a few hundred lookups a week); the §8 bot clause is about training AI on the website's content. Benchmarks and published comparisons are not mentioned either way | Yes, pending the founder (below) |
+| **VirusTotal** public API | docs.virustotal.com/reference/public-vs-premium-api: it "must not be used in commercial products or services" | **No.** `--virustotal` asks it in a non-commercial rerun with your own key |
+| **Google Safe Browsing v4** Lookup | developers.google.com/safe-browsing/v4: "for non-commercial use only"; commercial users are sent to Web Risk | **No.** `--gsb` likewise |
+
+Until 2026-10-24 a key in the environment was enough for the script to ask
+the last two, and the workflow passed both. Now a report that asked either
+never becomes `docs/benchmarks/latest.json`, not even with
+`--no-enforce-quality-gate` (`check_quality_gate`), and the workflow passes
+neither key (`tests/test_weekly_benchmark_workflow.py`). That includes a
+`--local-analyzer` run whose in-process analyzer asked Safe Browsing v4 (a
+v4 key set, `WEB_RISK_API_KEY` not): the report records the lookup that row
+made (`sources.cleanway_local_google_lookup`), and one that does not record
+it counts as having asked. Runs up to
+2026-10-18 keep their columns; the methodology page leaves those rows out
+(`comparedRows` in `landing/lib/benchmark.ts`). The repository secrets
+`VT_API_KEY` and `GOOGLE_SAFE_BROWSING_KEY` are read by no workflow any more.
+Web Risk is not added in Safe Browsing's place: its terms restrict passing
+its results on (§2), and whether a published recall figure does that is
+unread (*uncertain*).
+
+Cloudflare 1.1.1.1 for Families stays in the published run on the reading
+above, and that is the founder's call. To settle it, ask Cloudflare whether
+publishing the share of a public phishing sample that 1.1.1.1 for Families
+blocks, next to other resolvers, is a use of the Materials they authorize
+under §6. The terms' contact is support@cloudflare.com (§15);
+resolver@cloudflare.com, on the 1.1.1.1 terms page, is for logo requests
+only. If the answer is no, drop `cloudflare_families` from the published
+resolvers and from `comparedRows`, as for VirusTotal and Safe Browsing.
 
 ## 3. ML training data (`scripts/refresh_training_feeds.py`, weekly)
 
@@ -544,8 +595,9 @@ its own.
 
 Bank of Russia warning list (non-commercial, and a licensing-perimeter list,
 not a fraud list), Maltrail (Community Data License, written agreement
-needed), Yandex Safe Browsing, VirusTotal (benchmark only, `VT_API_KEY`,
-never in the list), Google Safe Browsing hash prefixes for the phone,
+needed), Yandex Safe Browsing, VirusTotal (never in the list; its public API
+bars commercial products, so it left the benchmark on 2026-10-24, §2b),
+Google Safe Browsing hash prefixes for the phone,
 SI-CERT, USOM Turkey, CERT-AgID, NCSC-UK PDNS, ruSpamModels / RUSpam
 datasets (CC BY-NC 4.0). Commercial feeds (Kaspersky Phishing URL Data Feed
 OEM, F6) are priced for later.

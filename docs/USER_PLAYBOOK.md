@@ -28,7 +28,7 @@
 - **Проверка:** `curl -X POST https://api.cleanway.ai/api/v1/explain -H 'content-type: application/json' -d '{"signals":["paypal_brand","credential_form_mismatch"],"locale":"en"}'` → response содержит `"source": "llm"`
 - **Зачем:** Strategy #21 (LLM Judge) + #15 (Cultural Explainer). Без actual ключа Anthropic фичи silently fall back на template. Старый key compromised по security hygiene.
 
-### 3. 5 GitHub Actions secrets
+### 3. 3 GitHub Actions secrets
 - **Где:** https://github.com/AlexMos555/linkshield/settings/secrets/actions → New repository secret
 - **Что добавить:**
 
@@ -36,13 +36,12 @@
 |---|---|---|
 | `SUPABASE_URL` | Supabase dashboard → Project Settings → API → Project URL | Watchtower cron (Strategy #17) сейчас падает каждый scheduled run |
 | `SUPABASE_SERVICE_KEY` | Supabase → Project Settings → API → `service_role` key (НЕ anon) | Watchtower writes the typosquat detection table |
-| `GOOGLE_SAFE_BROWSING_KEY` | Google Cloud Console → APIs & Services → Credentials → API key (Restrict to Safe Browsing v4) | Weekly benchmark side-by-side comparison |
-| `VT_API_KEY` | https://www.virustotal.com/gui/my-apikey (free, 500 req/day) | Same benchmark — VirusTotal aggregate (70 vendors) |
-| `PHISHTANK_API_KEY` | https://www.phishtank.com/api_info.php (free) | Same benchmark — PhishTank column |
+| `PHISHTANK_API_KEY` | https://www.phishtank.com/api_info.php (free) | Weekly benchmark — PhishTank column (необязателен, поднимает лимиты checkurl) |
 
-- **Сколько:** 15 минут (медленная часть — fetch каждого ключа из его консоли)
-- **Проверка:** `gh secret list` показывает все 5
-- **Зачем:** 2 криптикal (Watchtower умирает каждый tick без Supabase keys) + 3 high (credibility benchmark не публикует head-to-head без сравнительных ключей)
+- **Не нужны с 2026-10-24:** `GOOGLE_SAFE_BROWSING_KEY` и `VT_API_KEY`. Бесплатные API Safe Browsing v4 и VirusTotal запрещают коммерческое использование, поэтому бенчмарк их больше не спрашивает и ни один workflow эти секреты не читает ([THIRD_PARTY_FEEDS.md](THIRD_PARTY_FEEDS.md) §2b).
+- **Сколько:** 10 минут (медленная часть — fetch каждого ключа из его консоли)
+- **Проверка:** `gh secret list` показывает эти 3
+- **Зачем:** 2 криптикал (Watchtower умирает каждый tick без Supabase keys) + PhishTank column бенчмарка (без ключа работает, но с более жёсткими лимитами)
 
 ### 4. Railway deploy tokens — не нужны
 - Railway сам выкатывает каждый коммит в `main` (интеграция Railway с GitHub,
@@ -146,14 +145,9 @@
 - **Когда:** Запланированный слот 14:00-18:00 этой пятницы
 - **Что:**
   1. https://chrome.google.com/webstore/devconsole/ — buy developer account ($5 one-time)
-  2. New item → upload `dist/store-artifacts/cleanway-extension.zip`
-  3. Open `docs/marketing/chrome-web-store-listing.md` → copy-paste:
-     - Extension name (45 chars)
-     - Short description (132 chars)
-     - Detailed description (470 words)
-     - 5 highlight bullets
-     - Permission justifications
-  4. Upload 5 screenshots @ 1280×800 (если ещё нет — сделай: install extension в своём Chrome, screenshot popup + warning + per-link badge in Gmail + methodology page + family hub)
+  2. New item → upload `dist/store-artifacts/cleanway-0.2.2-chrome.zip`
+  3. Листинг и ответы для проверки — по `docs/CWS_SUBMISSION.md` (тексты из `extension/STORE_LISTING.md`; `docs/marketing/chrome-web-store-listing.md` больше не источник)
+  4. Скриншоты 1280×800 уже готовы, снимать не нужно: `store-assets/extension/en/` все пять (01…05), для русского листинга `ru/` тоже все пять; что на каждом — `store-assets/extension/README.md`
   5. Submit for review
 - **Сколько:** 45 минут (most of it — filling listing copy)
 - **Review SLA:** 1-7 days

@@ -204,6 +204,16 @@ def test_the_new_infrastructure_names_are_guarded():
     assert out == set()
 
 
+def test_microsoft_sign_in_gateway_is_never_blocked_or_promoted():
+    # Every Microsoft sign-in chain passes through msidentity.com; feeds have
+    # listed its test-environment hosts (login.msa-int.msidentity.com).
+    assert {"msidentity.com"} <= rdd.load_infrastructure_domains()
+    out = rdd.build_blockset(["login.msa-int.msidentity.com", "x.msidentity.com", "msidentity.com"],
+                             rdd.load_popular_guard(), shared_suffixes=set(), public_suffixes=PSL_EU,
+                             brand_owned=frozenset())
+    assert out == set()
+
+
 def test_a_listed_registrable_is_blocked_whole_on_its_own_evidence():
     out = rdd.build_blockset(["scam-shop.com", "pay.scam-shop.com"], set(), shared_suffixes=set(),
                              public_suffixes=PSL_EU, brand_owned=frozenset())

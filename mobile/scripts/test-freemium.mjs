@@ -24,10 +24,13 @@
  *     is still "dangerous", and nothing else is claimed;
  *   • a store build never links out to the web checkout; Russia shows
  *     "coming soon"; signed out → sign in first;
+ *   • a build that cannot take a payment (RuStore: no billing built; a
+ *     store build without its billing SDK) says "coming soon" up front —
+ *     the button off, no sign-in first for a purchase that cannot happen;
  *   • "Upgrade" / the Plan row are hidden exactly where the paywall would say
  *     "coming soon" — by the phone's region, like the paywall's prices, not
  *     by the app's language (a Ukrainian phone with Russian second opens in
- *     Russian, and in Ukraine it can pay).
+ *     Russian, and in Ukraine it can pay), and in a build that cannot sell.
  */
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
@@ -51,6 +54,7 @@ import {
   paidPlansVisible,
   parseEntitlementCache,
   paywallBenefits,
+  paywallSaleOff,
   priceDisplay,
   purchaseAction,
   quotaForDay,
@@ -392,6 +396,36 @@ check("market: the region decides, else the language", () => {
   assert.equal(marketFor("ru-RU", null), "ru");
   assert.equal(marketFor("de", undefined), "world");
 });
+const DISTRIBUTIONS = ["site", "play", "rustore", "appstore"];
+check("RuStore: no billing built — \"coming soon\" up front, no sign-in first", () => {
+  for (const signedIn of [false, true]) {
+    const action = purchaseAction({ signedIn, market: "world", distribution: "rustore" });
+    for (const storeBillingOn of [false, true]) {
+      assert.equal(paywallSaleOff({ action, distribution: "rustore", storeBillingOn }), true, `${action} / ${storeBillingOn}`);
+    }
+  }
+});
+check("a store build without its billing SDK (no RevenueCat key): \"coming soon\" up front", () => {
+  for (const distribution of ["play", "appstore"]) {
+    for (const signedIn of [false, true]) {
+      const action = purchaseAction({ signedIn, market: "world", distribution });
+      assert.equal(paywallSaleOff({ action, distribution, storeBillingOn: false }), true, `${distribution} / ${action}`);
+      assert.equal(paywallSaleOff({ action, distribution, storeBillingOn: true }), false, `${distribution} / ${action}`);
+    }
+  }
+});
+check("the site APK sells on the web: its button stays on, store billing or not", () => {
+  for (const signedIn of [false, true]) {
+    const action = purchaseAction({ signedIn, market: "world", distribution: "site" });
+    assert.equal(paywallSaleOff({ action, distribution: "site", storeBillingOn: false }), false, action);
+  }
+});
+check("Russia keeps its own \"coming soon\" (action soon), not the store one", () => {
+  for (const distribution of DISTRIBUTIONS) {
+    const action = purchaseAction({ signedIn: true, market: "ru", distribution });
+    assert.equal(paywallSaleOff({ action, distribution, storeBillingOn: false }), false, distribution);
+  }
+});
 check("upgrade entry points: hidden where the paywall says \"coming soon\", by the same signal", () => {
   const pairs = [
     ["ru", "RU"], ["ru-RU", null], ["en", "RU"], ["ru", undefined],
@@ -399,12 +433,39 @@ check("upgrade entry points: hidden where the paywall says \"coming soon\", by t
   ];
   for (const [language, region] of pairs) {
     const market = marketFor(language, region);
-    const soon = purchaseAction({ signedIn: true, market, distribution: "play" }) === "soon";
-    assert.equal(paidPlansVisible(language, region), !soon, `${language} / ${region}`);
+    for (const distribution of DISTRIBUTIONS) {
+      for (const storeBillingOn of [false, true]) {
+        // What the paywall's button would do for a signed-in person: a real
+        // purchase, or "coming soon" (Russia, or a build that cannot sell).
+        const action = purchaseAction({ signedIn: true, market, distribution });
+        const sells = action !== "soon" && !paywallSaleOff({ action, distribution, storeBillingOn });
+        assert.equal(
+          paidPlansVisible({ language, region, distribution, storeBillingOn }), sells,
+          `${language} / ${region} / ${distribution} / ${storeBillingOn}`,
+        );
+      }
+    }
   }
-  assert.equal(paidPlansVisible("ru", "RU"), false);
-  assert.equal(paidPlansVisible("ru", null), false, "no region: the language decides");
-  assert.equal(paidPlansVisible("en", "RU"), false, "an English phone in Russia cannot pay either");
+  const play = { distribution: "play", storeBillingOn: true };
+  assert.equal(paidPlansVisible({ language: "ru", region: "RU", ...play }), false);
+  assert.equal(paidPlansVisible({ language: "ru", region: null, ...play }), false, "no region: the language decides");
+  assert.equal(paidPlansVisible({ language: "en", region: "RU", ...play }), false, "an English phone in Russia cannot pay either");
+  assert.equal(paidPlansVisible({ language: "en", region: "US", ...play }), true);
+});
+check("RuStore hides \"Upgrade\" everywhere: its paywall can only say \"coming soon\"", () => {
+  for (const [language, region] of [["ru", "KZ"], ["ru", "BY"], ["ru", "UA"], ["en", "US"], ["ru", null], ["ru", "RU"]]) {
+    for (const storeBillingOn of [false, true]) {
+      assert.equal(paidPlansVisible({ language, region, distribution: "rustore", storeBillingOn }), false, `${language} / ${region}`);
+    }
+  }
+});
+check("\"Upgrade\" outside Russia: the site APK always; a store build only with its billing SDK", () => {
+  const world = { language: "en", region: "US" };
+  assert.equal(paidPlansVisible({ ...world, distribution: "site", storeBillingOn: false }), true);
+  assert.equal(paidPlansVisible({ ...world, distribution: "play", storeBillingOn: true }), true);
+  assert.equal(paidPlansVisible({ ...world, distribution: "play", storeBillingOn: false }), false);
+  assert.equal(paidPlansVisible({ ...world, distribution: "appstore", storeBillingOn: true }), true);
+  assert.equal(paidPlansVisible({ ...world, distribution: "appstore", storeBillingOn: false }), false);
 });
 check("a Ukrainian phone with Russian second opens in Russian and keeps \"Upgrade\" in Ukraine", () => {
   // The app starts in the first language it has (utils/device-locale.ts); the
@@ -415,7 +476,7 @@ check("a Ukrainian phone with Russian second opens in Russian and keeps \"Upgrad
                    { languageCode: "ru", regionCode: region }];
     const language = firstSupportedLocale(phone, SUPPORTED);
     assert.equal(language, "ru");
-    assert.equal(paidPlansVisible(language, phone[0].regionCode), true, region);
+    assert.equal(paidPlansVisible({ language, region: phone[0].regionCode, distribution: "site", storeBillingOn: false }), true, region);
     assert.equal(marketFor(language, phone[0].regionCode), "world", region);
   }
 });

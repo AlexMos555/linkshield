@@ -35,6 +35,8 @@ import re
 from typing import Any
 from urllib.parse import urlsplit
 
+from api.services.sentry_sampling import TRACES_SAMPLE_RATE, traces_sampler
+
 # The things a person checked, looked up or holds, as they appear in URL
 # paths: our landing's /check/<site> and /audit/<site> pages (the same rule
 # as landing/lib/sentry-scrub.ts SITE_PATH, which also covers this API's
@@ -412,7 +414,10 @@ def sentry_init_options(
     stands and the SDK looks for a release itself."""
     return {
         "dsn": dsn,
-        "traces_sample_rate": 0.1,
+        # The sampler decides: never /dns-query or the health probes, the
+        # rest at `traces_sample_rate` (api/services/sentry_sampling.py).
+        "traces_sample_rate": TRACES_SAMPLE_RATE,
+        "traces_sampler": traces_sampler,
         "environment": environment or ("production" if not debug else "development"),
         "release": release,
         # send_default_pii is False by default in modern sentry-sdk but we set

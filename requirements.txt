@@ -1,4 +1,4 @@
-fastapi==0.156.1
+fastapi==0.159.1
 uvicorn[standard]==0.54.0
 httpx==0.28.1
 # HTTP/2 for the DoH gateway's upstream pool (api/services/doh_upstream.py):
@@ -13,7 +13,7 @@ PyJWT==2.15.1
 python-multipart==0.0.32
 dnspython==2.9.0
 stripe==16.0.0
-sentry-sdk[fastapi]==2.72.0
+sentry-sdk[fastapi]==2.73.0
 bcrypt==5.0.0
 
 # ── Operator-billed subscriptions (api/billing, docs/BILLING.md) ──
@@ -30,7 +30,7 @@ asyncpg==0.32.0
 # Pinned for reproducibility — bump only after re-verifying:
 #   * llm_judge prompt still returns the documented JSON schema
 #   * scam_explainer fallback path still works without the package
-anthropic==1.15.0
+anthropic==2.1.0
 
 # ── ML phishing scoring (CatBoost model, served via ONNX) ──
 # Prod runs the trained CatBoost model through onnxruntime (~40 MB RSS) instead

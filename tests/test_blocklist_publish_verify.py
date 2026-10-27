@@ -116,3 +116,38 @@ def test_the_sample_prefers_names_new_in_this_publish():
 def test_the_sample_without_a_previous_set_is_the_first_names():
     blockset = {"b.com", "a.com", "c.com", "d.com", rdd.LIST_CANARY}
     assert rdd.verify_sample(blockset, None) == ["a.com", "b.com", "c.com"]
+
+
+# ── 2026-10-24: DNS gets a Railway service of its own ─────────────────────
+# docs/runbooks/dns-service-split.md moves dns.cleanway.ai to the `dns`
+# service; once `web` runs SERVICE_ROLE=api, api.cleanway.ai/dns-query is a
+# 404. The live check asked API_BASE: after the move it judged `web` instead
+# of the service phones use, and after SERVICE_ROLE=api every name came back
+# "unreachable — skipping", so a bad set could never be rolled back (exit 5)
+# and the run stayed green. It asks where phones ask, like the DNS canary.
+
+@pytest.mark.parametrize("env, expected", [
+    ({}, "https://dns.cleanway.ai"),
+    ({"CLEANWAY_API_BASE": "https://api.cleanway.ai/"}, "https://dns.cleanway.ai"),
+    ({"CLEANWAY_API_BASE": "https://api.staging.test"}, "https://api.staging.test"),
+    ({"CLEANWAY_API_BASE": "https://api.staging.test", "CLEANWAY_DNS_BASE": "https://dns.staging.test/"},
+     "https://dns.staging.test"),
+    ({"CLEANWAY_DNS_BASE": "https://dns-xxxx.up.railway.app"}, "https://dns-xxxx.up.railway.app"),
+])
+def test_the_live_check_asks_the_dns_name(env, expected):
+    assert rdd._dns_base(env) == expected
+
+
+@pytest.mark.asyncio
+async def test_the_live_rcode_comes_from_the_dns_service_not_the_api():
+    import httpx
+
+    seen = []
+
+    def _gateway(request):
+        seen.append(request.url)
+        return httpx.Response(200, content=b"\x00\x00\x81\x83" + b"\x00" * 8)  # NXDOMAIN
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(_gateway)) as client:
+        assert await rdd._live_rcode(client, "phish.example") == NXDOMAIN
+    assert [(u.scheme, u.host, u.path) for u in seen] == [("https", "dns.cleanway.ai", "/dns-query")]

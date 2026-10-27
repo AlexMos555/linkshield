@@ -26,12 +26,12 @@
     }
   },
   "status_warning_title": {
-    "message": "Alcuni link sembrano sospetti"
+    "message": "Questo sito sembra sospetto"
   },
   "status_warning_subtitle": {
-    "message": "$N$ link in questa pagina meritano un controllo più attento",
+    "message": "$DOMAIN$ mostra alcuni segnali di truffa. Non inserire password né dati della carta qui se non ti fidi di questo sito.",
     "placeholders": {
-      "n": {
+      "domain": {
         "content": "$1"
       }
     }

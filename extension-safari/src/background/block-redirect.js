@@ -177,15 +177,20 @@ export function createBlockRedirect({ api, getCached, onShown, onProceeded }) {
     return (await injectOverlay(page.tabId)) ? { action: "overlay" } : { action: "none" };
   }
 
+  // The tab is taken away from the block page only after the reply is sent:
+  // the page unloads with that navigation, and a reply still on its way finds
+  // no page (Firefox then logs "Promise rejected after context unloaded"
+  // against blocked.js). Hence {reply, navigate} instead of navigating here.
   async function onProceed(sender) {
-    if (!sender || !sender.tab || sender.tab.id == null) return { ok: false };
-    if (sender.id !== undefined && sender.id !== api.runtime.id) return { ok: false };
-    if (!blockedUrl.isBlockedPageUrl(sender.url, base)) return { ok: false };
+    const refused = { reply: { ok: false } };
+    if (!sender || !sender.tab || sender.tab.id == null) return refused;
+    if (sender.id !== undefined && sender.id !== api.runtime.id) return refused;
+    if (!blockedUrl.isBlockedPageUrl(sender.url, base)) return refused;
     const shown = blockedUrl.parse(sender.url);
-    if (!shown.domain || !shown.url) return { ok: false };
+    if (!shown.domain || !shown.url) return refused;
     await bypass.allow(sender.tab.id, shown.domain);
-    await api.tabs.update(sender.tab.id, { url: shown.url });
-    return { ok: true };
+    const tabId = sender.tab.id;
+    return { reply: { ok: true }, navigate: () => api.tabs.update(tabId, { url: shown.url }) };
   }
 
   try {
@@ -194,9 +199,19 @@ export function createBlockRedirect({ api, getCached, onShown, onProceeded }) {
 
   return function handleBlockMessage(msg, sender, respond) {
     if (!msg || (msg.type !== "BLOCK_PAGE" && msg.type !== "BLOCK_PROCEED")) return undefined;
-    const work = msg.type === "BLOCK_PAGE" ? onBlockPage(msg, sender) : onProceed(sender);
-    work.then(respond).catch(() => {
-      try { respond(msg.type === "BLOCK_PAGE" ? { action: "none" } : { ok: false }); } catch (e) { /* port closed */ }
+    const failed = msg.type === "BLOCK_PAGE" ? { action: "none" } : { ok: false };
+    const work = msg.type === "BLOCK_PAGE"
+      ? onBlockPage(msg, sender).then((reply) => ({ reply }))
+      : onProceed(sender);
+    work.then(({ reply, navigate }) => {
+      try { respond(reply); } catch (e) { /* the page is already gone */ }
+      if (!navigate) return;
+      try {
+        const going = navigate();
+        if (going && typeof going.catch === "function") going.catch(() => { /* the tab is gone: nothing to open */ });
+      } catch (e) { /* tabs.update unavailable */ }
+    }).catch(() => {
+      try { respond(failed); } catch (e) { /* port closed */ }
     });
     return true;
   };

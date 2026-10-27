@@ -53,7 +53,7 @@ After DNS is live:
 
 1. Vercel → `landing` → **Settings** → **Environment Variables**
 2. Update `NEXT_PUBLIC_API_URL` from the default Railway URL (e.g. `https://web-production-xxxx.up.railway.app`) to `https://api.cleanway.ai`
-3. Redeploy latest production deployment (Deployments → ⋯ → Redeploy, **uncheck** "Use existing build cache")
+3. Redeploy the production deployment marked Current (Deployments → ⋯ → Redeploy, **uncheck** "Use existing build cache" and "Use project's Ignore Build Step": the newest row may be a push the landing's ignore step canceled, and a Redeploy runs that step again)
 
 ---
 

@@ -13,7 +13,9 @@
 2. **`curl -s https://api.cleanway.ai/health/deep`** — `status`, `warnings` и
    `components`: что именно не `ok` (`redis`, `supabase`,
    `supabase_server_key`, `blocklist`, `doh`). Для DNS —
-   `curl -s https://api.cleanway.ai/health/doh` (`ok`, `filter.loaded`).
+   `curl -s https://dns.cleanway.ai/health/doh` (`ok`, `filter.loaded`).
+   Если DNS уже в отдельном сервисе `dns` ([dns-service-split.md](dns-service-split.md)),
+   откатывать его деплой там же: Railway → `dns` → Deployments.
 3. **Связано ли с деплоем.** Railway → `honest-playfulness` → `web` →
    Deployments: время последнего деплоя против начала проблемы; GitHub —
    последний коммит в `main`. Лендинг — Vercel → Deployments.
@@ -46,6 +48,7 @@ Railway → `web` → **Variables**; после изменения сервис 
 | `IPQS_DAILY_BUDGET=0`, `LLM_JUDGE_DAILY_BUDGET=0`, `EXPLAINER_DAILY_BUDGET=0` | выключают платные источники и LLM |
 | `PUBLISH_CONFIRMED_THREATS`, `LOOKALIKE_GENERATOR_ENABLED` — удалить | перестают публиковать собственные хосты в список; удалить **и** в Railway, **и** в GitHub → Settings → Secrets and variables → Actions → Variables (`monitoring.md`) |
 | `DOH_FAST_PATH=false` | DNS-запросы идут через обычный стек (для отладки шлюза) |
+| `SERVICE_ROLE` — удалить у `web` | `web` снова отвечает на всё и держит список DNS в памяти (`all`) — перед тем как вернуть ему `dns.cleanway.ai` ([dns-service-split.md](dns-service-split.md), «Откат»; с `api` он тоже ответит, но медленнее) |
 | `SECURITY_ALERTS_ENABLED=false` | глушит письма о тревогах (если шумят) |
 
 Список, заблокировавший нормальный сайт для всех на DNS-профиле, —

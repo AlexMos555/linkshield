@@ -54,7 +54,8 @@
  * The Safari tree is loaded into Chromium too: that cannot prove Safari's
  * runtime, but it does prove the Safari manifest + module graph load and run.
  * The Firefox tree is MV2 and Chromium no longer loads MV2; it is covered by
- * the static checks in scripts/test-extension-core.mjs.
+ * the static checks in scripts/test-extension-core.mjs and, in a real
+ * Firefox, by scripts/smoke-firefox-extension.mjs (run before an AMO upload).
  */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
@@ -620,7 +621,8 @@ async function runTree(tree) {
     await check("the popup over the block page says the site is a scam, not 'safe'", async () => {
       // A toolbar click opens the popup over the active tab. Here the popup
       // is a background tab in the same window, so its "active tab" is still
-      // the block page (as in store-assets/.../capture.mjs).
+      // the block page. (scripts/store-screenshots/extension.mjs opens the
+      // real popup instead, with DevTools Extensions.triggerAction.)
       await blockedTab.bringToFront();
       const [popup] = await Promise.all([
         context.waitForEvent("page"),

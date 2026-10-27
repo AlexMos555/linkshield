@@ -122,12 +122,18 @@ test("/ru/transparency/methodology is Russian and shows results only for a big e
   await page.goto("/ru/transparency/methodology");
   await expect(page.locator("h1")).toContainText("Как мы измеряем");
   const notPublishable = page.getByTestId("methodology-not-publishable");
+  const main = page.locator("main");
   if (recallIsPublishable(BENCHMARK)) {
     await expect(notPublishable).toHaveCount(0);
     await expect(page.getByRole("heading", { name: /Фишинговые ссылки/ })).toBeVisible();
+    await expect(main.locator("table").first()).toContainText("Cloudflare 1.1.1.1 for Families");
   } else {
     await expect(notPublishable).toBeVisible();
   }
+  // Their free APIs bar a commercial product: the weekly run stopped comparing
+  // them on 2026-10-24, and an older snapshot's rows stay in the raw files only.
+  await expect(main).not.toContainText("VirusTotal");
+  await expect(main).not.toContainText("Safe Browsing");
   await expect(page.locator("body")).not.toContainText("$DATE$");
 });
 
