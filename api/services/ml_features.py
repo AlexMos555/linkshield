@@ -207,9 +207,10 @@ def shared_tenant(domain: str,
 def has_suspicious_keyword(name: str) -> bool:
     """scoring._check_suspicious_keywords' test, on the registered name.
 
-    That rule reads the name from the last two labels, so paypal-login.spb.ru
-    and vk-login.nov.ru were 'spb' and 'nov' to it and had no keyword; the
-    scorer's own signal is left as it is.
+    That rule read the name from the last two labels until 2026-10-27, so
+    paypal-login.spb.ru and vk-login.nov.ru were 'spb' and 'nov' to it and
+    had no keyword; it reads the registered name now, as this feature always
+    has.
     """
     return any(part in _SUSPICIOUS_KEYWORDS for part in name.lower().replace("_", "-").split("-"))
 

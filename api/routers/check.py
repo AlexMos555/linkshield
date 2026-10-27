@@ -78,12 +78,14 @@ def _quick_allowlist_check(domain: str) -> DomainResult | None:
     list, so a tenant on a shared platform the public check already refused
     (gwcu.us.org, a tw1.ru page) was still "known legitimate" here.
     """
-    from api.services.scoring import TOP_10K_RANKS, _extract_base_domain, is_trusted_top_domain
+    from api.services.scoring import TOP_10K_RANKS, is_trusted_top_domain, top_domain_key
 
     if not is_trusted_top_domain(domain):
         return None  # Unknown or shared platform — needs full analysis
 
-    base = _extract_base_domain(domain)
+    # The entry the allowlist matched: amazon.co.uk for www.amazon.co.uk,
+    # where the last two labels named 'co.uk' and found no rank.
+    base = top_domain_key(domain)
     rank = TOP_10K_RANKS.get(base)
     detail = f"Ranked #{rank} globally" if rank else "In global top 100K"
     return DomainResult(
