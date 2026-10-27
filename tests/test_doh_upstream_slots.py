@@ -11,6 +11,8 @@ who gets a slot, when a hedge is sent, and that every slot comes back.
 from __future__ import annotations
 
 import asyncio
+import collections
+import math
 import random
 import time
 
@@ -953,6 +955,97 @@ async def test_every_slot_and_zone_entry_comes_back(monkeypatch):
             break
         await asyncio.sleep(0.01)
     _assert_idle()
+
+
+# ── review 2026-10-28: uvloop's millisecond clock ───────────────────
+
+class _UvloopClockLoop(asyncio.SelectorEventLoop):
+    """The stdlib loop with uvloop's clock and timers (uvloop/loop.pyx 0.23):
+    loop.time() is libuv's clock, in whole milliseconds; call_later rounds
+    the delay to whole milliseconds and runs one under half of one at once."""
+
+    def time(self) -> float:
+        return math.floor(super().time() * 1000) / 1000
+
+    def call_later(self, delay, callback, *args, context=None):
+        ms = round(max(delay, 0.0) * 1000)
+        if ms == 0:
+            return self.call_soon(callback, *args, context=context)
+        return super().call_later(ms / 1000, callback, *args, context=context)
+
+
+def _loop_factories():
+    yield pytest.param(_UvloopClockLoop, id="uvloop's clock")
+    try:
+        import uvloop
+    except ImportError:
+        yield pytest.param(None, id="uvloop", marks=pytest.mark.skip(reason="uvloop is not installed"))
+    else:
+        yield pytest.param(uvloop.new_event_loop, id="uvloop")
+
+
+def _waits_per_dead_query(monkeypatch, loop_factory, urls: list[str], budget: float,
+                          batches: int = 1, size: int = 10) -> list[int]:
+    """asyncio.wait calls of each query of one zone nobody answers, `size` at
+    a time. Ten at a time are more than half of the zone's 16 at the
+    upstreams, so no hedge is sent: with two upstreams, a hedge check every
+    HEDGE_AFTER_S (0.02 s) up to the deadline."""
+    fake = _use(monkeypatch, urls)
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", budget)
+    monkeypatch.setattr(doh_upstream, "HEDGE_AFTER_S", 0.02)
+    waits: collections.Counter = collections.Counter()
+    real_wait = asyncio.wait
+
+    async def counting_wait(*a, **kw):
+        waits[asyncio.current_task()] += 1
+        return await real_wait(*a, **kw)
+    monkeypatch.setattr(asyncio, "wait", counting_wait)
+
+    async def one(name: str) -> int:
+        assert await doh_upstream.proxy_to_upstream(query(name)) is None
+        return waits[asyncio.current_task()]
+
+    async def run() -> list[int]:
+        per_query: list[int] = []
+        for b in range(batches):
+            per_query += await asyncio.gather(*[one(f"r{b}x{i}.dead.example") for i in range(size)])
+        await _settle(fake)
+        return per_query
+
+    loop = loop_factory()  # not asyncio.Runner: pyproject allows Python 3.9
+    try:
+        return sorted(loop.run_until_complete(run()))
+    finally:
+        left = asyncio.all_tasks(loop)
+        for task in left:
+            task.cancel()
+        if left:
+            loop.run_until_complete(asyncio.gather(*left, return_exceptions=True))
+        loop.close()
+
+
+@pytest.mark.parametrize("loop_factory", list(_loop_factories()))
+def test_each_hedge_check_is_one_wait_on_a_millisecond_clock(monkeypatch, loop_factory):
+    """uvicorn[standard] runs uvloop, whose loop.time() counts whole
+    milliseconds: a wait until the hedge time can return with the clock just
+    short of it, and waiting again for the rest returned at once (call_soon
+    under uvloop) until the millisecond ticked — p50 81 waits per query
+    nobody answers instead of 10, CPU 1.9 ms instead of 0.7 (review
+    2026-10-28)."""
+    waits = _waits_per_dead_query(monkeypatch, loop_factory, [A, B], 0.2)
+    assert max(waits) <= round(0.2 / 0.02) + 1, f"asyncio.wait calls per query: {waits}"
+
+
+@pytest.mark.parametrize("loop_factory", list(_loop_factories()))
+def test_the_deadline_is_one_wait_on_a_millisecond_clock(monkeypatch, loop_factory):
+    """The same at the deadline (isolated on uvloop: up to 21 waits for a
+    deadline a whole number of milliseconds away, 27 off that grid). Here off
+    it, 0.0202 s: uvloop's timer, rounded to 0.020 s, ends 0.2 ms short, and
+    the wait for the rest returned at once until the next millisecond —
+    unless the wake-up came that late anyway, so twenty queries one after
+    another. One upstream: no hedge checks, one wait per query."""
+    waits = _waits_per_dead_query(monkeypatch, loop_factory, [A], 0.0202, batches=20, size=1)
+    assert max(waits) <= 1, f"asyncio.wait calls per query: {waits}"
 
 
 # ── what /health/doh shows ──────────────────────────────────────────

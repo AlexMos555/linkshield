@@ -89,6 +89,13 @@ UPSTREAM_TIMEOUT_S = 4.0
 # query still waits for and one warning.
 REQUEST_TIMEOUT_S = 10.0
 HEDGE_AFTER_S = 0.4
+# uvloop (uvicorn[standard], so production) reads libuv's clock, in whole
+# milliseconds: a wait can return with loop.time() just short of the time it
+# waited for, and a wait for the rest returns at once until the millisecond
+# ticks — p50 81 waits per query nobody answers instead of 10, CPU 1.9 ms
+# instead of 0.7 (review 2026-10-28). The hedge time and the deadline count
+# as reached this close to them.
+_CLOCK_SLACK_S = 0.001
 MAX_RESPONSE_BYTES = 65535
 BREAKER_THRESHOLD = 3
 BREAKER_COOLDOWN_S = 10.0
@@ -620,7 +627,7 @@ async def proxy_to_upstream(wire: bytes) -> Optional[bytes]:
         try:
             while pending:
                 remaining = deadline - loop.time()
-                if remaining <= 0:
+                if remaining <= _CLOCK_SLACK_S:
                     break
                 waits, wait = pending, remaining
                 if order:  # an upstream is left to ask
@@ -646,7 +653,7 @@ async def proxy_to_upstream(wire: bytes) -> Optional[bytes]:
                     continue
                 if failed:  # an upstream failed outright: the next one at once
                     launch_next()
-                elif hedge_at is not None and loop.time() >= hedge_at:
+                elif hedge_at is not None and loop.time() >= hedge_at - _CLOCK_SLACK_S:
                     for up in order:
                         z = _take(zone, up, spare=True)
                         if z is not None:
