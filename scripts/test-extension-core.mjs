@@ -44,6 +44,10 @@
  *    from that page and only back to the blocked http(s) address, and the
  *    access token lives in storage.session, out of content scripts' reach.
  *
+ * 7. The credential guard's site is the registrable domain, not the last two
+ *    labels: a password form on evil-login.co.uk posting to collector.co.uk
+ *    is off-site, paypa1.co.uk is a look-alike, and lloydsbank.co.uk is not.
+ *
  * Every group runs against packages/extension-core/ AND the three generated
  * trees, so a hand-edit to a generated copy (or a forgotten rebuild) fails too.
  */
@@ -2588,6 +2592,240 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     const sub = element("status-subtitle").textContent;
     assert.equal(element("status-card").getAttribute("data-state"), "warning");
     assert.ok(sub && !/\d/.test(sub), `preview caution line: ${sub}`);
+  });
+}
+
+// ── Group 14: the credential guard knows where one site ends ──
+// content/credential-guardian.js took a host's last two labels for its site.
+// Under a compound suffix that is the suffix: a password form on
+// evil-login.co.uk posting to collector.co.uk stayed on "the site co.uk", so
+// the off-site check (Signal A) never fired there, and the look-alike check
+// (Signal B) read paypa1.co.uk as the name "co" and never fired either. It
+// now takes the server's registrable domain from utils/name-rules.js.
+const GUARD_FILES = ["src/utils/scorer-data.js", "src/utils/name-rules.js", "src/content/credential-guardian.js"];
+
+/**
+ * The guardian in a fake page at `pageUrl` whose one password field sits in a
+ * form posting to `action`. Answers what the guardian decided: the evidence
+ * it attached to the form (undefined when it did not warn), and its table API.
+ */
+async function runGuardian(tree, pageUrl, action = "/login") {
+  const page = new URL(pageUrl);
+  const form = { action: new URL(action, page).href, addEventListener() {} };
+  const input = { form, type: "password", setAttribute() {} };
+  const element = () => ({ style: {}, setAttribute() {}, querySelector: () => null, addEventListener() {}, remove() {} });
+  const ctx = vm.createContext({
+    URL,
+    console,
+    setTimeout,
+    location: { href: page.href, host: page.host, hostname: page.hostname },
+    document: {
+      readyState: "complete",
+      querySelectorAll: () => [input],
+      getElementById: () => null,
+      createElement: element,
+      body: { appendChild() {} },
+      documentElement: { appendChild() {} },
+      addEventListener() {},
+    },
+    MutationObserver: class { observe() {} },
+    requestAnimationFrame: () => {},
+    chrome: {
+      i18n: { getMessage: () => "" },
+      // The brand's verified sign-in hosts: none of the forms here post there.
+      runtime: { sendMessage: (_msg, reply) => reply({ ok: true, hosts: [] }), onMessage: { addListener() {} } },
+      storage: { local: { get: async () => ({}), set: async () => {} } },
+    },
+  });
+  ctx.window = ctx;
+  for (const rel of GUARD_FILES) vm.runInContext(readFileSync(join(ROOT, tree, rel), "utf8"), ctx, { filename: join(tree, rel) });
+  await new Promise((resolve) => setTimeout(resolve, 0)); // the brand lookup's reply
+  return { evidence: form._lsGuardEvidence, guard: ctx.cleanwayCredentialGuard };
+}
+
+// [page host, form's host, one site?]
+const SITE_PAIRS = [
+  // One registrable domain under a compound suffix.
+  ["accounts.barclays.co.uk", "barclays.co.uk", true],
+  ["www.barclays.co.uk", "online.barclays.co.uk", true],
+  ["barclays.co.uk.", "barclays.co.uk", true],
+  ["www.amazon.com.br", "signin.amazon.com.br", true],
+  // Different owners under one compound suffix: the hole.
+  ["evil.co.uk", "barclays.co.uk", false],
+  ["evil-login.co.uk", "collector.co.uk", false],
+  ["shop.com.br", "collector.com.br", false],
+  ["barclays.co.uk", "barclays.com", false],
+  // .com and other plain TLDs: as before.
+  ["accounts.paypal.com", "paypal.com", true],
+  ["www.paypal.com", "login.paypal.com", true],
+  ["evil.com", "paypal.com", false],
+  ["paypal.com.evil.com", "paypal.com", false],
+  ["mail.example.de", "login.example.de", true],
+  // Russian zones from the PSL: msk.ru and spb.ru are open, gov.spb.ru is
+  // the St Petersburg government's name.
+  ["www.shop.msk.ru", "pay.shop.msk.ru", true],
+  ["phish.msk.ru", "drop.msk.ru", false],
+  ["a.spb.ru", "b.spb.ru", false],
+  ["kvs.gov.spb.ru", "zags.gov.spb.ru", true],
+  ["kvs.gov.spb.ru", "evil.spb.ru", false],
+  // IDN, as the address bar's host carries it (punycode).
+  ["online.xn--80abap1arsf.xn--p1ai", "xn--80abap1arsf.xn--p1ai", true], // online.сбербанк.рф
+  ["xn--80abap1arsf.xn--p1ai", "xn--d1abbgf6aiiy.xn--p1ai", false], // сбербанк.рф, президент.рф
+  ["www.xn--pypal-4ve.co.uk", "xn--pypal-4ve.co.uk", true], // pаypal.co.uk
+  ["xn--pypal-4ve.co.uk", "paypal.co.uk", false],
+  // An IP address is its own site, not its last two numbers.
+  ["192.168.1.10", "192.168.1.10", true],
+  ["10.0.1.10", "192.168.1.10", false],
+  ["127.0.0.1", "localhost", false],
+  ["[::1]", "[::1]", true],
+  ["[::1]", "[::2]", false],
+  // Single-label hosts.
+  ["localhost", "localhost", true],
+  ["localhost", "intranet", false],
+  ["intranet", "intranet.example.com", false],
+  // Restricted zones: their owner hands the names out, nobody buys one there.
+  // The PSL does not list gov.hr, so the compound heuristic splits it, but
+  // Croatia's sign-in for its own services is nias.gov.hr.
+  ["mojprofil.gov.hr", "nias.gov.hr", true],
+  ["gov.hr", "nias.gov.hr", true],
+  ["kau.gov.hu", "idp.gov.hu", true],
+  ["www.tax.service.gov.uk", "signin.account.gov.uk", true],
+  ["nias.gov.hr", "nias-gov.hr", false],
+  ["mojprofil.gov.hr", "evil.com.hr", false],
+  // Two-label sites the compound heuristic reads as a suffix.
+  ["www.web.de", "login.web.de", true],
+  ["account.id.me", "api.id.me", true],
+  ["web.de", "evilweb.de", false],
+];
+
+// [visible host, the brand the guard says it imitates, or null]
+const LOOKALIKES = [
+  // Under a compound suffix, newly seen: a brand in look-alike letters or as
+  // a whole hyphenated word of the name.
+  ["paypa1.co.uk", "paypal"],
+  ["login.paypa1.co.uk", "paypal"],
+  ["paypal-login.co.uk", "paypal"],
+  ["secure-chase.com.br", "chase"],
+  ["hot-binance.com.cn", "binance"],
+  ["faceb00k.com.vn", "facebook"],
+  ["chase-verify.msk.ru", "chase"],
+  // Real sites whose names carry a brand glued into a word: under a compound
+  // suffix that is not a look-alike. The 14 top-10k names a registrable base
+  // would have flagged with the .com rule.
+  ...["bankofengland.co.uk", "citizensadvice.org.uk", "geocities.co.jp", "mizuhobank.co.jp", "upsc.gov.in",
+    "rakuten-bank.co.jp", "upsdc.gov.in", "upsssc.gov.in", "maybank2u.com.my", "dhlottery.co.kr",
+    "lloydsbank.co.uk", "ecitizen.go.ke", "citizen.co.za", "commbank.com.au",
+    "aboutamazon.co.uk", "paypay-bank.co.jp"].map((host) => [host, null]),
+  // The brand's own name under another suffix.
+  ["paypal.co.uk", null],
+  ["www.amazon.co.jp", null],
+  // .com and the other plain TLDs: the rule is unchanged (the sweep below).
+  ["paypa1.com", "paypal"],
+  ["paypal-secure.com", "paypal"],
+  ["paypalsecure.com", "paypal"],
+  ["paypa1.ru", "paypal"],
+  ["paypal.com", null],
+  ["www.paypal.com", null],
+  ["accounts.google.com", null],
+  // No name to imitate a brand with.
+  ["192.168.1.10", null],
+  ["[::1]", null],
+  ["localhost", null],
+];
+
+// The guard's look-alike rule before the registrable domain: kept here as the
+// reference the plain-TLD sweep holds the new code to.
+const OLD_BRANDS = {
+  paypal: "paypal.com", apple: "apple.com", google: "google.com", amazon: "amazon.com",
+  microsoft: "microsoft.com", netflix: "netflix.com", facebook: "facebook.com", instagram: "instagram.com",
+  whatsapp: "whatsapp.com", chase: "chase.com", coinbase: "coinbase.com", binance: "binance.com",
+  dhl: "dhl.com", fedex: "fedex.com", ups: "ups.com", ebay: "ebay.com", discord: "discord.com",
+  telegram: "telegram.org", linkedin: "linkedin.com", bank: "bank.com", citi: "citi.com",
+  wellsfargo: "wellsfargo.com", capitalone: "capitalone.com", hsbc: "hsbc.com",
+};
+function oldLookalike(host) {
+  const base = host.split(".").slice(-2).join(".");
+  const nm = base.split(".")[0];
+  let leet = nm;
+  for (const [c, l] of Object.entries({ 1: "l", 0: "o", 3: "e", "@": "a", 5: "s" })) leet = leet.split(c).join(l);
+  for (const [brand, legit] of Object.entries(OLD_BRANDS)) {
+    if (nm === brand || host === legit || base === legit) continue;
+    if (leet === brand || nm.includes(brand)) return brand;
+  }
+  return null;
+}
+
+for (const tree of BROWSER_TREES) {
+  await check(`[${tree}] content scripts load the name rules before the credential guard`, () => {
+    const js = readJson(join(tree, "manifest.json")).content_scripts[0].js;
+    const order = GUARD_FILES.map((f) => js.indexOf(f));
+    assert.ok(order.every((i) => i >= 0), `missing from content_scripts: ${JSON.stringify(order)}`);
+    assert.deepEqual([...order].sort((a, b) => a - b), order, "scorer-data.js, name-rules.js, credential-guardian.js");
+  });
+}
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] the credential guard's site is the registrable domain`, async () => {
+    const { guard } = await runGuardian(tree, "https://example.com/");
+    assert.ok(guard, "credential-guardian.js exposes no cleanwayCredentialGuard for the tables");
+    const wrong = SITE_PAIRS.filter(([a, b, same]) => guard.sameSite(a, b) !== same || guard.sameSite(b, a) !== same);
+    assert.deepEqual(wrong.map(([a, b, same]) => `${a} ~ ${b}: expected ${same ? "one site" : "two sites"}`), []);
+    assert.equal(guard.siteOf("accounts.barclays.co.uk"), "barclays.co.uk");
+    assert.equal(guard.siteOf("kvs.gov.spb.ru"), "gov.spb.ru");
+    assert.equal(guard.siteOf("192.168.1.10"), "192.168.1.10");
+    assert.equal(guard.siteOf("login.web.de"), "web.de");
+  });
+
+  await check(`[${tree}] the credential guard's look-alike check reads the registrable name`, async () => {
+    const { guard } = await runGuardian(tree, "https://example.com/");
+    const wrong = LOOKALIKES.filter(([host, brand]) => guard.imitatedBrand(host) !== brand);
+    assert.deepEqual(wrong.map(([host, brand]) => `${host}: ${guard.imitatedBrand(host)}, expected ${brand}`), []);
+  });
+
+  // Measured on 2026-10-27 (data/top_100k.json): the .com rule on the
+  // registrable name flags 90 of the 10,757 names under a compound suffix,
+  // 14 of them in the top 10k; each would get the full warning and a stop
+  // at submit on its own sign-in form. This rule flags none.
+  await check(`[${tree}] the look-alike check: plain TLDs exactly as before, no top-100k name under a compound suffix`, async () => {
+    const { guard } = await runGuardian(tree, "https://example.com/");
+    const top = readJson("data/top_100k.json");
+    const changed = [];
+    const flagged = [];
+    for (const host of top) {
+      if (guard.siteOf(host) === host.split(".").slice(-2).join(".")) {
+        if (guard.imitatedBrand(host) !== oldLookalike(host)) changed.push(host);
+      } else if (guard.imitatedBrand(host)) {
+        flagged.push(`${host} (${guard.imitatedBrand(host)})`);
+      }
+    }
+    assert.deepEqual(changed.slice(0, 20), [], `${changed.length} plain-TLD names changed verdict`);
+    assert.deepEqual(flagged.slice(0, 20), [], `${flagged.length} top-100k names under a compound suffix flagged`);
+  });
+
+  await check(`[${tree}] the credential guard warns about a form posting to another owner under co.uk`, async () => {
+    const off = await runGuardian(tree, "https://evil-login.co.uk/signin", "https://collector.co.uk/steal");
+    assert.ok(off.evidence && off.evidence.mismatch, "no off-site warning for evil-login.co.uk → collector.co.uk");
+    assert.equal(off.evidence.actionHost, "collector.co.uk");
+    assert.equal(off.evidence.weak, true, "one sign on its own gets the calm warning");
+    const own = await runGuardian(tree, "https://www.barclays.co.uk/", "https://online.barclays.co.uk/login");
+    assert.equal(own.evidence, undefined, "a bank's form posting to its own sign-in host was warned about");
+    const ip = await runGuardian(tree, "http://10.0.1.10/", "http://192.168.1.10/steal");
+    assert.ok(ip.evidence && ip.evidence.mismatch && !ip.evidence.weak, "a password posted over http to another address");
+    // The same name on another port is the same site.
+    const port = await runGuardian(tree, "https://example.com:8443/", "https://example.com/login");
+    assert.equal(port.evidence, undefined, "a form posting to its own host on another port was warned about");
+    const web = await runGuardian(tree, "https://web.de/", "https://login.web.de/login");
+    assert.equal(web.evidence, undefined, "web.de's own sign-in host was warned about");
+  });
+
+  await check(`[${tree}] the credential guard sees a look-alike under co.uk, not a bank's real name`, async () => {
+    const fake = await runGuardian(tree, "https://paypa1.co.uk/");
+    assert.ok(fake.evidence && fake.evidence.typosquat, "paypa1.co.uk is no look-alike to the guard");
+    assert.equal(fake.evidence.brand, "paypal");
+    assert.equal(fake.evidence.weak, false, "a look-alike gets the full warning");
+    for (const real of ["https://lloydsbank.co.uk/", "https://www.commbank.com.au/", "https://upsc.gov.in/"]) {
+      assert.equal((await runGuardian(tree, real)).evidence, undefined, `${real} was called a look-alike`);
+    }
   });
 }
 

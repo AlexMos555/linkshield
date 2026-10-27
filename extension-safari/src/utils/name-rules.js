@@ -28,7 +28,9 @@
 //
 // A classic script, like link-target.js: a content script gets the global,
 // the background module imports it for its side effect, Node tests load it
-// in a vm context. Pure functions — no DOM, no chrome.*.
+// in a vm context. Pure functions — no DOM, no chrome.*. Besides the scorer,
+// content/credential-guardian.js reads registrableDomain and isRestrictedZone
+// from it: where one site ends.
 (function (root, factory) {
   root.cleanwayNameRules = factory(root.cleanwayScorerData);
 })(typeof self !== "undefined" ? self : globalThis, function (D) {
@@ -733,6 +735,9 @@
   return {
     available: D !== null,
     registrableDomain: registrableDomain,
+    // _is_restricted_zone: a public suffix whose names its owner hands out
+    // (gov.uk, ac.uk, go.jp, gov.ru). The credential guard reads both.
+    isRestrictedZone: isRestrictedZone,
     subdomainLabels: subdomainLabels,
     typosquat: typosquat,
     brandInSubdomain: brandInSubdomain,
