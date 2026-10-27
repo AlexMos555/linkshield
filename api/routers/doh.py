@@ -309,6 +309,8 @@ async def doh_health() -> Response:
         "ok": any(u["healthy"] for u in ups),
         "filter": doh_filter.HOLDER.status(),
         "upstreams": ups,
+        # This worker's upstream slots now (api/services/doh_upstream.py).
+        "upstream_slots": doh_upstream.slots_status(),
         "http2": doh_upstream.HTTP2_AVAILABLE,
         "cache_entries": len(response_cache()),
         "stats": doh_metrics.METRICS.snapshot(),

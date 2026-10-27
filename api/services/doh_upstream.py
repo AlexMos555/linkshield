@@ -150,7 +150,9 @@ class _Waiters:
         return False
 
     def _pass_on(self) -> None:
-        raise NotImplementedError
+        """A waiter handed something gave up before it ran: pass it on. A
+        zone hands nothing (its woken waiter checks the room again), and
+        _acquire wakes the next one whenever a query leaves with room left."""
 
     def waiting(self) -> int:
         return sum(1 for f in self.waiters if not f.done())
@@ -197,9 +199,6 @@ class _Zone(_Waiters):
     async def wait_for_room(self) -> None:
         await self._park()
 
-    def _pass_on(self) -> None:
-        self._wake()
-
 
 class Upstream:
     __slots__ = ("url", "fail_streak", "skip_until", "ok_count", "fail_count", "client", "slots")
@@ -229,8 +228,12 @@ class Upstream:
             self.skip_until = time.monotonic() + BREAKER_COOLDOWN_S
 
     def status(self) -> dict:
+        slots = self.slots
         return {"url": self.url, "healthy": self.healthy(time.monotonic()),
-                "ok": self.ok_count, "failed": self.fail_count}
+                "ok": self.ok_count, "failed": self.fail_count,
+                # now, not since start: requests at it, and queries waiting for a slot
+                "in_flight": slots.size - slots.free if slots else 0,
+                "waiting": slots.waiting() if slots else 0}
 
 
 class _Attempt:
@@ -611,3 +614,14 @@ async def proxy_to_upstream(wire: bytes) -> Optional[bytes]:
 
 def status() -> list[dict]:
     return [u.status() for u in upstreams()]
+
+
+def slots_status() -> dict:
+    """What holds this worker's upstream slots now (/health/doh): zones at
+    their limit and the queries waiting for room in them, requests no query
+    waits for still open, connections being dropped (REQUEST_TIMEOUT_S)."""
+    zones = list(_zones.values())
+    return {"zones_full": sum(1 for z in zones if not z.has_room()),
+            "zone_waiting": sum(z.waiting() for z in zones),
+            "abandoned": len(_abandoned),
+            "dropping": len(_closing)}

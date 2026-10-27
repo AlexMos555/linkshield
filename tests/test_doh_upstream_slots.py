@@ -16,6 +16,7 @@ import time
 
 import httpx
 import pytest
+import pytest_asyncio
 
 from api.services import doh_metrics, doh_upstream
 from api.services.doh_gateway import parse_qname
@@ -98,15 +99,40 @@ def _use(monkeypatch, urls: list[str]):
     return _HoldingClient
 
 
-@pytest.fixture
-def holding_upstream(monkeypatch):
-    return _use(monkeypatch, [A])
+def _assert_idle() -> None:
+    """Every slot back, nobody waiting, no zone entry left: a lost slot is
+    lost until the process restarts, and they add up until every cache miss
+    gets SERVFAIL."""
+    for up in doh_upstream.status():
+        assert (up["in_flight"], up["waiting"]) == (0, 0), up
+    assert doh_upstream._zones == {}
+    assert doh_upstream.slots_status() == {"zones_full": 0, "zone_waiting": 0, "abandoned": 0, "dropping": 0}
 
 
-@pytest.fixture
-def holding_upstreams(monkeypatch):
+async def _settle(fake) -> None:
+    """Answer whatever is still held, let the requests nobody waits for
+    finish, then check that everything came back."""
+    for _ in range(200):
+        fake.release_all()
+        if not doh_upstream._abandoned and not doh_upstream._closing:
+            break
+        await asyncio.sleep(0.005)
+    _assert_idle()
+
+
+@pytest_asyncio.fixture
+async def holding_upstream(monkeypatch):
+    fake = _use(monkeypatch, [A])
+    yield fake
+    await _settle(fake)
+
+
+@pytest_asyncio.fixture
+async def holding_upstreams(monkeypatch):
     """Two upstreams, as in production (Cloudflare by name and by IP)."""
-    return _use(monkeypatch, [A, B])
+    fake = _use(monkeypatch, [A, B])
+    yield fake
+    await _settle(fake)
 
 
 def _ask(name: str, qtype: int = 1) -> asyncio.Task:
@@ -578,9 +604,9 @@ async def test_a_request_the_upstream_never_answers_gives_its_slot_back_after_re
             assert await doh_upstream.proxy_to_upstream(query(f"live{i}.example.org")) is not None
             i += 1
             await asyncio.sleep(0.1)
-        slots = doh_upstream.upstreams()[0].slots
-        assert slots.free == slots.size and not doh_upstream._abandoned
         assert doh_metrics.METRICS.counts["upstream_dropped"] == 1
+        await asyncio.sleep(0.05)  # the dropped client finishes closing
+        _assert_idle()
     finally:
         await doh_upstream.close_upstream_client()
         server.close()
@@ -598,7 +624,124 @@ async def test_shutdown_cancels_the_requests_nobody_waits_for(holding_upstream, 
     assert len(doh_upstream._abandoned) == 3
     with caplog.at_level(logging.WARNING, logger="api.services.doh_gateway"):
         await doh_upstream.close_upstream_client()
-    assert not doh_upstream._abandoned
-    slots = doh_upstream.upstreams()[0].slots
-    assert slots.free == slots.size and not doh_upstream._zones
+    _assert_idle()
     assert not [r for r in caplog.records if "upstream" in r.getMessage()]
+
+
+# ── every slot comes back ───────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_a_slot_handed_to_a_waiter_that_gives_up_is_passed_on():
+    slots = doh_upstream._Slots(1)
+    await slots.acquire()
+    waiter = asyncio.create_task(slots.acquire())
+    await asyncio.sleep(0)
+    slots.release()   # handed to the waiter...
+    waiter.cancel()   # ...which gives up before it runs
+    with pytest.raises(asyncio.CancelledError):
+        await waiter
+    assert slots.free == 1 and not slots.waiting()
+
+
+@pytest.mark.asyncio
+async def test_room_in_a_zone_freed_for_a_waiter_that_gives_up_goes_to_the_next(holding_upstream, monkeypatch):
+    """The zone's newest waiter is woken for a freed place and gives up
+    before it runs: the place must go to the next one, not be left unused
+    while the zone's other queries wait."""
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 1.0)
+    share = doh_upstream.ZONE_MAX_IN_FLIGHT
+    held = await _ask_many([f"r{i}.dead.example" for i in range(share + 2)])
+    newest = held[-1]
+    holding_upstream.release_one()  # room for one: the newest waiter is woken...
+    newest.cancel()                 # ...and gives up before it runs
+    await asyncio.sleep(0.02)
+    assert f"r{share}.dead.example" in holding_upstream.posted
+    await asyncio.gather(*held, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+async def test_room_in_a_zone_is_handed_on_when_the_query_woken_for_it_gives_up_waiting_for_a_slot(
+        holding_upstream, monkeypatch):
+    """Woken for a freed place in its zone, a query found every slot taken
+    and gave up while waiting for one: the place must go to the zone's next
+    waiter, or that one waits for a slot it never asks for."""
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 1.0)
+    share = doh_upstream.ZONE_MAX_IN_FLIGHT
+    held = await _ask_many([f"r{i}.dead.example" for i in range(share)]
+                           + [f"o{i}.dead{i}.example" for i in range(doh_upstream.MAX_IN_FLIGHT - share)])
+    held += await _ask_many([f"r{share}.dead.example", f"r{share + 1}.dead.example"])  # wait for the zone
+    woken = held[-1]
+    held += await _ask_many(["s.deadx.example"])  # waits for a slot
+    holding_upstream.release(lambda url, name: name == "r0.dead.example")
+    await asyncio.sleep(0.01)  # the slot went to s; the zone's newest waiter now waits for one
+    woken.cancel()
+    await asyncio.sleep(0.01)
+    holding_upstream.release(lambda url, name: name == "o0.dead0.example")
+    await asyncio.sleep(0.01)
+    assert f"r{share}.dead.example" in holding_upstream.posted
+    await asyncio.gather(*held, return_exceptions=True)
+
+
+def _flaky_client():
+    rng = random.Random(11)
+
+    class _Flaky:
+        def __init__(self, *a, **kw):
+            self.is_closed = False
+
+        async def post(self, url, content=b"", **_kw):
+            label = parse_qname(content).split(".")[-2]
+            await asyncio.sleep(0.3 if label.startswith("slow") else rng.uniform(0, 0.01))
+            r = rng.random()
+            if r < 0.05:
+                raise httpx.RemoteProtocolError("ConnectionTerminated")
+            if r < 0.08:
+                return _Resp(500, b"")
+            return _Resp(200, answer(content))
+
+        async def aclose(self):
+            self.is_closed = True
+    return _Flaky
+
+
+@pytest.mark.asyncio
+async def test_every_slot_and_zone_entry_comes_back(monkeypatch):
+    """Two upstreams, hedges, deadlines, GOAWAYs, HTTP 500s, queries the
+    caller cancels, more queries than slots."""
+    from api import config
+    monkeypatch.setattr(config.get_settings(), "doh_upstreams", f"{A},{B}")
+    monkeypatch.setattr(doh_upstream.httpx, "AsyncClient", _flaky_client())
+    doh_upstream._reset_upstream_client_for_tests()
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 0.2)
+    monkeypatch.setattr(doh_upstream, "HEDGE_AFTER_S", 0.05)
+    names = ([f"r{i}.slow{i % 40}.example" for i in range(300)]
+             + [f"f{i}.fast{i % 5}.example" for i in range(300)])
+    random.Random(5).shuffle(names)
+    tasks = [_ask(n) for n in names]
+    loop = asyncio.get_running_loop()
+    for t in tasks[::10]:
+        loop.call_later(0.1, t.cancel)
+    await asyncio.gather(*tasks, return_exceptions=True)
+    for _ in range(100):
+        if not doh_upstream._abandoned:
+            break
+        await asyncio.sleep(0.01)
+    _assert_idle()
+
+
+# ── what /health/doh shows ──────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_slot_gauges_show_slots_in_use_and_queries_waiting(holding_upstream, monkeypatch):
+    """Counters say that queries waited at some point since start; these say
+    what is held now — all slots taken by requests nobody waits for looks
+    different from a slow upstream."""
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 0.3)
+    share = doh_upstream.ZONE_MAX_IN_FLIGHT
+    held = await _ask_many([f"r{i}.dead.example" for i in range(share + 4)]
+                           + [f"r{i}.dead{i}.example" for i in range(doh_upstream.MAX_IN_FLIGHT)])
+    up = doh_upstream.status()[0]
+    assert (up["in_flight"], up["waiting"]) == (doh_upstream.MAX_IN_FLIGHT, share)
+    assert doh_upstream.slots_status() == {"zones_full": 1, "zone_waiting": 4, "abandoned": 0, "dropping": 0}
+    await asyncio.gather(*held)
+    assert doh_upstream.slots_status()["abandoned"] == doh_upstream.MAX_IN_FLIGHT
