@@ -333,3 +333,41 @@ def test_production_gallery_loads_and_has_known_brands():
         assert entry.get("verified_hosts"), f"{required} has no verified_hosts"
         # known_favicon_hashes may be empty for now — ops will fill.
         assert isinstance(entry.get("known_favicon_hashes", []), list)
+
+
+# sha256[:24] of https://www.fedex.com/etc.clientlibs/designs/fedex-common/images/
+# resources/fx-favicon.ico, the icon fedex.com's <link rel="shortcut icon"> names:
+# 5430 B ICO (16x16 + 32x32), fetched 2026-10-27 and identical in the Wayback
+# Machine's 2025-01-03 capture. www.fedex.com/favicon.ico is a "Page Not Found"
+# HTML page (every one of 24 Wayback captures in June 2026 is text/html).
+FEDEX_ICON = "eab1b9a0ef942d84e3a8ed8c"
+# Hashes of bot-wall pages the cron filed before it checked for images
+# (#174, #233 and the 2026-06-16 local run). Each page carries a per-request
+# incident id, so no fetch ever produces them again.
+DEAD_HTML_HASHES = {
+    "ups": {"5c2b47f43cadef4d9e8727e3", "279419b97fa7c89075bb3145"},
+    "fedex": {"f644a556676907e89b2144cf", "ece22f1455bba697ca6b50db", "437ef929a63eac5b2c5be708"},
+    "linkedin": {"19afb2a51408c29a7c654967", "254a2a36f43cc539cb6864b9"},
+}
+
+
+@pytest.mark.asyncio
+async def test_fedex_icon_on_an_off_brand_host_is_a_clone(monkeypatch):
+    import api.services.favicon_hash as mod
+    monkeypatch.setattr(mod, "_gallery_cache", None)  # the shipped gallery
+
+    async def _hash(domain):
+        return FEDEX_ICON
+
+    monkeypatch.setattr(mod, "get_favicon_hash", _hash)
+    out = await check_favicon_brand_clone("fedex-track-parcel.example")
+    assert out["cloned"] is True and out["brand"] == "fedex", out
+
+
+def test_production_gallery_has_no_bot_wall_hashes():
+    p = pathlib.Path(__file__).resolve().parent.parent / "api" / "data" / "brand_favicons.json"
+    gallery = json.loads(p.read_text(encoding="utf-8"))
+    for brand, dead in DEAD_HTML_HASHES.items():
+        known = set(gallery[brand]["known_favicon_hashes"])
+        assert not known & dead, brand
+        assert known, f"{brand} has no image hash left"

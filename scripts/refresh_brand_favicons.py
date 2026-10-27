@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """Populate brand_favicons.json with current favicon hashes.
 
-Fetches the favicon from the FIRST verified_host of each brand,
-hashes it, and writes the resulting hash into known_favicon_hashes.
+For each brand, tries /favicon.ico on every verified_host in order, then
+the <link rel="icon"> of each host's home page (only when it points at one of
+the brand's verified hosts); the first image found is hashed into
+known_favicon_hashes. hosts[0] alone was not enough (measured 2026-10-27):
+linkedin.com/favicon.ico is a 20 KB HTML page to every client while
+www.linkedin.com/favicon.ico is the icon, and FedEx serves a "Page Not Found"
+page at /favicon.ico on both hosts; its icon is the one the page links.
 
 Run when a brand changes their favicon (rare) or when adding new
 brands to the gallery. Idempotent: a hash already present is
@@ -25,6 +30,8 @@ import json
 import logging
 import pathlib
 import sys
+from html.parser import HTMLParser
+from urllib.parse import urljoin, urlsplit
 
 import httpx
 
@@ -75,9 +82,12 @@ def _hash_bytes(b: bytes) -> str:
 
 
 async def _fetch(client: httpx.AsyncClient, host: str) -> bytes | None:
-    url = f"https://{host}/favicon.ico"
+    return await _fetch_image(client, f"https://{host}/favicon.ico")
+
+
+async def _fetch_image(client: httpx.AsyncClient, url: str, **kwargs) -> bytes | None:
     try:
-        resp = await client.get(url, timeout=5.0)
+        resp = await client.get(url, timeout=5.0, **kwargs)
         if resp.status_code == 200 and 0 < len(resp.content) <= 256 * 1024:
             if looks_like_favicon(resp.content):
                 return resp.content
@@ -89,6 +99,62 @@ async def _fetch(client: httpx.AsyncClient, host: str) -> bytes | None:
         logger.warning("  %s → status=%d size=%d", url, resp.status_code, len(resp.content))
     except Exception as exc:
         logger.warning("  %s → %s", url, exc)
+    return None
+
+
+class _IconLink(HTMLParser):
+    """The href of the first <link> whose rel has the token "icon"
+    ("icon", "shortcut icon"; not "apple-touch-icon")."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.href: str | None = None
+
+    def handle_starttag(self, tag: str, attrs: list) -> None:
+        if self.href is None and tag == "link":
+            a = {k: (v or "") for k, v in attrs}
+            if "icon" in a.get("rel", "").lower().split() and a.get("href", "").strip():
+                self.href = a["href"].strip()
+
+
+async def _linked_icon(client: httpx.AsyncClient, host: str, verified: set[str]) -> bytes | None:
+    """The image the home page's <link rel="icon"> names, when it is on one
+    of the brand's own hosts and served there without a redirect: the
+    gallery takes bytes from the brand's hosts only."""
+    page = f"https://{host}/"
+    try:
+        resp = await client.get(page, timeout=5.0)
+    except Exception as exc:
+        logger.warning("  %s → %s", page, exc)
+        return None
+    if resp.status_code != 200:
+        logger.warning("  %s → status=%d", page, resp.status_code)
+        return None
+    parser = _IconLink()
+    parser.feed(resp.text[: 512 * 1024])  # <head> is at the top
+    if not parser.href:
+        logger.warning("  %s → no <link rel=icon>", page)
+        return None
+    url = urljoin(str(resp.url), parser.href)
+    parts = urlsplit(url)
+    if parts.scheme != "https" or (parts.hostname or "").lower() not in verified:
+        logger.warning("  %s → icon link %s is not on a verified host, skipped", page, url)
+        return None
+    return await _fetch_image(client, url, follow_redirects=False)
+
+
+async def _brand_icon(client: httpx.AsyncClient, hosts: list[str]) -> bytes | None:
+    """/favicon.ico on each host first (that is what the runtime hashes on a
+    suspect page), then each host's linked icon."""
+    for host in hosts:
+        payload = await _fetch(client, host)
+        if payload:
+            return payload
+    verified = {h.lower() for h in hosts}
+    for host in hosts:
+        payload = await _linked_icon(client, host, verified)
+        if payload:
+            return payload
     return None
 
 
@@ -104,10 +170,12 @@ async def main(dry_run: bool) -> int:
             hosts = brand.get("verified_hosts") or []
             if not hosts:
                 continue
-            first = hosts[0]
             logger.info("Fetching %s favicon …", slug)
-            payload = await _fetch(client, first)
+            payload = await _brand_icon(client, hosts)
             if not payload:
+                logger.warning("  %s: no verified host served an image, not refreshed", slug)
+                if not brand.get("known_favicon_hashes"):
+                    logger.warning("  %s has no favicon hash at all: no clone detection for it", slug)
                 continue
             digest = _hash_bytes(payload)
             known = brand.setdefault("known_favicon_hashes", [])
