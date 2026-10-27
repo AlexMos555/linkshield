@@ -337,7 +337,6 @@ from api.services.doh_upstream import (  # noqa: E402,F401
     CLOUDFLARE_DOH_URL,
     QUAD9_DOH_URL,
     UPSTREAM_TIMEOUT_S,
-    _get_upstream_client,
     _reset_upstream_client_for_tests,
     close_upstream_client,
     proxy_to_upstream,
