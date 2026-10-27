@@ -42,7 +42,7 @@ NOTE_PHRASE = re.compile(
 # "TODO :", "TODO(alex)"): an upper-case es/pt button or badge reads
 # "VER TODO", "TODO INCLUIDO" (the PR #350 review, F3). FIXME is a word in
 # none of the 10 languages, so it counts anywhere.
-MARKER = re.compile(r"\bTODO\s*[:(]|\bFIXME\b")
+MARKER = re.compile(r"\bTODO(?:\s*:|\()|\bFIXME\b")
 # A dotted key mid-sentence ("see mobile.breach.title") is left alone: in a
 # product about links, copy may name a host like email.mg.example.com or
 # mobile.<brand>.com, which a namespace-prefix rule would flag. A key the

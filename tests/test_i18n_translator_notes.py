@@ -222,6 +222,7 @@ LEGIT = {
     # Copy the PR #350 review found flagged (F3): "todo" is "all" in es/pt,
     # and upper-case buttons and badges are ordinary there.
     "es upper-case 'see all'": ("extension.popup.view_all", "VER TODO"),
+    "es upper-case 'see all' with a count": ("extension.popup.view_all", "VER TODO (12)"),
     "es upper-case 'all included'": ("landing.pricing.badge", "TODO INCLUIDO"),
     "pt upper-case 'all' mid-sentence": ("landing.pricing.cta", "PROTEJA TODO O SEU CELULAR"),
     "translators wanted": ("landing.footer.translators", "Translators wanted: help bring Cleanway to your language"),
