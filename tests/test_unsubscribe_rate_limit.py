@@ -226,3 +226,29 @@ def test_one_link_keeps_a_budget_while_redis_is_down(client, link_limit, recorde
     assert len(recorded) == link_limit
     # GET and POST keep separate budgets, as with Redis up.
     assert _scan(client, token).status_code == 200
+
+
+def test_without_redis_each_link_and_method_keeps_its_own_budget(client, link_limit, recorded, monkeypatch):
+    """The in-process fallback must key like Redis does: by subscription and
+    method. One process-wide or per-method count would let a single free
+    account's link, flooded during an outage, 429 every other subscriber's
+    one-click on that worker; a shared GET/POST count would let link
+    scanners spend the POST budget."""
+    async def _down():
+        raise ConnectionError("simulated Redis outage")
+
+    monkeypatch.setattr(rate_limiter, "get_redis", _down)
+    monkeypatch.setattr(rate_limiter.get_settings(), "rate_limit_fail_closed", True)
+    flooded = eu.mint_token("user-flood", "welcome")
+    other_user = eu.mint_token("user-2", "welcome")
+    other_template = eu.mint_token("user-flood", "weekly_report")
+
+    assert [_one_click(client, flooded, _ip(n)).status_code for n in range(link_limit + 1)] == (
+        [200] * link_limit + [429]
+    )
+    assert _one_click(client, other_user).status_code == 200
+    assert _one_click(client, other_template).status_code == 200
+
+    scanned = eu.mint_token("user-3", "welcome")
+    assert [_scan(client, scanned).status_code for _ in range(link_limit + 1)] == [200] * link_limit + [429]
+    assert [_one_click(client, scanned, SAFE_LINKS).status_code for _ in range(link_limit)] == [200] * link_limit
