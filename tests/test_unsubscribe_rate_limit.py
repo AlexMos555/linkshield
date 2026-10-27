@@ -191,7 +191,7 @@ def test_invalid_tokens_from_another_address_have_their_own_budget(client, setti
 
 # ── Redis down ──
 
-def test_valid_links_fail_open_when_redis_is_down(client, settings, recorded, monkeypatch):
+def test_valid_links_are_admitted_within_budget_when_redis_is_down(client, settings, recorded, monkeypatch):
     """An unsubscribe must not be lost to a Redis blip: the signed link is
     the credential. A link that does not verify keeps the fail-closed
     posture production runs with."""

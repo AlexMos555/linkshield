@@ -343,10 +343,11 @@ async def _check_window_limit(
                 return limit
             logger.warning("ip_rate_limit_exceeded", extra={**who, "category": category, "fallback": True})
             raise _limited(category, error, retry)
-        # DNS is the one path that must never 503: for anyone whose phone
-        # points at /dns-query, "rate limiter unavailable" would mean "no
-        # site on the internet resolves" for the length of a Redis blip.
-        # Everything else keeps the production fail-closed posture.
+        # FAIL_OPEN_CATEGORIES only: the blocklist download (routers/blocklist
+        # — an unprotected phone is worse than a served byte) and "doh"
+        # (/dns-query itself now counts in process, doh_rate_limit, and never
+        # reaches this). Everything else keeps the production fail-closed
+        # posture.
         if category in FAIL_OPEN_CATEGORIES:
             return limit
         if get_settings().rate_limit_fail_closed:
