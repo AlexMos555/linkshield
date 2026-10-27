@@ -8,6 +8,10 @@ Run when a brand changes their favicon (rare) or when adding new
 brands to the gallery. Idempotent: a hash already present is
 preserved; only NEW hashes get appended.
 
+A response that is not an image is skipped: bot walls answer a datacenter
+fetch with "200 OK" and an HTML page, and the 2026-10-25 run filed those
+pages as the UPS, FedEx and LinkedIn favicons.
+
 Usage:
     python scripts/refresh_brand_favicons.py
     python scripts/refresh_brand_favicons.py --dry-run
@@ -37,6 +41,33 @@ GALLERY_PATH = pathlib.Path(__file__).resolve().parent.parent / "api" / "data" /
 HASH_HEX_LEN = 24
 
 
+# Copy of api.services.favicon_hash._RASTER_MAGIC / looks_like_favicon, kept
+# here for the same reason as HASH_HEX_LEN; the drift test compares them.
+_RASTER_MAGIC = (
+    b"\x00\x00\x01\x00",
+    b"\x00\x00\x02\x00",
+    b"\x89PNG\r\n\x1a\n",
+    b"GIF87a",
+    b"GIF89a",
+    b"\xff\xd8\xff",
+    b"BM",
+)
+
+
+def looks_like_favicon(b: bytes) -> bool:
+    """True when the bytes are an image a browser would show as a favicon."""
+    if b.startswith(_RASTER_MAGIC):
+        return True
+    if b[:4] == b"RIFF" and b[8:12] == b"WEBP":
+        return True
+    head = b[:1024].lstrip(b"\xef\xbb\xbf \t\r\n").lower()
+    return (
+        head.startswith((b"<svg", b"<?xml", b"<!--", b"<!doctype svg"))
+        and b"<svg" in head
+        and b"<html" not in head
+    )
+
+
 def _hash_bytes(b: bytes) -> str:
     """SHA-256 truncated to HASH_HEX_LEN hex chars, matching the runtime hasher."""
     import hashlib
@@ -48,7 +79,13 @@ async def _fetch(client: httpx.AsyncClient, host: str) -> bytes | None:
     try:
         resp = await client.get(url, timeout=5.0)
         if resp.status_code == 200 and 0 < len(resp.content) <= 256 * 1024:
-            return resp.content
+            if looks_like_favicon(resp.content):
+                return resp.content
+            logger.warning(
+                "  %s → not an image (content-type=%s size=%d), skipped",
+                url, resp.headers.get("content-type", "?"), len(resp.content),
+            )
+            return None
         logger.warning("  %s → status=%d size=%d", url, resp.status_code, len(resp.content))
     except Exception as exc:
         logger.warning("  %s → %s", url, exc)

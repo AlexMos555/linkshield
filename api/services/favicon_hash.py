@@ -28,6 +28,12 @@ Privacy:
   * Cached in Redis with 24h TTL so repeated checks of the same
     domain don't re-fetch.
 
+Only image bytes are hashed (looks_like_favicon). Bot walls and WAF error
+pages answer /favicon.ico with "200 OK" and an HTML body; the 2026-10-25
+gallery refresh recorded such pages as the UPS, FedEx and LinkedIn
+favicons. A static error page shared by many sites would then mark every
+one of them as a brand clone, so HTML never gets a hash on either side.
+
 Threat model — bypasses we accept:
 
   * A phisher who changes one pixel evades this signal. That's
@@ -60,6 +66,20 @@ GALLERY_PATH = pathlib.Path(__file__).resolve().parent.parent / "data" / "brand_
 
 _gallery_cache: Optional[dict] = None
 
+# Leading bytes of the raster formats browsers accept as a favicon:
+# ICO, CUR, PNG, GIF, JPEG, BMP. WebP and SVG are checked separately.
+# scripts/refresh_brand_favicons.py keeps a copy (it must not import api.*);
+# tests/test_favicon_refresh_drift.py keeps the two in step.
+_RASTER_MAGIC = (
+    b"\x00\x00\x01\x00",
+    b"\x00\x00\x02\x00",
+    b"\x89PNG\r\n\x1a\n",
+    b"GIF87a",
+    b"GIF89a",
+    b"\xff\xd8\xff",
+    b"BM",
+)
+
 
 def _load_gallery() -> dict:
     """Load and memoize the brand-favicon gallery.
@@ -83,6 +103,20 @@ def _load_gallery() -> dict:
         logger.warning("brand favicon gallery missing at %s", GALLERY_PATH)
         _gallery_cache = {}
     return _gallery_cache
+
+
+def looks_like_favicon(b: bytes) -> bool:
+    """True when the bytes are an image a browser would show as a favicon."""
+    if b.startswith(_RASTER_MAGIC):
+        return True
+    if b[:4] == b"RIFF" and b[8:12] == b"WEBP":
+        return True
+    head = b[:1024].lstrip(b"\xef\xbb\xbf \t\r\n").lower()
+    return (
+        head.startswith((b"<svg", b"<?xml", b"<!--", b"<!doctype svg"))
+        and b"<svg" in head
+        and b"<html" not in head
+    )
 
 
 def _hash_bytes(b: bytes) -> str:
@@ -109,6 +143,8 @@ async def _fetch_favicon(domain: str) -> Optional[bytes]:
       * Body-size DoS — streams the response, aborting once we've
         accumulated FAVICON_MAX_BYTES instead of trusting the whole
         Content-Length / unmetered download.
+      * Error pages served as 200 — a body that is not an image counts
+        as no favicon.
     """
     from api.services.pinned_http import pinned_client  # local: module-load order
 
@@ -125,7 +161,7 @@ async def _fetch_favicon(domain: str) -> Optional[bytes]:
                         # Don't drain the stream — closing the
                         # context exits the connection.
                         return None
-                if not buf:
+                if not buf or not looks_like_favicon(buf):
                     return None
                 return bytes(buf)
     except Exception as exc:

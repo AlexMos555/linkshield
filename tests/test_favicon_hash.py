@@ -11,9 +11,42 @@ import pathlib
 import pytest
 
 from api.services.favicon_hash import (
+    _fetch_favicon,
     _hash_bytes,
     check_favicon_brand_clone,
+    looks_like_favicon,
 )
+
+# Bodies that real sites returned for /favicon.ico with "200 OK" on 2026-10-25.
+AKAMAI_DENIED = (
+    b'<html><head><title>Access Denied</title></head><body><h1>Access Denied</h1>'
+    b'You don\'t have permission to access "/favicon.ico" on this server.<br/>'
+    b'0.7fb6d68.1793107707.caa77d6</body></html>'
+)
+WAF_DOWN = (
+    b'<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">\n'
+    b'<HTML><HEAD><TITLE>Brand | System Down</TITLE></HEAD><BODY></BODY></HTML>'
+)
+ICON_SAMPLES = {
+    "ico": b"\x00\x00\x01\x00\x04\x00\x10\x10" + b"\x00" * 32,
+    "cur": b"\x00\x00\x02\x00\x01\x00" + b"\x00" * 16,
+    "png": b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + b"\x00" * 16,
+    "gif": b"GIF89a\x10\x00\x10\x00" + b"\x00" * 16,
+    "jpeg": b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x00" * 16,
+    "bmp": b"BM6\x03\x00\x00" + b"\x00" * 16,
+    "webp": b"RIFF\x24\x00\x00\x00WEBPVP8 " + b"\x00" * 16,
+    "svg": b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"/>',
+    "svg-xml": b'\xef\xbb\xbf<?xml version="1.0"?>\n<svg xmlns="http://www.w3.org/2000/svg"/>',
+}
+NOT_ICONS = {
+    "akamai-denied": AKAMAI_DENIED,
+    "waf-down": WAF_DOWN,
+    "html-with-inline-svg": b"<!doctype html><html><body><svg></svg></body></html>",
+    "xml-not-svg": b'<?xml version="1.0"?><error>denied</error>',
+    "json": b'{"error": "forbidden"}',
+    "text": b"Forbidden",
+    "empty": b"",
+}
 
 
 # ───────────────────────────────────────────────────────────────
@@ -104,6 +137,63 @@ def test_hash_bytes_differs_on_one_byte_change():
     a = _hash_bytes(b"abc")
     b = _hash_bytes(b"abd")
     assert a != b, "Even single-byte changes must change the hash"
+
+
+# ───────────────────────────────────────────────────────────────
+# looks_like_favicon / _fetch_favicon
+# ───────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("kind", sorted(ICON_SAMPLES))
+def test_looks_like_favicon_accepts_image_formats(kind):
+    assert looks_like_favicon(ICON_SAMPLES[kind])
+
+
+@pytest.mark.parametrize("kind", sorted(NOT_ICONS))
+def test_looks_like_favicon_rejects_error_pages(kind):
+    assert not looks_like_favicon(NOT_ICONS[kind])
+
+
+@pytest.fixture
+def mock_favicon_server(monkeypatch):
+    """Route _fetch_favicon's pinned client to an in-process handler."""
+    import httpx
+
+    import api.services.pinned_http as pinned_http
+    state = {"status": 200, "body": b""}
+
+    def _handler(request):
+        return httpx.Response(state["status"], content=state["body"])
+
+    def _client(**kwargs):
+        kwargs["transport"] = httpx.MockTransport(_handler)
+        return httpx.AsyncClient(**kwargs)
+
+    monkeypatch.setattr(pinned_http, "pinned_client", _client)
+    return state
+
+
+@pytest.mark.asyncio
+async def test_fetch_favicon_returns_image_bytes(mock_favicon_server):
+    mock_favicon_server["body"] = ICON_SAMPLES["ico"]
+    assert await _fetch_favicon("brand.example") == ICON_SAMPLES["ico"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", [AKAMAI_DENIED, WAF_DOWN])
+async def test_fetch_favicon_treats_200_error_page_as_missing(mock_favicon_server, body):
+    """A bot wall's "200 OK" HTML must not get a hash: a static error page
+    shared by many sites would otherwise match them all."""
+    mock_favicon_server["body"] = body
+    assert await _fetch_favicon("brand.example") is None
+
+
+@pytest.mark.asyncio
+async def test_error_page_is_cached_as_miss(fake_redis, mock_favicon_server):
+    from api.services.favicon_hash import get_favicon_hash
+
+    mock_favicon_server["body"] = AKAMAI_DENIED
+    assert await get_favicon_hash("brand.example") is None
+    assert fake_redis.store["favicon:hash:brand.example"] == "MISS"
 
 
 # ───────────────────────────────────────────────────────────────
