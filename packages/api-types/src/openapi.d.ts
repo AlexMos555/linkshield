@@ -620,8 +620,8 @@ export interface paths {
          *       2. Cleanway's own published blocklist, the list the phone blocks: a
          *          listed host is 'dangerous' at once (verdict_basis 'blocklist').
          *       3. The service host of a user-content platform (disk.yandex.ru,
-         *          onedrive.live.com): a fixed "real service, we cannot vouch for the
-         *          page" caution (verdict_basis 'user_content'), no analysis.
+         *          onedrive.live.com, disk.yandex.kz): a fixed "real service, we cannot
+         *          vouch for the page" caution (verdict_basis 'user_content'), no analysis.
          *       4. Per-endpoint Redis cache, in its own namespace: a day for a full
          *          verdict, less for a not-found or partial one.
          *       5. A fresh-analysis cap per minute — per IP, or per install when the

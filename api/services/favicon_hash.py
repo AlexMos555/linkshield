@@ -8,8 +8,8 @@ Phishing kits copy a brand's homepage WHOLESALE, including the
 exact favicon. The favicon is fetched from
 `/favicon.ico` (or the link rel="icon" hint, but ~95% of brand
 pages still ship at /favicon.ico). When the bytes match a known
-brand's favicon but the host is NOT that brand's verified host
-→ near-certain brand-clone phishing.
+brand's favicon but the host is NOT that brand's verified host (or a
+name under one) → near-certain brand-clone phishing.
 
 We use SHA-256 of the favicon bytes (truncated to 12 hex chars)
 as the perceptual identity. Not a TRUE perceptual hash — a single
@@ -53,6 +53,8 @@ import pathlib
 from typing import Optional
 
 from api.services.cache import get_redis
+from api.services.hosting_platforms import dynamic_dns_suffix_of, tenant_suffix_of
+from api.services.scoring import _SCORER_SHARED_SUFFIXES
 
 logger = logging.getLogger(__name__)
 
@@ -210,6 +212,22 @@ async def get_favicon_hash(domain: str) -> Optional[str]:
     return digest
 
 
+def _is_brand_host(host: str, verified: set[str]) -> bool:
+    """A verified host, or a name under one, unless it is a tenant of a shared
+    platform (a verified host that is a hosting platform vouches for its own
+    name only).
+
+    Exact matches only until 2026-10-27, when /public/check called
+    www.amazon.co.uk a clone of amazon.co.uk ("caution 40"): that day 21 of
+    the gallery's 77 hosts had no www. twin. A subtree, not the registrable
+    domain: only names the brand's own DNS hands out."""
+    if host in verified:
+        return True
+    if not any(host.endswith("." + v) for v in verified):
+        return False
+    return tenant_suffix_of(host, _SCORER_SHARED_SUFFIXES) is None and dynamic_dns_suffix_of(host) is None
+
+
 async def check_favicon_brand_clone(domain: str) -> dict:
     """Parallel-check entry. Returns the scoring contribution.
 
@@ -225,7 +243,8 @@ async def check_favicon_brand_clone(domain: str) -> dict:
     The check fires ONLY when:
       1. We can hash the candidate's favicon, AND
       2. That hash appears in some brand's `known_favicon_hashes`, AND
-      3. The candidate domain is NOT in that brand's `verified_hosts`.
+      3. The candidate domain is NOT one of that brand's `verified_hosts`
+         nor a name under one (_is_brand_host).
 
     A legitimate brand serving its own favicon returns `cloned=False`
     even though the hash matches — that's the correct behavior.
@@ -249,7 +268,7 @@ async def check_favicon_brand_clone(domain: str) -> dict:
         if digest not in known:
             continue
         verified = {h.lower() for h in (brand.get("verified_hosts") or [])}
-        if domain_key in verified:
+        if _is_brand_host(domain_key, verified):
             # Brand's own host — favicon match is expected.
             return {
                 "cloned": False,

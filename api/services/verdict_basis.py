@@ -223,7 +223,7 @@ def blocklist_result(domain: str, listed_as: Optional[str] = None) -> DomainResu
 
 def user_content_result(domain: str) -> DomainResult:
     """The service host of a user-content platform (disk.yandex.ru, see
-    hosting_platforms.is_user_content_service): a real service, an unknown page."""
+    scoring.is_user_content_service_host): a real service, an unknown page."""
     return DomainResult(
         domain=domain, score=CANNOT_VOUCH_SCORE, level=RiskLevel.caution,
         confidence=ConfidenceLevel.high,

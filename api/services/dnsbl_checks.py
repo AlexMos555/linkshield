@@ -34,7 +34,7 @@ import asyncio
 import ipaddress
 import logging
 
-from api.services.scoring import _extract_base_domain
+from api.services.scoring import registrable_domain
 
 logger = logging.getLogger("cleanway.analyzer")
 
@@ -113,9 +113,11 @@ async def check_spamhaus_dbl(domain: str) -> bool:
 
 async def check_surbl(domain: str) -> bool:
     """SURBL multi via the public mirror (non-commercial terms — see
-    licensed_intel). SURBL indexes registrable domains, so the base domain is
-    what is asked about."""
-    base = _extract_base_domain(domain)
+    licensed_intel). SURBL indexes registrable domains, so the registrable
+    domain is what is asked about: evil.co.uk for login.evil.co.uk. The last
+    two labels were asked until 2026-10-27 — co.uk.multi.surbl.org, which
+    SURBL never lists, for every host under a compound suffix."""
+    base = registrable_domain(domain)
     answers = await _query(f"{base}.{SURBL_ZONE}")
     hit = surbl_verdict(answers)
     if hit:
