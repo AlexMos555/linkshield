@@ -237,7 +237,10 @@ def test_a_reported_name_needs_both_lists_or_many_links_or_the_very_top():
 # ── Building the files ──
 
 def _crux_gz(rows) -> bytes:
-    return gzip.compress(("origin,rank\n" + "".join(f"https://{h},{r}\n" for r, h in rows)).encode())
+    # mtime=0: tests build the world twice and compare sha256s; with the default
+    # header timestamp the two gzips differ whenever a second boundary falls
+    # between them (test_build_writes_the_five_files failed that way, 2026-10-28).
+    return gzip.compress(("origin,rank\n" + "".join(f"https://{h},{r}\n" for r, h in rows)).encode(), mtime=0)
 
 
 def _majestic_csv(names) -> str:
