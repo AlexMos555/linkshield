@@ -65,7 +65,9 @@ UPSTREAM_TIMEOUT_S = 4.0
 # How long one request may stay open at the upstream — longer than a query
 # waits: a request the query gave up on runs on until the upstream answers
 # (see proxy_to_upstream). Cloudflare answers a zone whose servers never
-# respond with SERVFAIL after up to ~5.4 s (measured 2026-10-23). httpx's read
+# respond with SERVFAIL after 0.1-9.3 s: p50 2.5 s, p99 8.5 s, none past
+# 10 s (280 names under four such zones, both endpoints, 2026-10-28; up to
+# ~5.4 s on 2026-10-23) — inside this bound, if not by much. httpx's read
 # timeout (the same value) does not bound a request over HTTP/2: it times one
 # network read on the shared connection, and any other stream's data starts
 # it again, so a stream the upstream never answers stayed open for as long as
@@ -78,7 +80,13 @@ UPSTREAM_TIMEOUT_S = 4.0
 # re-send instead, fewer connections were dropped, and each drop is what
 # frees the slots of every unanswered stream on it: with one upstream and 2 %
 # names nobody answers, 12-39 % of the healthy misses got SERVFAIL instead of
-# 0.1-5 % (stand, 2026-10-27, same seeds).
+# 0.1-5 % (stand, 2026-10-27, same seeds). Dropping the connection only once
+# its upstream had no slot free (final review 2026-10-27) halved the drops
+# under a stub that never answers 2 % of the names (stand row d2, two
+# workers: ~21 a minute instead of ~44, one per connection every ~11 s, not ~6)
+# but gave 0.4-0.7 % of the healthy misses SERVFAIL instead of 0-0.1 % (four
+# runs each, same seeds): not taken. A drop costs a re-send of the requests a
+# query still waits for and one warning.
 REQUEST_TIMEOUT_S = 10.0
 HEDGE_AFTER_S = 0.4
 MAX_RESPONSE_BYTES = 65535
@@ -281,6 +289,8 @@ _zones: dict[str, _Zone] = {}
 _abandoned: set[asyncio.Task] = set()
 _closing: dict[httpx.AsyncClient, asyncio.Task] = {}
 _dropped: "weakref.WeakSet[httpx.AsyncClient]" = weakref.WeakSet()
+# Requests out on each client now: a drop's one warning says how many it cut off.
+_open: dict[httpx.AsyncClient, int] = {}
 
 
 def configured_urls() -> list[str]:
@@ -308,6 +318,7 @@ def _bind(loop: asyncio.AbstractEventLoop, ups: list[Upstream]) -> None:
         _loop, _zones = loop, {}
         _abandoned.clear()
         _closing.clear()
+        _open.clear()
         for up in ups:
             up.client = up.slots = None
     for up in ups:
@@ -338,6 +349,7 @@ def _reset_upstream_client_for_tests() -> None:
     _zones = {}
     _abandoned.clear()
     _closing.clear()
+    _open.clear()
 
 
 async def _close(client: httpx.AsyncClient) -> None:
@@ -348,13 +360,22 @@ async def _close(client: httpx.AsyncClient) -> None:
 
 
 def _drop(up: Upstream, client: Optional[httpx.AsyncClient]) -> None:
-    """Close `client` and its connection; the upstream's next request opens a
-    new one."""
+    """A request on `client` stayed unanswered REQUEST_TIMEOUT_S: close the
+    client and its connection; the upstream's next request opens a new one.
+    One warning per connection, however many requests fail with it — each of
+    them is logged at DEBUG (one warning each: ~25 lines per drop on the
+    stand, final review 2026-10-27)."""
     if up.client is client:
         up.client = None
-    if client is None or client in _closing:
+    if client is None or client in _dropped:
+        logger.debug("DoH upstream request unanswered for %.0f s on a connection already dropped",
+                     REQUEST_TIMEOUT_S)
         return
     _dropped.add(client)
+    doh_metrics.METRICS.inc("upstream_dropped")
+    logger.warning("DoH upstream left a request unanswered for %.0f s: connection dropped with %d other "
+                   "requests on it (those a query still waits for are sent again)",
+                   REQUEST_TIMEOUT_S, _open.get(client, 0))
     task = asyncio.get_running_loop().create_task(_close(client))
     _closing[client] = task
     task.add_done_callback(lambda _t: _closing.pop(client, None))
@@ -393,8 +414,14 @@ _RETRY_ONCE = (httpx.RemoteProtocolError, httpx.ReadError, httpx.WriteError)
 
 
 async def _send(attempt: _Attempt, wire: bytes) -> httpx.Response:
-    attempt.client = _client_for(attempt.up)
-    return await attempt.client.post(attempt.up.url, content=wire, headers=_HEADERS)
+    client = attempt.client = _client_for(attempt.up)
+    _open[client] = _open.get(client, 0) + 1
+    try:
+        return await client.post(attempt.up.url, content=wire, headers=_HEADERS)
+    finally:
+        left = _open.pop(client, 1) - 1
+        if left > 0:
+            _open[client] = left
 
 
 async def _post(attempt: _Attempt, wire: bytes) -> httpx.Response:
@@ -518,11 +545,15 @@ async def _ask(attempt: _Attempt, wire: bytes, zone: str, z: Optional[_Zone]) ->
             logger.warning("DoH upstream returned an unusable answer (HTTP %d)", resp.status_code)
     except asyncio.TimeoutError:
         _drop(up, attempt.client)
-        doh_metrics.METRICS.inc("upstream_dropped")
-        logger.warning("DoH upstream left a request unanswered for %.0f s: connection dropped",
-                       REQUEST_TIMEOUT_S)
     except Exception as exc:  # noqa: BLE001
-        logger.warning("DoH upstream call failed: %s", type(exc).__name__)
+        if attempt.abandoned or attempt.client in _dropped:
+            # No query waits for it (upstream_abandoned has counted it), or
+            # _drop has said so, once for every request on the connection: a
+            # connection that goes fails them all (GOAWAY, read timeout).
+            logger.debug("DoH upstream call failed, nobody waiting or connection dropped: %s",
+                         type(exc).__name__)
+        else:
+            logger.warning("DoH upstream call failed: %s", type(exc).__name__)
     if attempt.abandoned:
         return None  # the query has counted this upstream's outcome already
     up.record(body is not None)

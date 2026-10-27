@@ -604,6 +604,35 @@ async def test_dead_names_spread_over_many_zones_slow_the_rest_down_at_most(monk
 # ── review 2026-10-27: requests nobody waits for ───────────────────
 
 @pytest.mark.asyncio
+async def test_a_request_nobody_waits_for_fails_without_a_warning(holding_upstream, monkeypatch, caplog):
+    """When a connection goes — the upstream's GOAWAY, or httpx's read
+    timeout on a connection that carried nothing but streams nobody answers
+    for REQUEST_TIMEOUT_S — every request still on it fails. Those no query
+    waits for change no answer, and upstream_abandoned has counted them: at
+    DEBUG. As warnings they were 365 lines in a 30 s run of row a (the stub's
+    GOAWAY every 1000 requests) and 209 when row d2's traffic stopped (final
+    review 2026-10-28). A query's own failed request is still a warning."""
+    import logging
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 0.1)
+    with caplog.at_level(logging.DEBUG, logger="api.services.doh_gateway"):
+        assert await asyncio.gather(*[doh_upstream.proxy_to_upstream(query(f"r{i}.dead.example"))
+                                      for i in range(3)]) == [None] * 3
+        for _ in range(3):
+            holding_upstream.release(exc=httpx.RemoteProtocolError("ConnectionTerminated"))
+        await asyncio.sleep(0.02)
+        assert not [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+        assert sum(r.levelno == logging.DEBUG and "failed" in r.getMessage() for r in caplog.records) == 3
+        monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 1.0)
+        q = _ask("q.dead.example")
+        for _ in range(2):  # the request and its one re-send
+            await asyncio.sleep(0.02)
+            holding_upstream.release(exc=httpx.RemoteProtocolError("ConnectionTerminated"))
+        assert await q is None
+    assert [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING] == [
+        "DoH upstream call failed: RemoteProtocolError"]
+
+
+@pytest.mark.asyncio
 async def test_a_request_nobody_waits_for_is_not_sent_again_after_a_goaway(holding_upstream, monkeypatch):
     """A pooled connection the upstream closes (GOAWAY) fails its open
     streams; a request the query still waits for is re-sent once, one nobody
@@ -753,6 +782,37 @@ async def test_a_query_whose_request_was_on_a_dropped_connection_is_answered_on_
     assert await dead is None
     assert len(client.made) == 2
     assert doh_metrics.METRICS.counts["upstream_dropped"] == 1
+
+
+@pytest.mark.asyncio
+async def test_a_dropped_connection_is_one_warning_however_many_requests_were_on_it(monkeypatch, caplog):
+    """Every request still open on a dropped connection fails with it; one
+    warning each was ~25 lines per drop on the stand (row d2, final review
+    2026-10-27). One warning says that the connection was dropped and how
+    many requests were on it; each request's failure is at DEBUG."""
+    import logging
+    from api import config
+    monkeypatch.setattr(config.get_settings(), "doh_upstreams", A)
+    monkeypatch.setattr(doh_upstream.httpx, "AsyncClient", _droppable_client())
+    doh_upstream._reset_upstream_client_for_tests()
+    monkeypatch.setattr(doh_upstream, "REQUEST_TIMEOUT_S", 0.6)
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 0.2)
+    with caplog.at_level(logging.DEBUG, logger="api.services.doh_gateway"):
+        assert await doh_upstream.proxy_to_upstream(query("r0.dead.example")) is None
+        await asyncio.sleep(0.1)
+        # five more nobody waits for after 0.2 s, still open when r0 passes 0.6 s
+        assert await asyncio.gather(*[doh_upstream.proxy_to_upstream(query(f"r{i}.dead.example"))
+                                      for i in range(1, 6)]) == [None] * 5
+        for _ in range(100):
+            if not doh_upstream._abandoned and not doh_upstream._closing:
+                break
+            await asyncio.sleep(0.01)
+    warnings = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+    assert len(warnings) == 1, warnings
+    assert "dropped" in warnings[0] and "5 other requests" in warnings[0], warnings[0]
+    assert sum(r.levelno == logging.DEBUG and "failed" in r.getMessage() for r in caplog.records) == 5
+    assert doh_metrics.METRICS.counts["upstream_dropped"] == 1
+    _assert_idle()
 
 
 @pytest.mark.asyncio

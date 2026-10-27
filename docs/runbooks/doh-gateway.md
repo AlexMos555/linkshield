@@ -158,12 +158,21 @@ At ~900 req/s — half a worker's saturation point with this mix — one worker
 serves on the order of **10k phones at peak**. Latency stays low while a
 worker is below ~60% busy; above that, misses queue. Scale on CPU, not memory.
 
-## A zone that never answers (2026-10-23, reworked 2026-10-27)
+## A zone that never answers (2026-10-23, reworked 2026-10-27 and -28)
 
 **The problem.** Random subdomains of a zone whose authoritative servers
 never answer (`r<hex>.dead.example`: a DGA, a broken app, a lame
-delegation) are never cached, and each waits the whole 4 s budget;
-Cloudflare answers them SERVFAIL after up to ~5.4 s (measured 2026-10-23).
+delegation) are never cached, and each waits the whole 4 s budget.
+Cloudflare answers them SERVFAIL, but late: measured 2026-10-28 from a
+workstation (not from Railway), 280 random names under four reverse zones whose servers do not
+answer (`48.189.in-addr.arpa`, `36.78.202.in-addr.arpa`,
+`38.78.202.in-addr.arpa`, `40.78.202.in-addr.arpa`; checked with
+`dig +trace`), half to `cloudflare-dns.com`, half to `1.1.1.1`, RFC 8484
+POST, at most one query a second: every one HTTP 200 + SERVFAIL with EDE 22
+(No Reachable Authority), after 0.1-9.3 s — p50 2.5 s, p90 5.6 s, p99
+8.5 s, none past 10 s (2026-10-23: up to ~5.4 s). The first name of a zone
+takes longest; once Cloudflare has marked the zone's servers unreachable,
+names under it come back in ~1.3 s.
 Until 2026-10-23 a worker had 32 upstream slots, hedges included, and ~4-8
 such names a second took all of them: every other cache miss queued behind
 them. Worse, a request cancelled at the deadline kept its HTTP/2 stream open
@@ -179,10 +188,13 @@ reasons in the list below are what the review found it got wrong.
 * **A request, once sent, is not cancelled.** It runs until the upstream
   answers, holding its slot, so the slots count the connection's open
   streams. A request still unanswered `REQUEST_TIMEOUT_S` (10 s) after it was
-  sent is given up together with its connection; the requests still on that
-  connection are re-sent once on a new one. httpx's own read timeout does
-  not bound it over HTTP/2: it times one read on the shared connection, and
-  any other stream's data starts it again.
+  first sent is given up together with its connection — cancelled alone, its
+  stream would stay open all the same; only closing the connection closes
+  it. The requests still on that connection fail; those a query waits for
+  are re-sent once on a new one. httpx's own read timeout does not bound a
+  request over HTTP/2: it times one read on the shared connection, and any
+  other stream's data starts it again. Cloudflare's slowest SERVFAIL above
+  (9.3 s) came inside this bound, but not by much.
 * **Slots per upstream: 96** — each upstream is one HTTP/2 connection with
   100 streams. Cloudflare by name and by IP: 2 × 96. A query goes to the
   first upstream (healthy ones first) with a free slot. Without `h2` the cap
@@ -208,32 +220,45 @@ reasons in the list below are what the review found it got wrong.
   get SERVFAIL at 4 s instead of every miss arriving late.
 * **Hedge: 400 ms after the request was sent, into spare room only** — more
   than half of the target upstream's slots free, fewer than 8 of the zone's
-  requests at the upstreams, nobody waiting for the zone. Both default upstreams are one resolver: a
-  hedge helps when a connection stalls, not when a name is slow.
+  requests at the upstreams, nobody waiting for the zone. Both default
+  upstreams are one resolver: a hedge helps when a connection stalls, not
+  when a name is slow.
 * A request no query waits for any more is not re-sent after a GOAWAY.
 
 **Known limits** (not fixed):
 
 * Names nobody answers spread over many zones (one name per zone) are
-  bounded only by the slots: ~2 × 96 / 5.4 s ≈ 35 a second per worker at
-  Cloudflare's timing. On a virtual-clock model with 6 s answers: 0 %
+  bounded only by the slots: ~2 × 96 / 5.4 s ≈ 35 a second per worker with
+  5.4 s answers (Cloudflare's p90 above is 5.6 s). On a virtual-clock model with 6 s answers: 0 %
   SERVFAIL up to 30 a second, 3-6 % at 33-36. Past that the oldest waiting
   misses get SERVFAIL; main answered late at those rates and failed with
   `LocalProtocolError` from ~16 a second. Stand: 20 a second per worker over
   200 zones, 2 upstreams (row c2+) — 8 % (main 78 %); 40 a second with one
   upstream (rows c 10 %) — 64-70 % (main 77-89 %).
-* An upstream that never answers some names: each such request holds its
-  slot up to `REQUEST_TIMEOUT_S`, so ~96 / 10 s ≈ 10 a second per upstream,
-  and then costs the connection (at most one drop per 10 s per upstream:
-  the drop clears every unanswered stream on it). Rows d / d+ / d2: 8 a second per worker — 0-0.5 % (main 0.1 % while the
-  stub recycled its connections, which also closed main's leaked streams;
-  70-79 % without).
-* Dropping a connection (`upstream_dropped`) fails every request on it;
-  those a query still waits for are re-sent once, so it costs latency, not
-  answers: with the stub answering in 6 s and closing connections every
-  1000 requests, 2-3 drops per 30 s run (a request re-sent after a GOAWAY
-  passed 10 s), row c 2 %: 0.4 % SERVFAIL and a p95 of 0.3-1.8 s (main 0 %,
-  p50 1.2 s).
+* An upstream that never answers some names (Cloudflare did not, in the
+  measurement above; the stub of rows d, or a stalled connection, does):
+  each such request holds its slot up to `REQUEST_TIMEOUT_S`, so ~96 / 10 s
+  ≈ 10 a second per upstream, and then costs the connection. Under a steady
+  stream of them a connection goes about every 6 s, not every 10 s: the
+  requests re-sent on the new connection keep the time they were first
+  sent (row d2, 8 a second per worker, two upstreams: ~44 drops a minute
+  over two workers, 2026-10-28). Dropping only once the upstream had no
+  slot free halved the drops but gave 0.4-0.7 % of the healthy misses
+  SERVFAIL instead of 0-0.1 % (four runs each, same seeds; final review
+  2026-10-27) — not taken. With Cloudflare's timing above, a drop needs a
+  SERVFAIL slower than 10 s (none in 280) or a stalled connection. Rows
+  d / d+ / d2: 8 a second per worker — 0-0.5 % (main 0.1 % while the stub
+  recycled its connections, which also closed main's leaked streams; 70-79 %
+  without).
+* Dropping a connection (`upstream_dropped`, one WARNING per drop with the
+  number of requests it cut off) fails every request on it; those a query
+  still waits for are re-sent once, so it costs latency, not answers. A
+  failed request no query waits for any more is logged at DEBUG, whatever
+  closed its connection — our drop, the upstream's GOAWAY, httpx's read
+  timeout on a connection that carried nothing else for 10 s. As warnings
+  they were ~1850 lines a minute in row d2 (~25 per drop) and 365 in a 30 s
+  run of row a (the stub's GOAWAY every 1000 requests); a query's own failed
+  request is still a WARNING.
 * A zone that answers, but slowly, is capped too: ~43 / latency unique
   names a second per worker while the upstream's slots are otherwise free
   (~40 at 1 s, ~140 at 0.3 s), down to 16 / latency when other names hold
@@ -400,7 +425,7 @@ service. In order of value per effort:
 | `upstream_slot_wait` | a query waited for a slot: all 96 of an upstream's were taken | rising → slots are short; `upstreams[].in_flight` and `upstream_slots.abandoned` say by what |
 | `upstream_abandoned` | a sent request no query waited for any more — a hedge loser, or still out at the deadline; it runs on, holding its slot | has a baseline (every lost hedge); worry when it rises with `servfail` |
 | `upstream_hedge_skipped` | a hedge was due but no upstream had spare room for it (more than half its slots free) | rising → slots are short |
-| `upstream_dropped` | a request stayed unanswered for `REQUEST_TIMEOUT_S` (10 s): it was given up together with its connection | any, sustained → the upstream drops requests |
+| `upstream_dropped` | a request stayed unanswered for `REQUEST_TIMEOUT_S` (10 s): it was given up together with its connection; one WARNING per drop says how many other requests were on it | any, sustained → the upstream leaves requests unanswered (Cloudflare's SERVFAIL for an unreachable zone took ≤ 9.3 s in 280 tries) |
 | `rate_limited` | 429s sent | rising → a CGNAT address hit the ceiling; raise the limit |
 | `internal_error`, `filter_error`, `cache_error` | a bug, failed open | any |
 
@@ -408,8 +433,9 @@ service. In order of value per effort:
 counters above are since start): `upstreams[].in_flight` / `waiting` —
 requests at that upstream (of 96) and queries waiting for one of its slots;
 `upstream_slots` — `zones_full` (zones with a query waiting for room),
-`zone_waiting` (queries waiting for room in them), `abandoned` (requests no query waits for,
-still open), `dropping` (connections being dropped after `upstream_dropped`).
+`zone_waiting` (queries waiting for room in them), `abandoned` (requests no
+query waits for, still open), `dropping` (connections being dropped after
+`upstream_dropped`).
 Slots full and most of them `abandoned`: names nobody answers. Slots full,
 few abandoned: the upstream itself is slow.
 
