@@ -46,9 +46,10 @@ none of it may stay in a product people pay for (docs/THIRD_PARTY_FEEDS.md
     names someone reported.
 
 How the rank is made (each step is a parameter below):
-  1. Every host is folded to its registrable domain the way the scorer
-     reads it (registrable_domain(): play.google.com → google.com,
-     kvs.gov.spb.ru → gov.spb.ru), each list keeping a domain's best rank.
+  1. Every host is folded to its registrable domain the way the model
+     reads it (scoring.legacy_registrable_domain(): play.google.com →
+     google.com, kvs.gov.spb.ru → gov.spb.ru), each list keeping a domain's
+     best rank.
      A tenant of a shared suffix (foo.github.io, x.us.org) is dropped: its
      traffic is its own, not the platform's, and the scorer never looks a
      tenant up by name. Where the scorer's reading is an ICANN public
@@ -204,13 +205,20 @@ CHANGES = (
 )
 
 
-# ── Registrable domains, the scorer's reading ──
+# ── Registrable domains, the model's reading ──
 #
-# api.services.scoring.registrable_domain() is the rule; it cannot be
+# api.services.scoring.legacy_registrable_domain() is the rule; it cannot be
 # imported here (scoring needs pydantic, the Redis runner has httpx and
 # redis only). This is the same rule — a Russian PSL rule plus one label,
-# else the compound-ccTLD heuristic of doh_gateway._registrable_domain — and
-# tests/test_build_top_domains.py holds the two to the same answer.
+# else the compound-ccTLD heuristic (public_suffix.heuristic_registrable_domain)
+# — and tests/test_build_top_domains.py holds the two to the same answer.
+# Not scoring.registrable_domain(), which reads the Public Suffix List since
+# 2026-10-28: top_100k.json and public_suffixes_in_top.json are the model's
+# feature data (in_top_domains, is_hosting_subdomain), and folding with the
+# PSL would have merged 71 keys into 27 registrables, 19 of them new keys
+# that are no PSL suffix but zones (com.be, com.nl, gov.hu: every *.com.be
+# host instant-safe through top_domain_key). The PSL's ICANN section
+# already folds the hosts this rule reads as a suffix (fold(), below).
 
 _CCTLD_SECOND_LEVELS = frozenset({
     "com", "co", "org", "net", "gov", "edu", "ac", "mil", "gob", "gouv",
@@ -252,7 +260,7 @@ def _ru_registrable(parts: list[str]) -> Optional[str]:
 
 
 def registrable_domain(host: str) -> str:
-    """The registrable domain a host is judged by (scoring.registrable_domain)."""
+    """The registrable domain the model reads a host by (scoring.legacy_registrable_domain)."""
     dom = (host or "").lower().strip(".")
     if not dom:
         return ""

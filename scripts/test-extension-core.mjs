@@ -2692,10 +2692,28 @@ const SITE_PAIRS = [
   ["www.tax.service.gov.uk", "signin.account.gov.uk", true],
   ["nias.gov.hr", "nias-gov.hr", false],
   ["mojprofil.gov.hr", "evil.com.hr", false],
-  // Two-label sites the compound heuristic reads as a suffix.
+  // Two-label sites the compound heuristic read as a suffix; the PSL lists
+  // neither (2026-10-28: the guard's own list of them is gone).
   ["www.web.de", "login.web.de", true],
   ["account.id.me", "api.id.me", true],
   ["web.de", "evilweb.de", false],
+  // Public suffixes the heuristic did not know (the PSL's ICANN section):
+  // every owner under one was a single site.
+  ["paypal-secure.my.id", "collector.my.id", false],
+  ["www.paypal-secure.my.id", "login.paypal-secure.my.id", true],
+  ["apple-id.io.vn", "drop.io.vn", false],
+  ["paypa1.me.uk", "steal.me.uk", false],
+  ["evil.ltd.uk", "example.ltd.uk", false],
+  ["netbanking.hdfc.bank.in", "hdfc.bank.in", true],
+  ["evil.bank.in", "hdfc.bank.in", false],
+  // Wildcard and exception rules: every b.kobe.jp is a suffix, city.kobe.jp
+  // is a name.
+  ["a.b.kobe.jp", "c.b.kobe.jp", false],
+  ["www.city.kobe.jp", "city.kobe.jp", true],
+  // A state's government suffix under a restricted zone: one owner, as the
+  // heuristic had it (sp.gov.br); never an open zone next to it.
+  ["detran.sp.gov.br", "www.ssp.sp.gov.br", true],
+  ["detran.sp.gov.br", "evil.com.br", false],
 ];
 
 // [visible host, the brand the guard says it imitates, or null]
@@ -2716,6 +2734,18 @@ const LOOKALIKES = [
     "rakuten-bank.co.jp", "upsdc.gov.in", "upsssc.gov.in", "maybank2u.com.my", "dhlottery.co.kr",
     "lloydsbank.co.uk", "ecitizen.go.ke", "citizen.co.za", "commbank.com.au",
     "aboutamazon.co.uk", "paypay-bank.co.jp"].map((host) => [host, null]),
+  // Under the public suffixes the heuristic did not know (2026-10-28): the
+  // feed's my.id, hl.cn and io.vn look-alikes, named "my", "hl" and "io"
+  // before.
+  ["paypal-secure.my.id", "paypal"],
+  ["adsmanager-facebook.my.id", "facebook"],
+  ["copyright-instagram.my.id", "instagram"],
+  ["apiim-whatsapp.hl.cn", "whatsapp"],
+  ["apple-id.io.vn", "apple"],
+  ["paypa1.me.uk", "paypal"],
+  // The two-label sites: their own names, as before.
+  ["login.web.de", null],
+  ["account.id.me", null],
   // The brand's own name under another suffix.
   ["paypal.co.uk", null],
   ["www.amazon.co.jp", null],
@@ -2774,6 +2804,8 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     assert.equal(guard.siteOf("kvs.gov.spb.ru"), "gov.spb.ru");
     assert.equal(guard.siteOf("192.168.1.10"), "192.168.1.10");
     assert.equal(guard.siteOf("login.web.de"), "web.de");
+    assert.equal(guard.siteOf("www.paypal-secure.my.id"), "paypal-secure.my.id");
+    assert.equal(guard.siteOf("a.www.ck"), "www.ck");
   });
 
   await check(`[${tree}] the credential guard's look-alike check reads the registrable name`, async () => {

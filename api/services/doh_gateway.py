@@ -52,6 +52,7 @@ import httpx  # noqa: F401 — kept: tests patch doh_gateway.httpx.AsyncClient
 
 from api.services.dns_wire import BLOCK_SOA_MNAME
 from api.services.doh_wire import opt_record, query_shape
+from api.services.public_suffix import registrable_domain as _psl_registrable_domain
 
 logger = logging.getLogger(__name__)
 
@@ -120,45 +121,26 @@ def parse_qname(wire: bytes) -> Optional[str]:
     return qname or None
 
 
-# Generic second-level labels used under 2-letter ccTLDs (com.cn, co.nz, com.tr,
-# co.il, com.ar, ...). Enough to treat the common compound suffixes as one eTLD
-# without shipping a full public-suffix list.
-_CCTLD_SECOND_LEVELS = frozenset({
-    "com", "co", "org", "net", "gov", "edu", "ac", "mil", "gob", "gouv",
-    "or", "ne", "go", "in", "nom", "gen", "ltd", "plc", "sch", "asn",
-    "id", "biz", "info", "web", "gv", "govt",
-})
-
-
 def _registrable_domain(qname: str) -> str:
-    """Best-effort registrable domain for the threat-intel lookup.
+    """The registrable domain (eTLD+1) of a query name, for the threat-intel
+    lookup and doh_upstream's zone key: the Public Suffix List's ICANN rules
+    with the Russian zones on top (public_suffix.registrable_domain, the
+    scorer's registrable_domain too) — www.bbc.co.uk → bbc.co.uk,
+    x.paypal-secure.my.id → paypal-secure.my.id, login.web.de → web.de,
+    a.gosuslugi-lk.spb.ru → gosuslugi-lk.spb.ru. A suffix by itself answers
+    itself (com.au).
 
-    Cleanway's `dangerous_domains` set is indexed by registrable
-    domain (eTLD+1). For most TLDs this is the last two labels.
-    We don't pull in a full PSL because the threat-intel feeds we
-    use also index naively — close enough to keep miss-rates low.
+    Until 2026-10-28 this was a compound-ccTLD heuristic (a 2-letter ccTLD
+    under co/com/gov/ac/web/id … took three labels), which put every owner
+    under my.id, io.vn, me.uk or nhs.uk in one zone and split www.web.de
+    from web.de; the phishing model still reads that one
+    (public_suffix.heuristic_registrable_domain). Cost per call, measured
+    2026-10-28 on 200,000 top-100k and feed hosts: 1.2 µs, against 0.56 µs
+    for the heuristic — once per upstream query where doh_upstream keys its
+    zones on it (PR #354); the block lookup is a suffix walk and does not
+    call it.
     """
-    if not qname:
-        return ""
-    parts = qname.strip(".").lower().split(".")
-    if len(parts) <= 2:
-        return ".".join(parts)
-    last_two = ".".join(parts[-2:])
-    # Explicit compound suffixes (belt-and-suspenders for the common ones).
-    if last_two in {
-        "co.uk", "ac.uk", "gov.uk", "org.uk", "co.jp", "co.in",
-        "com.au", "com.br", "com.mx", "co.kr", "co.za", "com.sg",
-    }:
-        return ".".join(parts[-3:])
-    # Heuristic for the long tail of compound ccTLDs without pulling in a full
-    # PSL: a 2-letter ccTLD preceded by a generic second-level label
-    # (com.cn, co.nz, com.tr, co.il, com.ar, co.th, ...) means the registrable
-    # domain is the last THREE labels, so a brand apex like apple.com.cn is not
-    # mistaken for a spoof subdomain.
-    tld, sld = parts[-1], parts[-2]
-    if len(tld) == 2 and sld in _CCTLD_SECOND_LEVELS:
-        return ".".join(parts[-3:])
-    return last_two
+    return _psl_registrable_domain(qname)
 
 
 # Negative-cache TTL carried in the SOA of every synthesized NXDOMAIN.

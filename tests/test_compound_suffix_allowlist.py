@@ -5,7 +5,7 @@ Found 2026-10-27 in production: /public/check/www.amazon.co.uk answered
 on www.amazon.co.uk") plus missing_headers. The allowlist looked a host up by
 its last two labels, 'co.uk', and no top-100k entry is a public suffix: the
 list is keyed by registrable domain (scripts/build_top_domains.py folds it
-with scoring.registrable_domain and the PSL's ICANN section), so 11,232 of
+with scoring.legacy_registrable_domain and the PSL's ICANN section), so 11,232 of
 its 100,000 entries — bbc.co.uk, yahoo.co.jp, amazon.com.br, www.nhs.uk,
 hdfc.bank.in — and every subdomain of them were never instant-safe.
 
@@ -73,9 +73,10 @@ def test_entries_the_psl_folded_are_reached_through_their_subdomains(host, entry
 
 @pytest.mark.parametrize("host", ["web.de", "www.web.de", "mail.web.de", "www.id.me"])
 def test_two_label_top_names_shaped_like_suffixes_keep_their_trust(host):
-    """web.de and id.me look like compound suffixes to the heuristic
-    (registrable_domain('www.web.de') is 'www.web.de'); a registrable-only
-    lookup would have dropped these hosts, trusted before."""
+    """web.de and id.me looked like compound suffixes to the heuristic
+    registrable_domain() read until 2026-10-28 ('www.web.de' was its own
+    registrable domain); a registrable-only lookup would have dropped these
+    hosts, trusted before. The Public Suffix List lists neither."""
     assert is_trusted_top_domain(host) is True
 
 

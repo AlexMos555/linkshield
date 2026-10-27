@@ -35,7 +35,7 @@ import api.services.ml_scorer as ml_scorer
 from api.services.ml_features import (
     FEATURE_NAMES, LIVE_FEATURE_DATA, FeatureData, extract_ml_features, host_shape, shared_tenant,
 )
-from api.services.scoring import TYPOSQUAT_TARGETS, registrable_domain
+from api.services.scoring import TYPOSQUAT_TARGETS, legacy_registrable_domain
 from api.services.url_features import FEATURES_VERSION, _max_brand_similarity, extract_features
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -352,11 +352,11 @@ def test_phishing_names_come_before_ip_literals(train_model, data_dir):
 
 
 def test_held_out_hosts_never_reach_either_class(train_model, data_dir):
-    held_out = frozenset({registrable_domain("kvs.gov.spb.ru")})
+    held_out = frozenset({legacy_registrable_domain("kvs.gov.spb.ru")})
     phishing = train_model.load_phishing_domains(10, held_out)
     assert "evil.gov.spb.ru" not in phishing
     benign = train_model.load_benign_domains(40, exclude=phishing, held_out=held_out)
-    assert not [d for d in benign if registrable_domain(d) == "gov.spb.ru"]
+    assert not [d for d in benign if legacy_registrable_domain(d) == "gov.spb.ru"]
     assert "paypal.account-check.tk" not in benign
 
 
@@ -413,5 +413,5 @@ def test_a_retrain_without_the_subdomain_list_stops(train_model, data_dir):
 def test_the_evaluation_sets_are_held_out(train_model):
     held_out = train_model.load_held_out()
     for host in ("kvs.gov.spb.ru", "ako.ru", "museum.vladimir.ru", "sberbank-online.msk.ru", "adm44.ru"):
-        assert registrable_domain(host) in held_out, host
+        assert legacy_registrable_domain(host) in held_out, host
     assert all(os.path.exists(p) for p in train_model.HELD_OUT_FILES)

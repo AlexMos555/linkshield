@@ -359,16 +359,18 @@ def fetch_crux(scope: str, today: Optional[datetime.date] = None) -> tuple[str, 
 
 
 def registrable_rows(rows: Iterable[tuple[int, str]]) -> list[tuple[int, str]]:
-    """(rank, host) → (rank, registrable domain), the scorer's reading
-    (www.gosuslugi.ru → gosuslugi.ru, kvs.gov.spb.ru → gov.spb.ru). Hosting
-    tenants are left out: foo.github.io is not github.io's popularity, and
-    tenants are the host list's own stratum."""
+    """(rank, host) → (rank, registrable domain), the model's features'
+    reading (www.gosuslugi.ru → gosuslugi.ru, kvs.gov.spb.ru → gov.spb.ru;
+    scoring.legacy_registrable_domain, not the Public Suffix List the rules
+    read since 2026-10-28: this is training input). Hosting tenants are left
+    out: foo.github.io is not github.io's popularity, and tenants are the
+    host list's own stratum."""
     if _ROOT not in sys.path:
         sys.path.insert(0, _ROOT)
     from api.services.ml_features import shared_tenant
-    from api.services.scoring import registrable_domain
+    from api.services.scoring import legacy_registrable_domain
 
-    return [(rank, registrable_domain(host)) for rank, host in rows if not shared_tenant(host)[0]]
+    return [(rank, legacy_registrable_domain(host)) for rank, host in rows if not shared_tenant(host)[0]]
 
 
 def merge_ranked(*lists: Iterable[tuple[int, str]]) -> list[tuple[int, str]]:

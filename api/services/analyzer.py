@@ -47,6 +47,7 @@ from api.services.tls_contexts import client_tls_context
 from api.services.scoring import (
     calculate_score, calculate_confidence, calculate_confidence_pct, is_hosting_platform_site,
     is_regional_government_domain, is_user_content_service_host, popularity_rank, registrable_domain,
+    _platform_tenant_site,
 )
 from api.services.domain_validator import (
     validate_domain,
@@ -614,11 +615,17 @@ async def _name_is_vouched_for(domain: str, signals: dict, deadline: Deadline) -
     reading that rank as a vouch for every host anyone registers under it
     let an unreachable gosuslugi-lk.spb.ru through as 'safe'. (The ranking
     since 2026-10-23 folds every host to its registrable domain the same
-    way, so it carries gov.spb.ru, not spb.ru.)"""
+    way, so it carries gov.spb.ru, not spb.ru.)
+
+    Nor does a shared zone's: by the Public Suffix List's ICANN rules (read
+    since 2026-10-28) evil.biz.ua is a name under biz.ua, whose rank (top-10k
+    #5653) is the zone's — the PSL keeps biz.ua, com.de and com.se in its
+    private section, and the scorer's tenant zones carry them instead
+    (_platform_tenant_site, which popularity_rank() reads too)."""
     if signals.get("tranco_ranked") or _government_name(domain):
         return True
     registrable = registrable_domain(domain)
-    if registrable == domain or is_hosting_platform_site(domain):
+    if registrable == domain or is_hosting_platform_site(domain) or _platform_tenant_site(domain):
         return False
     try:
         rank = await asyncio.wait_for(get_tranco_rank(registrable), timeout=deadline.step(_VOUCH_LOOKUP_S))
