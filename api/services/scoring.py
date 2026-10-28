@@ -35,7 +35,7 @@ from api.services.hosting_platforms import dynamic_dns_suffix_of as _dynamic_dns
 from api.services.hosting_platforms import is_shared_platform_site, tenant_suffix_of
 from api.services.hosting_platforms import USER_CONTENT_HOSTS, is_user_content_service
 from api.services.hosting_platforms import OPERATOR_SUFFIXES, is_operator_zone_name
-from api.services.public_suffix import heuristic_registrable_domain
+from api.services.public_suffix import heuristic_registrable_domain, is_ip_literal
 from api.services.public_suffix import registrable_domain as _psl_registrable_domain
 
 logger = logging.getLogger("cleanway.scoring")
@@ -1432,12 +1432,15 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     _distinct = signals.get("alienvault_distinct_pulses")
     otx_reports = alienvault_pulses if _distinct is None else min(_distinct, alienvault_pulses)
     if otx_reports > 0:
-        # registrable_domain(), with the Russian zones: until 2026-10-28 this
-        # read the compound-ccTLD heuristic, whose key for any x.spb.ru was
-        # spb.ru (top-10k #758) — so no OTX report ever scored under spb.ru
-        # or msk.ru (#2547), and under nov.ru, pp.ru and ras.ru it was
-        # halved: 14 of the 186 ru_heuristics_phish hosts.
-        _reg = _platform_tenant_site(ascii_domain) or registrable_domain(domain)
+        # The registrable domain whose popularity counts
+        # (rank_registrable_domain), with the Russian zones: until 2026-10-28
+        # this read the compound-ccTLD heuristic, whose key for any x.spb.ru
+        # was spb.ru (top-10k #758) — so no OTX report ever scored under
+        # spb.ru or msk.ru (#2547), and under nov.ru, pp.ru and ras.ru it was
+        # halved: 14 of the 186 ru_heuristics_phish hosts. Never a zone above
+        # the name the old reading had: web.de (#2424) waives no report about
+        # login.web.de, as it did not before.
+        _reg = _platform_tenant_site(ascii_domain) or rank_registrable_domain(domain)
         _rank = popularity_rank(signals, ascii_domain)
         _top_ranked = _rank is not None and _rank <= 100_000
         _ranked = _rank is not None
@@ -1959,8 +1962,10 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # PSL-aware registrable domain (not the naive 2-label split) so this
     # stays correct for compound suffixes — foo.co.uk and x.my.id are apexes,
     # not subdomains, and so is herzen.spb.ru (the heuristic read before
-    # 2026-10-28 had no Russian zones).
-    if signals.get("dns_has_mx") is False:
+    # 2026-10-28 had no Russian zones). Not an IP address: it is its own
+    # registrable domain since then (its last two numbers before), and
+    # check_dns finds no MX for any IP URL.
+    if signals.get("dns_has_mx") is False and not is_ip_literal(domain or ""):
         if domain == registrable_domain(domain):
             score += 8
             reasons.append(DomainReason(
@@ -2284,10 +2289,12 @@ def _ru_registrable_domain(domain: str) -> Optional[str]:
 
 def registrable_domain(domain: str) -> str:
     """The registrable domain (eTLD+1) a host is judged by: the Public Suffix
-    List's ICANN rules with the Russian zones on top (public_suffix.py) —
-    login.example.co.uk → example.co.uk, paypal-secure.my.id → itself,
-    login.web.de → web.de, kvs.gov.spb.ru → gov.spb.ru. The DoH gateway's
-    _registrable_domain is the same function.
+    List's ICANN rules with the Russian zones and the registry overlay on top
+    (public_suffix.py) — login.example.co.uk → example.co.uk,
+    paypal-secure.my.id → itself, login.web.de → web.de, kvs.gov.spb.ru →
+    gov.spb.ru, mail.confirm-lnstagram.com.de → confirm-lnstagram.com.de.
+    The DoH gateway's _registrable_domain is the same function; whose rank
+    counts for a host is rank_registrable_domain()'s question.
 
     Not what the phishing model's features read: see
     legacy_registrable_domain()."""
@@ -2312,6 +2319,31 @@ def legacy_registrable_domain(domain: str) -> str:
     (measured 2026-10-27). Move it with a retrain, not before."""
     dom = (domain or "").lower().strip(".")
     return _ru_registrable_domain(dom) or heuristic_registrable_domain(dom)
+
+
+def rank_registrable_domain(domain: str) -> str:
+    """The name whose top-1M rank may speak for `domain` as its registrable
+    domain's: registrable_domain(), but never shorter than
+    legacy_registrable_domain() — where the reading before 2026-10-28 kept
+    the host's name apart from a 2-letter ccTLD's second level that no PSL
+    section and no overlay lists (evil.org.zz, login.web.de), that name.
+
+    Read by tranco._registrable_rank (the signals' tranco_registrable_rank:
+    the OTX gate, the fresh-certificate exemption, self-hosted products),
+    the OTX gate's own top-10k/100k key and the analyzer's vouch for an
+    unreachable site. Not by SURBL (dnsbl_checks.check_surbl): its own list
+    keeps gov.hu and edu.na apart but not gov.ro, gov.hr, sch.gr, web.de or
+    id.me, so the PSL's reading matches it for more of these names (about
+    60 against 17 on the top-100k, 2026-10-28). A zone's rank is everyone's
+    under it: the 2026-10-28 review found 59 feed phishing hosts taking one
+    (co.ua #278,678, co.nl #284,346, info.gf #270,247 on the Tranco top-1M)
+    before the registry overlay kept those zones split, and an open zone the
+    overlay does not know yet must not do the same. The cost is the old
+    reading's for one owner's 2-label names: login.web.de is not vouched for
+    by web.de's rank, as it was not before."""
+    new = registrable_domain(domain)
+    old = legacy_registrable_domain(domain)
+    return old if len(old) > len(new) and old.endswith("." + new) else new
 
 
 def _subdomain_labels(domain: str) -> list[str]:

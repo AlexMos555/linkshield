@@ -16,10 +16,13 @@ What it does:
      rules, and no ICANN rule reaches under a Russian overlay zone (the
      overlay is merged into the ICANN rules on that assumption,
      tests/test_public_suffix.py);
-  3. prints what changed in the ICANN section, and whether the PSL's
-     Russian rules still match data/ru_public_suffixes.json — that file is
-     the model's input too (scoring.legacy_registrable_domain), so it is
-     rebuilt (scripts/build_ru_public_suffixes.py) with a retrain, not here;
+  3. prints what changed in the ICANN section and in the PRIVATE rules the
+     registry overlay takes (public_suffix.private_registries: co.ua,
+     com.de …), the zones of data/cctld_registries.json the PSL now lists
+     (drop them there), and whether the PSL's Russian rules still match
+     data/ru_public_suffixes.json — that file is the model's input too
+     (scoring.legacy_registrable_domain), so it is rebuilt
+     (scripts/build_ru_public_suffixes.py) with a retrain, not here;
   4. writes the list byte for byte (its MPL 2.0 notice and VERSION line
      included).
 
@@ -100,6 +103,17 @@ def report(candidate: ps.PublicSuffixList, current: Optional[ps.PublicSuffixList
         lines += [f"  + {r}" for r in added[:40]] + [f"  - {r}" for r in removed[:40]]
         if len(added) > 40 or len(removed) > 40:
             lines.append("  … (first 40 each)")
+    new_reg = ps.private_registries(candidate)
+    if current is not None:
+        old_reg = ps.private_registries(current)
+        if new_reg != old_reg:
+            lines.append(f"registries kept from the PRIVATE section (public_suffix.private_registries): "
+                         f"+{sorted(new_reg - old_reg)} -{sorted(old_reg - new_reg)}")
+    listed = sorted(z for z in ps.CURATED_REGISTRIES
+                    if ps._covered(candidate.icann, z) or ps._covered(candidate.private, z))
+    if listed:
+        lines.append(f"NOTE: data/{ps.REGISTRY_FILE} zones the PSL lists now: {listed}. Drop them there "
+                     "(tests/test_public_suffix.py requires it).")
     psl_ru = {r for r in _rules(candidate.icann) | _rules(candidate.private)
               if "." in r.lstrip("*.!") and r.rsplit(".", 1)[1] in _RU_TLDS}
     overlay = set(json.loads(RU_OVERLAY.read_text(encoding="utf-8")))
@@ -111,9 +125,17 @@ def report(candidate: ps.PublicSuffixList, current: Optional[ps.PublicSuffixList
 
 
 def _load_vendored() -> Optional[ps.PublicSuffixList]:
+    """The vendored copy, or None when there is none or it does not parse.
+    A broken copy is the case this script repairs (the service is on the
+    heuristic fallback meanwhile, public_suffix.LOAD_ERROR): say so, and go
+    on without the comparisons that need it."""
     try:
         return ps.parse(VENDORED.read_text(encoding="utf-8"))
     except FileNotFoundError:
+        return None
+    except (OSError, UnicodeDecodeError, ValueError) as exc:
+        print(f"the vendored {VENDORED.name} is unreadable ({exc}); not comparing the candidate with it",
+              file=sys.stderr)
         return None
 
 

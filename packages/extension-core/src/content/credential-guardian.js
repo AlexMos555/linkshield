@@ -136,9 +136,9 @@
   // Both form checks ask it: Signal A whether the form posts to another
   // site, Signal B what the site is called. A site is the registrable
   // domain, by the server's rule (scoring.registrable_domain: the Public
-  // Suffix List's ICANN rules with the Russian PSL zones on top), ported in
-  // utils/name-rules.js, which every manifest loads before this file into
-  // the same content-script world.
+  // Suffix List's ICANN rules with the Russian PSL zones and the registry
+  // overlay on top), ported in utils/name-rules.js, which every manifest
+  // loads before this file into the same content-script world.
   //
   // This file used to take the last two labels. Under a compound suffix
   // those are the suffix, so everyone there was one site:
@@ -158,9 +158,14 @@
   // names. It also took web.de and id.me for suffixes, which this file had
   // to correct with a list of its own; the PSL lists neither.
   //
-  // Shared zones the PSL lists in its PRIVATE section only (com.de, co.vu …)
-  // are one site here, as on the server: the server's rule leaves that
-  // section to its curated platform lists.
+  // Read by the ICANN section alone, the registries the heuristic split
+  // rightly would have been one site each: co.ua, com.de, co.nl (the PSL
+  // lists them in its PRIVATE section only) and co.vu, co.nf, com.tg (in no
+  // section), so paypal-login.co.vu posting to collector.co.vu was "the same
+  // site" and named "co". The server's registry overlay keeps them split
+  // (public_suffix.REGISTRY_OVERLAY, registrySuffixes in scorer-data.js).
+  // The rest of the PRIVATE section stays out (github.io, blogspot.com): the
+  // server's curated platform lists decide those, and this file has none.
   var GUARD_ROOT = typeof self !== "undefined" ? self : globalThis;
 
   function _nameRules() {
@@ -197,17 +202,23 @@
   // had them: a sibling in the zone is not an attacker's, and the PSL itself
   // does not split gov.hr, gov.hu, gov.cz or sch.gr (mojprofil.gov.hr signs
   // in at nias.gov.hr, Croatia's state sign-in; kau.gov.hu at idp.gov.hu).
-  // The nearest such zone above the site: gov.uk for service.gov.uk, and
+  // The outermost such zone above the site: gov.uk for service.gov.uk, and
   // gov.br for detran.sp.gov.br, whose own suffix (sp.gov.br, one of the 27
   // state rules under gov.br the PSL reading of 2026-10-28 knows) carries no
   // restricted label — the heuristic before it had every sp.gov.br agency
-  // one site.
+  // one site. Outermost, not nearest: the state codes of Goiás and Acre are
+  // restricted labels themselves (go, ac), and educacao.go.gov.br signs in
+  // at sso.acesso.gov.br, the federal Login Único, like every other state.
+  // In the ICANN section only go.gov.br and ac.gov.br nest a restricted
+  // label under a restricted zone (2026-10-28).
   function _restrictedZoneOf(site) {
     var rules = _nameRules();
     if (!rules || typeof rules.isRestrictedZone !== "function" || _isIpLiteral(site)) return "";
+    var zone = "";
     for (var suffix = site.slice(site.indexOf(".") + 1); suffix.indexOf(".") !== -1; suffix = suffix.slice(suffix.indexOf(".") + 1)) {
-      if (rules.isRestrictedZone(suffix)) return suffix;
+      if (rules.isRestrictedZone(suffix)) zone = suffix;
     }
+    if (zone) return zone;
     // The zone's own site: gov.hr next to nias.gov.hr.
     return site.split(".").length === 2 && rules.isRestrictedZone(site) ? site : "";
   }

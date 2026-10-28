@@ -344,10 +344,17 @@ for (const [treeName, tree] of TREES) {
       ["WWW.Example.CO.UK.", "example.co.uk"], ["co.uk", "co.uk"], ["10.0.1.10", "10.0.1.10"],
       ["[::1]", "[::1]"], ["localhost", "localhost"], ["", ""], ["x.constructor", "x.constructor"],
       ["paypal-secure.my.id", "paypal-secure.my.id"], ["login.web.de", "web.de"],
-      ["kvs.gov.spb.ru", "gov.spb.ru"],
+      ["kvs.gov.spb.ru", "gov.spb.ru"], ["evil.co.ua", "evil.co.ua"], ["x.paypal-login.co.vu", "paypal-login.co.vu"],
+      ["mail.confirm-lnstagram.com.de", "confirm-lnstagram.com.de"], ["co.ua", "co.ua"], ["www.amazon.com.be", "com.be"],
     ];
     const wrong = cases.filter(([h, want]) => rules.registrableDomain(h) !== want);
     assert.strictEqual(wrong.map(([h, want]) => `${h}: ${rules.registrableDomain(h)}, expected ${want}`).join("; "), "");
+    // Every zone of the server's registry overlay (registrySuffixes) is
+    // split, as public_suffix.registrable_domain splits it.
+    const zones = ctx.cleanwayScorerData.registrySuffixes;
+    assert.ok(Array.isArray(zones) && zones.includes("co.vu") && zones.includes("com.de"), "no registrySuffixes");
+    const unsplit = zones.filter((z) => rules.registrableDomain(`www.x.${z}`) !== `x.${z}`);
+    assert.strictEqual(unsplit.join(", "), "");
     // The shape rules keep the model's reading.
     assert.strictEqual(rules.legacyRegistrable("paypal-secure.my.id"), "my.id");
     assert.strictEqual(rules.legacyRegistrable("www.web.de"), "www.web.de");

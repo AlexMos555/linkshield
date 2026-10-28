@@ -46,7 +46,7 @@ from api.services.analysis_budget import MIN_STEP_S, Deadline, run_within_budget
 from api.services.tls_contexts import client_tls_context
 from api.services.scoring import (
     calculate_score, calculate_confidence, calculate_confidence_pct, is_hosting_platform_site,
-    is_regional_government_domain, is_user_content_service_host, popularity_rank, registrable_domain,
+    is_regional_government_domain, is_user_content_service_host, popularity_rank, rank_registrable_domain,
     _platform_tenant_site,
 )
 from api.services.domain_validator import (
@@ -617,14 +617,20 @@ async def _name_is_vouched_for(domain: str, signals: dict, deadline: Deadline) -
     since 2026-10-23 folds every host to its registrable domain the same
     way, so it carries gov.spb.ru, not spb.ru.)
 
-    Nor does a shared zone's: by the Public Suffix List's ICANN rules (read
-    since 2026-10-28) evil.biz.ua is a name under biz.ua, whose rank (top-10k
-    #5653) is the zone's — the PSL keeps biz.ua, com.de and com.se in its
-    private section, and the scorer's tenant zones carry them instead
-    (_platform_tenant_site, which popularity_rank() reads too)."""
+    Nor does a zone's above the registrant (scoring.rank_registrable_domain):
+    acessar-conta-br.co.ua is its own registrable domain, not a name under
+    co.ua (#278,678 of the Tranco top-1M) — public_suffix's registry overlay
+    — and a zone no list knows lends its rank to no name the reading before
+    2026-10-28 kept apart from it.
+
+    Nor a platform's to its customers (_platform_tenant_site, as in
+    popularity_rank()): since 2026-10-28 an unreachable x.duckdns.org,
+    x.repl.co or bucket.s3.amazonaws.com is not vouched for by its platform's
+    rank — 35,631 of the 699,287 hosts of the 2026-10-24 feed snapshot were,
+    none of the labelled legit sets or the top-100k."""
     if signals.get("tranco_ranked") or _government_name(domain):
         return True
-    registrable = registrable_domain(domain)
+    registrable = rank_registrable_domain(domain)
     if registrable == domain or is_hosting_platform_site(domain) or _platform_tenant_site(domain):
         return False
     try:

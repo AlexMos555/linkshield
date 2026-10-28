@@ -11,7 +11,18 @@ rules to utils/name-rules.js):
   * the Russian zones of data/ru_public_suffixes.json on top (spb.ru,
     gov.ru, the .рус cities …): all 102 of its rules are in the PSL's
     PRIVATE section, and the scorer has read them as registries since
-    2026-09-27 (scoring._ru_registrable_domain), so they stay.
+    2026-09-27 (scoring._ru_registrable_domain), so they stay;
+  * the registry overlay (REGISTRY_OVERLAY): the second levels of 2-letter
+    ccTLDs the compound-ccTLD heuristic below split and where every name is
+    a separate registrant's, though the ICANN section does not list them —
+    the PSL's PRIVATE rules of that shape (co.ua, com.de, co.nl, co.pl,
+    biz.ua …, private_registries()) and data/cctld_registries.json, those in
+    neither section (co.vu, co.nf, info.gf, com.tg …). Read ICANN-only,
+    1,262 hosts of the 2026-10-24 feed snapshot (co.vu 1,100, com.de 74,
+    co.ua 21) became subdomains of their zone: one site with every stranger
+    there, named 'co' or 'com' to the brand and keyword checks, and vouched
+    for by the zone's top-1M rank (co.ua #278,678, co.cz #129,724) — the
+    2026-10-28 review.
 
 The rest of the PRIVATE section (github.io, blogspot.com, vercel.app …) is
 deliberately left out: which platform's subdomains are separate customers is
@@ -19,7 +30,8 @@ decided by the curated lists (data/hosting_platforms.json, tenant zones,
 public_suffixes_in_top.json), which also say whose rank vouches for whom.
 Mixed in silently, the list would have split 194,233 of the 699,287 hosts of
 the 2026-10-24 feed snapshot into "own sites" behind the curated machinery's
-back.
+back. None of the overlay's zones has a platform's shape: a ccTLD's second
+level is a registry, not somebody's product.
 
 Until 2026-10-28 the rule was a compound-ccTLD heuristic (a 2-letter ccTLD
 under a generic second level — co, com, gov, ac, web, id … — takes three
@@ -55,6 +67,7 @@ _DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
 PSL_FILE = "public_suffix_list.dat"
 PSL_URL = "https://publicsuffix.org/list/public_suffix_list.dat"
 RU_OVERLAY_FILE = "ru_public_suffixes.json"
+REGISTRY_FILE = "cctld_registries.json"
 
 _SECTIONS = ("ICANN", "PRIVATE")
 
@@ -74,7 +87,7 @@ def ascii_name(name: str) -> str:
     return ".".join(ascii_label(p) for p in name.lower().split("."))
 
 
-def _is_ip_literal(dom: str) -> bool:
+def is_ip_literal(dom: str) -> bool:
     # IPv6 (bare or as a URL host, [::1]) has a colon; an IPv4 address ends in
     # a number, which no TLD is (RFC 3696 §2). Its registrable domain is
     # itself, not its last two numbers (10.0.1.10 vs 192.168.1.10).
@@ -122,7 +135,7 @@ class SuffixRules(NamedTuple):
         one label. A suffix by itself, a single label and an IP literal
         answer themselves; '' for nothing."""
         dom = (host or "").lower().strip(".")
-        if not dom or _is_ip_literal(dom):
+        if not dom or is_ip_literal(dom):
             return dom
         parts = dom.split(".")
         if len(parts) == 1:
@@ -242,6 +255,15 @@ _HEURISTIC_COMPOUND = frozenset({
 })
 
 
+def heuristic_suffix(name: str) -> bool:
+    """Does heuristic_registrable_domain() read the 2-label `name` as a
+    public suffix (co.uk, com.de, co.vu, web.de), i.e. keep x.<name> apart?"""
+    parts = name.split(".")
+    if len(parts) != 2:
+        return False
+    return name in _HEURISTIC_COMPOUND or (len(parts[1]) == 2 and parts[0] in CCTLD_SECOND_LEVELS)
+
+
 def heuristic_registrable_domain(qname: str) -> str:
     """The old best-effort registrable domain: the last three labels for a
     2-letter ccTLD under a generic second level (apple.com.cn, bbc.co.uk),
@@ -258,6 +280,35 @@ def heuristic_registrable_domain(qname: str) -> str:
     if len(tld) == 2 and sld in CCTLD_SECOND_LEVELS:
         return ".".join(parts[-3:])
     return last_two
+
+
+def _covered(rules: SuffixRules, zone: str) -> bool:
+    """Is `zone` (ASCII) a public suffix under `rules` by itself?"""
+    labels = zone.split(".")
+    return rules.suffix_length(labels, default=0) >= len(labels)
+
+
+def private_registries(psl: PublicSuffixList, ru: Optional[SuffixRules] = None) -> frozenset[str]:
+    """The PSL's PRIVATE-section rules the compound-ccTLD heuristic also read
+    as suffixes (heuristic_suffix: co.ua, com.de, com.se, co.nl, co.no,
+    co.pl, co.cz, co.de, biz.ua, ltd.ua, gov.nl …: 30 on the list of
+    2026-10-22), less those the ICANN section or the Russian overlay already
+    covers: registries by the PSL's own account, split before 2026-10-28
+    and kept split. Taken from the vendored list, so a refresh that adds or
+    drops one moves the boundary (scripts/refresh_public_suffix_list.py
+    reports it)."""
+    ru = RU_OVERLAY if ru is None else ru
+    return frozenset(r for r in psl.private.exact
+                     if heuristic_suffix(r) and not _covered(psl.icann, r) and not _covered(ru, r))
+
+
+def _load_curated_registries() -> frozenset[str]:
+    try:
+        with open(os.path.join(_DATA_DIR, REGISTRY_FILE), encoding="utf-8") as f:
+            return frozenset(ascii_name(z) for z in json.load(f)["zones"])
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        logger.error("%s not loaded (%s): its zones read as names", REGISTRY_FILE, exc)
+        return frozenset()
 
 
 # ── The loaded rules ──
@@ -279,21 +330,28 @@ def _load() -> tuple[Optional[PublicSuffixList], SuffixRules, Optional[str]]:
 
 
 LIST, RU_OVERLAY, LOAD_ERROR = _load()
-# ICANN and the Russian overlay in one table: the overlay's TLDs carry no
-# ICANN rule longer than the TLD (tests/test_public_suffix.py), so the
-# longest rule is the Russian one where it applies and the ICANN one
-# elsewhere — scoring's "Russian rule, else ..." order.
-_RULES: Optional[SuffixRules] = merge(LIST.icann, RU_OVERLAY) if LIST is not None else None
+CURATED_REGISTRIES = _load_curated_registries()
+REGISTRY_OVERLAY = rules_from(
+    (private_registries(LIST) if LIST is not None else frozenset()) | CURATED_REGISTRIES)
+# ICANN, the Russian overlay and the registry overlay in one table, as one
+# list's rules: the longest matching rule prevails. The Russian overlay's
+# TLDs carry no ICANN rule longer than the TLD (tests/test_public_suffix.py),
+# so there the Russian rule is the one that applies — scoring's "Russian
+# rule, else ..." order; the registry overlay's exact 2-label rules simply
+# join their TLD's ICANN rules (name-rules.js merges them the same way).
+_RULES: Optional[SuffixRules] = merge(LIST.icann, RU_OVERLAY, REGISTRY_OVERLAY) if LIST is not None else None
 
 
 def registrable_domain(host: str) -> str:
     """The registrable domain of `host` (ASCII or decoded IDN; case and a
     trailing dot ignored), in the spelling it was given:
     login.example.co.uk → example.co.uk, paypal-secure.my.id → itself,
-    login.web.de → web.de, kvs.gov.spb.ru → gov.spb.ru. A public suffix by
+    login.web.de → web.de, kvs.gov.spb.ru → gov.spb.ru,
+    www.acessar-conta-br.co.ua → acessar-conta-br.co.ua. A public suffix by
     itself, a single label and an IP literal answer themselves."""
     rules = _RULES
-    if rules is None:  # the vendored list did not load (logged at import)
+    if rules is None:  # the vendored list did not load (logged at import);
+        # the heuristic splits the registry overlay's zones by itself
         dom = (host or "").lower().strip(".")
         k = RU_OVERLAY.suffix_length([ascii_label(p) for p in dom.split(".")], default=0) if dom else 0
         return ".".join(dom.split(".")[-(k + 1):]) if k else heuristic_registrable_domain(dom)

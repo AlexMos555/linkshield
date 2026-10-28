@@ -137,9 +137,21 @@ def test_parity_table_holds_the_public_suffix_list_cases():
         "www.school.sch.gr": "sch.gr", "www.city.kobe.jp": "city.kobe.jp", "a.b.kobe.jp": "a.b.kobe.jp",
         "a.www.ck": "www.ck", "foo.github.io": "github.io", "kvs.gov.spb.ru": "gov.spb.ru",
         "192.168.1.10": "192.168.1.10",
+        # The registry overlay: split as the heuristic split them.
+        "x.com.de": "x.com.de", "x.co.vu": "x.co.vu", "amazon.com.be": "com.be",
     }
     assert {h: rows[h][6] for h in expected} == expected
     # The shape columns stay on the model's legacy reading: one level of
     # subdomain under 'my.id' for paypal-secure.my.id, none for www.web.de's
     # 'www' (the heuristic reads www.web.de as a registrable domain).
     assert rows["paypal-secure.my.id"][5] == "1" and rows["www.web.de"][5] == "0"
+
+
+def test_the_registry_overlay_ships_whole():
+    """name-rules.js merges registrySuffixes into the ICANN rules of each
+    TLD, as public_suffix merges REGISTRY_OVERLAY: the same list, sorted."""
+    from api.services import public_suffix
+
+    data = _builder().scorer_data()
+    assert data["registrySuffixes"] == sorted(public_suffix.REGISTRY_OVERLAY.exact)
+    assert {"co.ua", "co.vu", "com.de"} <= set(data["registrySuffixes"])

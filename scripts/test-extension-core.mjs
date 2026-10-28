@@ -2714,6 +2714,20 @@ const SITE_PAIRS = [
   // heuristic had it (sp.gov.br); never an open zone next to it.
   ["detran.sp.gov.br", "www.ssp.sp.gov.br", true],
   ["detran.sp.gov.br", "evil.com.br", false],
+  // The state governments whose own state code is a restricted label, go
+  // (Goiás) and ac (Acre): the outermost restricted zone is the site's, so
+  // they sign in at the federal gov.br Login Único as their own site.
+  ["educacao.go.gov.br", "sso.acesso.gov.br", true],
+  ["sei.ac.gov.br", "sso.acesso.gov.br", true],
+  ["sefaz.pe.gov.br", "sei.ac.gov.br", true],
+  ["educacao.go.gov.br", "evil.com.br", false],
+  // Registries the ICANN section does not list, which the heuristic split
+  // and the server's registry overlay keeps split (2026-10-28 review): one
+  // stranger's free name posting to another's is off-site.
+  ["paypal-login.co.vu", "collector.co.vu", false],
+  ["acessar-conta-br.co.ua", "steal.co.ua", false],
+  ["login-check.com.de", "collector.com.de", false],
+  ["www.evil.co.ua", "login.evil.co.ua", true],
 ];
 
 // [visible host, the brand the guard says it imitates, or null]
@@ -2746,6 +2760,10 @@ const LOOKALIKES = [
   // The two-label sites: their own names, as before.
   ["login.web.de", null],
   ["account.id.me", null],
+  // Under the registry overlay's zones the name is the registrant's.
+  ["apple-maps.com.de", "apple"],
+  ["paypal-login.co.vu", "paypal"],
+  ["secure-paypal.co.ua", "paypal"],
   // The brand's own name under another suffix.
   ["paypal.co.uk", null],
   ["www.amazon.co.jp", null],
@@ -2806,6 +2824,8 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     assert.equal(guard.siteOf("login.web.de"), "web.de");
     assert.equal(guard.siteOf("www.paypal-secure.my.id"), "paypal-secure.my.id");
     assert.equal(guard.siteOf("a.www.ck"), "www.ck");
+    assert.equal(guard.siteOf("x.paypal-login.co.vu"), "paypal-login.co.vu");
+    assert.equal(guard.siteOf("www.amazon.com.be"), "com.be");
   });
 
   await check(`[${tree}] the credential guard's look-alike check reads the registrable name`, async () => {

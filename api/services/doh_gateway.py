@@ -124,11 +124,12 @@ def parse_qname(wire: bytes) -> Optional[str]:
 def _registrable_domain(qname: str) -> str:
     """The registrable domain (eTLD+1) of a query name, for the threat-intel
     lookup and doh_upstream's zone key: the Public Suffix List's ICANN rules
-    with the Russian zones on top (public_suffix.registrable_domain, the
-    scorer's registrable_domain too) — www.bbc.co.uk → bbc.co.uk,
-    x.paypal-secure.my.id → paypal-secure.my.id, login.web.de → web.de,
-    a.gosuslugi-lk.spb.ru → gosuslugi-lk.spb.ru. A suffix by itself answers
-    itself (com.au).
+    with the Russian zones and the registry overlay on top
+    (public_suffix.registrable_domain, the scorer's registrable_domain too)
+    — www.bbc.co.uk → bbc.co.uk, x.paypal-secure.my.id →
+    paypal-secure.my.id, login.web.de → web.de, a.gosuslugi-lk.spb.ru →
+    gosuslugi-lk.spb.ru, x.evil.co.vu → evil.co.vu. A suffix by itself
+    answers itself (com.au).
 
     Until 2026-10-28 this was a compound-ccTLD heuristic (a 2-letter ccTLD
     under co/com/gov/ac/web/id … took three labels), which put every owner

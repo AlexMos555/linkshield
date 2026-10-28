@@ -374,6 +374,11 @@ def scorer_data() -> dict:
         "icannSuffixes": icann_suffix_trie(psl.icann),
         "icannSuffixesVersion": psl.version,
         "icannSuffixCounts": icann_suffix_counts(psl.icann),
+        # The registry overlay (public_suffix.REGISTRY_OVERLAY: the PSL's
+        # PRIVATE rules of the heuristic's shape and data/cctld_registries.json,
+        # co.ua, com.de, co.vu …), exact 2-label rules merged into their TLD's
+        # ICANN rules, as on the server.
+        "registrySuffixes": _sorted(public_suffix.REGISTRY_OVERLAY.exact),
         "fakeTldLabels": _sorted(scoring._FAKE_TLD_LABELS),
         "registeredFakeTldLabels": _sorted(scoring._REGISTERED_FAKE_TLD_LABELS),
         "ruZoneBrands": list(scoring._RU_ZONE_BRANDS_LONGEST_FIRST),
@@ -446,8 +451,8 @@ def attribution_comment() -> str:
     """hostingTenantSuffixes are the public-suffix rules under the ranked
     names (data/public_suffixes_in_top.json), adapted from the Majestic
     Million (CC BY 3.0) and the Chrome UX Report (CC BY 4.0): their notice.
-    icannSuffixes are the Public Suffix List's (MPL 2.0): its notice, and
-    where its source form is."""
+    icannSuffixes are the Public Suffix List's (MPL 2.0), and so are most
+    of registrySuffixes: its notice, and where its source form is."""
     sys.path.insert(0, str(ROOT / "scripts"))
     from ranking_attribution import attribution_lines
 
@@ -462,6 +467,8 @@ def attribution_comment() -> str:
         + "// data/public_suffix_list.dat in the Cleanway repository. Changes made: the\n"
         + "// rules of two labels or more, wildcards and exceptions, in punycode, as a\n"
         + "// label trie (scripts/build_extension_scorer_data.py, icann_suffix_trie).\n"
+        + "// registrySuffixes: the same list's PRIVATE-section rules of a ccTLD's\n"
+        + "// generic second level (co.ua, com.de …), with data/cctld_registries.json.\n"
     )
 
 
