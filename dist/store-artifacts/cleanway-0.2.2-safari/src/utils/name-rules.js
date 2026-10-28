@@ -184,7 +184,19 @@
   // .jp, the largest (1,776 rules), about a millisecond.
   var PSL_TRIES = D && D.icannSuffixes && typeof D.icannSuffixes === "object" ? D.icannSuffixes : null;
   var PSL_BY_TLD = new Map();
-  var NO_RULES = { exact: new Set(), wildcards: new Set(), exceptions: new Set(), depth: 1 };
+  var NO_RULES = { exact: new Set(), wildcards: new Set(), exceptions: new Set(), depth: 1, icann: 0 };
+
+  // The server's registry overlay (public_suffix.REGISTRY_OVERLAY): a
+  // ccTLD's second levels where every name is a separate registrant's
+  // though the ICANN section does not list them (co.ua, com.de, co.vu …),
+  // exact 2-label rules joined to their TLD's ICANN rules, as the server
+  // merges them into one table.
+  var REGISTRY_BY_TLD = new Map();
+  (D && Array.isArray(D.registrySuffixes) ? D.registrySuffixes : []).forEach(function (zone) {
+    var tld = zone.slice(zone.lastIndexOf(".") + 1);
+    if (!REGISTRY_BY_TLD.has(tld)) REGISTRY_BY_TLD.set(tld, []);
+    REGISTRY_BY_TLD.get(tld).push(zone);
+  });
 
   // One TLD's rules: Sets of its exact rules, wildcards' bases and
   // exceptions, and its longest rule in labels (a wildcard's '*' counts).
@@ -193,7 +205,12 @@
     if (R) return R;
     // Own keys only: a host under '.constructor' must not read Object's.
     var text = PSL_TRIES && Object.prototype.hasOwnProperty.call(PSL_TRIES, tld) ? PSL_TRIES[tld] : "";
-    R = text ? { exact: new Set(), wildcards: new Set(), exceptions: new Set(), depth: 1 } : NO_RULES;
+    var registries = REGISTRY_BY_TLD.get(tld);
+    R = text || registries ? { exact: new Set(), wildcards: new Set(), exceptions: new Set(), depth: 1, icann: 0 } : NO_RULES;
+    if (registries) {
+      registries.forEach(function (zone) { R.exact.add(zone); });
+      R.depth = 2;
+    }
     var pos = 0;
     // `suffix` has `level` labels; a rule found under it has level + 1.
     function list(suffix, level) {
@@ -208,7 +225,7 @@
         var rule = true;
         if (label === "*") R.wildcards.add(suffix);
         else if (label.charCodeAt(0) === 33) R.exceptions.add(label.slice(1) + "." + suffix); // '!'
-        else if (terminal || !kids) R.exact.add(name);
+        else if (terminal || !kids) { R.exact.add(name); R.icann++; }
         else rule = false;
         if (rule && level + 1 > R.depth) R.depth = level + 1;
         if (kids) { pos++; list(name, level + 1); pos++; } // past ')'
@@ -242,11 +259,12 @@
     return dom.indexOf(":") !== -1 || /^[0-9]+$/.test(dom.slice(dom.lastIndexOf(".") + 1));
   }
 
-  // registrable_domain: the Russian zones, else the PSL's ICANN rules (the
-  // server merges both into one table; tests/test_public_suffix.py holds
-  // that to "the Russian rule first"). A suffix by itself, one label and an
-  // IP literal answer themselves. Without the rules (an old data file) the
-  // legacy reading, as the server falls back when its list does not load.
+  // registrable_domain: the Russian zones, else the PSL's ICANN rules with
+  // the registry overlay (the server merges all three into one table;
+  // tests/test_public_suffix.py holds that to "the Russian rule first"). A
+  // suffix by itself, one label and an IP literal answer themselves.
+  // Without the rules (an old data file) the legacy reading, as the server
+  // falls back when its list does not load; it splits the overlay's zones.
   function registrableDomain(asciiDomain) {
     var dom = clean(asciiDomain);
     if (!dom || isIpLiteral(dom)) return dom;
@@ -824,13 +842,14 @@
     available: D !== null,
     registrableDomain: registrableDomain,
     // For the table tests: the reading the shape rules keep, and the
-    // decoded ICANN rules' sizes (scorer-data.js icannSuffixCounts).
+    // decoded ICANN rules' sizes (scorer-data.js icannSuffixCounts; the
+    // registry overlay's zones not counted).
     legacyRegistrable: legacyRegistrable,
     icannRuleCounts: function () {
       var counts = [0, 0, 0];
       Object.keys(PSL_TRIES || {}).forEach(function (tld) {
         var R = pslRulesOf(tld);
-        counts[0] += R.exact.size; counts[1] += R.wildcards.size; counts[2] += R.exceptions.size;
+        counts[0] += R.icann; counts[1] += R.wildcards.size; counts[2] += R.exceptions.size;
       });
       return counts;
     },
