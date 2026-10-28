@@ -146,6 +146,12 @@ EDGE_CASES = (
     "x.com.de", "x.co.vu", "www.city.kobe.jp", "city.kobe.jp", "a.b.kobe.jp", "b.kobe.jp", "kobe.jp",
     "www.ck", "a.www.ck", "a.b.ck", "foo.github.io", "x.blogspot.com", "accounts.google.sn.cn",
     "allegro.gsm.pl", "my.id", "nhs.uk", "192.168.1.10", "[::1]", "localhost",
+    # 2026-10-28, final review: the ccTLD default splits the free zones no
+    # list knew (ChangeIP's ne.pw, asn.im, or.lt; FreeDNS's govt.hu, mil.nf)
+    # and keeps the named ones (data/cctld_second_levels.json) one site.
+    "paypal-login.ne.pw", "www.aceoouu-asosmaoemsnouu.adqxeha.ne.pw", "secure-paypal.asn.im",
+    "microsoft-login.or.lt", "appleid-verify.sch.in", "office365-login.govt.hu", "usmc.mil.nf",
+    "evil.com.tv", "login.evil.org.zz", "x.co.com", "www.in.gr", "www.ne.se", "repo.or.cz", "www.ne.ch",
     # malformed / degenerate input must not crash either side
     "a", "xn--", "xn---.com", "xn--a.com", "....xn--p1ai", "ru.com", "a.ru.com",
     # astral-plane letters: one character to Python, two UTF-16 units to JS
@@ -374,11 +380,11 @@ def scorer_data() -> dict:
         "icannSuffixes": icann_suffix_trie(psl.icann),
         "icannSuffixesVersion": psl.version,
         "icannSuffixCounts": icann_suffix_counts(psl.icann),
-        # The registry overlay (public_suffix.REGISTRY_OVERLAY: the PSL's
-        # PRIVATE rules of the heuristic's shape and data/cctld_registries.json,
-        # co.ua, com.de, co.vu …), exact 2-label rules merged into their TLD's
-        # ICANN rules, as on the server.
-        "registrySuffixes": _sorted(public_suffix.REGISTRY_OVERLAY.exact),
+        # The ccTLD default (public_suffix.SuffixRules.cc_second_levels): each
+        # of cctldSecondLevels under a 2-letter TLD is a suffix but for these
+        # zones, one owner's names (data/cctld_second_levels.json), as on the
+        # server.
+        "cctldNames": _sorted(public_suffix.CCTLD_NAMES),
         "fakeTldLabels": _sorted(scoring._FAKE_TLD_LABELS),
         "registeredFakeTldLabels": _sorted(scoring._REGISTERED_FAKE_TLD_LABELS),
         "ruZoneBrands": list(scoring._RU_ZONE_BRANDS_LONGEST_FIRST),
@@ -451,8 +457,10 @@ def attribution_comment() -> str:
     """hostingTenantSuffixes are the public-suffix rules under the ranked
     names (data/public_suffixes_in_top.json), adapted from the Majestic
     Million (CC BY 3.0) and the Chrome UX Report (CC BY 4.0): their notice.
-    icannSuffixes are the Public Suffix List's (MPL 2.0), and so are most
-    of registrySuffixes: its notice, and where its source form is."""
+    icannSuffixes are the Public Suffix List's (MPL 2.0): its notice, and
+    where its source form is — a URL, since MPL 2.0 §3.2(a) asks that the
+    recipient of the shipped form can find it from the package alone (the
+    2026-10-28 final review). cctldNames are Cleanway's own."""
     sys.path.insert(0, str(ROOT / "scripts"))
     from ranking_attribution import attribution_lines
 
@@ -464,12 +472,17 @@ def attribution_comment() -> str:
         + "//\n// icannSuffixes: the ICANN section of the Public Suffix List\n"
         + f"// ({public_suffix.PSL_URL}), VERSION {psl.version}, COMMIT {psl.commit},\n"
         + "// Mozilla Public License 2.0 (https://mozilla.org/MPL/2.0/). Source form:\n"
-        + "// data/public_suffix_list.dat in the Cleanway repository. Changes made: the\n"
-        + "// rules of two labels or more, wildcards and exceptions, in punycode, as a\n"
-        + "// label trie (scripts/build_extension_scorer_data.py, icann_suffix_trie).\n"
-        + "// registrySuffixes: the same list's PRIVATE-section rules of a ccTLD's\n"
-        + "// generic second level (co.ua, com.de …), with data/cctld_registries.json.\n"
+        + f"// {SOURCE_FORM_URL}\n"
+        + "// (the unmodified list, as vendored; upstream at the COMMIT above). Changes\n"
+        + "// made: the rules of two labels or more, wildcards and exceptions, in\n"
+        + "// punycode, as a label trie (scripts/build_extension_scorer_data.py,\n"
+        + "// icann_suffix_trie).\n"
     )
+
+
+# Where the shipped PSL's source form is (attribution_comment): the public
+# repository's vendored copy.
+SOURCE_FORM_URL = "https://github.com/AlexMos555/linkshield/blob/main/data/public_suffix_list.dat"
 
 
 def render_data_js() -> str:

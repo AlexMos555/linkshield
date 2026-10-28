@@ -2289,10 +2289,12 @@ def _ru_registrable_domain(domain: str) -> Optional[str]:
 
 def registrable_domain(domain: str) -> str:
     """The registrable domain (eTLD+1) a host is judged by: the Public Suffix
-    List's ICANN rules with the Russian zones and the registry overlay on top
-    (public_suffix.py) — login.example.co.uk → example.co.uk,
-    paypal-secure.my.id → itself, login.web.de → web.de, kvs.gov.spb.ru →
-    gov.spb.ru, mail.confirm-lnstagram.com.de → confirm-lnstagram.com.de.
+    List's ICANN rules with the Russian zones and the ccTLD default on top
+    (public_suffix.py: every generic second level of a 2-letter TLD is a
+    suffix but for the named zones) — login.example.co.uk → example.co.uk,
+    paypal-secure.my.id → itself, kvs.gov.spb.ru → gov.spb.ru,
+    mail.confirm-lnstagram.com.de → confirm-lnstagram.com.de,
+    x.paypal-login.ne.pw → paypal-login.ne.pw, login.web.de → web.de.
     The DoH gateway's _registrable_domain is the same function; whose rank
     counts for a host is rank_registrable_domain()'s question.
 
@@ -2324,23 +2326,23 @@ def legacy_registrable_domain(domain: str) -> str:
 def rank_registrable_domain(domain: str) -> str:
     """The name whose top-1M rank may speak for `domain` as its registrable
     domain's: registrable_domain(), but never shorter than
-    legacy_registrable_domain() — where the reading before 2026-10-28 kept
-    the host's name apart from a 2-letter ccTLD's second level that no PSL
-    section and no overlay lists (evil.org.zz, login.web.de), that name.
+    legacy_registrable_domain() — under a zone public_suffix names as one
+    owner's (login.web.de), the name the reading before 2026-10-28 kept
+    apart from it. Everywhere else registrable_domain() is never shorter
+    than that reading by itself (tests/test_public_suffix.py).
 
     Read by tranco._registrable_rank (the signals' tranco_registrable_rank:
     the OTX gate, the fresh-certificate exemption, self-hosted products),
     the OTX gate's own top-10k/100k key and the analyzer's vouch for an
-    unreachable site. Not by SURBL (dnsbl_checks.check_surbl): its own list
-    keeps gov.hu and edu.na apart but not gov.ro, gov.hr, sch.gr, web.de or
-    id.me, so the PSL's reading matches it for more of these names (about
-    60 against 17 on the top-100k, 2026-10-28). A zone's rank is everyone's
-    under it: the 2026-10-28 review found 59 feed phishing hosts taking one
-    (co.ua #278,678, co.nl #284,346, info.gf #270,247 on the Tranco top-1M)
-    before the registry overlay kept those zones split, and an open zone the
-    overlay does not know yet must not do the same. The cost is the old
-    reading's for one owner's 2-label names: login.web.de is not vouched for
-    by web.de's rank, as it was not before."""
+    unreachable site. Not by SURBL (dnsbl_checks.check_surbl): SURBL keys a
+    name under a named zone by the zone (none of them is on its
+    two-level-tlds list, 2026-10-28), as registrable_domain() does; the two
+    differ nowhere else. A zone's rank is everyone's under it: the
+    2026-10-28 review found 59 feed phishing hosts taking one (co.ua
+    #278,678, co.nl #284,346, info.gf #270,247 on the Tranco top-1M) before
+    those zones were split again. The cost is the old reading's for the
+    named zones: login.web.de is not vouched for by web.de's rank, as it
+    was not before."""
     new = registrable_domain(domain)
     old = legacy_registrable_domain(domain)
     return old if len(old) > len(new) and old.endswith("." + new) else new

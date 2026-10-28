@@ -186,17 +186,15 @@
   var PSL_BY_TLD = new Map();
   var NO_RULES = { exact: new Set(), wildcards: new Set(), exceptions: new Set(), depth: 1, icann: 0 };
 
-  // The server's registry overlay (public_suffix.REGISTRY_OVERLAY): a
-  // ccTLD's second levels where every name is a separate registrant's
-  // though the ICANN section does not list them (co.ua, com.de, co.vu …),
-  // exact 2-label rules joined to their TLD's ICANN rules, as the server
-  // merges them into one table.
-  var REGISTRY_BY_TLD = new Map();
-  (D && Array.isArray(D.registrySuffixes) ? D.registrySuffixes : []).forEach(function (zone) {
-    var tld = zone.slice(zone.lastIndexOf(".") + 1);
-    if (!REGISTRY_BY_TLD.has(tld)) REGISTRY_BY_TLD.set(tld, []);
-    REGISTRY_BY_TLD.get(tld).push(zone);
-  });
+  // The server's ccTLD default (public_suffix.SuffixRules.cc_second_levels):
+  // each generic second level of a 2-letter TLD (cctldSecondLevels: co, com,
+  // net, gov, web …) is a suffix whether the PSL lists it or not — co.ua,
+  // com.de, co.vu, ne.pw — but for the zones named as one owner's
+  // (cctldNames: web.de, id.me, com.be …). Exact 2-label rules joined to
+  // their TLD's ICANN rules, as the server reads them in one table. An open
+  // zone read as one name makes its strangers one site; one owner's read as
+  // a registry only costs what it did before 2026-10-28.
+  var CCTLD_NAMES = set(D && D.cctldNames);
 
   // One TLD's rules: Sets of its exact rules, wildcards' bases and
   // exceptions, and its longest rule in labels (a wildcard's '*' counts).
@@ -205,10 +203,13 @@
     if (R) return R;
     // Own keys only: a host under '.constructor' must not read Object's.
     var text = PSL_TRIES && Object.prototype.hasOwnProperty.call(PSL_TRIES, tld) ? PSL_TRIES[tld] : "";
-    var registries = REGISTRY_BY_TLD.get(tld);
-    R = text || registries ? { exact: new Set(), wildcards: new Set(), exceptions: new Set(), depth: 1, icann: 0 } : NO_RULES;
-    if (registries) {
-      registries.forEach(function (zone) { R.exact.add(zone); });
+    var ccDefault = tld.length === 2 && isAscii(tld) && CCTLD_SLD.size > 0;
+    R = text || ccDefault ? { exact: new Set(), wildcards: new Set(), exceptions: new Set(), depth: 1, icann: 0 } : NO_RULES;
+    if (ccDefault) {
+      CCTLD_SLD.forEach(function (label) {
+        var zone = label + "." + tld;
+        if (!CCTLD_NAMES.has(zone)) R.exact.add(zone);
+      });
       R.depth = 2;
     }
     var pos = 0;
@@ -260,11 +261,11 @@
   }
 
   // registrable_domain: the Russian zones, else the PSL's ICANN rules with
-  // the registry overlay (the server merges all three into one table;
+  // the ccTLD default (the server merges all three into one table;
   // tests/test_public_suffix.py holds that to "the Russian rule first"). A
   // suffix by itself, one label and an IP literal answer themselves.
   // Without the rules (an old data file) the legacy reading, as the server
-  // falls back when its list does not load; it splits the overlay's zones.
+  // falls back when its list does not load; it splits the named zones too.
   function registrableDomain(asciiDomain) {
     var dom = clean(asciiDomain);
     if (!dom || isIpLiteral(dom)) return dom;
@@ -843,7 +844,7 @@
     registrableDomain: registrableDomain,
     // For the table tests: the reading the shape rules keep, and the
     // decoded ICANN rules' sizes (scorer-data.js icannSuffixCounts; the
-    // registry overlay's zones not counted).
+    // ccTLD default's zones not counted).
     legacyRegistrable: legacyRegistrable,
     icannRuleCounts: function () {
       var counts = [0, 0, 0];

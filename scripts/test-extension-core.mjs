@@ -2721,13 +2721,20 @@ const SITE_PAIRS = [
   ["sei.ac.gov.br", "sso.acesso.gov.br", true],
   ["sefaz.pe.gov.br", "sei.ac.gov.br", true],
   ["educacao.go.gov.br", "evil.com.br", false],
-  // Registries the ICANN section does not list, which the heuristic split
-  // and the server's registry overlay keeps split (2026-10-28 review): one
-  // stranger's free name posting to another's is off-site.
+  // A ccTLD's generic second level the ICANN section does not list is split,
+  // as the heuristic split it, but for the named zones (cctldNames): one
+  // stranger's free name posting to another's is off-site (2026-10-28
+  // reviews: co.vu, co.ua, com.de; ChangeIP's ne.pw, asn.im, or.lt).
   ["paypal-login.co.vu", "collector.co.vu", false],
   ["acessar-conta-br.co.ua", "steal.co.ua", false],
   ["login-check.com.de", "collector.com.de", false],
   ["www.evil.co.ua", "login.evil.co.ua", true],
+  ["paypal-login.ne.pw", "collector.ne.pw", false],
+  ["secure-paypal.asn.im", "drop.asn.im", false],
+  ["microsoft-login.or.lt", "collector.or.lt", false],
+  ["www.paypal-login.ne.pw", "login.paypal-login.ne.pw", true],
+  ["www.net.hr", "forum.net.hr", true],
+  ["www.amazon.com.be", "amazon.com.be", true],
 ];
 
 // [visible host, the brand the guard says it imitates, or null]
@@ -2760,10 +2767,13 @@ const LOOKALIKES = [
   // The two-label sites: their own names, as before.
   ["login.web.de", null],
   ["account.id.me", null],
-  // Under the registry overlay's zones the name is the registrant's.
+  // Under a ccTLD's generic second level the name is the registrant's.
   ["apple-maps.com.de", "apple"],
   ["paypal-login.co.vu", "paypal"],
   ["secure-paypal.co.ua", "paypal"],
+  ["paypal-login.ne.pw", "paypal"],
+  ["secure-paypal.asn.im", "paypal"],
+  ["microsoft-login.or.lt", "microsoft"],
   // The brand's own name under another suffix.
   ["paypal.co.uk", null],
   ["www.amazon.co.jp", null],
@@ -2826,6 +2836,8 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     assert.equal(guard.siteOf("a.www.ck"), "www.ck");
     assert.equal(guard.siteOf("x.paypal-login.co.vu"), "paypal-login.co.vu");
     assert.equal(guard.siteOf("www.amazon.com.be"), "com.be");
+    assert.equal(guard.siteOf("www.aceoouu-asosmaoemsnouu.adqxeha.ne.pw"), "adqxeha.ne.pw");
+    assert.equal(guard.siteOf("kau.gov.hu"), "kau.gov.hu");
   });
 
   await check(`[${tree}] the credential guard's look-alike check reads the registrable name`, async () => {

@@ -619,9 +619,9 @@ async def _name_is_vouched_for(domain: str, signals: dict, deadline: Deadline) -
 
     Nor does a zone's above the registrant (scoring.rank_registrable_domain):
     acessar-conta-br.co.ua is its own registrable domain, not a name under
-    co.ua (#278,678 of the Tranco top-1M) — public_suffix's registry overlay
-    — and a zone no list knows lends its rank to no name the reading before
-    2026-10-28 kept apart from it.
+    co.ua (#278,678 of the Tranco top-1M) — public_suffix's ccTLD default —
+    and a zone it names as one owner's lends its rank to no name the reading
+    before 2026-10-28 kept apart from it (login.web.de).
 
     Nor a platform's to its customers (_platform_tenant_site, as in
     popularity_rank()): since 2026-10-28 an unreachable x.duckdns.org,

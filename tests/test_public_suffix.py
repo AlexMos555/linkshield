@@ -9,11 +9,17 @@ so the extension's credential guard never saw the brand in the name and
 every owner under such a suffix was one "site" — and it invented suffixes:
 login.web.de was its own registrable domain, as if web.de were a registry.
 
+The service reads the PSL's ICANN section now, and keeps the heuristic's
+splits as a default the named one-owner zones are the exception to
+(data/cctld_second_levels.json): an open zone read as one name is a hole,
+one owner's read as a registry only costs what it did before.
+
 These tests hold the matcher to the PSL algorithm (exact, wildcard and
-exception rules, the default rule), to the vendored list's integrity, to
-the Russian overlay's old answers, and the model's features to the old
-reading (they are paired with a trained model; a new reading needs a
-retrain).
+exception rules, the default rule) and the ccTLD default, to the vendored
+list's integrity, to the Russian overlay's old answers, a site to never
+being wider than the heuristic's but under a named zone, and the model's
+features to the old reading (they are paired with a trained model; a new
+reading needs a retrain).
 """
 from __future__ import annotations
 
@@ -78,7 +84,7 @@ def test_parse_reads_both_sections_apart(tiny):
     assert {"co.uk", "ltd.uk", "uk", "com", "xn--55qx5d.cn"} <= tiny.icann.exact
     assert tiny.icann.wildcards == frozenset({"sch.uk", "kobe.jp", "ck"})
     assert tiny.icann.exceptions == frozenset({"city.kobe.jp", "www.ck"})
-    assert "github.io" in tiny.private.exact and "github.io" not in tiny.icann.exact
+    assert {"github.io"} <= tiny.private.exact and tiny.icann.exact.isdisjoint({"github.io"})
     assert tiny.private.wildcards == frozenset({"compute.example.com"})
 
 
@@ -133,6 +139,85 @@ def test_the_psl_algorithm(tiny, host, expected):
 ])
 def test_input_forms(tiny, host, expected):
     assert tiny.icann.registrable(host) == expected
+
+
+# ── The ccTLD default: a generic second level under a 2-letter TLD ──
+
+@pytest.fixture(scope="module")
+def tiny_cc(tiny):
+    return tiny.icann._replace(cc_second_levels=frozenset({"co", "com", "gov", "web", "sch"}),
+                               cc_names=frozenset({"web.de"}))
+
+
+@pytest.mark.parametrize(("host", "expected"), [
+    # Every generic label under a 2-letter TLD is a suffix, listed or not,
+    # as the compound-ccTLD heuristic read it: a stranger's name there is
+    # a site of its own …
+    ("paypal-login.co.zz", "paypal-login.co.zz"),
+    ("a.b.paypal-login.com.de", "paypal-login.com.de"),
+    ("kau.gov.hu", "kau.gov.hu"),
+    ("co.zz", "co.zz"),
+    ("x.web.zz", "x.web.zz"),
+    # … but a zone named as one owner's is that owner's name …
+    ("login.web.de", "web.de"),
+    ("web.de", "web.de"),
+    # … a longer listed rule still prevails, and nothing changes under a
+    # longer TLD or for a label that is not generic.
+    ("login.example.co.uk", "example.co.uk"),
+    ("www.school.foo.sch.uk", "school.foo.sch.uk"),
+    ("www.city.kobe.jp", "city.kobe.jp"),
+    ("a.www.ck", "www.ck"),
+    ("x.co.com", "co.com"),
+    ("x.org.zz", "org.zz"),
+])
+def test_the_cctld_default(tiny_cc, host, expected):
+    assert tiny_cc.registrable(host) == expected
+
+
+def test_only_the_labels_a_rule_can_reach_are_converted(monkeypatch):
+    """parse_qname maps an 8-bit DNS label to U+FFFD, and doh_upstream's
+    zone key reads the registrable domain of every forwarded query: a 4 KB
+    name of such labels was punycoded label by label, 4.2 ms of the event
+    loop per query against 0.1 ms before the PSL (2026-10-28 final review).
+    Now no label is punycoded at all: the rules' IDN labels are looked up
+    decoded (SuffixRules.idn_labels), and the answer is the one converting
+    every label gives."""
+    real = ps.ascii_label
+    calls: list[str] = []
+
+    def counting(label: str) -> str:
+        calls.append(label)
+        return real(label)
+
+    def converting_all(host: str) -> str:
+        parts = host.lower().split(".")
+        k = ps._RULES.suffix_length([real(p) for p in parts])
+        return host if len(parts) <= k else ".".join(parts[-(k + 1):])
+
+    long_name = ".".join(["\ufffd" * 63] * 64)
+    monkeypatch.setattr(ps, "ascii_label", counting)
+    for tail in ("com", "co.uk", "kobe.jp", "city.kobe.jp", "pvt.k12.ma.us", "spb.ru", "hosting.myjino.ru",
+                 "xn--p1ai", "公司.cn", "сочи.рус", "co.zz", "web.de", "ne.pw", "\ufffd"):
+        host = f"{long_name}.{tail}"
+        calls.clear()
+        got = ps.registrable_domain(host)
+        assert calls == [], tail
+        assert got == converting_all(host), tail
+    # Every IDN label of a rule is looked up, and nothing else.
+    rule_labels = {label for rule in ps._RULES.exact | ps._RULES.wildcards | ps._RULES.exceptions
+                   for label in rule.split(".") if label.startswith("xn--")}
+    assert set(ps._RULES.idn_labels.values()) == rule_labels and len(rule_labels) > 100
+    assert all(real(u) == a for u, a in ps._RULES.idn_labels.items())
+    for host in ("www.例子.公司.cn", "a.отель.сочи.рус", "x.y.公司.香港", "www.東京.jp", "a.b.c.кoбe.jp"):
+        calls.clear()
+        assert ps.registrable_domain(host) == converting_all(host), host
+        assert calls == [], host
+    assert ps.registrable_domain("www.例子.公司.cn") == "例子.公司.cn"
+    assert ps.registrable_domain("a.отель.сочи.рус") == "отель.сочи.рус"
+    # A TLD of two letters decoded (аб, xn--80ac in ASCII) is no 2-letter TLD
+    # for the ccTLD default, in either spelling.
+    assert ps.registrable_domain("x.com.аб") == "com.аб"
+    assert ps.registrable_domain(f"x.com.{real('аб')}") == f"com.{real('аб')}"
 
 
 @pytest.mark.parametrize("text", [
@@ -192,17 +277,35 @@ def test_the_vendored_list_is_attributed():
     ("www.city.lg.jp", "city.lg.jp"),
     ("netbanking.hdfc.bank.in", "hdfc.bank.in"),
     ("srv.hrdc-drhc.gc.ca", "hrdc-drhc.gc.ca"),
-    # The suffixes it invented: one owner each (web.de: 1&1's name servers;
-    # com.be: Amazon's, SOA root.amazon.com), or a government's.
+    # The zones of its shape that are one owner's name, not a registry
+    # (data/cctld_second_levels.json 'names': web.de, 1&1's name servers;
+    # com.be, Amazon's, SOA root.amazon.com …): read as the PSL reads them.
     ("login.web.de", "web.de"),
     ("www.web.de", "web.de"),
     ("account.id.me", "id.me"),
-    ("www.school.sch.gr", "sch.gr"),
     ("www.net.hr", "net.hr"),
     ("www.amazon.com.be", "com.be"),
-    ("kau.gov.hu", "gov.hu"),
-    # The registries it split rightly, which the ICANN section does not
-    # list (2026-10-28 review): the PSL's PRIVATE rules of its shape …
+    ("www.in.gr", "in.gr"),
+    ("www.ne.se", "ne.se"),
+    ("repo.or.cz", "or.cz"),
+    ("www.ne.ch", "ne.ch"),
+    # Every other zone of its shape stays split, as it split it: the PSL
+    # does not list a government's zone (gov.hu, sch.gr) …
+    ("kau.gov.hu", "kau.gov.hu"),
+    ("www.school.sch.gr", "school.sch.gr"),
+    # … nor the free zones of dynamic-DNS services, read as one site each
+    # until the 2026-10-28 final review (ChangeIP: ne.pw, asn.im, or.lt …;
+    # FreeDNS: govt.hu, mil.nf) …
+    ("www.aceoouu-asosmaoemsnouu.adqxeha.ne.pw", "adqxeha.ne.pw"),
+    ("paypal-login.ne.pw", "paypal-login.ne.pw"),
+    ("www.secure-paypal.asn.im", "secure-paypal.asn.im"),
+    ("x.microsoft-login.or.lt", "microsoft-login.or.lt"),
+    ("appleid-verify.sch.in", "appleid-verify.sch.in"),
+    ("office365-login.govt.hu", "office365-login.govt.hu"),
+    ("usmc.mil.nf", "usmc.mil.nf"),
+    # … nor one no list knows yet …
+    ("login.evil.org.zz", "evil.org.zz"),
+    # … nor the PSL's PRIVATE rules of its shape …
     ("acessar-conta-br.co.ua", "acessar-conta-br.co.ua"),
     ("www.acessar-conta-br.co.ua", "acessar-conta-br.co.ua"),
     ("mail.confirm-lnstagram.com.de", "confirm-lnstagram.com.de"),
@@ -212,7 +315,8 @@ def test_the_vendored_list_is_attributed():
     ("accounts.jagex.com-cs.co.cz", "com-cs.co.cz"),
     ("shop.evil.biz.ua", "evil.biz.ua"),
     ("lnstagram.com.se", "lnstagram.com.se"),
-    # … and data/cctld_registries.json, those in neither section.
+    # … nor the open zones in neither section (data/cctld_second_levels.json
+    # 'registries', the evidence; the default splits them).
     ("pgesaccntspprtaccs.co.vu", "pgesaccntspprtaccs.co.vu"),
     ("www.out-owa.co.nf", "out-owa.co.nf"),
     ("correos-particulares.info.gf", "correos-particulares.info.gf"),
@@ -287,58 +391,99 @@ def test_the_overlay_is_the_scorers_russian_list():
     assert ps.RU_OVERLAY.wildcards == scoring._RU_WILDCARD_SUFFIXES
 
 
-# ── The registries the heuristic split and the ICANN section does not list ──
+# ── The ccTLD second levels no PSL section lists (data/cctld_second_levels.json) ──
 
 def _listed(rules: ps.SuffixRules, zone: str) -> bool:
     labels = zone.split(".")
     return rules.suffix_length(labels, default=0) >= len(labels)
 
 
-def test_the_registry_overlay_is_the_psls_private_registries_of_the_heuristics_shape():
-    """Read ICANN-only, every owner under co.ua, co.nl, com.de … became one
-    site (2026-10-28 review: acessar-conta-br.co.ua took co.ua's top-1M rank
-    #278,678 for a vouch). The heuristic split them because they have its
-    shape — a generic second level under a 2-letter ccTLD — and the PSL
-    lists them as registries, if only in its PRIVATE section. Exactly those
-    are kept: not github.io or blogspot.com, which the curated platform
-    lists decide."""
-    derived = ps.private_registries(ps.LIST)
-    expected = {r for r in ps.LIST.private.exact
-                if ps.heuristic_suffix(r) and not _listed(ps.LIST.icann, r) and not _listed(ps.RU_OVERLAY, r)}
-    assert derived == expected
-    assert {"co.ua", "co.nl", "co.no", "co.pl", "co.cz", "co.de", "com.de", "com.se", "biz.ua", "ltd.ua"} <= derived
-    assert not {"github.io", "blogspot.com", "pages.dev", "com.ru", "spb.ru"} & derived
-    assert derived <= ps.REGISTRY_OVERLAY.exact
+def _cctld_file() -> dict:
+    return json.loads((DATA / ps.CCTLD_FILE).read_text(encoding="utf-8"))
 
 
-def test_the_curated_registries_are_the_heuristics_and_in_no_psl_section():
-    """data/cctld_registries.json only keeps a split the heuristic made (no
-    new boundary the old reading did not draw), only where the PSL says
-    nothing (else the entry is the PSL's to keep), and with its evidence."""
-    curated = json.loads((DATA / ps.REGISTRY_FILE).read_text(encoding="utf-8"))
-    zones = curated["zones"]
-    assert {"co.vu", "co.nf", "info.gf", "com.tc", "com.tg", "com.tl", "com.nl", "co.pt", "biz.kg", "id.hn",
-            "go.ro", "co.cc", "co.nr"} <= set(zones)
-    for zone, evidence in zones.items():
-        assert zone == ps.ascii_name(zone) and zone.count(".") == 1, zone
-        assert ps.heuristic_suffix(zone), f"{zone}: the heuristic did not split it"
+def test_the_named_zones_are_one_owners_own_and_in_no_psl_section():
+    """A zone of the heuristic's shape is a registry unless it is named:
+    reading an open zone as one name makes its strangers one site (the
+    2026-10-28 final review: ne.pw, asn.im, or.lt, govt.hu …), reading one
+    owner's zone as a registry only costs what it cost before. So a name
+    must be one company's or organisation's own zone, with its evidence; not
+    a government zone (gov, edu, sch …: split, as before, and the guard
+    treats each as one site by itself), not in the PSL (else the entry is
+    the PSL's to keep), and not a known open zone."""
+    data = _cctld_file()
+    names = data["names"]
+    assert set(names) == ps.CCTLD_NAMES
+    assert {"web.de", "id.me", "com.be", "net.hr", "in.gr", "ne.se", "or.cz"} <= set(names)
+    from api.services.scoring import _RESTRICTED_ZONE_LABELS
+
+    for zone, evidence in names.items():
+        assert zone == ps.ascii_name(zone) and ps.heuristic_suffix(zone), zone
+        assert zone.split(".")[0] not in _RESTRICTED_ZONE_LABELS, f"{zone}: a government zone stays split"
         assert not _listed(ps.LIST.icann, zone) and not _listed(ps.LIST.private, zone), f"{zone} is in the PSL"
-        assert len(evidence) > 20, f"{zone}: no evidence"
+        assert not _listed(ps.RU_OVERLAY, zone), zone
+        assert len(evidence) > 40, f"{zone}: no evidence"
+        for host in (zone, f"www.{zone}", f"a.b.{zone}"):
+            assert ps.registrable_domain(host) == zone, host
+    assert not set(names) & set(data["registries"])
+
+
+def test_the_open_zones_stay_split():
+    """The free zones found merged by the ICANN-only reading (co.vu, info.gf
+    …: 2026-10-28 review) and by the reading with a list of registries
+    (ChangeIP's ne.pw — 135 phishing hosts of Phishing.Database's links,
+    asn.im, or.lt …; FreeDNS's govt.hu and mil.nf: the final review) are
+    split by the default, not by their entry: the entry is the evidence."""
+    registries = _cctld_file()["registries"]
+    assert {"co.vu", "co.nf", "info.gf", "com.tg", "go.ro",
+            "ne.pw", "asn.im", "asn.me", "asn.lc", "sch.in", "or.lt", "or.st", "id.gd", "gob.li", "biz.si",
+            "edu.si", "govt.hu", "mil.nf"} <= set(registries)
+    for zone, evidence in registries.items():
+        assert zone == ps.ascii_name(zone) and ps.heuristic_suffix(zone), zone
+        assert not _listed(ps.LIST.icann, zone) and not _listed(ps.LIST.private, zone), f"{zone} is in the PSL"
+        assert len(evidence) > 40, f"{zone}: no evidence"
         assert ps.registrable_domain(f"www.x.{zone}") == f"x.{zone}"
-    # One owner's names stay merged, as the PSL has them (biz.nf: crt.sh
-    # shows only its operator's own names, cp1, order, secure, www).
-    assert not {"web.de", "id.me", "com.be", "net.hr", "in.gr", "gov.hu", "sch.gr", "biz.nf"} & set(zones)
-    assert ps.REGISTRY_OVERLAY.exact == ps.private_registries(ps.LIST) | set(zones)
+        assert ps.registrable_domain(zone) == zone
 
 
-def test_every_registry_split_is_one_the_heuristic_made():
-    """The overlay never draws a boundary the old reading did not: under
-    each of its zones the legacy registrable domain is the same."""
+def test_the_psls_private_registries_of_the_cctld_shape_stay_split():
+    """co.ua, co.nl, com.de … are registries by the PSL's own account, if
+    only in its PRIVATE section: the default keeps them split (ICANN-only,
+    acessar-conta-br.co.ua took co.ua's top-1M rank #278,678 for a vouch).
+    The rest of PRIVATE (github.io, blogspot.com) stays out."""
+    zones = sorted(r for r in ps.LIST.private.exact
+                   if ps.heuristic_suffix(r) and not _listed(ps.LIST.icann, r) and not _listed(ps.RU_OVERLAY, r))
+    assert {"co.ua", "co.nl", "co.no", "co.pl", "co.cz", "co.de", "com.de", "com.se", "biz.ua", "ltd.ua"} <= set(zones)
+    for zone in zones:
+        assert ps.registrable_domain(f"www.x.{zone}") == f"x.{zone}", zone
+
+
+def _corpus_for_the_invariant() -> list[str]:
+    hosts = set(_ru_corpus())
+    hosts.update(f"www.{h}" for h in json.loads((DATA / "top_100k.json").read_text(encoding="utf-8")))
+    data = _cctld_file()
+    for zone in (*data["names"], *data["registries"]):
+        hosts.update((zone, f"x.{zone}", f"a.b.{zone}"))
+    two_letter = sorted(t for t in ps.LIST.icann.exact if "." not in t and len(t) == 2)
+    assert len(two_letter) >= 240
+    for tld in (*two_letter, "zz"):
+        for label in ps.CCTLD_SECOND_LEVELS:
+            hosts.update((f"{label}.{tld}", f"x.{label}.{tld}", f"a.b.x.{label}.{tld}"))
+    return sorted(hosts)
+
+
+def test_a_site_is_never_wider_than_before_but_under_a_named_zone():
+    """The reading before 2026-10-28 (legacy_registrable_domain) split every
+    generic second level of a 2-letter ccTLD; this one keeps every such
+    split and adds the ICANN section's suffixes. So a registrable domain is
+    never shorter than the legacy one — no stranger becomes part of a site
+    he was not part of — except under a named zone (login.web.de → web.de)."""
     from api.services.scoring import legacy_registrable_domain
 
-    for zone in sorted(ps.REGISTRY_OVERLAY.exact):
-        for host in (f"x.{zone}", f"a.b.x.{zone}", zone):
-            assert ps.registrable_domain(host) == legacy_registrable_domain(host), host
+    wider = [h for h in _corpus_for_the_invariant()
+             if (new := ps.registrable_domain(h)).count(".") < legacy_registrable_domain(h).count(".")
+             and new not in ps.CCTLD_NAMES]
+    assert wider == []
 
 
 # ── Who reads which ──
@@ -429,7 +574,8 @@ def test_otx_scores_names_under_a_ranked_russian_zone(host):
     # 2026-10-28 kept apart from it …
     ("evil.org.zz", 30),
     ("login.evil.org.zz", 30),
-    # … a registry overlay zone neither (biz.ua is #5653 of the top-10k) …
+    # … a registry the ccTLD default splits neither (biz.ua is #5653 of the
+    # top-10k) …
     ("shop.evil.biz.ua", 30),
     # … while a top-10k registrant still speaks for its own subdomains.
     ("login.shop.org.zz", 0),
@@ -449,13 +595,21 @@ def test_otx_is_not_waived_by_a_popular_zone_above_the_registrant(monkeypatch, h
     ("shop.com.be", False),          # com.be is Amazon's name (no PSL rule), shop its subdomain
     ("login.example.co.uk", False),
     ("example.co.uk", True),
-    # Registrations under the registry overlay's zones, as the heuristic had
+    # Registrations under the ccTLD default's zones, as the heuristic had
     # them: ICANN-only, 1,231 feed hosts lost the check (74 co.vu ones went
     # caution -> safe).
     ("181page9707ik0647recovery789.co.vu", True),
     ("confirm-lnstagram.com.de", True),
     ("acessar-conta-br.co.ua", True),
     ("mail.confirm-lnstagram.com.de", False),
+    # … and under every zone of that shape the PSL does not list (2026-10-28
+    # final review: secure-login-verify.ne.pw lost the +8 and went
+    # dangerous 56 -> caution 38); not under a named one (login.web.de is
+    # web.de's subdomain).
+    ("secure-login-verify.ne.pw", True),
+    ("nid-session.govt.hu", True),
+    ("evil.com.tv", True),
+    ("login.web.de", False),
     # An IP address is its own registrable domain now, but has no mail to
     # miss: check_dns answers has_mx False for every IP URL, and "No MX
     # record" (+8) on the 713 IP hosts of the phishing review sets was noise.
@@ -508,6 +662,7 @@ def test_an_unreachable_sites_vouch_reads_the_registrable_domain(monkeypatch, ho
     ("evil.co.ua", {"co.ua": 278_678}, None),
     ("login.evil.co.ua", {"co.ua": 278_678, "evil.co.ua": 9_000}, 9_000),
     ("paypal-login.co.vu", {"co.vu": 1_000}, None),
+    ("x.paypal-login.ne.pw", {"ne.pw": 5_000}, None),
     # Not a zone the PSL does not list, nor one owner's 2-label name: what
     # the reading before 2026-10-28 ranked.
     ("evil.org.zz", {"org.zz": 1_000}, None),
@@ -563,6 +718,13 @@ def test_surbl_is_asked_about_the_registrants_name(monkeypatch):
         "www.acessar-conta-br.co.ua": "acessar-conta-br.co.ua",
         "000012151000.co.vu": "000012151000.co.vu",
         "x.evil.com.de": "evil.com.de",
+        # … and every other zone of that shape the PSL does not list: SURBL's
+        # list carries 147 of them (com.tv, biz.nf, mil.nf, gov.hu …), which
+        # a list of registries left merged (2026-10-28 final review).
+        "x.evil.com.tv": "evil.com.tv",
+        "evil.biz.nf": "evil.biz.nf",
+        "kau.gov.hu": "kau.gov.hu",
+        "www.paypal-login.ne.pw": "paypal-login.ne.pw",
         # … and the platforms' customers (pages.dev, vercel.app, duckdns.org
         # are on that list too): the customer's name, as the OTX key reads it.
         "a.paypal-login.pages.dev": "paypal-login.pages.dev",
@@ -577,7 +739,7 @@ def test_surbl_is_asked_about_the_registrants_name(monkeypatch):
     # The model's own keyword feature still reads the legacy name ('my', 'me').
     ("acc-recovery-support-live.my.id", "recovery", 0.0),
     ("secure-login.me.uk", "secure", 0.0),
-    # Feed phishing under the registry overlay's zones, named 'com' when
+    # Feed phishing under the ccTLD default's zones, named 'com' when
     # com.de was read as the site (mail.confirm-lnstagram.com.de went
     # dangerous 53 -> caution 43 on the ICANN-only reading); the heuristic,
     # and so the model, read the registrant's name.
@@ -585,6 +747,15 @@ def test_surbl_is_asked_about_the_registrants_name(monkeypatch):
     ("mail.confirm-lnstagram.com.de", "confirm", 1.0),
     ("icloud-alert.com.de", "alert", 1.0),
     ("trezor-wallet.com.de", "wallet", 1.0),
+    # Under the free zones no list knew, named 'ne', 'asn', 'or', 'sch' and
+    # 'govt' by the PSL's reading with a list of registries (2026-10-28 final
+    # review: wellsfargo-login.or.lt went caution 30 -> safe 20).
+    ("secure-login-verify.ne.pw", "secure", 1.0),
+    ("paypal-login.ne.pw", "login", 1.0),
+    ("secure-paypal.asn.im", "secure", 1.0),
+    ("wellsfargo-login.or.lt", "login", 1.0),
+    ("appleid-verify.sch.in", "verify", 1.0),
+    ("office365-login.govt.hu", "login", 1.0),
 ])
 def test_the_keyword_rule_reads_the_registered_name(host, word, model_sees_it):
     from api.services import ml_features, scoring
@@ -601,6 +772,10 @@ def test_a_confirmed_threat_is_recorded_under_its_own_name():
     assert confirmed_threats.site_name("www.acessar-conta-br.co.ua") == "acessar-conta-br.co.ua"
     assert confirmed_threats.is_recordable_host("paypal-secure.my.id")
     assert confirmed_threats.is_recordable_host("pgesaccntspprtaccs.co.vu")
+    # The free zones' tenants are recordable under their own names again.
+    assert confirmed_threats.site_name("www.paypal-login.ne.pw") == "paypal-login.ne.pw"
+    for host in ("paypal-login.ne.pw", "secure-paypal.asn.im", "wellsfargo-login.or.lt", "nid-session.govt.hu"):
+        assert confirmed_threats.is_recordable_host(host), host
 
 
 # ── The refresh script (scripts/refresh_public_suffix_list.py) ──
@@ -662,13 +837,20 @@ def test_the_refresh_repairs_a_broken_vendored_copy(tmp_path, monkeypatch, capsy
     assert vendored.read_bytes() == source.read_bytes()
 
 
-def test_the_refresh_reports_the_private_registries_it_moves():
-    """A refresh that adds or drops a PRIVATE rule of the heuristic's shape
-    moves a registry boundary (public_suffix.private_registries): the
-    report says which."""
+def test_the_refresh_reports_what_moves_a_boundary():
+    """A dropped ICANN rule makes every name under it one site, unless the
+    ccTLD default keeps the zone split (com.cn); a zone of
+    data/cctld_second_levels.json's 'names' the list now carries is the
+    list's to read (tests above fail until it is dropped there). The report
+    says which, so neither is merged silently (2026-10-28 final review)."""
     refresh = _refresh()
     text = (DATA / ps.PSL_FILE).read_text(encoding="utf-8")
     current = ps.parse(text)
-    without = ps.parse(text.replace("\nco.ua\n", "\n", 1))
-    lines = "\n".join(refresh.report(without, current))
-    assert "co.ua" in lines and "registr" in lines
+    candidate = ps.parse(text.replace("\nmy.id\n", "\n", 1).replace("\ncom.cn\n", "\nweb.de\n", 1))
+    lines = refresh.report(candidate, current)
+    merged = next(line for line in lines if "one site" in line)
+    assert "my.id" in merged and "com.cn" not in merged
+    kept = next(line for line in lines if "still split" in line)
+    assert "com.cn" in kept and "my.id" not in kept
+    assert any("web.de" in line and "names" in line for line in lines)
+    assert not any("one site" in line or "names" in line for line in refresh.report(current, current))

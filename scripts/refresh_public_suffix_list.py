@@ -3,7 +3,9 @@
 
 The scorer, the DoH gateway and the browser extensions draw the registrable
 domain from this copy (api/services/public_suffix.py): its ICANN section,
-with data/ru_public_suffixes.json on top. It changes only through this
+with data/ru_public_suffixes.json and the ccTLD default (every generic
+second level of a 2-letter TLD is a suffix, but for the names of
+data/cctld_second_levels.json) on top. It changes only through this
 script — no workflow runs it — so a new list is a reviewed commit, not a
 silent change of where every site ends.
 
@@ -16,10 +18,12 @@ What it does:
      rules, and no ICANN rule reaches under a Russian overlay zone (the
      overlay is merged into the ICANN rules on that assumption,
      tests/test_public_suffix.py);
-  3. prints what changed in the ICANN section and in the PRIVATE rules the
-     registry overlay takes (public_suffix.private_registries: co.ua,
-     com.de …), the zones of data/cctld_registries.json the PSL now lists
-     (drop them there), and whether the PSL's Russian rules still match
+  3. prints what changed in the ICANN section — which dropped rules make
+     every name under them one site (look at each: an open zone among them
+     is the bug the 2026-10-28 final review found) and which the ccTLD
+     default keeps split anyway —, the names of
+     data/cctld_second_levels.json the PSL now lists (drop them there), and
+     whether the PSL's Russian rules still match
      data/ru_public_suffixes.json — that file is the model's input too
      (scoring.legacy_registrable_domain), so it is rebuilt
      (scripts/build_ru_public_suffixes.py) with a retrain, not here;
@@ -103,16 +107,15 @@ def report(candidate: ps.PublicSuffixList, current: Optional[ps.PublicSuffixList
         lines += [f"  + {r}" for r in added[:40]] + [f"  - {r}" for r in removed[:40]]
         if len(added) > 40 or len(removed) > 40:
             lines.append("  … (first 40 each)")
-    new_reg = ps.private_registries(candidate)
-    if current is not None:
-        old_reg = ps.private_registries(current)
-        if new_reg != old_reg:
-            lines.append(f"registries kept from the PRIVATE section (public_suffix.private_registries): "
-                         f"+{sorted(new_reg - old_reg)} -{sorted(old_reg - new_reg)}")
-    listed = sorted(z for z in ps.CURATED_REGISTRIES
-                    if ps._covered(candidate.icann, z) or ps._covered(candidate.private, z))
-    if listed:
-        lines.append(f"NOTE: data/{ps.REGISTRY_FILE} zones the PSL lists now: {listed}. Drop them there "
+        merged, kept = _dropped(candidate, removed)
+        if merged:
+            lines.append(f"NOTE: ICANN rules dropped, every name under each is now one site: {merged[:40]}. "
+                         "Look at each before committing: an open zone among them merges strangers.")
+        if kept:
+            lines.append(f"ICANN rules dropped, still split by the ccTLD default: {kept[:40]}")
+    named = sorted(z for z in ps.CCTLD_NAMES if ps._covered(candidate.icann, z) or ps._covered(candidate.private, z))
+    if named:
+        lines.append(f"NOTE: data/{ps.CCTLD_FILE} names the PSL lists now: {named}. Drop them there "
                      "(tests/test_public_suffix.py requires it).")
     psl_ru = {r for r in _rules(candidate.icann) | _rules(candidate.private)
               if "." in r.lstrip("*.!") and r.rsplit(".", 1)[1] in _RU_TLDS}
@@ -122,6 +125,20 @@ def report(candidate: ps.PublicSuffixList, current: Optional[ps.PublicSuffixList
                      f"(+{sorted(psl_ru - overlay)[:10]} -{sorted(overlay - psl_ru)[:10]}). That file is the "
                      "model's input too: rebuild it (scripts/build_ru_public_suffixes.py) with a retrain.")
     return lines
+
+
+def _dropped(candidate: ps.PublicSuffixList, removed: list[str]) -> tuple[list[str], list[str]]:
+    """The dropped ICANN rules (exact ones and wildcards; a dropped exception
+    only splits) whose names become one site under `candidate`, and those
+    the ccTLD default keeps split."""
+    rules = ps.service_rules(candidate)
+    merged, kept = [], []
+    for rule in removed:
+        if rule.startswith("!") or "." not in rule:
+            continue
+        zone = "x." + rule[2:] if rule.startswith("*.") else rule
+        (kept if ps._covered(rules, zone) else merged).append(rule)
+    return merged, kept
 
 
 def _load_vendored() -> Optional[ps.PublicSuffixList]:

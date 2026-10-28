@@ -346,15 +346,31 @@ for (const [treeName, tree] of TREES) {
       ["paypal-secure.my.id", "paypal-secure.my.id"], ["login.web.de", "web.de"],
       ["kvs.gov.spb.ru", "gov.spb.ru"], ["evil.co.ua", "evil.co.ua"], ["x.paypal-login.co.vu", "paypal-login.co.vu"],
       ["mail.confirm-lnstagram.com.de", "confirm-lnstagram.com.de"], ["co.ua", "co.ua"], ["www.amazon.com.be", "com.be"],
+      ["x.paypal-login.ne.pw", "paypal-login.ne.pw"], ["secure-paypal.asn.im", "secure-paypal.asn.im"],
+      ["office365-login.govt.hu", "office365-login.govt.hu"], ["kau.gov.hu", "kau.gov.hu"],
+      ["login.evil.org.zz", "evil.org.zz"], ["x.co.com", "co.com"], ["x.com.xn--80ac", "com.xn--80ac"],
+      ["x.com.\u0430\u0431", "com.\u0430\u0431"],
     ];
     const wrong = cases.filter(([h, want]) => rules.registrableDomain(h) !== want);
     assert.strictEqual(wrong.map(([h, want]) => `${h}: ${rules.registrableDomain(h)}, expected ${want}`).join("; "), "");
-    // Every zone of the server's registry overlay (registrySuffixes) is
-    // split, as public_suffix.registrable_domain splits it.
-    const zones = ctx.cleanwayScorerData.registrySuffixes;
-    assert.ok(Array.isArray(zones) && zones.includes("co.vu") && zones.includes("com.de"), "no registrySuffixes");
-    const unsplit = zones.filter((z) => rules.registrableDomain(`www.x.${z}`) !== `x.${z}`);
-    assert.strictEqual(unsplit.join(", "), "");
+    // The ccTLD default, as public_suffix.registrable_domain reads it: every
+    // generic second level of a 2-letter TLD is split, but for cctldNames.
+    const labels = ctx.cleanwayScorerData.cctldSecondLevels;
+    const names = ctx.cleanwayScorerData.cctldNames;
+    assert.ok(Array.isArray(names) && names.includes("web.de") && names.includes("com.be"), "no cctldNames");
+    assert.ok(!("registrySuffixes" in ctx.cleanwayScorerData), "registrySuffixes is gone");
+    const merged = [];
+    for (const tld of ["zz", "pw", "im", "lt", "hu", "de", "be", "ua", "vu", "uk", "br", "jp"]) {
+      for (const label of labels) {
+        const zone = `${label}.${tld}`;
+        if (names.includes(zone)) continue;
+        const got = rules.registrableDomain(`a.x.${zone}`);
+        if (got !== `x.${zone}` && !got.endsWith(`.x.${zone}`)) merged.push(`${zone}: ${got}`);
+      }
+    }
+    assert.strictEqual(merged.join(", "), "");
+    const unnamed = names.filter((z) => rules.registrableDomain(`a.b.${z}`) !== z);
+    assert.strictEqual(unnamed.join(", "), "");
     // The shape rules keep the model's reading.
     assert.strictEqual(rules.legacyRegistrable("paypal-secure.my.id"), "my.id");
     assert.strictEqual(rules.legacyRegistrable("www.web.de"), "www.web.de");

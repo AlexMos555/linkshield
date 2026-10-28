@@ -391,13 +391,15 @@ section, with the Russian zones of `data/ru_public_suffixes.json` on top,
 draws the registrable domain for the scorer and the DoH gateway
 (`api/services/public_suffix.py`) and, as data generated from it, for the
 browser extensions (`utils/scorer-data.js`, `icannSuffixes`, which names the
-list, its version and its licence). Of the private section only the rules of
-a ccTLD's generic second level that the compound-ccTLD heuristic before it
-also split are read (co.ua, com.de, co.nl …: `public_suffix.private_registries`,
-30 on the 2026-10-22 list), as the registry overlay with
-`data/cctld_registries.json`, Cleanway's own list of such zones the PSL does
-not list (`registrySuffixes` in `scorer-data.js`); the rest of it (github.io,
-blogspot.com …) is not read. The
+list, its version and its licence; its source form is named by URL, the
+vendored copy in the public repository, MPL 2.0 §3.2(a)). The private section
+is not read (github.io, blogspot.com …: the curated platform lists decide
+those). On top of both, every generic second level of a 2-letter ccTLD (co,
+com, net, gov, web …) is read as a suffix whether a section lists it or not,
+as the compound-ccTLD heuristic before it read it — co.ua, com.de, co.vu,
+ChangeIP's ne.pw — but for the zones `data/cctld_second_levels.json` names as
+one owner's (web.de, id.me, com.be …; Cleanway's own data, `cctldNames` in
+`scorer-data.js`). The
 copy changes only by `scripts/refresh_public_suffix_list.py` (no workflow
 runs it), and `tests/test_public_suffix.py` fails when it is malformed. The
 builders that fetch the live list (`build_top_domains.py`,

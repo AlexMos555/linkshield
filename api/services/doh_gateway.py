@@ -124,12 +124,12 @@ def parse_qname(wire: bytes) -> Optional[str]:
 def _registrable_domain(qname: str) -> str:
     """The registrable domain (eTLD+1) of a query name, for the threat-intel
     lookup and doh_upstream's zone key: the Public Suffix List's ICANN rules
-    with the Russian zones and the registry overlay on top
+    with the Russian zones and the ccTLD default on top
     (public_suffix.registrable_domain, the scorer's registrable_domain too)
     — www.bbc.co.uk → bbc.co.uk, x.paypal-secure.my.id →
-    paypal-secure.my.id, login.web.de → web.de, a.gosuslugi-lk.spb.ru →
-    gosuslugi-lk.spb.ru, x.evil.co.vu → evil.co.vu. A suffix by itself
-    answers itself (com.au).
+    paypal-secure.my.id, a.gosuslugi-lk.spb.ru → gosuslugi-lk.spb.ru,
+    x.evil.co.vu → evil.co.vu, login.web.de → web.de (a named zone). A
+    suffix by itself answers itself (com.au).
 
     Until 2026-10-28 this was a compound-ccTLD heuristic (a 2-letter ccTLD
     under co/com/gov/ac/web/id … took three labels), which put every owner
@@ -139,7 +139,9 @@ def _registrable_domain(qname: str) -> str:
     2026-10-28 on 200,000 top-100k and feed hosts: 1.2 µs, against 0.56 µs
     for the heuristic — once per upstream query where doh_upstream keys its
     zones on it (PR #354); the block lookup is a suffix walk and does not
-    call it.
+    call it. A query name of 8-bit labels costs no more: only the labels a
+    rule can reach are converted to punycode (2026-10-28 final review: a
+    4 KB name took 4.2 ms when every label was).
     """
     return _psl_registrable_domain(qname)
 
