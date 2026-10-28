@@ -61,8 +61,9 @@ Cost, measured 2026-10-28 on 200,000 top-100k, www. and feed hosts:
 1.2 µs a call (the heuristic took 0.56 µs, the scorer's old "Russian zone,
 else heuristic" 2.1 µs), ~45 ms to parse the list once at import. A name
 under a TLD with no multi-label rule (.com, .net, .org …) is answered
-after one dict lookup, and of a non-ASCII name only the labels a rule can
-reach (four at most) are converted to punycode.
+after one dict lookup, and no label of a non-ASCII name is punycoded: the
+rules' IDN labels are looked up decoded (SuffixRules.idn_labels), as many as
+a rule can reach (four at most).
 
 Stdlib only: the DoH gateway and the refresh script import it, and so may
 the builders that run without the scorer's dependencies.
