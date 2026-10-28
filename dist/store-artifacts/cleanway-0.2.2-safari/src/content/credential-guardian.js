@@ -136,8 +136,8 @@
   // Both form checks ask it: Signal A whether the form posts to another
   // site, Signal B what the site is called. A site is the registrable
   // domain, by the server's rule (scoring.registrable_domain: the Public
-  // Suffix List's ICANN rules with the Russian PSL zones and the registry
-  // overlay on top), ported in utils/name-rules.js, which every manifest
+  // Suffix List's ICANN rules with the Russian PSL zones and the ccTLD
+  // default on top), ported in utils/name-rules.js, which every manifest
   // loads before this file into the same content-script world.
   //
   // This file used to take the last two labels. Under a compound suffix
@@ -158,14 +158,17 @@
   // names. It also took web.de and id.me for suffixes, which this file had
   // to correct with a list of its own; the PSL lists neither.
   //
-  // Read by the ICANN section alone, the registries the heuristic split
-  // rightly would have been one site each: co.ua, com.de, co.nl (the PSL
-  // lists them in its PRIVATE section only) and co.vu, co.nf, com.tg (in no
-  // section), so paypal-login.co.vu posting to collector.co.vu was "the same
-  // site" and named "co". The server's registry overlay keeps them split
-  // (public_suffix.REGISTRY_OVERLAY, registrySuffixes in scorer-data.js).
-  // The rest of the PRIVATE section stays out (github.io, blogspot.com): the
-  // server's curated platform lists decide those, and this file has none.
+  // Read by the ICANN section alone, the zones the heuristic split rightly
+  // would have been one site each: co.ua, com.de, co.nl (the PSL lists them
+  // in its PRIVATE section only), co.vu, com.tg and ChangeIP's free ne.pw,
+  // asn.im, or.lt (in no section), so paypal-login.ne.pw posting to
+  // collector.ne.pw was "the same site" and named "ne". The server keeps
+  // every generic second level of a 2-letter TLD split, as the heuristic
+  // did, but for the zones it names as one owner's — web.de, id.me, com.be,
+  // net.hr … (public_suffix's ccTLD default; cctldSecondLevels and
+  // cctldNames in scorer-data.js). The rest of the PRIVATE section stays out
+  // (github.io, blogspot.com): the server's curated platform lists decide
+  // those, and this file has none.
   var GUARD_ROOT = typeof self !== "undefined" ? self : globalThis;
 
   function _nameRules() {
