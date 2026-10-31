@@ -1,11 +1,13 @@
 """Names of the popularity lists that stopped existing: data/top_domains_dead.json.
 
-On 2026-10-31, 1,139 of the 100,000 names of data/top_100k.json answered
-NXDOMAIN, and 215 of them were registered to nobody (RDAP 404) — rank 105
-(w2rt6byl5nf1opmc-a.com), postimg.org, ht.ly, strana.ua, casino names and a
-ca33*.shop/.top/.xyz series. Whoever registers one inherits what the lists
-give a name: the instant 'safe' allowlist, the popularity bonus, the DNS
-blocklist's never-block guard, the phone's veto, OTX's waiver. A name is
+On 2026-10-31, 1,129 of the 100,000 names of data/top_100k.json (and 26 of
+data/top_domains_reported.json) no longer existed — NXDOMAIN at Cloudflare,
+Google and the parent zone's own servers — and about 215 were registered to
+nobody (RDAP 404): rank 105 (w2rt6byl5nf1opmc-a.com), postimg.org, ht.ly,
+strana.ua, casino names and a ca33*/ca61*.shop/.top/.xyz/.de series.
+Whoever registers one inherits what the lists give a name: the instant
+'safe' allowlist, the popularity bonus, the DNS blocklist's never-block
+guard, the phone's veto, OTX's waiver. A name is
 NXDOMAIN for weeks between its expiry and the day anyone may buy it (the
 registry's hold, redemption and pending-delete), so a weekly sweep
 (scripts/refresh_dead_top_names.py, .github/workflows/refresh-dead-top-names.yml)

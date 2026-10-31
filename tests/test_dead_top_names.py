@@ -40,16 +40,27 @@ def _signals(domain: str, **extra) -> dict:
 
 # ── The file ──
 
-def test_the_file_loads_and_every_tombstone_is_a_listed_name():
+def test_the_file_loads_sorted_with_a_date_per_name():
+    """No subset check against the current lists: a tombstone outlives the
+    name's place on them (a rebuild may bring it back)."""
+    import datetime
+
     data = json.loads((ROOT / "data" / dead_top_names.DEAD_FILE).read_text(encoding="utf-8"))
     names = data["names"]
     assert set(names) == dead_top_names.DEAD_TOP_NAMES
     assert list(names) == sorted(names)
-    listed = set(json.loads((ROOT / "data" / "top_100k.json").read_text())) | set(
-        json.loads((ROOT / "data" / "top_domains_reported.json").read_text()))
-    assert set(names) <= listed
-    # The first sweep (2026-10-31) found these dead; rank 105 among them.
-    assert {"w2rt6byl5nf1opmc-a.com", "postimg.org", "netdna-ssl.com"} <= set(names)
+    assert all(n == n.lower().strip(".") and "." in n for n in names)
+    assert all(datetime.date.fromisoformat(d) for d in names.values())
+
+
+def test_a_delegated_name_whose_own_servers_deny_its_apex_is_not_tombstoned():
+    """www.anige-sokuhouvip.com (rank 15,580) is a live FC2 blog: .com
+    delegates the name, FC2's servers answer NXDOMAIN for the apex only. The
+    first cut of the sweep tombstoned it and six more like it (2026-10-31)."""
+    names = dead_top_names.DEAD_TOP_NAMES
+    assert not names & {"anige-sokuhouvip.com", "5d6d.com", "5ykj.com", "bshare.cn", "chinagwy.org",
+                        "makemyjobs.in", "theafricavoice.com"}
+    assert scoring.is_trusted_top_domain("www.anige-sokuhouvip.com")
 
 
 def test_an_unreadable_file_tombstones_nothing(tmp_path, caplog):
@@ -158,13 +169,23 @@ def test_the_phones_veto_leaves_dead_names_out():
 # ── The sweep ──
 
 def _fake(answers: dict[tuple[str, str], str], default: str = "alive"):
-    async def resolve(name: str, server: str) -> str:
+    """A resolver: `answers` by (name, server), "*" for every server; the
+    parent zone's servers under the server name "parent" (default: as the
+    resolvers say)."""
+    def answer(name: str, server: str) -> str:
         if name in ("google.com", "wikipedia.org", "cloudflare.com"):
             return "alive"
-        if name.startswith("cleanway-dead-canary"):
+        if name.startswith("cleanway-canary-"):
             return "nxdomain"
         return answers.get((name, server), answers.get((name, "*"), default))
-    return resolve
+
+    async def resolve(name: str, server: str) -> str:
+        return answer(name, server)
+
+    async def at_parent(name: str) -> str:
+        return answer(name, "parent")
+
+    return resolve, at_parent
 
 
 def _args(tmp_path, **kw):
@@ -173,7 +194,7 @@ def _args(tmp_path, **kw):
     top.write_text(json.dumps(["a.com", "b.com", "c.com", "gone.com"]))
     rep = tmp_path / "rep.json"
     rep.write_text(json.dumps({"r.com": 5000}))
-    base = dict(dry_run=False, report=None, today="2026-10-31", max_new=100,
+    base = dict(dry_run=False, report=None, today="2026-10-31", max_new=100, pending=None,
                 out=str(tmp_path / "dead.json"), top=str(top), reported=str(rep))
     base.update(kw)
     return argparse.Namespace(**base)
@@ -184,9 +205,10 @@ def test_a_name_is_dead_only_when_both_resolvers_say_nxdomain(tmp_path):
     answers = {("a.com", "*"): "nxdomain",                                       # dead at both
                ("b.com", "1.1.1.1"): "nxdomain", ("b.com", "8.8.8.8"): "alive",  # one says so
                ("c.com", "*"): "unknown",                                        # SERVFAIL, timeouts
-               ("r.com", "*"): "nxdomain"}                                       # a reported name
+               ("r.com", "*"): "nxdomain",                                       # a reported name
+               ("gone.com", "*"): "nxdomain", ("gone.com", "parent"): "alive"}   # the TLD delegates it
     args = _args(tmp_path)
-    assert asyncio.run(sweep.run(args, _fake(answers))) == 0
+    assert asyncio.run(sweep.run(args, *_fake(answers))) == 0
     names = json.loads(pathlib.Path(args.out).read_text())["names"]
     assert names == {"a.com": "2026-10-31", "r.com": "2026-10-31"}
 
@@ -195,27 +217,52 @@ def test_tombstones_are_sticky_and_revived_names_are_reported(tmp_path):
     sweep = _script("refresh_dead_top_names")
     args = _args(tmp_path, report=str(tmp_path / "report.md"), today="2026-11-07")
     pathlib.Path(args.out).write_text(sweep.render({"gone.com": "2026-10-31"}))
-    assert asyncio.run(sweep.run(args, _fake({("a.com", "*"): "nxdomain"}))) == 0
+    assert asyncio.run(sweep.run(args, *_fake({("a.com", "*"): "nxdomain"}))) == 0
     names = json.loads(pathlib.Path(args.out).read_text())["names"]
     assert names == {"a.com": "2026-11-07", "gone.com": "2026-10-31"}  # gone.com resolves again, kept
     assert "`gone.com`" in pathlib.Path(args.report).read_text() and "Revived" in pathlib.Path(args.report).read_text()
 
 
-@pytest.mark.parametrize("case", ["canary", "too_many"])
+def test_revived_names_alone_exit_for_an_issue(tmp_path):
+    sweep = _script("refresh_dead_top_names")
+    args = _args(tmp_path)
+    pathlib.Path(args.out).write_text(sweep.render({"gone.com": "2026-10-31"}))
+    assert asyncio.run(sweep.run(args, *_fake({}))) == sweep.EXIT_REVIVED
+    assert json.loads(pathlib.Path(args.out).read_text())["names"] == {"gone.com": "2026-10-31"}
+
+
+def test_an_unmerged_sweeps_tombstones_are_kept(tmp_path):
+    """The next run's PR replaces the open one: its names must come along."""
+    sweep = _script("refresh_dead_top_names")
+    pending = tmp_path / "pending.json"
+    pending.write_text(sweep.render({"c.com": "2026-10-31"}))
+    args = _args(tmp_path, pending=str(pending), today="2026-11-07")
+    assert asyncio.run(sweep.run(args, *_fake({("a.com", "*"): "nxdomain", ("c.com", "*"): "unknown"}))) == 0
+    assert json.loads(pathlib.Path(args.out).read_text())["names"] == {"a.com": "2026-11-07", "c.com": "2026-10-31"}
+
+
+def test_the_canary_is_a_fresh_name_each_run():
+    sweep = _script("refresh_dead_top_names")
+    assert sweep.dead_canary() != sweep.dead_canary()
+
+
+@pytest.mark.parametrize("case", ["canary", "parent", "too_many"])
 def test_the_sweep_refuses_and_writes_nothing(tmp_path, case):
     sweep = _script("refresh_dead_top_names")
     args = _args(tmp_path, max_new=1)
+    resolve, at_parent = _fake({}, default="nxdomain")
     if case == "canary":
         async def resolve(name, server):  # a resolver that answers NXDOMAIN for everything
             return "nxdomain"
-    else:
-        resolve = _fake({}, default="nxdomain")
-    assert asyncio.run(sweep.run(args, resolve)) == 2
+    elif case == "parent":
+        async def at_parent(name):  # parent servers that cannot be asked
+            return "unknown"
+    assert asyncio.run(sweep.run(args, resolve, at_parent)) == 2
     assert not pathlib.Path(args.out).exists()
 
 
 def test_a_dry_run_writes_nothing(tmp_path):
     sweep = _script("refresh_dead_top_names")
     args = _args(tmp_path, dry_run=True)
-    assert asyncio.run(sweep.run(args, _fake({("a.com", "*"): "nxdomain"}))) == 0
+    assert asyncio.run(sweep.run(args, *_fake({("a.com", "*"): "nxdomain"}))) == 0
     assert not pathlib.Path(args.out).exists()

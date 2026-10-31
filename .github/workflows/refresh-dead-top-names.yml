@@ -2,15 +2,17 @@ name: 'Tombstone dead popular names'
 
 # Weekly sweep of every name of data/top_100k.json and
 # data/top_domains_reported.json: one both Cloudflare and Google answer
-# NXDOMAIN for is added to data/top_domains_dead.json, which takes all the
-# lists' trust from it (api/services/dead_top_names.py) before anyone can
-# buy it — a name stays NXDOMAIN for weeks between its expiry and its
-# release. The phone's veto (popular_veto.txt) is rebuilt in the same PR,
-# as CI's build_mobile_assets.py --check requires.
+# NXDOMAIN for, and whose parent zone has no delegation for, is added to
+# data/top_domains_dead.json, which takes all the lists' trust from it
+# (api/services/dead_top_names.py) before anyone can buy it — a name stays
+# NXDOMAIN for weeks between its expiry and its release. The phone's veto
+# (popular_veto.txt) is rebuilt in the same PR.
 #
-# Opens a PR; humans review before merging. Names that resolve again are
-# listed in the PR body and stay tombstoned until a person checks who
-# holds them now.
+# Opens a PR; humans review before merging. CI does not run on a PR this
+# token opens, so the checks CI would run on these files run here, before
+# the PR. Names that resolve again stay tombstoned: they are listed in the
+# PR, or in an issue when nothing new died, for a person to check who holds
+# them now.
 
 on:
   schedule:
@@ -29,21 +31,48 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    timeout-minutes: 30
+      issues: write
+    timeout-minutes: 40
+    env:
+      BRANCH: cleanway/refresh-dead-top-names
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.11'
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
       - name: Install deps
         run: |
           pip install --upgrade pip
-          pip install dnspython==2.9.0
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      # The PR of an earlier run that nobody merged yet is replaced by this
+      # run's: its tombstones are carried over, never dropped.
+      - name: Carry over an unmerged sweep
+        run: |
+          if git fetch --depth=1 origin "$BRANCH" 2>/dev/null; then
+            git show FETCH_HEAD:data/top_domains_dead.json > "$RUNNER_TEMP/pending.json"
+            echo "PENDING=--pending $RUNNER_TEMP/pending.json" >> "$GITHUB_ENV"
+          fi
 
       - name: Sweep the lists
-        run: python3 scripts/refresh_dead_top_names.py --report "$RUNNER_TEMP/dead-report.md"
+        id: sweep
+        run: |
+          set +e
+          # shellcheck disable=SC2086 # PENDING is two words or none
+          python3 scripts/refresh_dead_top_names.py --report "$RUNNER_TEMP/dead-report.md" $PENDING
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/dead-report.md" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          # 3: nothing new, but tombstoned names resolve again.
+          if [ "$code" -eq 3 ]; then echo "revived=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          exit "$code"
 
       - name: Rebuild the phone's veto
         run: python3 scripts/build_mobile_assets.py
@@ -56,13 +85,20 @@ jobs:
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-          cat "$RUNNER_TEMP/dead-report.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run the checks CI runs on these files
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          python3 scripts/build_mobile_assets.py --check
+          python3 -m pytest -q tests/test_dead_top_names.py tests/test_refresh_dangerous_domains.py \
+            tests/test_public_suffix.py tests/test_allowlist_user_content_mirrors.py \
+            tests/test_compound_suffix_allowlist.py tests/test_trusted_top_domain.py
 
       - name: Open PR with the new tombstones
         if: steps.diff.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          branch: cleanway/refresh-dead-top-names
+          branch: ${{ env.BRANCH }}
           delete-branch: true
           commit-message: 'chore(data): tombstone popular names that stopped existing'
           title: 'chore(data): tombstone popular names that stopped existing'
@@ -70,3 +106,16 @@ jobs:
           add-paths: |
             data/top_domains_dead.json
             mobile/modules/cleanway-vpn/android/src/main/assets/popular_veto.txt
+
+      - name: Ask a person about the revived names
+        if: steps.sweep.outputs.revived == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Tombstoned popular names resolve again — check who holds them"
+          num=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number')
+          if [ -n "$num" ]; then
+            gh issue comment "$num" --body-file "$RUNNER_TEMP/dead-report.md"
+          else
+            gh issue create --title "$title" --body-file "$RUNNER_TEMP/dead-report.md"
+          fi
