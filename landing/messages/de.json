@@ -875,7 +875,7 @@
           "Um zu entscheiden, ob die Seite gefährlich ist, kann unser Server:"
         ],
         "items": [
-          "externe Prüfdienste nach dem Namen fragen: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX und IPQualityScore, und über den RDAP-Dienst rdap.org nachsehen, wann die Seite registriert wurde. Sie erhalten nur den Seitennamen, nicht, wer du bist;",
+          "externe Prüfdienste nach dem Namen fragen: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX und IPQualityScore, und per RDAP beim Register der Domain-Endung nachsehen, wann die Seite registriert wurde (für .com ist das Verisign). Sie erhalten nur den Seitennamen, nicht, wer du bist;",
           "seine Antwort mit der des DNS-Filters von Cloudflare (1.1.1.1 for Families) vergleichen, der den Seitennamen in einer gewöhnlichen DNS-Anfrage erhält;",
           "sich die Seite selbst ansehen (Adresse, Zertifikat und Einstellungen) – von unserem Server aus, nicht von deinem Handy;",
           "in Grenzfällen ein KI-Modell von Anthropic um eine zweite Meinung bitten. Es erhält nur abstrakte Merkmale, ohne den Seitennamen."

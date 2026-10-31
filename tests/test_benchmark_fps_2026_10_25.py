@@ -306,12 +306,26 @@ def test_fresh_certificate_on_an_unknown_name_still_counts(ml_off):
 @pytest.mark.parametrize("extra", [
     {"tranco_ranked": True, "tranco_rank": 500_000, "tranco_weight": -3},
     {"tranco_registrable_rank": 300_000},                             # www./shop. of a ranked name
-    {"domain_age_days": 400},
-    {"domain_age_days": 90},
 ])
 def test_fresh_certificate_is_a_renewal_when_the_name_is_older(ml_off, extra):
     _, _, reasons = scoring.calculate_score(_signals("shop.renewal-example.net", cert_age_days=1, **extra))
     assert "new_certificate" not in _codes(reasons)
+
+
+@pytest.mark.parametrize("host, age", [
+    ("klarna0001926538.sviluppo.host", 3453),   # a kit on a subdomain of an old name
+    ("portal.mykraken.exchange", 157),          # a fresh subdomain of a 5-month-old name
+    ("ingdirect-portal-ingreso.com", 119),      # the phishing domain itself, 4 months old
+    ("vkk.com", 10406),                         # an old name, phishing now
+    ("renewal-example.net", 90),
+])
+def test_an_old_registration_does_not_make_a_fresh_certificate_a_renewal(ml_off, host, age):
+    """Once RDAP measured age (2026-10-26), 'registered 90+ days ago' took
+    new_certificate away from 11 phishing hosts of 1,046 live ones (3 lost a
+    level) and from 2 real sites of 1,260, which stayed 'safe' with it. Age
+    of the registration is not the age of the site on it."""
+    _, _, reasons = scoring.calculate_score(_signals(host, cert_age_days=1, domain_age_days=age))
+    assert _codes(reasons).get("new_certificate") == 15
 
 
 @pytest.mark.parametrize("host", ["verifiedbadgehub.vercel.app", "fduno60.wixsite.com", "x.pages.dev"])

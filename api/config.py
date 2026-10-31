@@ -132,6 +132,10 @@ class Settings(BaseSettings):
     # IPQualityScore (free: 5K/month)
     ipqualityscore_key: str = ""
 
+    # AlienVault OTX: a free account key. Without one OTX answers 100
+    # lookups an hour per IP, then 429 (analyzer.check_alienvault_otx).
+    otx_api_key: str = ""
+
     # Sentry (error tracking)
     sentry_dsn: str = ""
 

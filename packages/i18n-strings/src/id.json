@@ -2426,7 +2426,7 @@
             "Untuk memutuskan apakah situs itu berbahaya, server kami dapat:"
           ],
           "items": [
-            "menanyakan nama itu ke layanan pemeriksaan eksternal: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX, dan IPQualityScore, serta mencari tahu kapan situs itu didaftarkan melalui layanan RDAP rdap.org. Mereka hanya menerima nama situs, bukan siapa Anda;",
+            "menanyakan nama itu ke layanan pemeriksaan eksternal: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX, dan IPQualityScore, serta mencari tahu kapan situs itu didaftarkan dengan bertanya lewat RDAP kepada registri zona domainnya (untuk .com, Verisign). Mereka hanya menerima nama situs, bukan siapa Anda;",
             "membandingkan jawabannya dengan jawaban filter DNS Cloudflare (1.1.1.1 for Families), yang menerima nama situs melalui permintaan DNS biasa;",
             "melihat situs itu sendiri (alamat, sertifikat, dan pengaturannya) dari server kami, bukan dari ponsel Anda;",
             "dalam kasus yang meragukan, meminta pendapat kedua dari model AI buatan Anthropic. Model ini hanya menerima tanda-tanda abstrak, tanpa nama situs."
