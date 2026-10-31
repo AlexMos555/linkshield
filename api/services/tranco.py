@@ -61,6 +61,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+from api.services import dead_top_names as _dead
 from api.services.cache import get_redis
 
 logger = logging.getLogger(__name__)
@@ -90,6 +91,10 @@ async def get_tranco_rank(domain: str) -> Optional[int]:
     """
     domain_key = (domain or "").strip().lower()
     if not domain_key:
+        return None
+    # A tombstoned name (dead_top_names) has no rank, whatever the hash
+    # holds: the hash has no TTL and a failed refresh keeps the old one.
+    if domain_key in _dead.DEAD_TOP_NAMES:
         return None
     try:
         r = await get_redis()

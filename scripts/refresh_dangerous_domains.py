@@ -134,6 +134,7 @@ from api.services import blocklist_retention as retention  # noqa: E402
 from api.services import confirmed_threats  # noqa: E402
 from api.services import own_sources  # noqa: E402
 from api.services import phishtank_feed  # noqa: E402
+from api.services.dead_top_names import DEAD_TOP_NAMES  # noqa: E402
 from api.services.public_suffix import CCTLD_NAMES, CCTLD_OPEN_ZONES  # noqa: E402
 
 # The shared and operator suffixes live in a standard-library module of their
@@ -637,8 +638,10 @@ def load_reported_popular(path: str = os.path.join(_DATA_DIR, "top_domains_repor
 def load_popular_guard() -> set[str]:
     """The bundled popular-domain guard: the top 100k, the popular names kept
     off it because a feed reports them, and the infrastructure names (the
-    Redis top-1M is consulted on top, _tranco_guard)."""
-    return _load_top_100k() | load_reported_popular() | load_infrastructure_domains()
+    Redis top-1M is consulted on top, _tranco_guard). Not the tombstoned
+    names (dead_top_names): they stopped existing, so whoever holds one now
+    is not who made it popular. One set for build_blockset and publish_gate."""
+    return ((_load_top_100k() | load_reported_popular()) - DEAD_TOP_NAMES) | load_infrastructure_domains()
 
 
 def load_brand_owned_hosts(path: str = BRAND_OWNED_PATH) -> frozenset[str]:
@@ -1147,7 +1150,7 @@ async def _tranco_guard(r, hosts, public_suffixes: set[str] | None):
     try:
         candidates = sorted({_registrable_domain(h, public_suffixes) for h in hosts if h})
         ranks = await r.hmget("tranco:ranks", candidates) if candidates else []
-        popular_set = {d for d, rank in zip(candidates, ranks) if rank}
+        popular_set = {d for d, rank in zip(candidates, ranks) if rank} - DEAD_TOP_NAMES
         logger.info("Top-1M guard: %d of %d registrables are ranked", len(popular_set), len(candidates))
         return popular_set.__contains__
     except Exception as e:  # noqa: BLE001

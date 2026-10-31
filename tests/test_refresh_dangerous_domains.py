@@ -188,7 +188,11 @@ def test_a_popular_name_a_feed_reports_is_never_blocked_whole():
     reported = rdd.load_reported_popular()
     assert {"maya.ph", "rezultati.com", "dub.sh", "filemail.com", "eim.ae", "kasserver.com"} <= reported
     guard = rdd.load_popular_guard()
-    assert reported <= guard
+    # All but the tombstoned ones (data/top_domains_dead.json): a reported
+    # name that stopped existing (wwww-telegram.com, get-verification.to) is
+    # anyone's now, and nothing keeps the publisher from listing it.
+    assert reported - rdd.DEAD_TOP_NAMES <= guard
+    assert not reported & rdd.DEAD_TOP_NAMES & guard
     hosts = ["maya.ph", "login.maya.ph", "rezultati.com", "www.rezultati.com", "dub.sh", "x.dub.sh",
              "filemail.com", "eim.ae", "kasserver.com", "scam-shop.com", "pay.scam-shop.com"]
     out = rdd.build_blockset(hosts, guard, shared_suffixes=set(), public_suffixes=PSL_EU,

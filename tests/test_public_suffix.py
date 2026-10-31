@@ -476,7 +476,8 @@ def test_a_name_under_an_open_zone_in_the_top_list_is_not_the_zones(host, truste
 def test_the_open_zone_rule_refuses_only_the_open_zones_of_the_top_list():
     """No entry or its www loses the allowlist; a name under an entry does
     only where the entry is an open zone (the FAITID zones and biz.ua were
-    refused already, as shared suffixes)."""
+    refused already, as shared suffixes). or.tv no longer exists and is
+    tombstoned (data/top_domains_dead.json): no key at all."""
     from api.services.scoring import TOP_DOMAINS, _is_open_zone_above, top_domain_key
 
     lost = [h for e in TOP_DOMAINS for h in (e, "www." + e)
@@ -484,7 +485,7 @@ def test_the_open_zone_rule_refuses_only_the_open_zones_of_the_top_list():
     assert lost == []
     refused = {e for e in TOP_DOMAINS
                if top_domain_key("mail." + e) == e and _is_open_zone_above("mail." + e, e)}
-    assert refused == {"go.ro", "or.tv", "biz.ua", "msk.ru", "msk.su", "nov.ru", "pp.ru", "spb.ru", "spb.su"}
+    assert refused == {"go.ro", "biz.ua", "msk.ru", "msk.su", "nov.ru", "pp.ru", "spb.ru", "spb.su"}
 
 
 @pytest.mark.parametrize("broken", ["psl", "cctld"])
