@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 import pytest
 
+from api.config import get_settings
 from api.services import analyzer
 from api.services.circuit_breaker import CircuitState, alienvault_breaker
 
@@ -165,3 +166,35 @@ def test_an_ip_check_is_measured_against_the_checks_that_apply(monkeypatch, offl
     ip, name = seen["185.199.108.153"], seen["fine.example"]
     assert name["plan"] - ip["plan"] == {"alienvault"}
     assert name["total"] - ip["total"] == 1
+
+
+# ── The account key ──
+# Without a key OTX stops at 100 lookups an hour (the 429 above); the free
+# account key lifts that and goes in the X-OTX-API-KEY header.
+
+@pytest.fixture
+def otx_headers(monkeypatch):
+    """Every OTX request answers "no pulses"; returns the list of the
+    requests' headers."""
+    seen: list[httpx.Headers] = []
+    real = httpx.AsyncClient
+
+    def _handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.headers)
+        return httpx.Response(200, json={"pulse_info": {"count": 0, "pulses": []}, "reputation": 0})
+
+    monkeypatch.setattr(analyzer.httpx, "AsyncClient",
+                        lambda *a, **k: real(*a, transport=httpx.MockTransport(_handler), **k))
+    return seen
+
+
+def test_the_otx_key_is_sent_when_set(otx_headers, monkeypatch):
+    monkeypatch.setattr(get_settings(), "otx_api_key", "test-key-not-real", raising=False)
+    asyncio.run(analyzer.check_alienvault_otx("fine.example"))
+    assert otx_headers[0]["X-OTX-API-KEY"] == "test-key-not-real"
+
+
+def test_no_key_header_without_a_key(otx_headers, monkeypatch):
+    monkeypatch.setattr(get_settings(), "otx_api_key", "", raising=False)
+    asyncio.run(analyzer.check_alienvault_otx("fine.example"))
+    assert "X-OTX-API-KEY" not in otx_headers[0]
