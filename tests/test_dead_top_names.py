@@ -266,3 +266,50 @@ def test_a_dry_run_writes_nothing(tmp_path):
     args = _args(tmp_path, dry_run=True)
     assert asyncio.run(sweep.run(args, *_fake({("a.com", "*"): "nxdomain"}))) == 0
     assert not pathlib.Path(args.out).exists()
+
+
+# ── What the parent zone said ──
+
+def _reply(rcode="NOERROR", tc=False, answer=(), authority=()):
+    import dns.flags
+    import dns.message
+    import dns.rcode
+    import dns.rrset
+
+    q = dns.message.make_query("x.example.com", "NS")
+    r = dns.message.make_response(q)
+    r.set_rcode(dns.rcode.from_text(rcode))
+    if tc:
+        r.flags |= dns.flags.TC
+    r.answer = [dns.rrset.from_text(*a) for a in answer]
+    r.authority = [dns.rrset.from_text(*a) for a in authority]
+    return r
+
+
+@pytest.mark.parametrize("reply, verdict", [
+    (dict(rcode="NXDOMAIN"), "nxdomain"),
+    (dict(authority=[("x.example.com.", 172800, "IN", "NS", "ns1.host.net.")]), "alive"),       # a referral
+    (dict(authority=[("example.com.", 900, "IN", "SOA",
+                      "a.ns. h.ns. 1 7200 900 1209600 86400")]), "alive"),                      # NODATA
+    (dict(answer=[("x.example.com.", 300, "IN", "NS", "ns1.host.net.")]), "alive"),
+    (dict(tc=True), "unknown"),                       # a.registry.qa over UDP: empty, truncated
+    (dict(), "unknown"),                              # NOERROR naming nothing
+    (dict(authority=[("other.example.com.", 0, "IN", "NS", "ck02.example.com.")]), "unknown"),
+    (dict(rcode="REFUSED"), "unknown"),
+])
+def test_only_the_parents_own_word_counts(reply, verdict):
+    import dns.name
+
+    sweep = _script("refresh_dead_top_names")
+    assert sweep.parent_verdict(_reply(**reply), dns.name.from_text("x.example.com")) == verdict
+
+
+def test_a_tombstone_the_parent_delegates_again_is_reported_as_revived(tmp_path):
+    """Its new servers may deny the apex like FC2's: the resolvers still say
+    NXDOMAIN, the registry says it is someone's again."""
+    sweep = _script("refresh_dead_top_names")
+    args = _args(tmp_path, report=str(tmp_path / "report.md"))
+    pathlib.Path(args.out).write_text(sweep.render({"gone.com": "2026-10-31"}))
+    answers = {("gone.com", "*"): "nxdomain", ("gone.com", "parent"): "alive"}
+    assert asyncio.run(sweep.run(args, *_fake(answers))) == sweep.EXIT_REVIVED
+    assert "`gone.com`" in pathlib.Path(args.report).read_text()

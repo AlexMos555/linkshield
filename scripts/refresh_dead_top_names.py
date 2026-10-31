@@ -157,7 +157,10 @@ def make_parent_check(timeout: float = 4.0) -> AtParent:
         qname = dns.name.from_text(name)
         # Registries rate-limit (GMO's .shop, DENIC, .xyz, .top dropped 48 of
         # 1,107 answers at 20 in flight, 2026-10-31): every server, three
-        # rounds, a pause between them.
+        # rounds, a pause between them. Over TCP: over UDP a.registry.qa
+        # answers an empty truncated NOERROR and gov.az a TTL-0 "cookie"
+        # referral for any name, both of which only a resolver's retry
+        # unwraps; over TCP both answer NXDOMAIN.
         for round_ in range(ATTEMPTS):
             if round_:
                 await asyncio.sleep(1.0 * round_)
@@ -165,17 +168,36 @@ def make_parent_check(timeout: float = 4.0) -> AtParent:
                 query = dns.message.make_query(qname, dns.rdatatype.NS)
                 query.flags &= ~dns.flags.RD
                 try:
-                    resp = await dns.asyncquery.udp(query, addr, timeout=timeout)
+                    resp = await dns.asyncquery.tcp(query, addr, timeout=timeout)
                 except (dns.exception.DNSException, OSError):
                     continue
-                if resp.rcode() == dns.rcode.NXDOMAIN:
-                    return NXDOMAIN
-                if resp.rcode() == dns.rcode.NOERROR:
-                    # A referral, an answer or NODATA: the zone has the name.
-                    return ALIVE
+                verdict = parent_verdict(resp, qname)
+                if verdict != UNKNOWN:
+                    return verdict
         return UNKNOWN
 
     return at_parent
+
+
+def parent_verdict(resp: dns.message.Message, qname: dns.name.Name) -> str:
+    """What a parent zone's reply says about `qname`: NXDOMAIN, ALIVE (a
+    referral to its servers, an answer, or NODATA under the zone's SOA), or
+    UNKNOWN for anything else — truncated, refused, or a NOERROR that names
+    neither, which is a server's evasion, not the zone's word."""
+    if resp.flags & dns.flags.TC:
+        return UNKNOWN
+    if resp.rcode() == dns.rcode.NXDOMAIN:
+        return NXDOMAIN
+    if resp.rcode() != dns.rcode.NOERROR:
+        return UNKNOWN
+    if resp.answer:
+        return ALIVE
+    for rrset in resp.authority:
+        if rrset.rdtype == dns.rdatatype.NS and rrset.name == qname:
+            return ALIVE
+        if rrset.rdtype == dns.rdatatype.SOA:
+            return ALIVE
+    return UNKNOWN
 
 
 async def _states(names: Iterable[str], server: str, resolve: Resolve,
@@ -220,8 +242,11 @@ async def sweep(names: list[str], resolve: Resolve, at_parent: AtParent) -> tupl
         async with sem:
             return name, await at_parent(name)
 
-    dead = {n for n, s in await asyncio.gather(*(parent(n) for n in sorted(dead))) if s == NXDOMAIN}
-    return dead, {n for n, s in first.items() if s == ALIVE}
+    at_parent_states = dict(await asyncio.gather(*(parent(n) for n in sorted(dead))))
+    # Alive: answers at the resolver, or the parent delegates it although its
+    # own servers deny the apex — a tombstone of that kind is "revived" too.
+    alive = {n for n, s in first.items() if s == ALIVE} | {n for n, s in at_parent_states.items() if s == ALIVE}
+    return {n for n, s in at_parent_states.items() if s == NXDOMAIN}, alive
 
 
 def load_names(top_path: str = TOP_PATH, reported_path: str = REPORTED_PATH) -> list[str]:
