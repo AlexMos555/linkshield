@@ -64,6 +64,7 @@ REPORTED_PATH = os.path.join(DATA, "top_domains_reported.json")
 RESOLVERS = ("1.1.1.1", "8.8.8.8")
 CONCURRENCY = 150
 PARENT_CONCURRENCY = 8  # to the registries' own servers, which rate-limit
+MAX_DELEGATED = 4       # of a referral's servers, asked about the zone
 ATTEMPTS = 3
 MAX_NEW = 2_500
 LIVE_CANARIES = ("google.com", "wikipedia.org", "cloudflare.com")
@@ -178,10 +179,16 @@ def make_parent_check(timeout: float = 4.0,
         chinagwy.org are delegated to DNSPod, which answers NXDOMAIN for
         them and their www alike; dns-parking and dnsv2 do the same or
         refuse (2026-10-31). Only FC2 serves anige-sokuhouvip.com's www."""
-        replies: list[Optional[dns.message.Message]] = []
+        replies: list[tuple[dns.name.Name, Optional[dns.message.Message]]] = []
         www = dns.name.from_text("www", origin=qname)
-        for host in referral_hosts(resp, qname)[:4]:
-            for addr in await _addresses(host, resp):
+        hosts = referral_hosts(resp, qname)
+        if len(hosts) > MAX_DELEGATED:
+            replies.append((qname, None))  # a server not asked: never LAME
+        for host in hosts[:MAX_DELEGATED]:
+            addrs = await _addresses(host, resp)
+            if not addrs:
+                replies.append((qname, None))  # no IPv4 address to ask it at
+            for addr in addrs:
                 for q, rtype in ((qname, dns.rdatatype.SOA), (www, dns.rdatatype.A)):
                     query = dns.message.make_query(q, rtype)
                     query.flags &= ~dns.flags.RD
@@ -189,7 +196,7 @@ def make_parent_check(timeout: float = 4.0,
                         reply, _ = await dns.asyncquery.udp_with_fallback(query, addr, timeout=timeout)
                     except (dns.exception.DNSException, OSError):
                         reply = None
-                    replies.append(reply)
+                    replies.append((q, reply))
                     if served_verdict(replies) == ALIVE:
                         return ALIVE
         return served_verdict(replies)
@@ -250,13 +257,19 @@ def referral_hosts(resp: dns.message.Message, qname: dns.name.Name) -> list[str]
                    if rr.rdtype == dns.rdatatype.NS and rr.name == qname for r in rr})
 
 
-def served_verdict(replies: list[Optional[dns.message.Message]]) -> str:
-    """The delegated servers' replies (None: no reply) → ALIVE when one
-    answers with authority (NOERROR, AA), LAME when every reply came and
-    none did (NXDOMAIN, REFUSED, or NOERROR without AA), else UNKNOWN."""
-    if any(r is not None and r.rcode() == dns.rcode.NOERROR and r.flags & dns.flags.AA for r in replies):
-        return ALIVE
-    if replies and all(r is not None for r in replies):
+def served_verdict(replies: list[tuple[dns.name.Name, Optional[dns.message.Message]]]) -> str:
+    """The delegated servers' replies, each with the name it was asked
+    (None: no reply, or a server not asked) → ALIVE when one serves the
+    zone: NOERROR with authority, or NOERROR carrying a record of the asked
+    name (Sberbank's servers answer sberbank.com's SOA and www without AA);
+    LAME when every server replied and none did (NXDOMAIN, REFUSED, an empty
+    or sideways NOERROR without authority); else UNKNOWN."""
+    for qname, r in replies:
+        if r is None or r.rcode() != dns.rcode.NOERROR:
+            continue
+        if r.flags & dns.flags.AA or any(rr.name == qname for rr in r.answer):
+            return ALIVE
+    if replies and all(r is not None for _, r in replies):
         return LAME
     return UNKNOWN
 

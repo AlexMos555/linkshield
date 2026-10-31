@@ -339,18 +339,50 @@ def test_a_tombstone_the_parent_delegates_again_is_reported_as_revived(tmp_path)
     assert "`gone.com`" in pathlib.Path(args.report).read_text()
 
 
+_SOA = ("x.example.com.", 3600, "IN", "SOA", "a.ns. h.ns. 1 7200 900 1209600 86400")
+
+
 @pytest.mark.parametrize("replies, verdict", [
-    ([("NOERROR", True)], "alive"),                                  # FC2 serving www
-    ([("NXDOMAIN", True), ("NXDOMAIN", True)], "lame"),              # DNSPod: no zone for it
-    ([("REFUSED", False), ("REFUSED", False)], "lame"),              # dnsv2
-    ([("NXDOMAIN", False), ("NOERROR", False)], "lame"),             # dns-parking: no authority
-    ([("NXDOMAIN", True), None], "unknown"),                         # a server did not answer
+    ([("NOERROR", True, ())], "alive"),                                     # FC2 serving www
+    ([("NOERROR", False, (_SOA,))], "alive"),                               # Sberbank: data, no AA
+    ([("NXDOMAIN", True, ()), ("NXDOMAIN", True, ())], "lame"),             # DNSPod: no zone for it
+    ([("REFUSED", False, ()), ("REFUSED", False, ())], "lame"),             # dnsv2
+    ([("NXDOMAIN", False, ()), ("NOERROR", False, ())], "lame"),            # dns-parking: no authority
+    ([("NOERROR", False, (("other.example.com.", 300, "IN", "A", "192.0.2.9"),))], "lame"),  # not our name
+    ([("NXDOMAIN", True, ()), None], "unknown"),                            # a server did not answer
     ([], "unknown"),
 ])
 def test_a_referral_counts_only_if_a_named_server_serves_the_zone(replies, verdict):
+    import dns.name
+
     sweep = _script("refresh_dead_top_names")
-    msgs = [None if r is None else _reply(rcode=r[0], aa=r[1]) for r in replies]
+    q = dns.name.from_text("x.example.com")
+    msgs = [(q, None if r is None else _reply(rcode=r[0], aa=r[1], answer=r[2])) for r in replies]
     assert sweep.served_verdict(msgs) == verdict
+
+
+def test_a_server_that_cannot_be_asked_keeps_a_referral_from_being_lame(monkeypatch):
+    """Five servers named, four asked: the fifth may be the one serving it."""
+    import dns.rrset
+
+    sweep = _script("refresh_dead_top_names")
+    hosts = [f"ns{i}.host.net." for i in range(1, 6)]
+    referral = _reply(authority=[("x.example.com.", 172800, "IN", "NS", *hosts)])
+    referral.additional = [dns.rrset.from_text(h, 300, "IN", "A", f"192.0.2.{i}") for i, h in enumerate(hosts, 1)]
+
+    async def tcp(query, where, timeout=None, **kw):
+        return referral
+
+    async def udp_with_fallback(query, where, timeout=None, **kw):
+        return _reply(rcode="NXDOMAIN", aa=True), False
+
+    monkeypatch.setattr(sweep.dns.asyncquery, "tcp", tcp)
+    monkeypatch.setattr(sweep.dns.asyncquery, "udp_with_fallback", udp_with_fallback)
+
+    async def zone(name):
+        return "com", ["192.0.2.100"]
+
+    assert asyncio.run(sweep.make_parent_check(zone_servers=zone)("x.example.com")) == "unknown"
 
 
 def test_the_parent_is_asked_over_tcp_without_recursion(monkeypatch):

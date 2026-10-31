@@ -53,9 +53,10 @@ jobs:
           pip install -r requirements-dev.txt
 
       # The open PR of an earlier run is replaced by this run's: the names it
-      # adds are carried over, never dropped. Only what its commit adds
-      # (create-pull-request builds base + one commit), and only while the PR
-      # is open: a merged or closed one, or a line removed on main by hand,
+      # adds are carried over, never dropped. Only what it adds against the
+      # commit it branched from (its merge base with main, whatever commits
+      # a person added on top), and only while it is open and ours (not a
+      # fork's): a merged or closed one, or a line removed on main by hand,
       # never comes back.
       - name: Carry over an open sweep PR
         env:
@@ -67,11 +68,14 @@ jobs:
           set -e
           if [ "$code" -eq 2 ]; then exit 0; fi           # no such branch
           if [ "$code" -ne 0 ]; then exit "$code"; fi     # cannot tell: stop, do not drop
-          open=$(gh pr list --head "$BRANCH" --state open --json number --jq 'length')
+          open=$(gh pr list --head "$BRANCH" --state open --json isCrossRepository \
+            --jq '[.[] | select(.isCrossRepository | not)] | length')
           if [ "$open" = "0" ]; then exit 0; fi
-          git fetch --depth=2 origin "$BRANCH"
+          git fetch --depth=1 origin "$BRANCH"
           git show FETCH_HEAD:data/top_domains_dead.json > "$RUNNER_TEMP/pending.json"
-          git show FETCH_HEAD^:data/top_domains_dead.json > "$RUNNER_TEMP/pending-base.json" \
+          base=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$BRANCH" --jq .merge_base_commit.sha)
+          git fetch --depth=1 origin "$base"
+          git show "$base:data/top_domains_dead.json" > "$RUNNER_TEMP/pending-base.json" \
             || echo '{"names": {}}' > "$RUNNER_TEMP/pending-base.json"
           echo "PENDING=--pending $RUNNER_TEMP/pending.json --pending-base $RUNNER_TEMP/pending-base.json" >> "$GITHUB_ENV"
 
