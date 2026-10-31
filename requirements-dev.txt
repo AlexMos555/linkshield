@@ -9,4 +9,4 @@ pytest-asyncio==1.4.0
 pytest-mock==3.17.0
 
 # Linting / formatting
-ruff==0.17.1
+ruff==0.17.3
