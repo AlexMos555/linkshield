@@ -183,6 +183,16 @@ async def _judge(
 
     score, level, reasons = calculate_score(signals)
     confidence = calculate_confidence(measured, total, whois_age)
+    if (signals["young_rank"] is not None and not signals["popularity_withheld"]
+            and get_settings().popularity_age_gate == "shadow"):
+        # Shadow: what withholding the young name's rank would change.
+        gated = _build_signals(domain, raw_url, is_ip, outcomes, total, withhold_young_rank=True)
+        gated["checks_succeeded"] = measured
+        gated_score, gated_level, _ = calculate_score(gated)
+        logger.info("popularity_age_gate_shadow", extra={
+            "domain": domain, "rank": signals["young_rank"], "age_days": whois_age,
+            "score": score, "verdict": level.value, "gated_score": gated_score, "gated_verdict": gated_level.value,
+        })
 
     if confidence == ConfidenceLevel.low and level == RiskLevel.safe:
         score = max(score, vb.CANNOT_VOUCH_SCORE)
@@ -431,14 +441,43 @@ def _popularity_rank(tranco_result: dict, domain: str) -> Optional[int]:
     }, domain)
 
 
+_UNRANKED = {"ranked": False, "rank": None, "weight": 0, "label": "", "registrable_rank": None}
+
+
+def _young_rank(tranco_result: dict, whois_data: dict, domain: str) -> Optional[int]:
+    """The rank of a name registered fewer than popularity_min_age_days ago
+    (the registry's date for its registrable name, check_whois_age), else
+    None. A dropped name keeps the links of its earlier holder and a link
+    farm's name buys them, so such a rank is not the name's own: 11 *.uk/*.nl
+    names registered the same day ranked 130k-360k, ruhlinkpay.com #17,140
+    at 80 days (2026-10-31). An unknown age (.ru, .de, a failed lookup)
+    keeps the rank, as before."""
+    age = whois_data.get("age_days")
+    limit = get_settings().popularity_min_age_days
+    if not isinstance(age, int) or isinstance(age, bool) or limit <= 0 or age >= limit:
+        return None
+    return _popularity_rank(tranco_result, domain)
+
+
 def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
-                   total_checks: int = TOTAL_CHECKS) -> dict:
+                   total_checks: int = TOTAL_CHECKS, withhold_young_rank: Optional[bool] = None) -> dict:
     """The scorer's input — all 42+ signals, from the gathered outcomes. A
     source that was not consulted is simply absent from `outcomes`, so its
-    hit reads False and it is not counted as measured."""
+    hit reads False and it is not counted as measured.
+
+    A young name's rank (_young_rank) is replaced by "unranked" before
+    anything reads it when popularity_age_gate is "on", or when
+    `withhold_young_rank` says so (the shadow comparison in _judge): no
+    popularity bonus, vouch, OTX waiver, LLM popularity prior, certificate
+    renewal or self-hosted-product exemption then comes from it."""
     alienvault_data = _value(outcomes, "alienvault", {})
     ipqs_data = _value(outcomes, "ipqs", {})
     tranco_result = _value(outcomes, "tranco", {"ranked": False, "rank": None, "weight": 0, "label": ""})
+    young_rank = _young_rank(tranco_result, _value(outcomes, "whois", {}), domain)
+    gate = get_settings().popularity_age_gate
+    withheld = young_rank is not None and (gate == "on" if withhold_young_rank is None else withhold_young_rank)
+    if withheld:
+        tranco_result = dict(_UNRANKED)
     favicon_result = _value(outcomes, "favicon", {"cloned": False, "brand": None, "weight": 0, "detail": ""})
     watchtower_result = _value(outcomes, "watchtower", {"matched": False, "weight": 0})
     whois_data = _value(outcomes, "whois", {})
@@ -489,6 +528,10 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
         "tranco_registrable_rank": tranco_result.get("registrable_rank"),
         "tranco_weight": tranco_result.get("weight", 0),
         "tranco_label": tranco_result.get("label", ""),
+        # The rank a young registration did not earn (_young_rank), and
+        # whether it was withheld.
+        "young_rank": young_rank,
+        "popularity_withheld": withheld,
         # Strategy #2 — favicon brand-clone
         "favicon_cloned": bool(favicon_result.get("cloned")),
         "favicon_brand": favicon_result.get("brand"),
@@ -633,6 +676,10 @@ async def _name_is_vouched_for(domain: str, signals: dict, deadline: Deadline) -
     x.repl.co or bucket.s3.amazonaws.com is not vouched for by its platform's
     rank — 35,631 of the 699,287 hosts of the 2026-10-24 feed snapshot were,
     none of the labelled legit sets or the top-100k."""
+    if signals.get("popularity_withheld"):
+        # A young registration's rank (_young_rank) vouches for nothing, nor
+        # does its registrable's.
+        return _government_name(domain)
     if signals.get("tranco_ranked") or _government_name(domain):
         return True
     registrable = rank_registrable_domain(domain)
