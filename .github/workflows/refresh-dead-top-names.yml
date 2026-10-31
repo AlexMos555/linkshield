@@ -52,14 +52,28 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
-      # The PR of an earlier run that nobody merged yet is replaced by this
-      # run's: its tombstones are carried over, never dropped.
-      - name: Carry over an unmerged sweep
+      # The open PR of an earlier run is replaced by this run's: the names it
+      # adds are carried over, never dropped. Only what its commit adds
+      # (create-pull-request builds base + one commit), and only while the PR
+      # is open: a merged or closed one, or a line removed on main by hand,
+      # never comes back.
+      - name: Carry over an open sweep PR
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if git fetch --depth=1 origin "$BRANCH" 2>/dev/null; then
-            git show FETCH_HEAD:data/top_domains_dead.json > "$RUNNER_TEMP/pending.json"
-            echo "PENDING=--pending $RUNNER_TEMP/pending.json" >> "$GITHUB_ENV"
-          fi
+          set +e
+          git ls-remote --exit-code origin "refs/heads/$BRANCH" > /dev/null
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then exit 0; fi           # no such branch
+          if [ "$code" -ne 0 ]; then exit "$code"; fi     # cannot tell: stop, do not drop
+          open=$(gh pr list --head "$BRANCH" --state open --json number --jq 'length')
+          if [ "$open" = "0" ]; then exit 0; fi
+          git fetch --depth=2 origin "$BRANCH"
+          git show FETCH_HEAD:data/top_domains_dead.json > "$RUNNER_TEMP/pending.json"
+          git show FETCH_HEAD^:data/top_domains_dead.json > "$RUNNER_TEMP/pending-base.json" \
+            || echo '{"names": {}}' > "$RUNNER_TEMP/pending-base.json"
+          echo "PENDING=--pending $RUNNER_TEMP/pending.json --pending-base $RUNNER_TEMP/pending-base.json" >> "$GITHUB_ENV"
 
       - name: Sweep the lists
         id: sweep
@@ -86,13 +100,13 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run the checks CI runs on these files
+      # CI's own test run: CI does not run on a PR this token opens.
+      - name: Run the test suite as CI does
         if: steps.diff.outputs.changed == 'true'
-        run: |
-          python3 scripts/build_mobile_assets.py --check
-          python3 -m pytest -q tests/test_dead_top_names.py tests/test_refresh_dangerous_domains.py \
-            tests/test_public_suffix.py tests/test_allowlist_user_content_mirrors.py \
-            tests/test_compound_suffix_allowlist.py tests/test_trusted_top_domain.py
+        env:
+          DEBUG: "true"
+          SUPABASE_JWT_SECRET: "test-secret-for-development-only-not-for-production-use"
+        run: python3 -m pytest -q tests/
 
       - name: Open PR with the new tombstones
         if: steps.diff.outputs.changed == 'true'

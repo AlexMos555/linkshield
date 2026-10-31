@@ -23,9 +23,11 @@ can register it to stop the sweep — must be NXDOMAIN), or more than MAX_NEW
 names would be added in one run — a resolver answering NXDOMAIN wholesale,
 not a week of expiries (1,155 on the first run, 2026-10-31).
 
---pending FILE: the tombstone file of a sweep PR not merged yet. Its names
-are kept (the workflow passes it), or the next run's PR would replace that
-one and drop them in the very weeks the names change hands.
+--pending FILE --pending-base FILE: the tombstone file of an open sweep PR
+and of the commit it was built on. The names that PR adds (FILE minus BASE)
+are kept — the next run's PR replaces it, and would drop them in the very
+weeks the names change hands — but nothing else of its file: a line a
+person removed on main stays removed.
 
 Usage:
     python3 scripts/refresh_dead_top_names.py               # sweep, write
@@ -79,6 +81,12 @@ ABOUT = (
 )
 
 NXDOMAIN, ALIVE, UNKNOWN = "nxdomain", "alive", "unknown"
+# The parent delegates the name, but no server it names serves the zone:
+# nobody controls its DNS, and on a DNS host that lets any account claim a
+# zone delegated to it ("Sitting Ducks") anyone can. Dead, for the lists.
+LAME = "lame"
+REFERRAL = "referral"
+DEAD_STATES = (NXDOMAIN, LAME)
 Resolve = Callable[[str, str], Awaitable[str]]
 # `at_parent(name)` → NXDOMAIN when the parent zone's servers have no such
 # name, ALIVE when they delegate it, UNKNOWN when they could not be asked.
@@ -117,11 +125,13 @@ def make_resolver(timeout: float = 4.0) -> Resolve:
     return resolve
 
 
-def make_parent_check(timeout: float = 4.0) -> AtParent:
+def make_parent_check(timeout: float = 4.0,
+                      zone_servers: Optional[Callable[[str], Awaitable[tuple[str, list[str]]]]] = None) -> AtParent:
     """Ask the parent zone's own servers, without recursion, whether they
-    delegate `name`. The zone is found by walking up from the name's parent
-    to the first name with NS records (1.1.1.1); its servers' addresses are
-    cached per zone."""
+    delegate `name`, and when they do, whether a server they name serves it.
+    The zone is found by walking up from the name's parent to the first name
+    with NS records (1.1.1.1); its servers' addresses are cached per zone.
+    `zone_servers` replaces that walk (tests)."""
     rec = dns.asyncresolver.Resolver(configure=False)
     rec.nameservers = [RESOLVERS[0]]
     rec.timeout, rec.lifetime = timeout, timeout * 2
@@ -152,8 +162,40 @@ def make_parent_check(timeout: float = 4.0) -> AtParent:
             labels = labels[1:]
         return "", []
 
+    async def _addresses(host: str, resp: dns.message.Message) -> list[str]:
+        glue = [r.address for rr in resp.additional if rr.rdtype == dns.rdatatype.A
+                and str(rr.name).rstrip(".") == host for r in rr]
+        if glue:
+            return glue[:1]
+        try:
+            return [a.address for a in await rec.resolve(host, "A")][:1]
+        except dns.exception.DNSException:
+            return []
+
+    async def _served(qname: dns.name.Name, resp: dns.message.Message) -> str:
+        """Does a server of the referral answer for the zone (SOA of the
+        name, or www under it) with authority? 5d6d.com, bshare.cn and
+        chinagwy.org are delegated to DNSPod, which answers NXDOMAIN for
+        them and their www alike; dns-parking and dnsv2 do the same or
+        refuse (2026-10-31). Only FC2 serves anige-sokuhouvip.com's www."""
+        replies: list[Optional[dns.message.Message]] = []
+        www = dns.name.from_text("www", origin=qname)
+        for host in referral_hosts(resp, qname)[:4]:
+            for addr in await _addresses(host, resp):
+                for q, rtype in ((qname, dns.rdatatype.SOA), (www, dns.rdatatype.A)):
+                    query = dns.message.make_query(q, rtype)
+                    query.flags &= ~dns.flags.RD
+                    try:
+                        reply, _ = await dns.asyncquery.udp_with_fallback(query, addr, timeout=timeout)
+                    except (dns.exception.DNSException, OSError):
+                        reply = None
+                    replies.append(reply)
+                    if served_verdict(replies) == ALIVE:
+                        return ALIVE
+        return served_verdict(replies)
+
     async def at_parent(name: str) -> str:
-        _, addrs = await _zone_servers(name)
+        _, addrs = await (zone_servers or _zone_servers)(name)
         qname = dns.name.from_text(name)
         # Registries rate-limit (GMO's .shop, DENIC, .xyz, .top dropped 48 of
         # 1,107 answers at 20 in flight, 2026-10-31): every server, three
@@ -172,6 +214,8 @@ def make_parent_check(timeout: float = 4.0) -> AtParent:
                 except (dns.exception.DNSException, OSError):
                     continue
                 verdict = parent_verdict(resp, qname)
+                if verdict == REFERRAL:
+                    return await _served(qname, resp)
                 if verdict != UNKNOWN:
                     return verdict
         return UNKNOWN
@@ -180,23 +224,40 @@ def make_parent_check(timeout: float = 4.0) -> AtParent:
 
 
 def parent_verdict(resp: dns.message.Message, qname: dns.name.Name) -> str:
-    """What a parent zone's reply says about `qname`: NXDOMAIN, ALIVE (a
-    referral to its servers, an answer, or NODATA under the zone's SOA), or
-    UNKNOWN for anything else — truncated, refused, or a NOERROR that names
-    neither, which is a server's evasion, not the zone's word."""
+    """What a parent zone's reply says about `qname`: NXDOMAIN; REFERRAL (it
+    names the name's servers, which are asked next); ALIVE (an answer, or
+    NODATA under the zone's SOA: the zone holds the name itself); or UNKNOWN
+    for anything else — truncated, refused, or a NOERROR that names neither,
+    which is a server's evasion, not the zone's word."""
     if resp.flags & dns.flags.TC:
         return UNKNOWN
     if resp.rcode() == dns.rcode.NXDOMAIN:
         return NXDOMAIN
     if resp.rcode() != dns.rcode.NOERROR:
         return UNKNOWN
+    if referral_hosts(resp, qname):
+        return REFERRAL
     if resp.answer:
         return ALIVE
-    for rrset in resp.authority:
-        if rrset.rdtype == dns.rdatatype.NS and rrset.name == qname:
-            return ALIVE
-        if rrset.rdtype == dns.rdatatype.SOA:
-            return ALIVE
+    if any(rrset.rdtype == dns.rdatatype.SOA for rrset in resp.authority):
+        return ALIVE
+    return UNKNOWN
+
+
+def referral_hosts(resp: dns.message.Message, qname: dns.name.Name) -> list[str]:
+    """The servers a referral for `qname` names, sorted."""
+    return sorted({str(r.target).rstrip(".") for rr in resp.authority
+                   if rr.rdtype == dns.rdatatype.NS and rr.name == qname for r in rr})
+
+
+def served_verdict(replies: list[Optional[dns.message.Message]]) -> str:
+    """The delegated servers' replies (None: no reply) → ALIVE when one
+    answers with authority (NOERROR, AA), LAME when every reply came and
+    none did (NXDOMAIN, REFUSED, or NOERROR without AA), else UNKNOWN."""
+    if any(r is not None and r.rcode() == dns.rcode.NOERROR and r.flags & dns.flags.AA for r in replies):
+        return ALIVE
+    if replies and all(r is not None for r in replies):
+        return LAME
     return UNKNOWN
 
 
@@ -243,10 +304,11 @@ async def sweep(names: list[str], resolve: Resolve, at_parent: AtParent) -> tupl
             return name, await at_parent(name)
 
     at_parent_states = dict(await asyncio.gather(*(parent(n) for n in sorted(dead))))
-    # Alive: answers at the resolver, or the parent delegates it although its
-    # own servers deny the apex — a tombstone of that kind is "revived" too.
+    # Alive: answers at the resolver, or the parent delegates it and one of
+    # its servers serves it although the apex is denied (FC2) — a tombstone
+    # of that kind is "revived" too.
     alive = {n for n, s in first.items() if s == ALIVE} | {n for n, s in at_parent_states.items() if s == ALIVE}
-    return {n for n, s in at_parent_states.items() if s == NXDOMAIN}, alive
+    return {n for n, s in at_parent_states.items() if s in DEAD_STATES}, alive
 
 
 def load_names(top_path: str = TOP_PATH, reported_path: str = REPORTED_PATH) -> list[str]:
@@ -269,11 +331,13 @@ def render(dead: dict[str, str]) -> str:
     return json.dumps({"_about": ABOUT, "names": dict(sorted(dead.items()))}, ensure_ascii=False, indent=1) + "\n"
 
 
-def report(added: list[str], revived: list[str], total: int, swept: int) -> str:
+def report(added: list[str], revived: list[str], total: int, swept: int, carried: Iterable[str] = ()) -> str:
+    carried = set(carried)
     lines = [f"Swept {swept:,} names; {len(added):,} newly dead, {total:,} tombstoned in all.", ""]
     if added:
-        lines += ["**Newly dead** (NXDOMAIN at 1.1.1.1 and 8.8.8.8):", ""]
-        lines += [f"- `{n}`" for n in added[:300]]
+        lines += ["**Newly dead** (NXDOMAIN at 1.1.1.1 and 8.8.8.8, and the parent zone has no name or "
+                  "no server serving it; *carried over* from the replaced sweep PR where marked):", ""]
+        lines += [f"- `{n}`" + (" *(carried over)*" if n in carried else "") for n in added[:300]]
         if len(added) > 300:
             lines.append(f"- … and {len(added) - 300:,} more (see the diff)")
         lines.append("")
@@ -294,10 +358,13 @@ async def run(args: argparse.Namespace, resolve: Optional[Resolve] = None,
         print(f"refused: {why}", file=sys.stderr)
         return 2
     names = load_names(args.top, args.reported)
-    previous = load_dead(args.out)
+    on_main = load_dead(args.out)
+    previous = dict(on_main)
     if args.pending:
+        base = load_dead(args.pending_base) if args.pending_base else {}
         for n, day in load_dead(args.pending).items():
-            previous.setdefault(n, day)
+            if n not in base:
+                previous.setdefault(n, day)
     dead, alive = await sweep(names, resolve, at_parent)
     added = sorted(dead - set(previous))
     if len(added) > args.max_new:
@@ -307,17 +374,19 @@ async def run(args: argparse.Namespace, resolve: Optional[Resolve] = None,
     for n in added:
         merged[n] = args.today
     revived = sorted(set(previous) & alive)
-    text = report(added, revived, len(merged), len(names))
+    # What the PR adds to main: this run's finds and the open PR's carried over.
+    new_vs_main = sorted(set(merged) - set(on_main))
+    text = report(new_vs_main, revived, len(merged), len(names), carried=sorted(set(new_vs_main) - set(added)))
     print(text)
     if args.report:
         with open(args.report, "w", encoding="utf-8") as f:
             f.write(text)
-    if not args.dry_run and merged != load_dead(args.out):
+    if not args.dry_run and merged != on_main:
         tmp = args.out + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             f.write(render(merged))
         os.replace(tmp, args.out)
-    return EXIT_REVIVED if revived and not added else 0
+    return EXIT_REVIVED if revived and not new_vs_main else 0
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -329,7 +398,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("--out", default=DEAD_PATH)
     p.add_argument("--top", default=TOP_PATH)
     p.add_argument("--reported", default=REPORTED_PATH)
-    p.add_argument("--pending", help="the tombstone file of an unmerged sweep PR, kept")
+    p.add_argument("--pending", help="the tombstone file of an open sweep PR: the names it adds are kept")
+    p.add_argument("--pending-base", help="the tombstone file of the commit that PR was built on")
     return asyncio.run(run(p.parse_args(argv)))
 
 
