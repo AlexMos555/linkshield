@@ -44,10 +44,10 @@ from api.services import licensed_intel, load_shedding, paid_budget, rdap, secur
 from api.services import verdict_basis as vb
 from api.services.analysis_budget import MIN_STEP_S, Deadline, run_within_budget
 from api.services.tls_contexts import client_tls_context
-from api.services.hosting_platforms import is_user_content_service
 from api.services.scoring import (
     calculate_score, calculate_confidence, calculate_confidence_pct, is_hosting_platform_site,
-    is_regional_government_domain, popularity_rank, registrable_domain,
+    is_regional_government_domain, is_user_content_service_host, popularity_rank, rank_registrable_domain,
+    _platform_tenant_site,
 )
 from api.services.domain_validator import (
     validate_domain,
@@ -86,8 +86,8 @@ from api.models.schemas import DomainResult, DomainReason, RiskLevel, Confidence
 logger = logging.getLogger("cleanway.analyzer")
 
 # Every check the analyzer knows. The number a verdict is measured against
-# is licensed_intel.total_checks(TOTAL_CHECKS): fewer when sources are
-# switched off for their licence.
+# is TOTAL_CHECKS minus _not_consulted(domain): fewer when sources are
+# switched off for their licence, and for an IP literal (_NOT_FOR_IPS).
 TOTAL_CHECKS = 19
 # The checks that connect to the site itself. They are skipped when the SSRF
 # guard could not finish (we would not know where we are connecting), and an
@@ -127,10 +127,11 @@ async def analyze_domain(
             verdict_basis=vb.BASIS_HEURISTICS,
         )
 
-    # A user-content service host (disk.yandex.ru, onedrive.live.com): its
-    # name is the platform's, so scoring it judges Yandex or Microsoft, not
-    # the page. Fixed answer, no analysis.
-    if is_user_content_service(domain):
+    # A user-content service host (disk.yandex.ru, onedrive.live.com, and
+    # disk.yandex.kz on another domain of its operator): its name is the
+    # platform's, so scoring it judges Yandex or Microsoft, not the page.
+    # Fixed answer, no analysis.
+    if is_user_content_service_host(domain):
         return vb.user_content_result(domain)
 
     budget = get_settings().analysis_budget_seconds if budget_s is None else budget_s
@@ -173,7 +174,7 @@ async def _judge(
 ) -> DomainResult:
     """Score the gathered evidence, let the LLM judge use what budget is left,
     and assemble the result."""
-    total = licensed_intel.total_checks(TOTAL_CHECKS)
+    total = TOTAL_CHECKS - len(_not_consulted(domain))
     signals = _build_signals(domain, raw_url, is_ip, outcomes, total)
     whois_age = signals["domain_age_days"]
     measured = _measured_checks(outcomes, signals["site_reachable"])
@@ -306,7 +307,7 @@ def _check_calls(domain: str, probes_allowed: bool) -> dict[str, Any]:
     Built per call rather than at import so a monkeypatched check function
     is the one that runs.
     """
-    skipped = licensed_intel.skipped_checks()
+    skipped = _not_consulted(domain)
     plan = {
         # Blocklist sources (11)
         "safe_browsing": (safe_browsing_breaker, check_safe_browsing),
@@ -336,6 +337,26 @@ def _check_calls(domain: str, probes_allowed: bool) -> dict[str, Any]:
         for name, (breaker, fn) in plan.items()
         if (probes_allowed or name not in _SITE_PROBES) and name not in skipped
     }
+
+
+# Checks that cannot look up an IP literal, which the analyzer accepts as a
+# host. OTX's domain endpoint answers 400 "Invalid domain (8.8.8.8)" for every
+# IP (measured 2026-10-27); since #349 a non-2xx is a breaker failure, so three
+# IP checks switched OTX off for 60 s for every domain. Its IPv4 endpoint does
+# answer, but not with the same thing: shared hosting addresses carry bulk
+# IOC dumps and honeypot feeds (Vercel 76.76.21.21, GitHub Pages
+# 185.199.109.153, Microsoft 13.107.42.14: 50 pulses each; example.com's
+# 93.184.215.14: 9), which scoring would read as +60. Not consulted, OTX is
+# not counted as measured, nor among the checks a verdict is measured
+# against, as for a source switched off.
+_NOT_FOR_IPS = frozenset({"alienvault"})
+
+
+def _not_consulted(domain: str) -> frozenset:
+    """The checks an analysis of `domain` does not run: switched off for
+    their licence (licensed_intel), or unable to look up an IP literal."""
+    skipped = licensed_intel.skipped_checks()
+    return skipped | _NOT_FOR_IPS if _is_ip_address(domain) else skipped
 
 
 def _through_outbound_gate(fn: Any) -> Any:
@@ -594,11 +615,23 @@ async def _name_is_vouched_for(domain: str, signals: dict, deadline: Deadline) -
     reading that rank as a vouch for every host anyone registers under it
     let an unreachable gosuslugi-lk.spb.ru through as 'safe'. (The ranking
     since 2026-10-23 folds every host to its registrable domain the same
-    way, so it carries gov.spb.ru, not spb.ru.)"""
+    way, so it carries gov.spb.ru, not spb.ru.)
+
+    Nor does a zone's above the registrant (scoring.rank_registrable_domain):
+    acessar-conta-br.co.ua is its own registrable domain, not a name under
+    co.ua (#278,678 of the Tranco top-1M) — public_suffix's ccTLD default —
+    and a zone it names as one owner's lends its rank to no name the reading
+    before 2026-10-28 kept apart from it (login.web.de).
+
+    Nor a platform's to its customers (_platform_tenant_site, as in
+    popularity_rank()): since 2026-10-28 an unreachable x.duckdns.org,
+    x.repl.co or bucket.s3.amazonaws.com is not vouched for by its platform's
+    rank — 35,631 of the 699,287 hosts of the 2026-10-24 feed snapshot were,
+    none of the labelled legit sets or the top-100k."""
     if signals.get("tranco_ranked") or _government_name(domain):
         return True
-    registrable = registrable_domain(domain)
-    if registrable == domain or is_hosting_platform_site(domain):
+    registrable = rank_registrable_domain(domain)
+    if registrable == domain or is_hosting_platform_site(domain) or _platform_tenant_site(domain):
         return False
     try:
         rank = await asyncio.wait_for(get_tranco_rank(registrable), timeout=deadline.step(_VOUCH_LOOKUP_S))
@@ -900,14 +933,17 @@ async def check_alienvault_otx(domain: str) -> dict:
     Returns reputation data including pulse count (community threat reports),
     how many of those pulses are distinct reports and how many days ago the
     newest of them was made (_otx_reports).
+
+    Without a key OTX allows 100 lookups an hour per IP, then answers 429
+    (measured 2026-10-26). A non-2xx answer raises — a failed, unmeasured
+    check the breaker counts — never reads as "no pulses".
     """
     async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.get(
             f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/general",
             headers={"Accept": "application/json"},
         )
-        if resp.status_code != 200:
-            return {}
+        resp.raise_for_status()
         data = resp.json()
         pulse_info = data.get("pulse_info") or {}
         pulse_count = pulse_info.get("count", 0) or 0

@@ -101,6 +101,67 @@ jobs:
       # `playwright install` runs on every job anyway: a no-op when the cached
       # browsers are complete (Playwright writes their INSTALLATION_COMPLETE
       # marker last), a download for anything missing.
+      #
+      # The OS packages are cached too. On 2026-10-27 the runners were on
+      # ubuntu-26.04 (image 20261012.163), where install-deps fetches 185 new
+      # and 6 upgraded packages, 142 MB: 22-38 s at 13:39 UTC, but at ~13:54
+      # azure.archive.ubuntu.com sent ~40 kB/s and all three attempts timed
+      # out in 3 of the 4 jobs (run 40515847404). Retries can't beat a mirror
+      # that stays slow, so the .debs live in the Actions cache and a warm job
+      # fetches only the indexes plus whatever changed since the cache was
+      # written (PR #352: "Need to get 0 B/142 MB", install 15-30 s). The
+      # cache is ~135 MB (191 .debs) here and ~24 MB (13) in e2e-extension.
+      # - Key: playwright-apt-<OS>-<Ubuntu release>-<arch>-<browsers>_
+      #   <Playwright version>-<variant>-<full|part>-<run>-<content hash>.
+      #   Keys can't be overwritten, so the run id makes every save a new
+      #   entry, and the newest is always the last one saved; the content
+      #   hash keeps matrix legs that saw different images apart (legs with
+      #   the same .debs share one entry).
+      #   The browser list ends in "_", so e2e-extension's "chromium_" is not
+      #   a prefix of "chromium+webkit_" and neither restores the other's
+      #   cache. The variant is the architecture of the Ubuntu archive's
+      #   indexes: ubuntu-26.04 reads amd64v3 builds (picked by CPU) that are
+      #   stored under the same file names as the amd64 ones. Other apt
+      #   sources don't count: packages.microsoft.com adds amd64, arm64 and
+      #   armhf indexes that Playwright installs nothing from, and a change
+      #   there must not make every restore miss.
+      # - Restore takes the newest cache of this Playwright version and
+      #   variant, else of any variant, else of any Playwright version.
+      #   Nothing about the runner image is in the key: a new image restores
+      #   the cache that is there and fetches only what that one lacks.
+      # - apt takes a file in its archive directory on its size alone (the
+      #   pkgAcqArchive constructor in apt-pkg/acquire-item.cc), so the cache
+      #   is not restored there. "Load cached apt packages" runs apt-get
+      #   update, then `apt-get download --print-uris` for the cached package
+      #   names: file name, size and checksum of the version apt would
+      #   install now, from the signed indexes. Only files that match all
+      #   three are copied to /var/cache/apt/archives; stale versions, files
+      #   cut short by a broken restore and anything corrupted or foreign are
+      #   dropped and downloaded as before.
+      # - Saved only when the job had to fetch 2 MB or more from the mirror
+      #   (~50 s at the ~40 kB/s seen on 2026-10-27), whether the install
+      #   passed or failed. A cache that left less to fetch is not stored
+      #   again; one that left more is replaced by a newer one, which the
+      #   next restore picks. What is saved: the .debs this job brought into
+      #   apt's archive directory, handed over from the cache or downloaded
+      #   (apt moves a download there only after its checksum matched).
+      #   After a passing install, only those of packages now installed at
+      #   that version. After a failed one, all of them, as a "part" cache:
+      #   on 2026-10-27 a cold job had 31 of the 142 MB after two of its
+      #   three timed-out attempts (job 122260047198), and nothing was kept,
+      #   so a rerun on the still-slow mirror started from zero again.
+      #   apt's partial/ downloads, its lock and its _apt sandbox never reach
+      #   the cache.
+      # - Scope: caches written by runs on main are restored by main and by
+      #   PRs. A PR run's caches (a fork's PR included) belong to
+      #   refs/pull/N/merge: only later runs of that same PR (new pushes and
+      #   re-runs) restore them, never main or another PR. With the checksum
+      #   check a cache can only spare a download, never change what gets
+      #   installed. It holds public .debs only, no secrets.
+      # - Every cache step has a timeout and continue-on-error. The worst
+      #   case is the old full download, plus up to 11 minutes of these
+      #   steps' timeouts if the cache service hangs. The retry loop is
+      #   unchanged.
       - name: Resolve Playwright version
         id: playwright
         run: |
@@ -109,6 +170,18 @@ jobs:
           echo "@playwright/test $version on $os"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "os=$os" >> "$GITHUB_OUTPUT"
+          # The apt cache key (see above). The variant comes from the Ubuntu
+          # archive's Packages indexes only ("Origin: Ubuntu" in their Release
+          # file); with no lists on the runner it is "unknown", which only
+          # skips the first restore-key.
+          # shellcheck disable=SC2016 # $(ARCHITECTURE) is apt's placeholder
+          variant=$(apt-get indextargets --format '$(ARCHITECTURE)' 'Created-By: Packages' 'Origin: Ubuntu' \
+            | LC_ALL=C sort -u | paste -sd+ -)
+          base="playwright-apt-$RUNNER_OS-$os-$RUNNER_ARCH-chromium+webkit_"
+          prefix="$base$version-${variant:-unknown}-"
+          echo "apt cache prefix: $prefix"
+          echo "apt-base=$base" >> "$GITHUB_OUTPUT"
+          echo "apt-prefix=$prefix" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
         id: playwright-cache
@@ -123,16 +196,91 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}-chromium-webkit
 
+      - name: Restore cached apt packages
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        # As for the browsers: a stuck restore gives up, and apt downloads.
+        timeout-minutes: 3
+        continue-on-error: true
+        env:
+          SEGMENT_DOWNLOAD_TIMEOUT_MINS: "2"
+        with:
+          path: ~/.cache/playwright-apt
+          # Saved keys end in a run id and a hash, so none is equal to this
+          # one: the newest entry under the first prefix that has any wins.
+          key: ${{ steps.playwright.outputs.apt-prefix }}
+          restore-keys: |
+            ${{ steps.playwright.outputs.apt-prefix }}
+            ${{ steps.playwright.outputs.apt-base }}${{ steps.playwright.outputs.version }}-
+            ${{ steps.playwright.outputs.apt-base }}
+
+      - name: Load cached apt packages
+        timeout-minutes: 3
+        continue-on-error: true
+        run: |
+          stage=~/.cache/playwright-apt
+          archives=/var/cache/apt/archives
+          handed="$RUNNER_TEMP/playwright-apt-handed.txt"
+          # For "Collect apt packages": the .debs apt's archive directory held
+          # before this job, and (below) the ones this step hands to apt.
+          find "$archives" -maxdepth 1 -name '*.deb' -printf '%f\n' > "$RUNNER_TEMP/playwright-apt-preexisting.txt"
+          : > "$handed"
+          shopt -s nullglob
+          cached=("$stage"/*.deb)
+          if [ ${#cached[@]} -eq 0 ]; then
+            echo "No cached apt packages"
+            exit 0
+          fi
+          echo "Restored ${#cached[@]} cached .debs, $(du -sm "$stage" | cut -f1) MB"
+          # Fresh indexes, so the check sees the versions apt is about to
+          # install (Playwright's own apt-get update right after is then a
+          # quick "Hit"). If it fails, the indexes already on the runner are
+          # signed too and still good for the check.
+          sudo timeout 2m apt-get -q -o Acquire::Retries=3 -o Acquire::http::Timeout=20 \
+              -o Acquire::https::Timeout=20 update \
+            || echo "::warning::apt-get update failed; checking the cached .debs against the runner's indexes"
+          # One line per package: 'URI' file-name size checksum. Run in an
+          # empty directory: `apt-get download` leaves out files that are
+          # already in the current one. A name apt doesn't know any more is
+          # an error for that name only, hence the `|| true`.
+          names=$(printf '%s\n' "${cached[@]##*/}" | grep -E '^[a-z0-9][a-z0-9+.-]*_' | cut -d_ -f1 | sort -u)
+          # shellcheck disable=SC2086 # one argument per package name
+          (cd "$(mktemp -d)" && apt-get download --print-uris $names) > "$RUNNER_TEMP/playwright-apt-uris.txt" || true
+          mkdir -p "$stage/verified"
+          while read -r _ file size hash; do
+            case "$file" in ''|*/*) continue ;; esac
+            f="$stage/$file"
+            if [ -f "$f" ] && [ "$(stat -c %s "$f")" = "$size" ]; then
+              case "$hash" in
+                SHA512:*) sum=$(sha512sum < "$f") ;;
+                SHA256:*) sum=$(sha256sum < "$f") ;;
+                *) continue ;;
+              esac
+              if [ "${sum%% *}" = "${hash#*:}" ]; then mv "$f" "$stage/verified/"; fi
+            fi
+          done < "$RUNNER_TEMP/playwright-apt-uris.txt"
+          verified=("$stage"/verified/*.deb)
+          if [ ${#verified[@]} -gt 0 ]; then
+            sudo cp -- "${verified[@]}" "$archives/"
+            printf '%s\n' "${verified[@]##*/}" > "$handed"
+          fi
+          echo "Handed apt ${#verified[@]} of ${#cached[@]} cached .debs ($(du -sm "$stage/verified" | cut -f1) MB);" \
+            "the rest are stale or don't match the index and are downloaded if needed"
+          rm -rf "$stage"
+
       - name: Install Playwright OS dependencies
+        id: apt-install
         timeout-minutes: 12
         run: |
           # Playwright builds the apt-get command line itself, so the short
-          # network timeouts and retries go in an apt.conf.d drop-in.
+          # network timeouts and retries go in an apt.conf.d drop-in, along
+          # with keeping the downloaded .debs for the apt cache (apt-get's
+          # default, made explicit).
           sudo tee /etc/apt/apt.conf.d/99-ci-network > /dev/null <<'EOF'
           Acquire::Retries "3";
           Acquire::http::Timeout "20";
           Acquire::https::Timeout "20";
           DPkg::Lock::Timeout "60";
+          APT::Keep-Downloaded-Packages "true";
           EOF
           # sudo outside `timeout`: as root, Playwright runs apt-get without
           # its own sudo, so `timeout` (root too) can kill apt-get. It does not
@@ -157,6 +305,74 @@ jobs:
           done
           echo "::error::Playwright OS dependencies did not install in 3 attempts (slow or unreachable apt mirror)"
           exit 1
+
+      # Also after a failed install (see above): what it fetched before it
+      # failed is saved as a "part" cache.
+      - name: Collect apt packages for the cache
+        id: apt-collect
+        if: ${{ !cancelled() && steps.apt-install.outcome != 'skipped' }}
+        timeout-minutes: 2
+        continue-on-error: true
+        env:
+          INSTALL_OUTCOME: ${{ steps.apt-install.outcome }}
+          APT_PREFIX: ${{ steps.playwright.outputs.apt-prefix }}
+        run: |
+          stage=~/.cache/playwright-apt
+          archives=/var/cache/apt/archives
+          pre="$RUNNER_TEMP/playwright-apt-preexisting.txt"
+          handed="$RUNNER_TEMP/playwright-apt-handed.txt"
+          rm -rf "$stage"
+          mkdir -p "$stage"
+          if [ ! -f "$pre" ] || [ ! -f "$handed" ]; then
+            echo "::warning::\"Load cached apt packages\" stopped early; not caching the apt packages"
+            exit 0
+          fi
+          declare -A preexisting=() from_cache=() installed=()
+          while read -r f; do if [ -n "$f" ]; then preexisting[$f]=1; fi; done < "$pre"
+          while read -r f; do if [ -n "$f" ]; then from_cache[$f]=1; fi; done < "$handed"
+          if [ "$INSTALL_OUTCOME" = success ]; then
+            # apt's file name: name_version_arch.deb, the epoch's ":" as %3a.
+            while read -r status pkg version; do
+              if [ "$status" = ii ]; then installed[${pkg}_${version//:/%3a}]=1; fi
+            done < <(dpkg-query -W -f '${db:Status-Abbrev} ${Package} ${Version}\n')
+          fi
+          shopt -s nullglob
+          keep=()
+          fetched=0
+          fetched_bytes=0
+          for f in "$archives"/*.deb; do
+            name=${f##*/}
+            if [ -n "${preexisting[$name]:-}" ] && [ -z "${from_cache[$name]:-}" ]; then continue; fi
+            if [ "$INSTALL_OUTCOME" = success ] && [ -z "${installed[${name%_*}]:-}" ]; then continue; fi
+            keep+=("$f")
+            if [ -z "${from_cache[$name]:-}" ]; then
+              fetched=$((fetched + 1))
+              fetched_bytes=$((fetched_bytes + $(stat -c %s "$f")))
+            fi
+          done
+          echo "Install $INSTALL_OUTCOME: $((${#keep[@]} - fetched)) .debs came from the cache," \
+            "$fetched ($((fetched_bytes / 1024)) kB) from the mirror"
+          if [ "$fetched_bytes" -lt $((2 * 1024 * 1024)) ]; then
+            echo "Less than 2 MB came from the mirror: the cache is not saved again"
+            exit 0
+          fi
+          cp -- "${keep[@]}" "$stage/"
+          kind=part
+          if [ "$INSTALL_OUTCOME" = success ]; then kind=full; fi
+          hash=$(cd "$stage" && export LC_ALL=C && sha256sum -- *.deb | sha256sum | cut -c1-16)
+          key="$APT_PREFIX$kind-$GITHUB_RUN_ID.$GITHUB_RUN_ATTEMPT-$hash"
+          echo "Caching ${#keep[@]} .debs, $(du -sm "$stage" | cut -f1) MB, as $key"
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+          echo "save=true" >> "$GITHUB_OUTPUT"
+
+      - name: Save apt packages to the cache
+        if: ${{ !cancelled() && steps.apt-collect.outputs.save == 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        timeout-minutes: 3
+        continue-on-error: true
+        with:
+          path: ~/.cache/playwright-apt
+          key: ${{ steps.apt-collect.outputs.key }}
 
       - name: Install Playwright browsers
         timeout-minutes: 12

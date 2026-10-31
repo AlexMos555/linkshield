@@ -643,6 +643,12 @@ Firefox уже стоит в `/Applications`? Тогда строки 2–4 не
 
 Последний прогон — 2026-10-24, Firefox 158.0.1 (macOS, без окна), geckodriver 0.37.1, `cleanway-0.2.2-firefox.zip` (пересобран в тот же день): **26 из 26** три прогона подряд, ошибок дополнения в консоли нет. Первый же прогон нашёл одну: после «Я понимаю риск — открыть всё равно» Firefox иногда писал в консоль ошибку против `blocked.js` — фон отвечал странице блокировки уже после того, как увёл с неё вкладку. Исправлено в этой же сборке (фон сначала отвечает, потом уводит; сайт открывался и раньше). Контроль: та же проверка на копии без `browser-alias.js` в окне по значку и Настройках (ошибка, исправленная в 0.2.2) даёт 7 FAIL — окно «Не удалось проверить страницу», кнопки окна ничего не открывают, `TypeError` в `options.js`.
 
+2026-10-27 ZIP пересобран ещё раз (#355, охранник паролей): в нём изменились `src/content/credential-guardian.js` и `src/utils/name-rules.js`, остальные 70 файлов байт в байт прежние. Первая проверка `scripts/smoke-firefox-extension.mjs` (ZIP совпадает с `extension-firefox/` файл в файл) на нём проходит. Полного прогона в Firefox на этой сборке ещё не было — прогоните его перед загрузкой.
+
+2026-10-28 ZIP пересобран снова (регистрируемый домен по Public Suffix List): изменились `src/content/credential-guardian.js`, `src/utils/name-rules.js` и `src/utils/scorer-data.js`, остальные 69 файлов байт в байт как в сборке #355. ZIP совпадает с `extension-firefox/` файл в файл (сверено по содержимому). Полного прогона в Firefox нет и на этой сборке — прогоните его перед загрузкой.
+
+В тот же день, после финального ревью #357, — ещё раз: те же три файла (вторые уровни ccTLD снова делятся, кроме названных зон одного владельца; уведомление MPL в `scorer-data.js` называет исходник ссылкой). В архив исходников добавлен `data/public_suffix_list.dat` — исходная форма списка, который `scorer-data.js` несёт в переработанном виде. Firefox на машине, где собиралось, не установлен: полного прогона нет и здесь.
+
 Вручную — только если хочется увидеть своими глазами (5 минут): about:debugging → «Этот Firefox» → «Загрузить временное дополнение» → `extension-firefox/manifest.json`; открыть окно по значку на любом сайте (вердикт, а не вечное «Проверяю страницу…»), Настройки и образец блокировки (в about:debugging у Cleanway есть «URL манифеста» `moz-extension://…/manifest.json` — заменить `manifest.json` на `src/popup/block-preview.html`). Если в первые секунды после запуска Firefox вместо щита 🛡 на странице приветствия виден квадрат с кодом — это Firefox ещё загружает шрифты (так на любой странице), через секунду щит появляется.
 
 ### 5.1 Загрузка
@@ -708,7 +714,8 @@ Third-party libraries, unmodified:
 ```bash
 git archive --format=zip -o dist/store-artifacts/cleanway-0.2.2-firefox-source.zip HEAD \
   extension-firefox packages/extension-core scripts/build-extensions.sh \
-  scripts/build-store-artifacts.sh scripts/build_extension_scorer_data.py LICENSE
+  scripts/build-store-artifacts.sh scripts/build_extension_scorer_data.py \
+  data/public_suffix_list.dat LICENSE
 ```
 
 ---

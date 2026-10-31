@@ -33,7 +33,10 @@ from api.models.schemas import RiskLevel, DomainReason, ConfidenceLevel
 from api.services import ru_brands, ru_lures
 from api.services.hosting_platforms import dynamic_dns_suffix_of as _dynamic_dns_suffix_of
 from api.services.hosting_platforms import is_shared_platform_site, tenant_suffix_of
+from api.services.hosting_platforms import USER_CONTENT_HOSTS, is_user_content_service
 from api.services.hosting_platforms import OPERATOR_SUFFIXES, is_operator_zone_name
+from api.services.public_suffix import ascii_name, heuristic_registrable_domain, is_icann_rule, is_ip_literal
+from api.services.public_suffix import registrable_domain as _psl_registrable_domain
 
 logger = logging.getLogger("cleanway.scoring")
 
@@ -271,12 +274,190 @@ def _tenant_label(domain: str) -> Optional[str]:
     return d[: -(len(suffix) + 1)].split(".")[-1]
 
 
+def top_domain_key(domain: str) -> Optional[str]:
+    """The top-100k entry `domain` is, or is a subdomain of — the longest one
+    — else None. Also the TOP_10K_RANKS key for its rank.
+
+    The list is keyed by registrable domain (scripts/build_top_domains.py
+    folds it with legacy_registrable_domain() and the PSL's ICANN section,
+    and leaves public suffixes out), so the host's own ancestors are what to
+    look up. The last two labels were looked up until 2026-10-27: 'co.uk' for
+    www.amazon.co.uk, which no entry is, so 11,232 of the 100,000 entries
+    (bbc.co.uk, yahoo.co.jp, amazon.com.br, www.nhs.uk, hdfc.bank.in) and
+    every host under them never got the allowlist, and /public/check called
+    www.amazon.co.uk 'caution 40'. Measured that day on the 100k entries and
+    their www. hosts: 165 entries stay untrusted (URL shorteners, names under
+    shared zones such as spb.ru; 163 until review put encurtador.com.br and
+    go.gov.sg, both entries, on the shortener list), against 735 with
+    registrable_domain() as the key (measured before that), and no host
+    trusted before is lost — registrable_domain() would
+    have lost www.web.de and www.id.me, whose 2-label names the
+    compound-ccTLD heuristic read as suffixes (it was that heuristic until
+    2026-10-28; the PSL lists neither). The longer keys it reaches
+    (www.nhs.uk, hdfc.bank.in: 572 entries) all come from the PSL's ICANN
+    section, so a name under one is that registrant's."""
+    d = (domain or "").lower().strip(".")
+    parts = d.split(".")
+    # Two labels at least: a bare TLD is nobody's site.
+    for i in range(len(parts) - 1):
+        candidate = ".".join(parts[i:])
+        if candidate in TOP_DOMAINS:
+            return candidate
+    return None
+
+
+# Shared platforms under a compound suffix whose tenants the allowlist must
+# refuse, and which no other list names yet. Before 2026-10-27 the last-two-
+# labels lookup never reached them; top_domain_key() does. Measured that day:
+# sakura.ne.jp is a PSL private suffix that public_suffixes_in_top.json misses
+# (scripts/build_public_suffixes_in_top.py keys rules by their last two
+# labels, 'ne.jp'), 85 tenant names in the Chrome UX Report top origins and
+# the feeds, 5 of them phishing; dothome.co.kr (15 phishing tenants in the
+# feeds: conditions2auth., instagram.), isweb.co.kr (3) and woobi.co.kr
+# ("무료 도메인 .woobi.co.kr", per-user records) are free hosting;
+# lojaintegrada.com.br and lojavirtualnuvem.com.br (3 each), shop2000.com.tw
+# and hostgator.com.br (https://<store code>.hostgator.com.br; a random label
+# answers "sua loja não foi encontrada") are shop builders, webeden.co.uk a
+# site builder (1); myzen.co.uk is Zen Internet's customer hosting
+# (c<account>.myzen.co.uk), where burycatholicprepschool.myzen.co.uk, a
+# Phishing.Database host, was "caution 30" in production. Checked and left
+# out for lack of tenants in the feeds, crt.sh or a wildcard: blog.co.uk,
+# freeserve.co.uk, free-online.co.uk, home.ne.jp. service.gov.uk and
+# campaign.gov.uk, the other two PSL rules the builder misses, are GDS-run
+# zones for government services and stay trusted.
+#
+# With these, the hosts and the shorteners below refused, 292 of the
+# 1,057,017 feed hosts of 2026-10-24 become trusted and none loses it: 229
+# subdomains of universities and government bodies (29 under ulm.ac.id),
+# compromised sites of the kind already trusted under .edu and .com; 17
+# Google ccTLD hosts; companies' own hosts the feeds list by mistake
+# (www.tsb.co.uk, articulo.mercadolibre.com.mx); and pages users fill on real
+# services (qr.paypay.ne.jp, pay.kiwify.com.br).
+#
+# Allowlist only: data/hosting_platforms.json and public_suffixes_in_top.json
+# are ML model inputs (ml_features.shared_tenant), so these move there with
+# the next retrain.
+#
+# And 000webhost.com, the one tenant zone of the blocklist publisher
+# (scripts/blocklist_shared_zones.HOSTING_PLATFORMS) that the allowlist did
+# not refuse: /public/check answers from the allowlist before the blocklist,
+# so every zone the publisher lists tenants under must be refused here
+# (tests/test_allowlist_blocklist_zones.py). It has no tenants today (a
+# random label is NXDOMAIN, the site redirects to Hostinger, 2026-10-27).
+_ALLOWLIST_TENANT_ZONES: frozenset[str] = frozenset({
+    "sakura.ne.jp", "dothome.co.kr", "isweb.co.kr",
+    "lojaintegrada.com.br", "lojavirtualnuvem.com.br", "shop2000.com.tw",
+    "webeden.co.uk", "woobi.co.kr", "hostgator.com.br", "myzen.co.uk",
+    "000webhost.com",
+})
+
+# Hosts under a newly reached compound-suffix entry that many people publish
+# to by path: ISP personal pages (/~user/). Both were in the Phishing.Database
+# feed of 2026-10-24 (/~dshelley/ed/zin.html, /~jhuntman@…/tt/squ.php). The
+# same allowlist-only reason as above keeps them out of data/hosting_platforms.json
+# user_content_hosts (ml/train_model.py filters its synthetic hosts with it).
+_ALLOWLIST_PATH_SHARED_HOSTS: frozenset[str] = frozenset({
+    "members.iinet.net.au", "homepage.powerup.com.au",
+})
+
+# The service label of each GOOGLE_ABUSED_SUBDOMAINS host ('translate'), so
+# the guard holds under every Google domain, not only .com spellings. The
+# literal list stays as it is: ml/train_model.py reads it.
+_GOOGLE_ABUSED_SERVICES: frozenset[str] = frozenset(g.split(".")[0] for g in GOOGLE_ABUSED_SUBDOMAINS)
+
+
+def _is_abused_google_service(domain: str, key: str) -> bool:
+    """docs/forms/sites/drive/translate.google.<any Google entry>, or a name
+    under one. The literal startswith() test matched google.com and
+    google.com.* only; once the allowlist reached google.co.uk and
+    google.co.jp (2026-10-27), translate.google.co.uk — whose /translate?u=
+    proxies any site, a 302 to <site>.translate.goog — became instant-safe.
+    translate.google.de was trusted before that already."""
+    if domain in GOOGLE_ABUSED_SUBDOMAINS or any(domain.startswith(g) for g in GOOGLE_ABUSED_SUBDOMAINS):
+        return True
+    if key.split(".")[0] != "google" or not domain.endswith("." + key):
+        return False
+    return domain[: -(len(key) + 1)].split(".")[-1] in _GOOGLE_ABUSED_SERVICES
+
+
+# Operators that run their user-content services on their country domains
+# too: forms.yandex.com.tr is Yandex Forms, disk.yandex.kz, .by, .uz and
+# .com.tr are Yandex Disk (checked live 2026-10-27), as script.google.co.uk
+# would be Apps Script. data/hosting_platforms.json names only the .ru / .com
+# spellings, so the others were instant-safe: the compound ones since the
+# allowlist reached compound-suffix entries, yandex.kz and .by since always.
+# Every top entry with one of these first labels is the operator's (202
+# google.*; the 11 yandex.* on Yandex's name servers, but for yandex.ua,
+# which has none). Not office/live/microsoft/github: office.co.uk is OFFICE, a
+# UK shoe retailer, and live.net, microsoft.ai and github.blog run none of
+# the services.
+_CCTLD_SERVICE_OPERATORS: frozenset[str] = frozenset({"google", "yandex"})
+
+
+def _user_content_services() -> Mapping[str, frozenset[str]]:
+    """{operator: the labels left of its domain in USER_CONTENT_HOSTS}, for
+    _CCTLD_SERVICE_OPERATORS: 'yandex' → disk, disk.360, forms; 'google' →
+    docs, drive, forms, script, sites. From the curated list, so a service
+    added there holds on every country domain of its operator."""
+    out: dict[str, set[str]] = {}
+    for host in USER_CONTENT_HOSTS:
+        parts = host.split(".")
+        for i in range(1, len(parts) - 1):
+            if parts[i] in _CCTLD_SERVICE_OPERATORS:
+                out.setdefault(parts[i], set()).add(".".join(parts[:i]))
+                break
+    return MappingProxyType({op: frozenset(labels) for op, labels in out.items()})
+
+
+_USER_CONTENT_SERVICES: Mapping[str, frozenset[str]] = _user_content_services()
+
+
+def _is_user_content_mirror(domain: str, key: str, exact: bool = False) -> bool:
+    """`domain` is, or (unless `exact`) is a name under, a USER_CONTENT_HOSTS
+    service on `key`, its top entry, when that entry is a domain of the
+    service's operator: forms.yandex.com.tr, u.disk.yandex.kz,
+    script.google.co.uk. Allowlist and fixed answer only — hosting_platforms
+    stays as it is, ml/train_model.py reads is_user_content_host."""
+    services = _USER_CONTENT_SERVICES.get(key.split(".")[0])
+    if not services or not domain.endswith("." + key):
+        return False
+    left = domain[: -(len(key) + 1)]
+    if exact:
+        return left in services
+    return any(left == s or left.endswith("." + s) for s in services)
+
+
+def is_user_content_service_host(domain: str) -> bool:
+    """The service host of a user-content platform, which the public check
+    and the analyzer answer with the fixed "a real service; we cannot vouch
+    for the page" (verdict_basis.user_content_result): a USER_CONTENT_HOSTS
+    host (hosting_platforms.is_user_content_service), or the same service on
+    another domain of its operator (disk.yandex.kz, docs.google.co.uk).
+    Exactly that host: a page under it (u.disk.yandex.kz) is analysed."""
+    d = (domain or "").lower().strip(".")
+    if is_user_content_service(d):
+        return True
+    key = top_domain_key(d)
+    return key is not None and _is_user_content_mirror(d, key, exact=True)
+
+
+def _is_listed_shortener_host(domain: str) -> bool:
+    """`domain` or a name it is under is in _URL_SHORTENERS, whatever its
+    length. For the allowlist only: _is_url_shortener() reads the last two
+    labels because it is the model's is_url_shortener feature, so it never
+    matched a compound entry ('com.br' for encurtador.com.br) nor
+    link.infini.fr ('infini.fr', trusted until 2026-10-27)."""
+    parts = domain.split(".")
+    return any(".".join(parts[i:]) in _URL_SHORTENERS for i in range(len(parts) - 1))
+
+
 def is_trusted_top_domain(domain: str) -> bool:
     """The ONE rule for the instant-safe allowlist short-circuit.
 
     True only when the domain is a top domain (the top 100k) or a subdomain of
-    one that is NOT a shared platform / public suffix / URL shortener /
-    abused Google service. Shared platforms include the curated
+    one (top_domain_key) that is NOT a shared platform / public suffix / URL
+    shortener / abused Google service / user-content service on any of its
+    operator's domains (_is_user_content_mirror). Shared platforms include the curated
     data/hosting_platforms.json — Timeweb, Beget, SpaceWeb, Selectel, Weebly,
     WordPress staging, ScreenConnect, Yandex Forms/Disk … — whose customers'
     pages came back "safe, 99%" in production (report 2026-09-25 #7). Used by
@@ -286,14 +467,16 @@ def is_trusted_top_domain(domain: str) -> bool:
     d = (domain or "").lower().strip(".")
     if not d:
         return False
-    base = _extract_base_domain(d)
-    if base not in TOP_DOMAINS:
+    key = top_domain_key(d)
+    if key is None:
         return False
-    if _is_url_shortener(base):
+    if _is_url_shortener(key) or _is_listed_shortener_host(d):
         return False
-    if d in GOOGLE_ABUSED_SUBDOMAINS or any(d.startswith(g) for g in GOOGLE_ABUSED_SUBDOMAINS):
+    if _is_abused_google_service(d, key) or _is_user_content_mirror(d, key):
         return False
-    if _is_under_shared_suffix(d):
+    if _is_under_shared_suffix(d) or tenant_suffix_of(d, _ALLOWLIST_TENANT_ZONES):
+        return False
+    if any(d == h or d.endswith("." + h) for h in _ALLOWLIST_PATH_SHARED_HOSTS):
         return False
     # A customer's name on a dynamic-DNS service in the top-100k (ns01.info).
     if _dynamic_dns_suffix_of(d):
@@ -602,6 +785,15 @@ _URL_SHORTENERS = {
     # answered instant-safe: a shortener's popularity vouches for no link.
     "s.gy", "short.gy", "l1nq.com", "bityli.com", "me2.do", "chilp.it",
     "abrir.link", "encurtador.dev", "beam.to", "jii.li", "buly.kr", "mpago.la",
+    # Under a compound suffix, so the allowlist only reached them on
+    # 2026-10-27 (top_domain_key): a public shortener in the top 100k; two
+    # government ones, the Indonesian health ministry's abused for phishing
+    # redirects (three PhishTank URLs, 2026); and universities' short-link
+    # hosts that Phishing.Database lists by short code. Longer than two
+    # labels, so the model's is_url_shortener (_is_url_shortener, last two
+    # labels) never sees them; the allowlist does (_is_listed_shortener_host).
+    "encurtador.com.br", "go.gov.sg", "s.kemkes.go.id",
+    "link.uinsgd.ac.id", "link.upnyk.ac.id", "s.ecu.edu.au", "s.umj.ac.id",
 }
 
 
@@ -850,8 +1042,11 @@ def _registered_tld_lookalike(domain: str) -> Optional[str]:
     vk.com.msk.ru, which a reader takes for vk.com. com.msk.ru, ru.msk.ru
     and gov.msk.ru are private persons' names (whois.flexireg.net,
     2026-09-27). Not under a restricted zone — edu.gov.ru is the Ministry of
-    Education — nor for REGIONAL_GOVERNMENT_DOMAINS (gov.spb.ru)."""
-    registrable = registrable_domain(domain)
+    Education — nor for REGIONAL_GOVERNMENT_DOMAINS (gov.spb.ru).
+
+    The LEGACY registrable domain (legacy_registrable_domain): this is half
+    of the model's has_fake_tld_subdomain."""
+    registrable = legacy_registrable_domain(domain)
     label, _, suffix = registrable.partition(".")
     if "." not in suffix or label not in _REGISTERED_FAKE_TLD_LABELS:
         return None
@@ -1031,6 +1226,11 @@ def _certificate_is_a_renewal(signals: dict) -> bool:
 
 def _is_url_shortener(domain: str) -> bool:
     """Check if domain is a known URL shortener."""
+    # The last two labels on purpose: this is the ML feature is_url_shortener
+    # too (ml_features), and the served model learned this reading. The
+    # entries longer than two labels (link.infini.fr, encurtador.com.br) never
+    # match here; reading them is a feature change for the next retrain. The
+    # allowlist checks every ancestor instead (_is_listed_shortener_host).
     base = _extract_base_domain(domain)
     return base in _URL_SHORTENERS
 
@@ -1076,9 +1276,14 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     ascii_domain = domain
     unicode_domain = _decode_idn(domain)
 
-    # Lookup key: the top-domain / popularity tables are indexed on the ASCII form.
-    base_domain = _extract_base_domain(ascii_domain)
-    # Name under judgement: the decoded registrable label.
+    # Name under judgement: the decoded label left of the last two labels.
+    # Still the last two, not registrable_domain(): the name-shape rules below
+    # never saw a name under a compound suffix ('co' of xkqzvbrtplmn.co.uk,
+    # 0/safe where xkqzvbrtplmn.com is 28/caution), and reading the real name
+    # is a recall change with its own cost — simulated 2026-10-27 on 93,989
+    # Majestic names under multi-label suffixes outside the top 100k, 467
+    # went safe→caution (0.5%). It gets its own false-positive pass, with the
+    # extension's copy (local-scorer.js `name`).
     unicode_base = _extract_base_domain(unicode_domain)
     domain_name = unicode_base.split(".")[0] if "." in unicode_base else unicode_base
     # On a dynamic-DNS service or a hosting platform the name someone chose
@@ -1228,8 +1433,15 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     _distinct = signals.get("alienvault_distinct_pulses")
     otx_reports = alienvault_pulses if _distinct is None else min(_distinct, alienvault_pulses)
     if otx_reports > 0:
-        from api.services.doh_gateway import _registrable_domain
-        _reg = _platform_tenant_site(ascii_domain) or _registrable_domain(domain)
+        # The registrable domain whose popularity counts
+        # (rank_registrable_domain), with the Russian zones: until 2026-10-28
+        # this read the compound-ccTLD heuristic, whose key for any x.spb.ru
+        # was spb.ru (top-10k #758) — so no OTX report ever scored under
+        # spb.ru or msk.ru (#2547), and under nov.ru, pp.ru and ras.ru it was
+        # halved: 14 of the 186 ru_heuristics_phish hosts. Never a zone above
+        # the name the old reading had: web.de (#2424) waives no report about
+        # login.web.de, as it did not before.
+        _reg = _platform_tenant_site(ascii_domain) or rank_registrable_domain(domain)
         _rank = popularity_rank(signals, ascii_domain)
         _top_ranked = _rank is not None and _rank <= 100_000
         _ranked = _rank is not None
@@ -1294,11 +1506,13 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # URL shorteners, or abused Google services. One rule, shared with the
     # public router: is_trusted_top_domain().
     if is_trusted_top_domain(domain):
-        rank = TOP_10K_RANKS.get(base_domain)
+        # The entry the allowlist matched (amazon.co.uk for www.amazon.co.uk).
+        top_entry = top_domain_key(ascii_domain)
+        rank = TOP_10K_RANKS.get(top_entry)
         detail = f"Ranked #{rank} globally" if rank else "In global top 100K domains"
         return 0, RiskLevel.safe, [DomainReason(
             signal="known_legitimate", weight=-50,
-            detail=f"Known legitimate domain: {base_domain}. {detail}",
+            detail=f"Known legitimate domain: {top_entry}. {detail}",
         )]
 
     # ════════════════════════════════════════════
@@ -1746,11 +1960,16 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # MX lives on the registrable domain, never on a `track.`/`go.` subdomain,
     # so penalising a subdomain for "no MX" dinged every legit redirect/CDN
     # host. Only apply when we're actually looking at the apex. Use the
-    # PSL-aware registrable-domain helper (not the naive 2-label split) so this
-    # stays correct for compound ccTLDs — foo.co.uk is an apex, not a subdomain.
-    if signals.get("dns_has_mx") is False:
-        from api.services.doh_gateway import _registrable_domain
-        if domain == _registrable_domain(domain):
+    # PSL-aware registrable domain (not the naive 2-label split) so this
+    # stays correct for compound suffixes — foo.co.uk and x.my.id are apexes,
+    # not subdomains, and so is herzen.spb.ru (the heuristic read before
+    # 2026-10-28 had no Russian zones). Not an IP address: it is its own
+    # registrable domain since then (its last two numbers before), and
+    # check_dns finds no MX for any IP URL.
+    # Nor in a zone only a government body or the NHS registers in
+    # (_registered_in_vetted_zone): NHS trust sites often take mail elsewhere.
+    if signals.get("dns_has_mx") is False and not is_ip_literal(domain or ""):
+        if domain == registrable_domain(domain) and not _registered_in_vetted_zone(domain):
             score += 8
             reasons.append(DomainReason(
                 signal="no_mx_record", weight=8,
@@ -2079,22 +2298,77 @@ def _ru_registrable_domain(domain: str) -> Optional[str]:
 
 
 def registrable_domain(domain: str) -> str:
-    """The registrable domain (eTLD+1) a host is judged by — PSL-aware.
+    """The registrable domain (eTLD+1) a host is judged by: the Public Suffix
+    List's ICANN rules with the Russian zones and the ccTLD default on top
+    (public_suffix.py: every generic second level of a 2-letter TLD is a
+    suffix but for the named zones) — login.example.co.uk → example.co.uk,
+    paypal-secure.my.id → itself, kvs.gov.spb.ru → gov.spb.ru,
+    mail.confirm-lnstagram.com.de → confirm-lnstagram.com.de,
+    x.paypal-login.ne.pw → paypal-login.ne.pw, login.web.de → web.de.
+    The DoH gateway's _registrable_domain is the same function; whose rank
+    counts for a host is rank_registrable_domain()'s question.
 
-    Under a Russian public suffix, _ru_registrable_domain(). Everywhere else
-    the compound-ccTLD heuristic the rest of the service already uses
-    (doh_gateway._registrable_domain): login.example.co.uk → example.co.uk.
-    """
-    from api.services.doh_gateway import _registrable_domain as heuristic_registrable
+    Not what the phishing model's features read: see
+    legacy_registrable_domain()."""
+    return _psl_registrable_domain(domain)
 
+
+def legacy_registrable_domain(domain: str) -> str:
+    """registrable_domain() as it was until 2026-10-28: under a Russian
+    public suffix _ru_registrable_domain(), elsewhere the compound-ccTLD
+    heuristic (public_suffix.heuristic_registrable_domain) — x.my.id is
+    under 'my.id', www.web.de is its own registrable domain.
+
+    Pinned for the phishing model: host_shape(), shared_tenant() and the
+    shape helpers below feed its features (dot_count, subdomain_depth, the
+    name every lexical feature reads, in_top_domains, is_hosting_subdomain,
+    has_fake_tld_subdomain), ml/train_model.py builds its corpus and split
+    groups with it and scripts/build_top_domains.py folds the popularity
+    list with a copy of it. A model is served with the feature data it was
+    trained on (model_meta.json feature_data); reading the PSL here would
+    have changed the feature vector of 643 top-100k names and 5,463 of the
+    699,287 hosts of the 2026-10-24 feed snapshot without a retrain
+    (measured 2026-10-27). Move it with a retrain, not before."""
     dom = (domain or "").lower().strip(".")
-    return _ru_registrable_domain(dom) or heuristic_registrable(dom)
+    return _ru_registrable_domain(dom) or heuristic_registrable_domain(dom)
+
+
+def rank_registrable_domain(domain: str) -> str:
+    """The name whose top-1M rank may speak for `domain` as its registrable
+    domain's: registrable_domain(), but never shorter than
+    legacy_registrable_domain() — under a zone public_suffix names as one
+    owner's (login.web.de), the name the reading before 2026-10-28 kept
+    apart from it. Everywhere else registrable_domain() is never shorter
+    than that reading by itself (tests/test_public_suffix.py).
+
+    Read by tranco._registrable_rank (the signals' tranco_registrable_rank:
+    the OTX gate, the fresh-certificate exemption, self-hosted products),
+    the OTX gate's own top-10k/100k key and the analyzer's vouch for an
+    unreachable site. Not by SURBL (dnsbl_checks.check_surbl): SURBL keys a
+    name under a named zone by the zone (none of them is on its
+    two-level-tlds list, 2026-10-28), as registrable_domain() does; the two
+    differ nowhere else. A zone's rank is everyone's under it: the
+    2026-10-28 review found 59 feed phishing hosts taking one (co.ua
+    #278,678, co.nl #284,346, info.gf #270,247 on the Tranco top-1M) before
+    those zones were split again. The cost is the old reading's for the
+    named zones: login.web.de is not vouched for by web.de's rank, as it
+    was not before."""
+    new = registrable_domain(domain)
+    old = legacy_registrable_domain(domain)
+    return old if len(old) > len(new) and old.endswith("." + new) else new
 
 
 def _subdomain_labels(domain: str) -> list[str]:
-    """Labels strictly LEFT of the registrable domain ([] for an apex)."""
+    """Labels strictly LEFT of the registrable domain ([] for an apex) — the
+    LEGACY one (legacy_registrable_domain): the model's subdomain_depth and
+    dot_count count them, and so do the excessive-subdomains and fake-TLD
+    rules, which stay with the feature they share this helper with. On the
+    PSL's reading they would have lost 2,496 and gained 28 'excessive
+    subdomains' on the 2026-10-24 feed hosts (03316951.zi-xz.my.id has one
+    level under the ICANN suffix my.id, not two) — a rule version of its
+    own, measured on its own, at the next retrain."""
     dom = (domain or "").lower().strip(".")
-    registrable = registrable_domain(dom)
+    registrable = legacy_registrable_domain(dom)
     if dom == registrable or not dom.endswith("." + registrable):
         return []
     return dom[: -(len(registrable) + 1)].split(".")
@@ -2213,6 +2487,13 @@ def _check_homograph(domain: str, top_domains: Optional[AbstractSet[str]] = None
     if not has_confusable:
         return None
 
+    # Outside Russian zones the last two labels, here and below, not
+    # registrable_domain(): this function IS the model's is_homograph feature
+    # (ml_features), and the served model learned this reading. So a look-alike
+    # of a compound-suffix top name (xn--mazon-3ve.co.uk, 'аmazon.co.uk') is
+    # not caught yet; reading the registrable name needs a rule version like
+    # TYPOSQUAT_RULE_VERSION and a retrain (measured 2026-10-27: it would add
+    # the signal on 0 of 93,989 Majestic names under compound suffixes).
     # A brand family's own site (втб.рф) and verified same-shaped sites of
     # other owners are nobody's disguise, whatever script they are in.
     if (_ru_registrable_domain(decoded) or _extract_base_domain(decoded)) in _BRAND_LEGIT_DOMAINS:
@@ -2576,11 +2857,17 @@ def _check_typosquatting_v2(domain: str, rule_version: int = TYPOSQUAT_RULE_VERS
     # Under ru.com / ru.net, the name registered there ('yandex' of
     # yandex.ru.com, which was read as 'ru').
     # Elsewhere the last two labels, as before: on a compound ccTLD that is
-    # the zone label ('co' of co.uk), too short to match anything. Comparing
-    # the real label there is right in principle but flags top-100k names
-    # (telegraph.co.uk → "telegram", paypay.ne.jp → "paypal": 31 of the 9,217
-    # compound-suffix names) because the allowlist looks names up by their
-    # last two labels and never sees them.
+    # the zone label ('co' of co.uk), too short to match anything, so
+    # paypa1.co.uk goes uncaught. Comparing the real label there is right in
+    # principle, and since 2026-10-27 the allowlist reaches compound-suffix
+    # top names (top_domain_key), which absorbs the top-100k hits it makes on
+    # the server (23 of the 10,645 compound-ccTLD names that day:
+    # telegraph.co.uk → "telegram", paypay.ne.jp → "paypal"). It is still a
+    # rule change of its own: the served model reads rule 2 (it needs
+    # TYPOSQUAT_RULE_VERSION 3), the extension's offline port has no allowlist
+    # (name-rules.js typosquat would put those 23 at 'caution'), and
+    # _check_brand_on_hosting_tenant, lookalike_generator.comparison_base and
+    # eval_typo_variants read this same base.
     zone_name = _lookalike_zone_name(domain)
     base = zone_name or _ru_registrable_domain(domain) or _extract_base_domain(domain)
     # A brand family's own site, or a verified site of another owner with the
@@ -2829,13 +3116,18 @@ def _check_lure_combo_v1(name: str, brand: str) -> bool:
 # ── Brand subdomain abuse ──
 
 def _check_brand_in_subdomain(domain: str) -> Optional[str]:
-    from api.services.doh_gateway import _registrable_domain
-
     dom = domain.lower().strip(".")
-    reg = _registrable_domain(dom)
+    # The compound-ccTLD heuristic, not registrable_domain(): this is the
+    # model's brand_in_subdomain feature as well as the +30 rule, and its
+    # input stays the one the model learned (legacy_registrable_domain says
+    # why). On the PSL's reading the rule would also lose 23 feed phishing
+    # hosts of 2026-10-24 (accounts.google.sn.cn, allegro.gsm.pl: under the
+    # ICANN suffixes sn.cn and gsm.pl the brand becomes the registered
+    # name, which the typosquat rule's last-two-labels base does not reach).
+    reg = heuristic_registrable_domain(dom)
     # Only labels strictly BEFORE the registrable domain are real subdomains.
     # Naive parts[:-2] misfires on multi-part suffixes (barclays.co.uk would
-    # treat "barclays" as a spoof subdomain) — use the PSL-aware registrable.
+    # treat "barclays" as a spoof subdomain).
     if not reg or dom == reg:
         return None
     sub = dom[: -(len(reg) + 1)]
@@ -2966,6 +3258,10 @@ def _check_brand_on_hosting_tenant(domain: str) -> Optional[str]:
     # registry zone only banks may register in is not a hosting platform.
     if suffix in _RU_LOOKALIKE_ZONES or suffix in _REGISTRY_ONLY_ZONES:
         return None
+    # The typosquat rule's own base (last two labels), not registrable_domain():
+    # this rule covers exactly the hosts where that base is the platform. For
+    # com.de, com.se and biz.ua tenants the two readings differ, and a base the
+    # typosquat rule does not use would drop them from both rules.
     base = _extract_base_domain(d)
     # Only where the typosquat rule read the platform, not the customer's name.
     if not (suffix == base or suffix.endswith("." + base)):
@@ -3056,8 +3352,47 @@ def _is_tenant_lure(word: str, brand: str) -> bool:
 
 # ── Suspicious keywords ──
 
+# PSL ICANN zones whose names only a health service, a police force or a
+# government network gets, though no restricted label says so.
+_VETTED_ICANN_ZONES = frozenset({"nhs.uk", "police.uk", "nic.in"})
+
+
+def _registered_in_vetted_zone(domain: str) -> bool:
+    """The registrable domain sits in a zone only a government body, a health
+    service or a police force registers in: a Russian restricted zone, or a
+    zone the PSL's ICANN section lists with a restricted label (gov.uk,
+    sa.gov.au, pi.gov.br, ac.uk) or on _VETTED_ICANN_ZONES. Not a zone that
+    is a suffix only by the ccTLD default: sch.in, govt.hu and mil.nf carry a
+    restricted label but are ChangeIP's and FreeDNS's free zones.
+
+    With the PSL, login.nhs.uk's registered name is 'login' and every NHS
+    trust site is an apex; the differential check of 2026-10-31 found the
+    keyword and no-MX rules taking auth.login.nhs.uk, account.sa.gov.au,
+    login.pi.gov.br and 17 trust sites without MX to caution, two NHS
+    services to dangerous. Names there are not anyone's pick."""
+    suffix = registrable_domain(domain).partition(".")[2]
+    if not suffix:
+        return False
+    if suffix in _RU_RESTRICTED_ZONES:
+        return True
+    zone = ascii_name(suffix)
+    if not is_icann_rule(zone):
+        return False
+    return zone in _VETTED_ICANN_ZONES or bool(_RESTRICTED_ZONE_LABELS.intersection(zone.split(".")))
+
+
 def _check_suspicious_keywords(domain: str) -> Optional[str]:
-    base = _extract_base_domain(domain)
+    # The registered name. The last two labels were read until 2026-10-27:
+    # 'co' of secure-login.co.uk and 'spb' of paypal-login.spb.ru, never a
+    # keyword. Measured that day, name-only, on hosts outside the allowlist
+    # that the two readings differ for: the word is newly found on 124 of
+    # 21,561 feed hosts (alert-newlogin.co.uk, cba-secure.com.au; 11 go
+    # safe→caution, 8 caution→dangerous) and on 91 of 214,671 Majestic
+    # Million / Chrome UX Report hosts (6 caution→dangerous, the
+    # vnpt-invoice.com.vn ones among them, before any popularity discount).
+    if _registered_in_vetted_zone(domain):
+        return None
+    base = registrable_domain(domain)
     return _keyword_in_name(base.split(".")[0])
 
 

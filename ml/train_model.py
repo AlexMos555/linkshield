@@ -86,9 +86,14 @@ from api.services.scoring import (  # noqa: E402
     _ru_registrable_domain,
     _subdomain_labels,
     is_hosting_platform_site,
-    registrable_domain,
+    legacy_registrable_domain,
 )
 from api.services.url_features import FEATURES_VERSION  # noqa: E402
+
+# The corpus, the held-out matching and the split groups read the registrable
+# domain the features do (scoring.legacy_registrable_domain), not the Public
+# Suffix List the scorer's rules read since 2026-10-28: the weekly retrain
+# must build the same corpus from the same inputs until the features move.
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 DATA_DIR = os.path.join(ROOT, "data")
@@ -280,7 +285,7 @@ def load_held_out(paths: Iterable[str] = HELD_OUT_FILES) -> frozenset[str]:
     regs = set()
     for path in paths:
         with open(path, encoding="utf-8") as f:
-            regs.update(registrable_domain(h) for h in _hosts_in_file(f))
+            regs.update(legacy_registrable_domain(h) for h in _hosts_in_file(f))
     return frozenset(regs)
 
 
@@ -408,7 +413,7 @@ def load_phishing_domains(max_n: int = 12000, held_out: frozenset[str] = frozens
             if not host:
                 continue
             host = host.lower()
-            if host in seen or host in GATE_HOSTS or registrable_domain(host) in held_out:
+            if host in seen or host in GATE_HOSTS or legacy_registrable_domain(host) in held_out:
                 continue
             seen.add(host)
             platform = shared_tenant(host)[0]
@@ -435,7 +440,7 @@ def _shape_pool(ranked: list[tuple[int, str]], exclude: set[str],
     subdomains: list[str] = []
     tenants: list[str] = []
     for rank, host in ranked:
-        if host in exclude or host.endswith(".arpa") or registrable_domain(host) in held_out:
+        if host in exclude or host.endswith(".arpa") or legacy_registrable_domain(host) in held_out:
             continue
         # A hosting tenant (foo.github.io, bar.tw1.ru) is someone's own NAME
         # under a shared suffix, not a subdomain of a registered site: its
@@ -534,7 +539,7 @@ def load_benign_domains(max_n: int = N_BENIGN, exclude: Iterable[str] = (),
     ru_pld: list[str] = []  # under .ru / .su / .рф (any rank)
     idn: list[str] = []  # any IDN name
     for rank, domain in _read_ranked(os.path.join(DATA_DIR, BENIGN_DOMAINS_CSV)):
-        if domain in exclude or registrable_domain(domain) in held_out:
+        if domain in exclude or legacy_registrable_domain(domain) in held_out:
             continue
         if "xn--" in domain:
             idn.append(domain)
@@ -580,12 +585,12 @@ def load_benign_domains(max_n: int = N_BENIGN, exclude: Iterable[str] = (),
     # registrable domains of the host list (see LURE_WORD_SHARE).
     lure = {d for d in tail + head if _has_generic_lure_word(d)}
     lure |= {d for d in lure_word_domains(h for _, h in ranked_hosts)
-             if d not in exclude and registrable_domain(d) not in held_out}
+             if d not in exclude and legacy_registrable_domain(d) not in held_out}
     lure = sorted(lure - set(brand_named_sites(lure)) - taken)
     extra += rng.sample(lure, min(len(lure), int(max_n * LURE_WORD_SHARE))) * LURE_WORD_REPEAT
     taken |= set(extra)
     verified = [h for h in load_verified_brand_sites()
-                if h not in exclude and h not in taken and registrable_domain(h) not in held_out]
+                if h not in exclude and h not in taken and legacy_registrable_domain(h) not in held_out]
     # At most 5% of the class, so a small run (the tests' 40) stays mostly ranked-list names.
     verified = rng.sample(verified, min(len(verified), int(max_n * 0.05) // VERIFIED_REPEAT))
     extra += verified * VERIFIED_REPEAT
@@ -639,7 +644,7 @@ def synthetic_tenants(tail: list[str], phishing_tenants: Iterable[str], n: int, 
         if len(out) >= n:
             break
         host = f"{rng.choice(labels)}.{rng.choices(suffixes, weights)[0]}"
-        if host not in exclude and not is_user_content_host(host) and registrable_domain(host) not in held_out:
+        if host not in exclude and not is_user_content_host(host) and legacy_registrable_domain(host) not in held_out:
             out.add(host)
     return sorted(out)
 
@@ -682,14 +687,14 @@ def lure_word_domains(hosts: Iterable[str]) -> set[str]:
     """Registrable domains of `hosts` (not hosting tenants) whose name has a
     generic lure word only (_has_generic_lure_word): www.sncf-connect.com
     gives sncf-connect.com. A substring pass first, so 1.5M hosts cost
-    seconds, not a registrable_domain() each."""
+    seconds, not a legacy_registrable_domain() each."""
     from api.services.scoring import _SUSPICIOUS_KEYWORDS
 
     words = re.compile("|".join(sorted(map(re.escape, _SUSPICIOUS_KEYWORDS), key=len, reverse=True)))
     out = set()
     for host in hosts:
         if words.search(host) and not shared_tenant(host)[0]:
-            domain = registrable_domain(host)
+            domain = legacy_registrable_domain(host)
             if _has_generic_lure_word(domain):
                 out.add(domain)
     return out
@@ -827,7 +832,7 @@ def average_members(members: list) -> "CatBoostClassifier":
 def split_group(host: str) -> str:
     """The train/test split's group: a tenant's own host, else its
     registrable domain."""
-    return host if shared_tenant(host)[0] else registrable_domain(host)
+    return host if shared_tenant(host)[0] else legacy_registrable_domain(host)
 
 
 def train(replace_anyway: bool = False, seed: int = SEED):

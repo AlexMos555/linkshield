@@ -22,13 +22,13 @@
  * mode) intercept the submit.
  *
  * Three signals stack into a verdict (any one of them ≥ "warn" → show):
- *   A. action-host vs visible-host mismatch — form posts to a host
- *      different from the address bar. Some legit cases exist
- *      (federated SSO, redirector flows), so we whitelist known
- *      identity providers — see `LEGIT_AUTH_HOSTS`.
- *   B. visible-host typosquat — the address bar hostname matches a
- *      known brand pattern (paypal0.com, paypa1.com). We reuse the
- *      same `_BR` table the URL scorer uses.
+ *   A. action-site vs visible-site mismatch — form posts to another site
+ *      (registrable domain, see `_siteOf`) than the address bar's. Some
+ *      legit cases exist (federated SSO, redirector flows), so we
+ *      whitelist known identity providers — see `LEGIT_AUTH_HOSTS`.
+ *   B. visible-host typosquat — the address bar site's name matches a
+ *      known brand pattern (paypal0.com, paypa1.com, paypa1.co.uk),
+ *      against the `BRAND_HOSTS` table below.
  *   C. high-risk TLD on a credential page — scammers favour .tk / .ml /
  *      .top / .xyz / etc. for throwaway login pages, but plenty of real
  *      sites live there too.
@@ -62,9 +62,10 @@
   }
 
   // ── Brand identity table ──
-  // Subset of the URL scorer's _BR. Kept in-sync intentionally minimal
-  // here so the credential script doesn't have to import the larger
-  // scorer module (content scripts inject independently).
+  // This file's own short list, not the scorer's brand table: its keys are
+  // what the background's verified sign-in host lookup (VERIFIED_HOSTS,
+  // api/routers/credentials.py) is keyed on. Where a site ends comes from
+  // the scorer's name rules (see `_siteOf`).
   var BRAND_HOSTS = {
     paypal: "paypal.com",
     apple: "apple.com",
@@ -131,10 +132,107 @@
   // Leet-speak normalisation for typosquat check.
   var CHAR_SWAPS = { "1": "l", "0": "o", "3": "e", "@": "a", "5": "s" };
 
-  function _baseDomain(host) {
-    if (!host) return "";
-    var parts = host.split(".");
-    return parts.length >= 2 ? parts.slice(-2).join(".") : host;
+  // ── Where one site ends ──
+  // Both form checks ask it: Signal A whether the form posts to another
+  // site, Signal B what the site is called. A site is the registrable
+  // domain, by the server's rule (scoring.registrable_domain: the Public
+  // Suffix List's ICANN rules with the Russian PSL zones and the ccTLD
+  // default on top), ported in utils/name-rules.js, which every manifest
+  // loads before this file into the same content-script world.
+  //
+  // This file used to take the last two labels. Under a compound suffix
+  // those are the suffix, so everyone there was one site:
+  //   A. evil-login.co.uk posting a password to collector.co.uk stayed on
+  //      "co.uk": no off-site warning, under com.br, co.jp, msk.ru … alike;
+  //   B. paypa1.co.uk was named "co", which imitates no brand: of the 38,806
+  //      hosts under a compound suffix in the 2026-10-24 phishing feed
+  //      snapshot, Signal B flagged none;
+  // and an IP address was its last two numbers (10.0.1.10 = 192.168.1.10).
+  //
+  // Until 2026-10-28 the server's rule was a compound-ccTLD heuristic (a
+  // 2-letter ccTLD under co, com, gov, web, id …), which knew no other
+  // suffix: under my.id, io.vn, hl.cn, me.uk everyone was still one site and
+  // facebook-login.my.id was named "my". On that feed snapshot the PSL's
+  // reading flags 64 more look-alikes by Signal B (adsmanager-facebook.my.id,
+  // apiim-whatsapp.hl.cn: my.id 38, hl.cn 21) and none of the top-100k
+  // names. It also took web.de and id.me for suffixes, which this file had
+  // to correct with a list of its own; the PSL lists neither.
+  //
+  // Read by the ICANN section alone, the zones the heuristic split rightly
+  // would have been one site each: co.ua, com.de, co.nl (the PSL lists them
+  // in its PRIVATE section only), co.vu, com.tg and ChangeIP's free ne.pw,
+  // asn.im, or.lt (in no section), so paypal-login.ne.pw posting to
+  // collector.ne.pw was "the same site" and named "ne". The server keeps
+  // every generic second level of a 2-letter TLD split, as the heuristic
+  // did, but for the zones it names as one owner's — web.de, id.me, com.be,
+  // net.hr … (public_suffix's ccTLD default; cctldSecondLevels and
+  // cctldNames in scorer-data.js). The rest of the PRIVATE section stays out
+  // (github.io, blogspot.com): the server's curated platform lists decide
+  // those, and this file has none.
+  var GUARD_ROOT = typeof self !== "undefined" ? self : globalThis;
+
+  function _nameRules() {
+    var rules = GUARD_ROOT.cleanwayNameRules;
+    return rules && typeof rules.registrableDomain === "function" ? rules : null;
+  }
+
+  function _hostname(host) {
+    return String(host || "").toLowerCase().replace(/\.+$/, "");
+  }
+
+  function _lastTwoLabels(host) {
+    return host.split(".").slice(-2).join(".");
+  }
+
+  // URL hostnames: IPv4 in dotted decimal, IPv6 in brackets.
+  function _isIpLiteral(host) {
+    return host.charAt(0) === "[" || /^\d+\.\d+\.\d+\.\d+$/.test(host);
+  }
+
+  // The site of a hostname: an IP address is its own, a single label
+  // (localhost) is itself. Without the name rules (a packaging bug, which
+  // scripts/test-extension-core.mjs guards) the old last two labels.
+  function _siteOf(host) {
+    var name = _hostname(host);
+    if (!name || _isIpLiteral(name)) return name;
+    var rules = _nameRules();
+    return rules ? rules.registrableDomain(name) : _lastTwoLabels(name);
+  }
+
+  // The restricted zone a site is in (gov.hr, ac.uk, go.jp, gov.ru), or "":
+  // a public suffix whose owner hands its names out, nobody buys one there.
+  // Its sites are one owner for the off-site check, as the last two labels
+  // had them: a sibling in the zone is not an attacker's, and the PSL itself
+  // does not split gov.hr, gov.hu, gov.cz or sch.gr (mojprofil.gov.hr signs
+  // in at nias.gov.hr, Croatia's state sign-in; kau.gov.hu at idp.gov.hu).
+  // The outermost such zone above the site: gov.uk for service.gov.uk, and
+  // gov.br for detran.sp.gov.br, whose own suffix (sp.gov.br, one of the 27
+  // state rules under gov.br the PSL reading of 2026-10-28 knows) carries no
+  // restricted label — the heuristic before it had every sp.gov.br agency
+  // one site. Outermost, not nearest: the state codes of Goiás and Acre are
+  // restricted labels themselves (go, ac), and educacao.go.gov.br signs in
+  // at sso.acesso.gov.br, the federal Login Único, like every other state.
+  // In the ICANN section only go.gov.br and ac.gov.br nest a restricted
+  // label under a restricted zone (2026-10-28).
+  function _restrictedZoneOf(site) {
+    var rules = _nameRules();
+    if (!rules || typeof rules.isRestrictedZone !== "function" || _isIpLiteral(site)) return "";
+    var zone = "";
+    for (var suffix = site.slice(site.indexOf(".") + 1); suffix.indexOf(".") !== -1; suffix = suffix.slice(suffix.indexOf(".") + 1)) {
+      if (rules.isRestrictedZone(suffix)) zone = suffix;
+    }
+    if (zone) return zone;
+    // The zone's own site: gov.hr next to nias.gov.hr.
+    return site.split(".").length === 2 && rules.isRestrictedZone(site) ? site : "";
+  }
+
+  function _sameSite(a, b) {
+    var siteA = _siteOf(a);
+    var siteB = _siteOf(b);
+    if (!siteA || !siteB) return false;
+    if (siteA === siteB) return true;
+    var zone = _restrictedZoneOf(siteA);
+    return zone !== "" && zone === _restrictedZoneOf(siteB);
   }
 
   function _normaliseLeet(s) {
@@ -226,15 +324,20 @@
       return { mismatch: false, actionHost: actionHost };
     }
 
-    // Same registrable domain? (paypal.com vs accounts.paypal.com)
-    var pageBase = _baseDomain(pageHost);
-    var actionBase = _baseDomain(actionHost);
-    if (pageBase === actionBase) {
+    // Same site? (paypal.com vs accounts.paypal.com, barclays.co.uk vs
+    // online.barclays.co.uk — not evil.co.uk.) By hostname: the same name on
+    // another port is the same site (the old comparison kept the port, so
+    // example.com:8443 posting to example.com was "off-site"). A sibling
+    // registrable domain is another site — bank.co.uk posting to
+    // login.bankgroup.co.uk gets the calm one-sign warning, as bank.com
+    // posting to login.bankgroup.com always has.
+    var actionName = _hostname(actionUrl.hostname);
+    if (_sameSite(window.location.hostname, actionName)) {
       return { mismatch: false, actionHost: actionHost };
     }
 
     // Legit auth providers — federated SSO etc.
-    if (LEGIT_AUTH_HOSTS.has(actionHost) || LEGIT_AUTH_HOSTS.has(actionBase)) {
+    if (LEGIT_AUTH_HOSTS.has(actionName) || LEGIT_AUTH_HOSTS.has(_siteOf(actionName))) {
       return { mismatch: false, actionHost: actionHost, federated: true };
     }
 
@@ -247,19 +350,51 @@
   }
 
   // ── Signal B: visible-host typosquat against brand table ──
-  function _classifyVisibleHost() {
-    var host = window.location.hostname.toLowerCase();
-    var base = _baseDomain(host);
+  // Under a compound suffix — the site is longer than the host's last two
+  // labels, where the old code read "co" or "com" and never matched — only
+  // the forms real sites do not take: the brand in look-alike characters
+  // (paypa1.co.uk) or as a whole hyphenated word of the name
+  // (paypal-login.co.uk, hot-binance.com.cn), and never the word "bank".
+  // The plain-TLD rule (any name containing a brand) is how real names
+  // carry brands there. Measured 2026-10-27 on the 10,757 names under a
+  // compound suffix in data/top_100k.json: it flags 90, 14 of them in the
+  // top 10k (bankofengland.co.uk, lloydsbank.co.uk, commbank.com.au,
+  // mizuhobank.co.jp, upsc.gov.in, citizensadvice.org.uk …), each a full
+  // warning and a stop at submit on its own sign-in form, with no verified
+  // host to clear it. These forms flag 3, all "-bank" (rakuten-bank.co.jp
+  // #5686, paypay-bank.co.jp, british-business-bank.co.uk), without "bank"
+  // none. On the 2026-10-24 feed snapshot's 38,806 hosts under a compound
+  // suffix: the old code flagged 0, the plain-TLD rule would flag 598,
+  // these forms flag 193 (190 sites). Every other host is judged exactly as
+  // before: its site is its last two labels.
+  var NOT_A_BRAND_UNDER_COMPOUND = new Set(["bank"]);
+
+  // Which BRAND_HOSTS brand the site's name imitates, or null.
+  function _imitatedBrand(hostname) {
+    var host = _hostname(hostname);
+    if (!host || _isIpLiteral(host)) return null;
+    var base = _siteOf(host);
     var nm = base.split(".")[0];
     var nmLeet = _normaliseLeet(nm);
+    var compound = base !== _lastTwoLabels(host);
+    var words = nmLeet.split("-");
     for (var brand in BRAND_HOSTS) {
       var legit = BRAND_HOSTS[brand];
       if (nm === brand || host === legit || base === legit) continue;
-      if (nmLeet === brand || nm.indexOf(brand) >= 0) {
-        return { typosquat: true, brand: brand, legit: legit, host: host };
+      if (compound) {
+        if (!NOT_A_BRAND_UNDER_COMPOUND.has(brand) && words.indexOf(brand) >= 0) return brand;
+      } else if (nmLeet === brand || nm.indexOf(brand) >= 0) {
+        return brand;
       }
     }
-    return { typosquat: false };
+    return null;
+  }
+
+  function _classifyVisibleHost() {
+    var host = _hostname(window.location.hostname);
+    var brand = _imitatedBrand(host);
+    if (!brand) return { typosquat: false };
+    return { typosquat: true, brand: brand, legit: BRAND_HOSTS[brand], host: host };
   }
 
   // ── Signal C: high-risk TLD ──
@@ -810,6 +945,15 @@
       if (msg && msg.type === "CREDGUARD_STRICT") _enterStrictMode();
     });
   } catch (e) { /* not in extension context */ }
+
+  // For the table tests in scripts/test-extension-core.mjs. A content
+  // script's globals live in the extension's isolated world; the page never
+  // sees them.
+  GUARD_ROOT.cleanwayCredentialGuard = Object.freeze({
+    siteOf: _siteOf,
+    sameSite: _sameSite,
+    imitatedBrand: _imitatedBrand,
+  });
 
   // ── Entry ──
   if (document.readyState === "loading") {

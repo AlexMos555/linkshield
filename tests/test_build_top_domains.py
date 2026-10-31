@@ -88,11 +88,14 @@ def _corpus() -> list[str]:
     return sorted(hosts)
 
 
-def test_registrable_domain_is_the_scorers():
-    from api.services.scoring import registrable_domain
+def test_registrable_domain_is_the_models():
+    """The popularity list is the model's feature data: folded the way the
+    model reads a host (scoring.legacy_registrable_domain), not the way the
+    rules do since 2026-10-28 (the Public Suffix List)."""
+    from api.services.scoring import legacy_registrable_domain
 
     for host in _corpus():
-        assert btd.registrable_domain(host) == registrable_domain(host), host
+        assert btd.registrable_domain(host) == legacy_registrable_domain(host), host
 
 
 def test_the_redis_refresh_imports_nothing_the_runner_lacks():
@@ -237,7 +240,10 @@ def test_a_reported_name_needs_both_lists_or_many_links_or_the_very_top():
 # ── Building the files ──
 
 def _crux_gz(rows) -> bytes:
-    return gzip.compress(("origin,rank\n" + "".join(f"https://{h},{r}\n" for r, h in rows)).encode())
+    # mtime=0: tests build the world twice and compare sha256s; with the default
+    # header timestamp the two gzips differ whenever a second boundary falls
+    # between them (test_build_writes_the_five_files failed that way, 2026-10-28).
+    return gzip.compress(("origin,rank\n" + "".join(f"https://{h},{r}\n" for r, h in rows)).encode(), mtime=0)
 
 
 def _majestic_csv(names) -> str:

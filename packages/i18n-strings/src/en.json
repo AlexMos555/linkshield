@@ -3506,7 +3506,7 @@
       "placeholder": "you@example.com",
       "submit": "Check",
       "found_title": "Found on a leaked list",
-      "found_body": "This address has turned up {{times}} times in lists of leaked passwords. If you use it as a password anywhere, change that password now.",
+      "found_body": "This address has turned up in lists of leaked passwords (times found: {{times}}). If you use it as a password anywhere, change that password now.",
       "clear_title": "Not on the leaked list",
       "clear_body": "This address has not turned up as a password in any leak we can see. It may still have been in a breach we cannot check.",
       "error_title": "Could not check",

@@ -4,14 +4,16 @@
 // brand as a subdomain of someone else's site, dress a TLD up as a subdomain
 // (paypal.com.evil.xyz), or nest deeper than a site needs? The server answers
 // these in api/services/scoring.py; this is a line-by-line port of
-//   registrable_domain / _ru_registrable_domain   → registrableDomain
+//   registrable_domain (public_suffix.py)          → registrableDomain
+//   legacy_registrable_domain                      → legacyRegistrable
 //   _check_typosquatting_v2 and _imitation        → typosquat
 //   _check_brand_in_subdomain                      → brandInSubdomain
 //   _check_brand_under_open_zone                   → brandUnderOpenZone
 //   _has_fake_tld_in_subdomain                     → hasFakeTldInSubdomain
 //   _apparent_subdomain_levels                     → apparentSubdomainLevels
 // with the data (brands, official domains, exemptions, Russian public
-// suffixes, constants) generated from the server into scorer-data.js.
+// suffixes, the Public Suffix List's ICANN rules, constants) generated from
+// the server into scorer-data.js.
 //
 // It used to be a hand-written fork with 50 brands, no Russian brand and no
 // Russian zone: sberbamk.ru and t1nkoff.ru scored 0, and kvs.gov.spb.ru (the
@@ -28,7 +30,9 @@
 //
 // A classic script, like link-target.js: a content script gets the global,
 // the background module imports it for its side effect, Node tests load it
-// in a vm context. Pure functions — no DOM, no chrome.*.
+// in a vm context. Pure functions — no DOM, no chrome.*. Besides the scorer,
+// content/credential-guardian.js reads registrableDomain and isRestrictedZone
+// from it: where one site ends.
 (function (root, factory) {
   root.cleanwayNameRules = factory(root.cleanwayScorerData);
 })(typeof self !== "undefined" ? self : globalThis, function (D) {
@@ -149,8 +153,9 @@
     return 0;
   }
 
-  // doh_gateway._registrable_domain: a 2-letter ccTLD under a generic
-  // second-level label (co.uk, com.cn) takes three labels, else two.
+  // public_suffix.heuristic_registrable_domain (the reading before
+  // 2026-10-28): a 2-letter ccTLD under a generic second-level label
+  // (co.uk, com.cn) takes three labels, else two.
   function heuristicRegistrable(domain) {
     var p = clean(domain).split(".");
     if (p.length <= 2) return p.join(".");
@@ -165,14 +170,123 @@
     return k ? parts.slice(-(k + 1)).join(".") : null;
   }
 
-  // registrable_domain: PSL-aware under Russian zones, the heuristic elsewhere.
-  function registrableDomain(asciiDomain) {
+  // legacy_registrable_domain: the Russian zones, else the heuristic. What
+  // the server's model features and the shape rules that share them read
+  // (subdomain levels, fake TLDs), so the ports of those stay on it too.
+  function legacyRegistrable(asciiDomain) {
     return ruRegistrable(asciiDomain) || heuristicRegistrable(asciiDomain);
   }
 
+  // The Public Suffix List's ICANN rules (public_suffix.py): scorer-data.js
+  // carries them as {TLD: trie of the labels below it}, and a TLD's trie is
+  // decoded the first time a host under it is asked about. No ICANN rule
+  // has two labels under .com, .net or .org, so most pages decode nothing;
+  // .jp, the largest (1,776 rules), about a millisecond.
+  var PSL_TRIES = D && D.icannSuffixes && typeof D.icannSuffixes === "object" ? D.icannSuffixes : null;
+  var PSL_BY_TLD = new Map();
+  var NO_RULES = { exact: new Set(), wildcards: new Set(), exceptions: new Set(), depth: 1, icann: 0 };
+
+  // The server's ccTLD default (public_suffix.SuffixRules.cc_second_levels):
+  // each generic second level of a 2-letter TLD (cctldSecondLevels: co, com,
+  // net, gov, web …) is a suffix whether the PSL lists it or not — co.ua,
+  // com.de, co.vu, ne.pw — but for the zones named as one owner's
+  // (cctldNames: web.de, id.me, com.be …). Exact 2-label rules joined to
+  // their TLD's ICANN rules, as the server reads them in one table. An open
+  // zone read as one name makes its strangers one site; one owner's read as
+  // a registry only costs what it did before 2026-10-28.
+  var CCTLD_NAMES = set(D && D.cctldNames);
+
+  // One TLD's rules: Sets of its exact rules, wildcards' bases and
+  // exceptions, and its longest rule in labels (a wildcard's '*' counts).
+  function pslRulesOf(tld) {
+    var R = PSL_BY_TLD.get(tld);
+    if (R) return R;
+    // Own keys only: a host under '.constructor' must not read Object's.
+    var text = PSL_TRIES && Object.prototype.hasOwnProperty.call(PSL_TRIES, tld) ? PSL_TRIES[tld] : "";
+    var ccDefault = tld.length === 2 && isAscii(tld) && CCTLD_SLD.size > 0;
+    R = text || ccDefault ? { exact: new Set(), wildcards: new Set(), exceptions: new Set(), depth: 1, icann: 0 } : NO_RULES;
+    if (ccDefault) {
+      CCTLD_SLD.forEach(function (label) {
+        var zone = label + "." + tld;
+        if (!CCTLD_NAMES.has(zone)) R.exact.add(zone);
+      });
+      R.depth = 2;
+    }
+    var pos = 0;
+    // `suffix` has `level` labels; a rule found under it has level + 1.
+    function list(suffix, level) {
+      for (;;) {
+        var terminal = text.charCodeAt(pos) === 43; // '+'
+        if (terminal) pos++;
+        var start = pos;
+        for (var c = text.charCodeAt(pos); pos < text.length && c !== 44 && c !== 40 && c !== 41; c = text.charCodeAt(++pos)) { /* label */ }
+        var label = text.slice(start, pos);
+        var name = label + "." + suffix;
+        var kids = text.charCodeAt(pos) === 40; // '('
+        var rule = true;
+        if (label === "*") R.wildcards.add(suffix);
+        else if (label.charCodeAt(0) === 33) R.exceptions.add(label.slice(1) + "." + suffix); // '!'
+        else if (terminal || !kids) { R.exact.add(name); R.icann++; }
+        else rule = false;
+        if (rule && level + 1 > R.depth) R.depth = level + 1;
+        if (kids) { pos++; list(name, level + 1); pos++; } // past ')'
+        if (text.charCodeAt(pos) === 44) { pos++; continue; } // ','
+        return;
+      }
+    }
+    if (text) list(tld, 1);
+    PSL_BY_TLD.set(tld, R);
+    return R;
+  }
+
+  // SuffixRules.suffix_length: the prevailing rule's labels — an
+  // exception's minus one, else the longest match — or 1 (the default rule).
+  function pslSuffixLength(labels) {
+    var n = labels.length;
+    var R = pslRulesOf(labels[n - 1]);
+    if (R.depth < 2 || n < 2) return 1;
+    var top = Math.min(R.depth, n), k;
+    if (R.exceptions.size) {
+      for (k = top; k > 1; k--) if (R.exceptions.has(labels.slice(-k).join("."))) return k - 1;
+    }
+    for (k = top; k > 1; k--) {
+      if (R.exact.has(labels.slice(-k).join(".")) || R.wildcards.has(labels.slice(1 - k).join("."))) return k;
+    }
+    return 1;
+  }
+
+  // An IP literal is its own site: IPv6 (two or more colons, hex digits and
+  // dots only, [::1]) or a numeric TLD; one colon is a port. public_suffix.
+  // is_ip_literal: any colon counted until 2026-10-31.
+  function isIpLiteral(dom) {
+    var colons = dom.split(":").length - 1;
+    if (colons > 1) return /^\[?[0-9a-f:.]+\]?$/.test(dom);
+    if (colons === 1) dom = dom.slice(0, dom.indexOf(":"));
+    return /^[0-9]+$/.test(dom.slice(dom.lastIndexOf(".") + 1));
+  }
+
+  // registrable_domain: the Russian zones, else the PSL's ICANN rules with
+  // the ccTLD default (the server merges all three into one table;
+  // tests/test_public_suffix.py holds that to "the Russian rule first"). A
+  // suffix by itself, one label and an IP literal answer themselves.
+  // Without the rules (an old data file) the legacy reading, as the server
+  // falls back when its list does not load; it splits the named zones too.
+  function registrableDomain(asciiDomain) {
+    var dom = clean(asciiDomain);
+    if (!dom || isIpLiteral(dom)) return dom;
+    var ru = ruRegistrable(dom);
+    if (ru) return ru;
+    if (!PSL_TRIES) return heuristicRegistrable(dom);
+    var parts = dom.split(".");
+    if (parts.length === 1) return dom;
+    var k = pslSuffixLength(parts);
+    return parts.length <= k ? dom : parts.slice(-(k + 1)).join(".");
+  }
+
+  // _subdomain_labels: left of the LEGACY registrable domain.
   function subdomainLabels(asciiDomain) {
     var dom = clean(asciiDomain);
-    var reg = registrableDomain(dom);
+    var reg = legacyRegistrable(dom);
     if (dom === reg || dom.slice(-(reg.length + 1)) !== "." + reg) return [];
     return dom.slice(0, dom.length - reg.length - 1).split(".");
   }
@@ -184,7 +298,7 @@
   }
 
   function registeredTldLookalike(asciiDomain) {
-    var reg = registrableDomain(asciiDomain);
+    var reg = legacyRegistrable(asciiDomain);
     var dot = reg.indexOf(".");
     var label = dot === -1 ? reg : reg.slice(0, dot);
     var suffix = dot === -1 ? "" : reg.slice(dot + 1);
@@ -733,6 +847,21 @@
   return {
     available: D !== null,
     registrableDomain: registrableDomain,
+    // For the table tests: the reading the shape rules keep, and the
+    // decoded ICANN rules' sizes (scorer-data.js icannSuffixCounts; the
+    // ccTLD default's zones not counted).
+    legacyRegistrable: legacyRegistrable,
+    icannRuleCounts: function () {
+      var counts = [0, 0, 0];
+      Object.keys(PSL_TRIES || {}).forEach(function (tld) {
+        var R = pslRulesOf(tld);
+        counts[0] += R.icann; counts[1] += R.wildcards.size; counts[2] += R.exceptions.size;
+      });
+      return counts;
+    },
+    // _is_restricted_zone: a public suffix whose names its owner hands out
+    // (gov.uk, ac.uk, go.jp, gov.ru). The credential guard reads both.
+    isRestrictedZone: isRestrictedZone,
     subdomainLabels: subdomainLabels,
     typosquat: typosquat,
     brandInSubdomain: brandInSubdomain,

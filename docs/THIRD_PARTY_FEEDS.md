@@ -130,7 +130,7 @@ PhishTank can be ingested and the public number stays measurable.
 | **Spamhaus DBL** public mirror | DNS `<domain>.dbl.spamhaus.org` | DNSBL fair-use policy: "free of charge for non-commercial use by small and medium sized organisations"; queries must come from an identifiable resolver, not large shared hosting (read 2026-09-29). Through a public resolver the mirror answers `127.255.255.254` — until 2026-09-29 the analyzer read that as "not listed" (`api/services/dnsbl_checks.py` fixes it: an error code is "not consulted") | **Off by default** (`LICENSED_INTEL=licensed`) |
 | **SURBL** multi | DNS `<base>.multi.surbl.org` | surbl.org/guidelines: `127.0.0.1` means access is blocked, sign up for the Sponsored Data Service; the usage policy excludes the free service from paid products (*likely*, read 2026-09-21/29) | **Off by default** (`LICENSED_INTEL=licensed`) |
 | **PhishStats** | `phishstats.info:2096/api/phishing` | Free API, no key; terms not located (*uncertain*) | On |
-| **AlienVault / LevelBlue OTX** | `otx.alienvault.com/api/v1/indicators/domain/…` | Free community API; OTX terms of service (*likely*: free use with attribution) | On |
+| **AlienVault / LevelBlue OTX** | `otx.alienvault.com/api/v1/indicators/domain/…` | Free community API; OTX terms of service (*likely*: free use with attribution). **No key is sent: 100 lookups an hour per IP, then 429 `{"detail": "Over throttling limit (100/hour)"}`** (measured 2026-10-26). The weekly benchmark alone asks up to 1,400 an hour. No rate-limit headers; the limit with a key is not published (searched 2026-10-26) | On. Until 2026-10-26 a non-200 read as "no pulses" and counted as a measured check; a non-2xx answer now raises (a failed, unmeasured check) and three in a row open `alienvault_breaker` for 60 s. An IP host is not sent: the domain endpoint answers 400 `Invalid domain` for every IP literal, and the `IPv4` endpoint lists bulk IOC dumps on shared hosting addresses (50 pulses each on Vercel's, GitHub Pages' and a Microsoft address, measured 2026-10-27), so for an IP OTX is neither asked nor counted among the checks (`analyzer._NOT_FOR_IPS`). Register a key or switch OTX off (`PAID_LAUNCH_SWITCHES.md` §8): the founder's decision |
 | **IPQualityScore** | `ipqualityscore.com/api/json/url/…` | Vendor API terms, free tier 5,000/month, paid above; keyed | On with `IPQUALITYSCORE_KEY`, daily budget |
 | **RDAP** (registration date, registrar) | the zone registry's own server, from IANA's bootstrap file `data.iana.org/rdap/dns.json` (RFC 9224): `rdap.verisign.com/com/v1/domain/<registrable name>` for .com. `rdap.org` until 2026-10-26 — a redirector whose 302 the code never followed, so no data ever came back | Public registry protocol (RFC 9082/9083); each registry's own RDAP terms. Verisign's (read 2026-10-26): lawful purposes only, and the data must not "enable high volume, automated, electronic processes that send queries … to the systems of Verisign"; Verisign may restrict access. We send one query per analysed registrable name that is not a hosting tenant (*uncertain* how "high volume" reads at our traffic) | On; no RDAP for .ru/.su/.рф |
 | **Popularity rank** (§2a) | Redis `tranco:ranks`: the top-1M of the Majestic Million + Chrome UX Report ranking, rebuilt daily by `scripts/refresh_tranco.py` (Tranco's list until 2026-10-23; a Tranco URL is now refused) | CC BY 3.0 / CC BY 4.0 (§2a) | On |
@@ -380,6 +380,30 @@ under §6. The terms' contact is support@cloudflare.com (§15);
 resolver@cloudflare.com, on the 1.1.1.1 terms page, is for logo requests
 only. If the answer is no, drop `cloudflare_families` from the published
 resolvers and from `comparedRows`, as for VirusTotal and Safe Browsing.
+
+### 2c. The Public Suffix List, vendored (since 2026-10-28)
+
+`data/public_suffix_list.dat` is a byte-for-byte copy of
+`https://publicsuffix.org/list/public_suffix_list.dat` (Mozilla Public
+Suffix List, MPL 2.0, https://mozilla.org/MPL/2.0/; the file keeps its
+licence notice and its `// VERSION:` / `// COMMIT:` lines). Its ICANN
+section, with the Russian zones of `data/ru_public_suffixes.json` on top,
+draws the registrable domain for the scorer and the DoH gateway
+(`api/services/public_suffix.py`) and, as data generated from it, for the
+browser extensions (`utils/scorer-data.js`, `icannSuffixes`, which names the
+list, its version and its licence; its source form is named by URL, the
+vendored copy in the public repository, MPL 2.0 §3.2(a)). The private section
+is not read (github.io, blogspot.com …: the curated platform lists decide
+those). On top of both, every generic second level of a 2-letter ccTLD (co,
+com, net, gov, web …) is read as a suffix whether a section lists it or not,
+as the compound-ccTLD heuristic before it read it — co.ua, com.de, co.vu,
+ChangeIP's ne.pw — but for the zones `data/cctld_second_levels.json` names as
+one owner's (web.de, id.me, com.be …; Cleanway's own data, `cctldNames` in
+`scorer-data.js`). The
+copy changes only by `scripts/refresh_public_suffix_list.py` (no workflow
+runs it), and `tests/test_public_suffix.py` fails when it is malformed. The
+builders that fetch the live list (`build_top_domains.py`,
+`build_ru_public_suffixes.py`, `refresh_dangerous_domains.py`) still do.
 
 ## 3. ML training data (`scripts/refresh_training_feeds.py`, weekly)
 
@@ -660,7 +684,7 @@ repository's Actions variables, read 2026-10-23), until 2026-10-23 CSIRT
 Italia / ACN (TLP:CLEAR events; no licence stated and ACN's terms bar
 commercial use, so the switch leaves it out — §1), and until 2026-10-21
 URLhaus (abuse.ch). Public suffixes from the Mozilla Public Suffix List
-(MPL 2.0).
+(MPL 2.0), vendored as `data/public_suffix_list.dat` (§2c).
 
 Cleanway's domain popularity ranking — the allowlist, the top-1M in Redis,
 the blocklist's popularity veto, the phone's veto list and the

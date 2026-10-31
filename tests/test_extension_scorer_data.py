@@ -91,3 +91,77 @@ def test_parity_table_covers_the_labelled_sets_and_the_reported_hosts():
     assert by_host["sberbamk.ru"][1].startswith("sberbank.ru|")
     assert by_host["vk.com.msk.ru"][3:6] == ["vk", "1", "2"]
     assert by_host["xn--90ab2c.xn--p1ai"][1] == "-"  # втб.рф is VTB's own
+
+
+def test_the_icann_rules_ship_whole_and_decode_back():
+    """name-rules.js reads registrable_domain()'s ICANN rules from a trie per
+    TLD; every multi-label rule, wildcard and exception must come back."""
+    from api.services import public_suffix
+
+    build = _builder()
+    data = build.scorer_data()
+    icann = public_suffix.LIST.icann
+    exact, wild, exc = build.decode_icann_suffix_trie(data["icannSuffixes"])
+    assert exact == frozenset(r for r in icann.exact if "." in r)
+    assert wild == icann.wildcards and exc == icann.exceptions
+    assert data["icannSuffixCounts"] == [len(exact), len(wild), len(exc)]
+    assert data["icannSuffixesVersion"] == public_suffix.LIST.version
+    # A tiny list, every shape: a rule with children, a wildcard, an exception.
+    tiny = public_suffix.rules_from({"uk", "co.uk", "jp", "aichi.jp", "agui.aichi.jp"}, {"kobe.jp", "sch.uk"},
+                                    {"city.kobe.jp"})
+    tries = build.icann_suffix_trie(tiny)
+    assert tries == {"jp": "+aichi(agui),kobe(!city,*)", "uk": "co,sch(*)"}
+    assert build.decode_icann_suffix_trie(tries) == (
+        frozenset({"co.uk", "aichi.jp", "agui.aichi.jp"}), tiny.wildcards, tiny.exceptions)
+
+
+def test_the_shipped_psl_names_its_licence_and_source():
+    text = (ROOT / "packages/extension-core/src/utils/scorer-data.js").read_text(encoding="utf-8")
+    from api.services import public_suffix
+
+    assert "Mozilla Public License 2.0" in text and "data/public_suffix_list.dat" in text
+    assert f"VERSION {public_suffix.LIST.version}" in text
+    # MPL 2.0 §3.2(a): the recipient is told where the source form is — a
+    # place one can find from the package alone, not "the repository".
+    assert "https://github.com/AlexMos555/linkshield/blob/main/data/public_suffix_list.dat" in text
+    assert f"COMMIT {public_suffix.LIST.commit}" in text
+
+
+def test_parity_table_holds_the_public_suffix_list_cases():
+    rows = {
+        line.split("\t")[0]: line.split("\t")
+        for line in (ROOT / "tests/data/extension_name_rules_parity.tsv").read_text(encoding="utf-8").splitlines()
+        if line and not line.startswith("#")
+    }
+    expected = {
+        "paypal-secure.my.id": "paypal-secure.my.id", "apple-id.io.vn": "apple-id.io.vn",
+        "www.paypa1.me.uk": "paypa1.me.uk", "shop.example.ltd.uk": "example.ltd.uk",
+        "www.england.nhs.uk": "england.nhs.uk", "a.city.lg.jp": "city.lg.jp",
+        "netbanking.hdfc.bank.in": "hdfc.bank.in", "login.web.de": "web.de", "api.id.me": "id.me",
+        "www.school.sch.gr": "school.sch.gr", "www.city.kobe.jp": "city.kobe.jp", "a.b.kobe.jp": "a.b.kobe.jp",
+        "a.www.ck": "www.ck", "foo.github.io": "github.io", "kvs.gov.spb.ru": "gov.spb.ru",
+        "192.168.1.10": "192.168.1.10",
+        # The ccTLD default: split as the heuristic split them, but for the
+        # named zones (data/cctld_second_levels.json).
+        "x.com.de": "x.com.de", "x.co.vu": "x.co.vu", "amazon.com.be": "com.be", "kau.gov.hu": "kau.gov.hu",
+        "paypal-login.ne.pw": "paypal-login.ne.pw", "secure-paypal.asn.im": "secure-paypal.asn.im",
+        "microsoft-login.or.lt": "microsoft-login.or.lt", "office365-login.govt.hu": "office365-login.govt.hu",
+    }
+    assert {h: rows[h][6] for h in expected} == expected
+    # The shape columns stay on the model's legacy reading: one level of
+    # subdomain under 'my.id' for paypal-secure.my.id, none for www.web.de's
+    # 'www' (the heuristic reads www.web.de as a registrable domain).
+    assert rows["paypal-secure.my.id"][5] == "1" and rows["www.web.de"][5] == "0"
+
+
+def test_the_cctld_default_ships_whole():
+    """name-rules.js reads every generic second level of a 2-letter TLD as a
+    suffix but for cctldNames, as public_suffix does: the same labels, the
+    same names, sorted; no list of registries any more."""
+    from api.services import public_suffix
+
+    data = _builder().scorer_data()
+    assert data["cctldSecondLevels"] == sorted(public_suffix.CCTLD_SECOND_LEVELS)
+    assert data["cctldNames"] == sorted(public_suffix.CCTLD_NAMES)
+    assert {"web.de", "id.me", "com.be"} <= set(data["cctldNames"])
+    assert "registrySuffixes" not in data

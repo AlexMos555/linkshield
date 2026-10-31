@@ -42,7 +42,7 @@ from api.services.scoring import (
     _shannon_entropy,
     _special_char_count,
     _subdomain_labels,
-    registrable_domain,
+    legacy_registrable_domain,
     _SUSPICIOUS_KEYWORDS,
     HIGH_RISK_TLDS,
     MEDIUM_RISK_TLDS,
@@ -170,8 +170,14 @@ def host_shape(domain: str) -> tuple[str, str, list[str]]:
     bbc.co.uk is ('bbc.co.uk', 'bbc', []), not a subdomain of 'co'. Shared
     by the model's features and the logged ones (url_features), so a name
     means one thing in both.
+
+    Read with scoring.legacy_registrable_domain (the Russian zones, else the
+    compound-ccTLD heuristic), not the Public Suffix List the scorer's rules
+    read since 2026-10-28: these are the inputs the served model was trained
+    on. paypal-secure.my.id is still ('my.id', 'my', ['paypal-secure']) here
+    until a retrain moves the features with the model.
     """
-    base = registrable_domain(domain)
+    base = legacy_registrable_domain(domain)
     name = base.split(".")[0] if "." in base else base
     return base, name, _subdomain_labels(domain)
 
@@ -191,15 +197,16 @@ def shared_tenant(domain: str,
     name of every site on wasmer.app. The tenant's label is the one directly
     left of the suffix: www.robinhoodlogin.webador.com is 'robinhoodlogin'.
 
-    A suffix that registrable_domain() already reads as public is a
-    REGISTRY, not a platform: kvs.gov.spb.ru is a name under the spb.ru
-    zone and bbc.co.uk is a name under co.uk, and both stay what host_shape
-    says they are. The platform's own hosts (github.io, www.github.io,
-    app.netlify.com — hosting_platforms.OPERATOR_HOSTS) are not tenants.
+    A suffix that the registrable domain host_shape reads
+    (legacy_registrable_domain) already treats as public is a REGISTRY, not
+    a platform: kvs.gov.spb.ru is a name under the spb.ru zone and bbc.co.uk
+    is a name under co.uk, and both stay what host_shape says they are. The
+    platform's own hosts (github.io, www.github.io, app.netlify.com —
+    hosting_platforms.OPERATOR_HOSTS) are not tenants.
     """
     dom = (domain or "").lower().strip(".")
     suffix = tenant_suffix_of(dom, _SCORER_SHARED_SUFFIXES if suffixes is None else suffixes)
-    if suffix is None or registrable_domain(dom).endswith("." + suffix):
+    if suffix is None or legacy_registrable_domain(dom).endswith("." + suffix):
         return None, None
     return suffix, dom[: -(len(suffix) + 1)].split(".")[-1]
 
@@ -207,9 +214,10 @@ def shared_tenant(domain: str,
 def has_suspicious_keyword(name: str) -> bool:
     """scoring._check_suspicious_keywords' test, on the registered name.
 
-    That rule reads the name from the last two labels, so paypal-login.spb.ru
-    and vk-login.nov.ru were 'spb' and 'nov' to it and had no keyword; the
-    scorer's own signal is left as it is.
+    That rule read the name from the last two labels until 2026-10-27, so
+    paypal-login.spb.ru and vk-login.nov.ru were 'spb' and 'nov' to it and
+    had no keyword; it reads the registered name now, as this feature always
+    has.
     """
     return any(part in _SUSPICIOUS_KEYWORDS for part in name.lower().replace("_", "-").split("-"))
 

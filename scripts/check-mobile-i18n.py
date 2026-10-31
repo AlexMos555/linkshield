@@ -25,12 +25,17 @@ Three invariants, each of which has been violated for real:
    exactly what a scam notification looks like, and the person must never
    learn to tap one of ours; the site name stays plain text.
 
-5. PLURAL VARIANTS ARE TRANSLATIONS — a `<base>_one` / `_other` / `_few`…
-   key (one whose base key exists) is what i18next renders once `count` is
-   passed, so it must hold the string itself, not a note to the translator
-   (ar `mobile.report.times_one` shipped as "times_one: «…» (and optionally
-   add _two …)"). And no v3 `<base>_plural` keys: i18next 24+ never reads
-   them, so they only mislead the next translator.
+5. VALUES ARE TRANSLATIONS, NOT NOTES — every `mobile.*` value is what the
+   screen renders, so it must hold the string itself, not a note to the
+   translator. Plural variants shipped that way first (ar
+   `mobile.report.times_one` as "times_one: «…» (and optionally add _two
+   …)"), then base keys did: ar `mobile.history.minutes_ago` showed "Add
+   Arabic plural variants: … Single-string fallback: …" on every History
+   row, and it `mobile.breach.found_body` showed "found_body_one: \"…\" /
+   found_body_other: \"…\"". The rule lives in scripts/i18n_notes.py, which
+   check-i18n-parity.py also runs over every namespace of the source
+   (landing, extension and email too). And no v3 `<base>_plural` keys: i18next 24+
+   never reads them, so they only mislead the next translator.
 
 Dynamic template-literal keys (`mobile.result.verdict_${level}`) cannot be
 checked statically and are intentionally out of scope here.
@@ -48,12 +53,12 @@ KEY_REF = re.compile(r'["`](mobile\.[a-z0-9_.]+)["`]')
 NATIVE_PREFIX = "mobile.android_native."
 LINK = re.compile(r"https?://|www\.|tel:", re.IGNORECASE)
 PHONE = re.compile(r"\+?\d[\d\s\-()]{6,}\d")
-PLURAL_SUFFIXES = ("zero", "one", "two", "few", "many", "other")
-# A translator note names the plural variants it talks about ("_two «…»",
-# "keep _other as …") or opens with the key it belongs to ("times_one: …").
-PLURAL_NOTE = re.compile(r"(?<![A-Za-z0-9])_(?:zero|one|two|few|many|other|plural)\b")
+
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from i18n_notes import is_translator_note  # noqa: E402
 
 failures = []
+
 
 locales = {}
 for path in sorted(glob.glob(os.path.join(GEN, "*.json"))):
@@ -67,12 +72,6 @@ if "en" not in locales:
 
 en = locales["en"]
 
-# `<base>_<category>` keys whose base exists are plural variants; a key that
-# merely ends in _one/_other (call_close_one, source_other) has no base.
-plural_variants = [
-    k for k in en
-    if k.rsplit("_", 1)[-1] in PLURAL_SUFFIXES and k.rsplit("_", 1)[0] in en
-]
 dead_v3_plurals = sorted(k for k in en if k.endswith("_plural") and k[: -len("_plural")] in en)
 if dead_v3_plurals:
     failures.append(f"v3 _plural keys i18next no longer reads: {dead_v3_plurals}")
@@ -98,13 +97,9 @@ for code, flat in sorted(locales.items()):
     ]
     if tappable:
         failures.append(f"{code}: notification strings carry a link or a phone number {tappable[:5]}")
-    noted = [
-        k for k in plural_variants
-        if PLURAL_NOTE.search(str(flat[k]))
-        or str(flat[k]).startswith(k.rsplit(".", 1)[-1] + ":")
-    ]
+    noted = sorted(k for k, v in flat.items() if is_translator_note(k, str(v)))
     if noted:
-        failures.append(f"{code}: plural variants hold a translator note, not a string {noted[:5]}")
+        failures.append(f"{code}: values hold a translator note, not a string {noted[:5]}")
 
 used = set()
 for pattern in ("mobile/app/**/*.tsx", "mobile/src/**/*.ts", "mobile/src/**/*.tsx"):

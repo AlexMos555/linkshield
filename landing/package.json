@@ -15,13 +15,13 @@
   "dependencies": {
     "@cleanway/api-client": "*",
     "@cleanway/api-types": "*",
-    "@sentry/nextjs": "^10.76.2",
+    "@sentry/nextjs": "^10.77.1",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "@tailwindcss/postcss": "^4.2.2",
     "next": "^15.5.28",
     "next-intl": "^4.14.9",
-    "postcss": "^8.5.31",
+    "postcss": "^8.5.32",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.2.2"

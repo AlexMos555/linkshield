@@ -25,7 +25,7 @@ developer push                      │
 | Component | Where | Health probe | Failure mode |
 |---|---|---|---|
 | API (FastAPI) + DNS gateway | Railway project `honest-playfulness`, service `web` (EU West, 2 replicas) | Railway liveness: `GET /health` (always 200 while the process lives). Monitors: `GET /health/deep` (503 when Redis or Supabase is down; protection problems in `warnings`) and `GET /health/doh` | Rolling deploy — old pod stays up until new passes healthcheck |
-| Redis (rate limiter, caches, blocklist) | Railway service `Redis` (EU West, volume) | `/health/deep` → `components.redis` | DNS stays up but may stop blocking; other limiters follow `rate_limit_fail_closed` |
+| Redis (rate limiter, caches, blocklist) | Railway service `Redis` (EU West, volume) | `/health/deep` → `components.redis` | DNS stays up but may stop blocking; limiters as in "Redis down" below |
 | Supabase Postgres EU | `bpyqgzzclsbfvxthyfsf.supabase.co` | `supabase projects api list --project-ref bpyqgzzclsbfvxthyfsf` | API endpoints that hit Supabase return 503 degraded; reads of `users`/`subscriptions` fall back to defaults |
 | Landing (Next.js 15.1.11) | Vercel project `cleanway-landing` | Prod URL → 200 | Last-known-good SSG served; deployments auto-promote |
 | Extension (Chrome/FF/Safari) | Self-hosted until store publish | Built via `bash scripts/build-extensions.sh` | User reloads from `chrome://extensions` |
@@ -35,9 +35,14 @@ developer push                      │
 
 These failures are **handled** — service stays available in a reduced mode:
 
-- **Redis down**: the DoH limiter fails open (DNS must never 503); the
-  other limiters follow `rate_limit_fail_closed`. The gateway may stop
-  blocking (`/health/deep` lists `doh` in `warnings`).
+- **Redis down**: the DoH limiter counts in process and does not need
+  Redis (DNS must never 503); `/blocklist` fails open (it serves cached
+  bytes); a verified unsubscribe link keeps its budget
+  (`unsubscribe_link_limit_per_window` an hour) counted in each worker
+  process, so it still unsubscribes but one link cannot flood Supabase.
+  All other limiters, the per-IP budget for invalid unsubscribe links
+  included, follow `rate_limit_fail_closed` (503 in production). The
+  gateway may stop blocking (`/health/deep` lists `doh` in `warnings`).
 - **Supabase down**: user-scoped endpoints return defaults (empty whitelist,
   default skill level). Writes fail with 503; client retries on reconnect.
 - **Safe Browsing API quota exhausted**: circuit breaker opens for 60s
