@@ -241,6 +241,19 @@ registered to nobody (rank 105 among them). The weekly
 automatically (whoever brought a dead name back may be anyone). The lists
 themselves are not edited: the model reads `data/top_100k.json`'s bytes.
 
+A rank is links and visits, gathered maybe under an earlier holder of the
+name (a dropped name keeps its backlinks) or bought from a link farm: of
+ranked names with a known registration date on 2026-10-31, 24% of ranks
+100k-1M and 8% of the top 100k were registered within a year. So a ranked
+name the registry says was registered fewer than `POPULARITY_MIN_AGE_DAYS`
+(365) days ago gets none of the rank's trust — bonus, unreachable-site
+vouch, OTX waiver, LLM popularity prior, certificate renewal, self-hosted
+product exemption, ML safe override (`analyzer._young_rank`; the age the
+analyzer already fetches, no extra RDAP). `POPULARITY_AGE_GATE=shadow` (the
+default until the logs say otherwise) only logs `popularity_age_gate_shadow`
+with the verdict it would give; `on` applies it. Not for the top-100k
+allowlist, which is answered before any analysis.
+
 | Consumer | Reads | Note |
 |---|---|---|
 | Instant-safe allowlist (`scoring.is_trusted_top_domain`, `/check`, `/public/check`, scorer Layer 2) | `data/top_100k.json` | 55% of the names are Tranco's; 45,036 enter, 45,036 leave |

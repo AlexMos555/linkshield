@@ -132,6 +132,17 @@ class Settings(BaseSettings):
     # IPQualityScore (free: 5K/month)
     ipqualityscore_key: str = ""
 
+    # A popularity rank is links and visits a name gathered, maybe under an
+    # earlier holder (a dropped name keeps its backlinks) or bought from a
+    # link farm: of ranked names with a known registration date, 24% of ranks
+    # 100k-1M and 8% of the top 100k were registered within a year
+    # (2026-10-31, mostly casinos, link farms, piracy). A ranked name
+    # registered fewer than popularity_min_age_days ago gets none of the
+    # rank's trust (analyzer._young_rank). "shadow" logs what that would
+    # change (popularity_age_gate_shadow), "on" applies it, "off" neither.
+    popularity_min_age_days: int = 365
+    popularity_age_gate: Literal["off", "shadow", "on"] = "shadow"
+
     # AlienVault OTX: a free account key. Without one OTX answers 100
     # lookups an hour per IP, then 429 (analyzer.check_alienvault_otx).
     otx_api_key: str = ""

@@ -1488,8 +1488,9 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         _rank = popularity_rank(signals, ascii_domain)
         _top_ranked = _rank is not None and _rank <= 100_000
         _ranked = _rank is not None
-        # A tombstoned name (dead_top_names) waives and halves nothing.
-        _dead_name = _reg in _dead.DEAD_TOP_NAMES
+        # A tombstoned name (dead_top_names) waives and halves nothing, nor
+        # does a young registration's place on the lists (analyzer._young_rank).
+        _dead_name = _reg in _dead.DEAD_TOP_NAMES or bool(signals.get("popularity_withheld"))
         if (_dead_name or _reg not in TOP_10K_RANKS) and not _top_ranked and not (_ranked and otx_reports <= 5):
             _discount = (_reg in TOP_100K and not _dead_name) or _ranked
             _copies = (f" ({otx_reports} distinct, the rest are copies)"
@@ -2204,7 +2205,7 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
                     signal="ml_suspicious", weight=20,
                     detail=f"ML model: {ml_prob*100:.0f}% phishing probability",
                 ))
-            elif (ml_prob < 0.1 and score > 30
+            elif (ml_prob < 0.1 and score > 30 and not signals.get("popularity_withheld")
                   and legacy_registrable_domain(ascii_domain) not in _dead.DEAD_TOP_NAMES):
                 # ML says safe but rules say risky — reduce score slightly.
                 # Not for a tombstoned name: its in_top_domains feature
