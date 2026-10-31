@@ -219,6 +219,33 @@ def test_other_stores_and_unknown_products_are_skipped(account_store, revenuecat
     assert account_store.entitlements == []
 
 
+def test_refresh_after_sign_in_picks_up_an_app_store_purchase_made_without_an_account(
+    client, account_store, revenuecat_api
+):
+    """The iPhone app sells without an account (docs/STORE_DECISIONS_2026-10.md
+    §3, option Б). Its INITIAL_PURCHASE webhook came with an anonymous id and
+    wrote nothing; on sign-in the app calls Purchases.logIn (RevenueCat makes
+    the anonymous buyer an alias of the account — no webhook for that) and
+    then this refresh, which reads the merged customer by the account id."""
+    body = subscriber()
+    sub = body["subscriber"]
+    sub["original_app_user_id"] = "$RCAnonymousID:2f6e0b9d4c8a4e1f9b3a7c5d1e0f2a4b"
+    sub["management_url"] = "https://apps.apple.com/account/subscriptions"
+    subs = sub["subscriptions"]
+    subs["cleanway.devices.monthly"] = dict(subs.pop("cleanway.devices"), store="app_store",
+                                            store_transaction_id="2000000912345678")
+    subs["cleanway.devices.monthly"].pop("product_plan_identifier")
+    requests = revenuecat_api(body)
+    resp = refresh(client)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["source"] == "app_store" and resp.json()["plan"] == "personal"
+    [row] = store_rows(account_store, "app_store")
+    assert row["account_id"] == ACCOUNT and row["external_id"] == "2000000912345678"
+    assert row["product_id"] == "cleanway.devices.monthly" and row["status"] == "active"
+    [req] = requests
+    assert str(req.url) == f"https://api.revenuecat.com/v1/subscribers/{ACCOUNT}"
+
+
 def test_app_store_row_is_found_by_product(account_store, revenuecat_api):
     """The REST API carries the LATEST App Store transaction id, not the
     original the webhook keyed the row by — match on the product instead."""
@@ -233,6 +260,57 @@ def test_app_store_row_is_found_by_product(account_store, revenuecat_api):
     _sync()
     [row] = store_rows(account_store, "app_store")
     assert row["external_id"] == "2000000912345678" and row["status"] == "active"
+
+
+def _app_store_subscriber(**overrides) -> dict:
+    body = subscriber()
+    subs = body["subscriber"]["subscriptions"]
+    subs["cleanway.devices.monthly"] = dict(subs.pop("cleanway.devices"), store="app_store",
+                                            store_transaction_id="2000000912345678", **overrides)
+    subs["cleanway.devices.monthly"].pop("product_plan_identifier")
+    return body
+
+
+def test_family_shared_subscription_is_not_written(account_store, revenuecat_api):
+    """A family member's Restore + sign-in must not give their own Cleanway
+    account a full plan with 3 device seats (Family Sharing stays off,
+    runbook §9; this is the guard if it is ever turned on)."""
+    revenuecat_api(_app_store_subscriber(ownership_type="FAMILY_SHARED"))
+    assert _sync() == {"applied": 0, "ended": 0}
+    assert account_store.entitlements == []
+
+
+def test_family_shared_listing_does_not_keep_an_own_row_alive(account_store, revenuecat_api):
+    account_store.add_entitlement(ACCOUNT, source="app_store", external_id="2000000900000001",
+                                  product_id="cleanway.devices.monthly", status="active")
+    revenuecat_api(_app_store_subscriber(ownership_type="FAMILY_SHARED"))
+    assert _sync() == {"applied": 0, "ended": 1}
+    assert store_rows(account_store, "app_store")[0]["status"] == "expired"
+
+
+def test_purchase_first_seen_by_a_sync_on_an_account_paying_by_stripe_is_flagged(
+    account_store, revenuecat_api, monkeypatch
+):
+    """Bought on the iPhone without an account, then signed in to an account
+    that pays on the web: the anonymous INITIAL_PURCHASE never reached the
+    double-payment check, so the sync that files it does."""
+    audits: list[dict] = []
+
+    async def _write(**kw):
+        audits.append(kw)
+
+    monkeypatch.setattr("api.services.audit_log.write", _write)
+    account_store.add_entitlement(ACCOUNT, source="stripe", external_id="sub_web")
+    revenuecat_api(_app_store_subscriber())
+    _sync()
+    flagged = [a for a in audits if a["action"] == "subscription.duplicate_detected"]
+    assert flagged and flagged[0]["meta"]["existing_source"] == "stripe"
+    assert flagged[0]["meta"]["new_source"] == "app_store"
+
+    # Re-read again (Restore, the next sign-in): the row exists — no second alert.
+    audits.clear()
+    _sync()
+    assert not [a for a in audits if a["action"] == "subscription.duplicate_detected"]
 
 
 # ─── product map ──────────────────────────────────────────────────

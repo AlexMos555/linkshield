@@ -3637,6 +3637,7 @@
       "sign_out": "Sign out",
       "sign_out_confirm_title": "Sign out?",
       "sign_out_confirm_body": "Checks and history stay on this phone. Settings stop syncing until you sign in again.",
+      "sign_out_confirm_body_appstore": "Checks and history stay on this phone. Settings stop syncing until you sign in again. A subscription stays in your account: sign in again to use it on this iPhone.",
       "plan": "Plan",
       "plan_desc": "Protection on this phone is free",
       "upgrade": "Upgrade",
@@ -4032,7 +4033,16 @@
       "err_already_owned_appstore": "This Apple ID already has the subscription. Tap Restore to move it to this account.",
       "err_network_appstore": "No connection to the App Store. Check the internet and try again.",
       "err_not_allowed_appstore": "Purchases are turned off on this iPhone (for example, in Screen Time).",
-      "err_store_appstore": "The App Store couldn't complete the purchase. Please try again."
+      "err_store_appstore": "The App Store couldn't complete the purchase. Please try again.",
+      "note_restore_none_appstore": "No active subscription on this Apple ID.",
+      "sync_offer": "Active on this iPhone. Signing in is optional: it lets the same subscription work in the Cleanway Android app and browser extension, on up to {{n}} devices.",
+      "note_restore_here_appstore": "The subscription bought on this iPhone isn't in your account yet. Tap Restore to add it.",
+      "sign_in_account": "Have a Cleanway account? Sign in",
+      "note_restore_none_signed_out_appstore": "No active subscription on this Apple ID. If you already pay for Cleanway on another device, sign in to your account.",
+      "without_account_title": "Continue without signing in?",
+      "without_account_body": "Someone has signed in on this iPhone before. If this Apple ID already pays for Cleanway in an account, continuing without signing in moves the subscription to this iPhone only: it stops working in that account, on Android and in the browser extension, until you sign in and tap Restore.",
+      "without_account_continue": "Continue without signing in",
+      "sync_offer_back": "Active on this iPhone. If this subscription was in your Cleanway account, it now works on this iPhone only: sign in and tap Restore to use it on Android and in the browser extension again."
     },
     "ios_sms": {
       "line_ready": "Moves scam texts from unknown senders to Junk, right on this iPhone. Works once you turn it on in Settings.",

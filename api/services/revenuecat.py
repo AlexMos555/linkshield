@@ -1,15 +1,23 @@
 """Google Play / App Store purchases (through RevenueCat) → `entitlements`.
 
-docs/ACCOUNTS_BILLING_PLAN.md §11, docs/runbooks/revenuecat.md. The app
-logs in to RevenueCat with our Supabase account id, so a webhook event's
-`app_user_id` IS the account. Event names and fields follow RevenueCat's
+docs/ACCOUNTS_BILLING_PLAN.md §11, docs/runbooks/revenuecat.md. A signed-in
+app logs in to RevenueCat with our Supabase account id, so a webhook event's
+`app_user_id` (or one of its `aliases`) IS the account. The iPhone app also
+sells and restores signed out, under RevenueCat's anonymous id: such an
+event has no account and writes nothing — the phone honours the plan itself,
+and after sign-in the merged customer is read by POST /me/entitlement/refresh
+(api/services/revenuecat_sync.py). Event names and fields follow RevenueCat's
 reference (checked 2026-10-08):
 https://www.revenuecat.com/docs/integrations/webhooks/event-types-and-fields
 
 One row per purchase: source google_play / app_store (from `store`),
 external_id = `original_transaction_id` (stable across renewals), plan and
 device_limit from the product (api/services/store_products.py), period_end
-= `expiration_at_ms`. What each event does:
+= `expiration_at_ms`. An App Store purchase made without an account and
+filed later by a sync is keyed by its LATEST transaction id (the REST API
+has no original one): a later event of it finds that row by the product
+(_app_store_row_by_product), so a refund ends it. A Family Sharing purchase
+(`is_family_share`) is never an account plan. What each event does:
 
   INITIAL_PURCHASE, RENEWAL, UNCANCELLATION, SUBSCRIPTION_EXTENDED,
   REFUND_REVERSED       → active (trialing while period_type = TRIAL)
@@ -25,7 +33,9 @@ device_limit from the product (api/services/store_products.py), period_end
                           INITIAL_PURCHASE that carries it ("may not take
                           effect immediately")
   TRANSFER              → the store rows of `transferred_from` accounts move
-                          to the `transferred_to` account, then it is synced
+                          to the `transferred_to` account, then it is synced;
+                          to an anonymous id, the source accounts are synced
+                          (their plan left with the receipt)
   TEST and everything else → acknowledged, nothing written
 
 Events are applied in time order per row: an event older than the row's
@@ -44,6 +54,7 @@ from api.config import get_settings
 from api.services import account_store, store_products
 from api.services.account_store import AccountStoreError
 from api.services.entitlements import (
+    ACTIVE_STATUSES,
     ADDON_PLAN,
     EntitlementError,
     get_effective_entitlement,
@@ -205,9 +216,12 @@ def _event_status(event_type: str, event: dict) -> tuple[str, Optional[str]]:
     return ("paused" if event.get("expiration_reason") == "SUBSCRIPTION_PAUSED" else "expired"), period_end
 
 
-async def _flag_double_payment(account_id: str, source: str, external_id: str) -> None:
+async def flag_double_payment(account_id: str, source: str, external_id: str) -> None:
     """A store purchase on an account that already pays another way. The
-    store sold it and we can't refuse it — flag it for a refund."""
+    store sold it and we can't refuse it — flag it for a refund. Called for
+    an INITIAL_PURCHASE here, and by a sync for a purchase it files first
+    (bought on the iPhone without an account: that INITIAL_PURCHASE had no
+    account to check)."""
     try:
         current = await get_effective_entitlement(account_id)
     except EntitlementError as e:
@@ -223,6 +237,24 @@ async def _flag_double_payment(account_id: str, source: str, external_id: str) -
             {"existing_source": current.source, "existing_id": current.external_id,
              "new_source": source, "new_id": external_id},
         )
+
+
+async def _app_store_row_by_product(store, account_id: str, product_id: str) -> Optional[dict]:
+    """This account's active App Store row of [product_id], for an event
+    whose original transaction id has no row. A sync files a purchase made
+    without an account under its LATEST transaction id (the REST API has no
+    original one — api/services/revenuecat_sync.py _match_row), while every
+    later webhook carries the original: without this a renewal would add a
+    second row, and a refund would leave the synced row paid on Android and
+    in the extension until its period end (up to a year). Not for
+    INITIAL_PURCHASE: a new subscription keeps its own row (and the
+    double-payment check)."""
+    rows = await store.list_entitlements(account_id)
+    same = [
+        r for r in rows
+        if r.get("source") == "app_store" and r.get("product_id") == product_id and r.get("status") in ACTIVE_STATUSES
+    ]
+    return max(same, key=lambda r: r.get("period_end") or "") if same else None
 
 
 async def apply_event(event: dict) -> Outcome:
@@ -243,14 +275,26 @@ async def apply_event(event: dict) -> Outcome:
         return Outcome("ignored", "store")
     if event.get("environment") == "SANDBOX" and not sandbox_accepted():
         return Outcome("ignored", "sandbox")
+    if event.get("is_family_share") is True:
+        # Family Sharing stays off for these subscriptions (runbook §9). If it
+        # is ever turned on, a family member's share is Apple's to honour on
+        # their iPhone — not a plan with device seats on their own account.
+        logger.info("revenuecat_family_share_ignored", extra={"type": event_type, "event_id": event.get("id")})
+        return Outcome("ignored", "family_share")
 
     account_id = resolve_account(event)
     if account_id is None:
-        # A purchase made before the app logged in to RevenueCat with our
-        # account id. Nobody to give it to: alert, and let the app's
-        # "Restore purchases" (after sign-in) move it with a TRANSFER.
-        logger.error("revenuecat_purchase_without_account",
-                     extra={"type": event_type, "store": event.get("store"), "event_id": event.get("id")})
+        # A purchase under RevenueCat's anonymous id: nobody to give it to.
+        # The iPhone app sells and restores without an account
+        # (docs/STORE_DECISIONS_2026-10.md §3, option Б): that phone honours
+        # its plan from RevenueCat itself, and signing in later makes the
+        # anonymous buyer an alias of the account — the app then calls
+        # POST /me/entitlement/refresh (or the person taps "Restore
+        # purchases"). Expected, so no alert. The Play app logs in before
+        # every purchase: an anonymous Play purchase is still a bug.
+        log = logger.info if source == "app_store" else logger.error
+        log("revenuecat_purchase_without_account",
+            extra={"type": event_type, "store": event.get("store"), "event_id": event.get("id")})
         return Outcome("ignored", "anonymous")
 
     product_id = event.get("product_id")
@@ -272,6 +316,10 @@ async def apply_event(event: dict) -> Outcome:
     event_at = _ms_to_iso(event.get("event_timestamp_ms")) or datetime.now(timezone.utc).isoformat()
     try:
         existing = await store.get_entitlement(source=source, external_id=external_id)
+        if existing is None and source == "app_store" and event_type != "INITIAL_PURCHASE":
+            existing = await _app_store_row_by_product(store, account_id, str(product_id))
+            if existing is not None:
+                external_id = str(existing["external_id"])
     except AccountStoreError as e:
         raise RevenueCatError(str(e)) from e
     seen_at = parse_ts((existing or {}).get("source_event_at"))
@@ -284,7 +332,7 @@ async def apply_event(event: dict) -> Outcome:
     status, period_end = _event_status(event_type, event)
     plan, device_limit = plan_fields(product)
     if event_type == "INITIAL_PURCHASE" and not product.is_addon:
-        await _flag_double_payment(account_id, source, external_id)
+        await flag_double_payment(account_id, source, external_id)
     try:
         await record_entitlement(
             account_id=account_id, source=source, external_id=external_id, status=status,
@@ -314,11 +362,16 @@ async def _apply_transfer(event: dict) -> Outcome:
       * without it: move every google_play / app_store row of the source
         accounts to the destination (a store account usually belongs to one
         person) and log that a sync is needed.
+
+    To an anonymous id ("Restore purchases" on a signed-out iPhone — the
+    iPhone app restores without an account): the purchases left the source
+    accounts, so with the secret key those are re-read and the plan ends
+    there; the anonymous phone honours it itself. Without the key nobody can
+    tell which rows moved, so none are touched.
     """
     destinations = [a for a in (account_id_from(v) for v in event.get("transferred_to") or []) if a]
     if not destinations:
-        logger.error("revenuecat_transfer_without_account", extra={"event_id": event.get("id")})
-        return Outcome("ignored", "anonymous")
+        return await _apply_transfer_to_anonymous(event)
     to_account = destinations[0]
     from_accounts = [
         a for a in (account_id_from(v) for v in event.get("transferred_from") or []) if a and a != to_account
@@ -346,3 +399,28 @@ async def _apply_transfer(event: dict) -> Outcome:
     await _audit("subscription.store_transferred", to_account, to_account,
                  {"from_accounts": from_accounts, "synced": bool(get_settings().revenuecat_secret_api_key)})
     return Outcome("applied", "transfer", to_account)
+
+
+async def _apply_transfer_to_anonymous(event: dict) -> Outcome:
+    """TRANSFER whose destination is anonymous (see _apply_transfer)."""
+    from_accounts = list(dict.fromkeys(
+        a for a in (account_id_from(v) for v in event.get("transferred_from") or []) if a
+    ))
+    if not from_accounts:
+        # Between anonymous ids only (a reinstalled phone restoring): no account involved.
+        logger.info("revenuecat_transfer_between_anonymous_ids", extra={"event_id": event.get("id")})
+        return Outcome("ignored", "anonymous")
+    if not get_settings().revenuecat_secret_api_key:
+        logger.warning("revenuecat_transfer_to_anonymous_not_synced",
+                       extra={"event_id": event.get("id"), "count": len(from_accounts)})
+        return Outcome("ignored", "anonymous")
+
+    from api.services.revenuecat_sync import sync_account
+
+    for from_account in from_accounts:
+        await sync_account(from_account)
+    logger.info("revenuecat_transfer_to_anonymous_synced",
+                extra={"event_id": event.get("id"), "count": len(from_accounts)})
+    await _audit("subscription.store_transferred", from_accounts[0], from_accounts[0],
+                 {"from_accounts": from_accounts, "to_anonymous": True, "synced": True})
+    return Outcome("applied", "transfer_to_anonymous", from_accounts[0])

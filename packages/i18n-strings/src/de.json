@@ -3695,6 +3695,7 @@
       "sign_out": "Abmelden",
       "sign_out_confirm_title": "Abmelden?",
       "sign_out_confirm_body": "Prüfungen und Verlauf bleiben auf diesem Handy. Die Einstellungen werden nicht mehr synchronisiert, bis Sie sich wieder anmelden.",
+      "sign_out_confirm_body_appstore": "Prüfungen und Verlauf bleiben auf diesem Handy. Die Einstellungen werden nicht mehr synchronisiert, bis Sie sich wieder anmelden. Das Abo bleibt in Ihrem Konto: Melden Sie sich wieder an, um es auf diesem iPhone zu nutzen.",
       "plan": "Tarif",
       "plan_desc": "Der Schutz auf diesem Handy ist kostenlos",
       "upgrade": "Upgrade",
@@ -4090,7 +4091,16 @@
       "err_already_owned_appstore": "Diese Apple-ID hat das Abo bereits. Tippe auf Wiederherstellen, um es in dieses Konto zu übernehmen.",
       "err_network_appstore": "Keine Verbindung zum App Store. Prüfe das Internet und versuche es noch einmal.",
       "err_not_allowed_appstore": "Käufe sind auf diesem iPhone deaktiviert (zum Beispiel in der Bildschirmzeit).",
-      "err_store_appstore": "Der App Store konnte den Kauf nicht abschließen. Bitte versuche es noch einmal."
+      "err_store_appstore": "Der App Store konnte den Kauf nicht abschließen. Bitte versuche es noch einmal.",
+      "note_restore_none_appstore": "Für diese Apple-ID gibt es kein aktives Abo.",
+      "sync_offer": "Auf diesem iPhone aktiv. Anmelden ist freiwillig: Dann gilt dasselbe Abo auch in der Cleanway-App für Android und in der Browsererweiterung, auf bis zu {{n}} Geräten.",
+      "note_restore_here_appstore": "Das auf diesem iPhone gekaufte Abo ist noch nicht in deinem Konto. Tippe auf Wiederherstellen, um es hinzuzufügen.",
+      "sign_in_account": "Schon ein Cleanway-Konto? Anmelden",
+      "note_restore_none_signed_out_appstore": "Für diese Apple-ID gibt es kein aktives Abo. Wenn Sie Cleanway schon auf einem anderen Gerät bezahlen, melden Sie sich mit Ihrem Konto an.",
+      "without_account_title": "Ohne Anmeldung fortfahren?",
+      "without_account_body": "Auf diesem iPhone war schon einmal jemand angemeldet. Wenn diese Apple-ID Cleanway bereits in einem Konto bezahlt, wandert das Abo ohne Anmeldung nur auf dieses iPhone: In diesem Konto, auf Android und in der Browsererweiterung gilt es nicht mehr, bis Sie sich anmelden und auf Wiederherstellen tippen.",
+      "without_account_continue": "Ohne Anmeldung fortfahren",
+      "sync_offer_back": "Auf diesem iPhone aktiv. Wenn dieses Abo in Ihrem Cleanway-Konto war, gilt es jetzt nur auf diesem iPhone: Melden Sie sich an und tippen Sie auf Wiederherstellen, damit es wieder auf Android und in der Browsererweiterung gilt."
     },
     "ios_sms": {
       "line_ready": "Verschiebt Betrugs-SMS von unbekannten Absendern nach „Unerwünscht“ – direkt auf diesem iPhone. Wirkt, sobald du ihn in den Einstellungen einschaltest.",

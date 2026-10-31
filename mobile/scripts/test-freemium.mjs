@@ -23,7 +23,8 @@
  *   • after the limit a message keeps the scam list's verdict: a listed link
  *     is still "dangerous", and nothing else is claimed;
  *   • a store build never links out to the web checkout; Russia shows
- *     "coming soon"; signed out → sign in first;
+ *     "coming soon"; signed out → sign in first on Android, while the
+ *     iPhone app buys without an account (App Review 5.1.1);
  *   • a build that cannot take a payment (RuStore: no billing built; a
  *     store build without its billing SDK) says "coming soon" up front —
  *     the button off, no sign-in first for a purchase that cannot happen;
@@ -59,6 +60,7 @@ import {
   purchaseAction,
   quotaForDay,
   readFreemiumConfig,
+  storePurchaseWithoutAccount,
   trialDaysLeft,
   webCheckoutAllowed,
   withPaywallShown,
@@ -369,10 +371,19 @@ check("Russia: \"coming soon\" — phone-balance billing is not merged yet", () 
     }
   }
 });
-check("signed out: sign in first, on every build", () => {
-  for (const distribution of ["site", "play", "rustore", "appstore"]) {
+check("signed out: sign in first on every Android build", () => {
+  for (const distribution of ["site", "play", "rustore"]) {
     assert.equal(purchaseAction({ signedIn: false, market: "world", distribution }), "sign_in");
+    assert.equal(storePurchaseWithoutAccount(distribution), false, distribution);
   }
+});
+check("signed out on the iPhone: the App Store purchase itself — no sign-in first (App Review 5.1.1)", () => {
+  // docs/STORE_DECISIONS_2026-10.md §3, option Б: buying and restoring work
+  // without an account; signing in is offered after, to use it elsewhere.
+  assert.equal(storePurchaseWithoutAccount("appstore"), true);
+  assert.equal(purchaseAction({ signedIn: false, market: "world", distribution: "appstore" }), "store");
+  // Russia still says "coming soon", signed in or not.
+  assert.equal(purchaseAction({ signedIn: false, market: "ru", distribution: "appstore" }), "soon");
 });
 check("signed in: site APK → web checkout; store builds → store billing, never the web", () => {
   assert.equal(purchaseAction({ signedIn: true, market: "world", distribution: "site" }), "web_checkout");
