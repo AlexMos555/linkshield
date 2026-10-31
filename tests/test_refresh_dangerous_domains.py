@@ -2021,3 +2021,40 @@ async def test_an_own_confirmation_expires_after_its_window(monkeypatch, own_sou
     assert "sberbank-bonus.xyz" not in fake.data.get(retention.LAST_SEEN_KEY, {})
     await _run(monkeypatch, fake, [], now=after + own_sources.EXPIRED_GRACE_SECONDS + DAY)
     assert "sberbank-bonus.xyz" not in fake.data.get(own_sources.LOOKALIKE_KEY, {})
+
+
+# ── Open ccTLD zones (2026-10-31) ──
+# The PSL lists neither go.ro nor or.tv, so its reading stops at the zone,
+# and a ranked zone (go.ro is in the top 100k, co.cc and info.gf in the top
+# 1M) vetoed every phishing host under it: the phone and the DNS gateway
+# never blocked one. The server reads such a zone as public_suffix's ccTLD
+# default does: the registrable is the name one label under it.
+
+_REAL_PSL = rdd.parse_psl((pathlib.Path(__file__).resolve().parent.parent
+                           / "data" / "public_suffix_list.dat").read_text(encoding="utf-8"))
+
+
+def test_tenants_of_a_ranked_open_zone_are_published():
+    top = {"go.ro", "or.tv", "gov.hr", "web.de", "amazon.com.be"}
+    out = rdd.build_blockset(["paypal-login.go.ro", "secure.paypal-login.or.tv", "evil.govt.hu"], top,
+                             shared_suffixes=set(), public_suffixes=_REAL_PSL, brand_owned=frozenset())
+    assert out == {"paypal-login.go.ro", "secure.paypal-login.or.tv", "evil.govt.hu"}
+    out = rdd.build_blockset(["correos-particulares.info.gf", "allert-help-centre.co.cc"], set(),
+                             shared_suffixes=set(), public_suffixes=_REAL_PSL, brand_owned=frozenset(),
+                             is_popular={"info.gf", "co.cc"}.__contains__)
+    assert out == {"correos-particulares.info.gf", "allert-help-centre.co.cc"}
+
+
+def test_one_owners_and_governments_zones_stay_vetoed_by_their_rank():
+    """web.de, com.be (Amazon's) are one owner's (CCTLD_NAMES); gov.hr is a
+    government's. Their rank keeps covering every name under them."""
+    top = {"gov.hr", "web.de", "amazon.com.be"}
+    out = rdd.build_blockset(["login.web.de", "www.amazon.com.be", "evil.com.be", "mojprofil.gov.hr"], top,
+                             shared_suffixes=set(), public_suffixes=_REAL_PSL, brand_owned=frozenset())
+    assert out == set()
+
+
+def test_the_government_labels_are_the_scorers():
+    from api.services.scoring import _RESTRICTED_ZONE_LABELS
+
+    assert rdd._RESTRICTED_ZONE_LABELS == _RESTRICTED_ZONE_LABELS

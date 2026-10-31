@@ -44,6 +44,7 @@ from api.services import licensed_intel, load_shedding, paid_budget, security_al
 from api.services import verdict_basis as vb
 from api.services.analysis_budget import MIN_STEP_S, Deadline, run_within_budget
 from api.services.tls_contexts import client_tls_context
+from api.services.public_suffix import CCTLD_OPEN_ZONES
 from api.services.scoring import (
     calculate_score, calculate_confidence, calculate_confidence_pct, is_hosting_platform_site,
     is_regional_government_domain, is_user_content_service_host, popularity_rank, rank_registrable_domain,
@@ -599,9 +600,13 @@ def _government_name(domain: str) -> bool:
         return len(parts) >= 2
     if len(parts) < 3 or len(parts[-1]) != 2 or parts[-2] not in _GOVERNMENT_LABELS:
         return False
+    zone = ".".join(parts[-2:])
     if parts[-1] in ("ru", "su"):
-        return ".".join(parts[-2:]) in _RU_GOVERNMENT_ZONES
-    return True
+        return zone in _RU_GOVERNMENT_ZONES
+    # Nor the open zones with a government's label (CCTLD_OPEN_ZONES):
+    # FreeDNS's govt.hu and mil.nf, ChangeIP's gob.li, RCS&RDS's go.ro — an
+    # unreachable paypal-login.go.ro stayed 'safe' here (2026-10-31).
+    return zone not in CCTLD_OPEN_ZONES
 
 
 async def _name_is_vouched_for(domain: str, signals: dict, deadline: Deadline) -> bool:

@@ -134,6 +134,7 @@ from api.services import blocklist_retention as retention  # noqa: E402
 from api.services import confirmed_threats  # noqa: E402
 from api.services import own_sources  # noqa: E402
 from api.services import phishtank_feed  # noqa: E402
+from api.services.public_suffix import CCTLD_NAMES, CCTLD_OPEN_ZONES  # noqa: E402
 
 # The shared and operator suffixes live in a standard-library module of their
 # own: scripts/build_mobile_assets.py writes the same set to the phone's
@@ -514,6 +515,27 @@ _CCTLD_SECOND_LEVELS = frozenset({
 # name.co.pt, so every customer site went dark). One listed host now blocks
 # that host; a phishing link names the host, so the link is still blocked.
 PROMOTE_MIN_SUBDOMAINS = 2
+
+
+# The government-only labels of scoring._RESTRICTED_ZONE_LABELS (this script
+# runs without the scorer's dependencies; tests hold the two equal). Under one
+# of them a zone's names are its owner's, as the server reads them.
+_RESTRICTED_ZONE_LABELS = frozenset({"gov", "mil", "edu", "ac", "int", "gob", "gouv", "govt", "go", "gv", "sch"})
+
+
+def _open_zone_name(host: str, reg: str) -> str:
+    """`reg` as the server reads it (public_suffix's ccTLD default): when the
+    PSL reading stops at a zone-like name (go.ro, or.tv, info.gf) that is not
+    one owner's (CCTLD_NAMES: web.de, com.be) nor a government's, the
+    registrable is the name one label under it. Read as the zone, a ranked
+    zone vetoed every phishing host under it: go.ro is in the top 100k,
+    co.cc and info.gf in the top 1M (2026-10-31). The open zones with a
+    government's label (CCTLD_OPEN_ZONES: govt.hu, gob.li, go.ro) are open."""
+    if host == reg or not is_zone_like(reg) or reg in CCTLD_NAMES:
+        return reg
+    if reg.split(".")[0] in _RESTRICTED_ZONE_LABELS and reg not in CCTLD_OPEN_ZONES:
+        return reg
+    return _name_under(host, reg)
 
 
 def is_zone_like(name: str) -> bool:
@@ -994,6 +1016,8 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
         except Exception:  # noqa: BLE001
             return False
 
+    # The one-owner ccTLD zones (CCTLD_NAMES) with a popular name under them.
+    owned_popular = {z for z in CCTLD_NAMES if any(e == z or e.endswith("." + z) for e in top_100k)}
     out: set[str] = set()
     backers: dict[str, set[str]] = {}  # registrable -> listed subdomains that would promote it
     for h in counts:
@@ -1016,6 +1040,8 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
             # any registrable below — popular ones never, promoted on its
             # www. host or several subdomains. The zone was skipped above.
             reg, suffix = _name_under(h, suffix), None
+        elif suffix is None:
+            reg = _open_zone_name(h, reg)
         if public_suffixes and reg in public_suffixes:
             continue  # cannot even name a registrable — never promote a suffix
         if suffix is not None:
@@ -1036,6 +1062,10 @@ def build_blockset(hosts, top_100k: set[str], shared_suffixes: set[str] | None =
             continue
         if popular(reg) or reg in BIG_ORGS:
             continue  # popular org's own host — never
+        if reg in owned_popular:
+            # One owner's zone (com.be is Amazon's): the top lists fold its
+            # names one label lower (amazon.com.be), every one the owner's.
+            continue
         out.add(h)
         if reg and reg != h and h not in exact_only and not is_zone_like(reg):
             backers.setdefault(reg, set()).add(h)

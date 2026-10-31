@@ -30,6 +30,7 @@ from pathlib import Path
 import pytest
 
 from api.services import public_suffix as ps
+from api.services import scoring
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
@@ -472,12 +473,30 @@ def test_a_name_under_an_open_zone_in_the_top_list_is_not_the_zones(host, truste
     assert is_trusted_top_domain(host) is trusted
 
 
-def test_no_top_entry_loses_the_allowlist_to_the_open_zone_rule():
+def test_the_open_zone_rule_refuses_only_the_open_zones_of_the_top_list():
+    """No entry or its www loses the allowlist; a name under an entry does
+    only where the entry is an open zone (the FAITID zones and biz.ua were
+    refused already, as shared suffixes)."""
     from api.services.scoring import TOP_DOMAINS, _is_open_zone_above, top_domain_key
 
     lost = [h for e in TOP_DOMAINS for h in (e, "www." + e)
             if top_domain_key(h) and _is_open_zone_above(h, top_domain_key(h))]
     assert lost == []
+    refused = {e for e in TOP_DOMAINS
+               if top_domain_key("mail." + e) == e and _is_open_zone_above("mail." + e, e)}
+    assert refused == {"go.ro", "or.tv", "biz.ua", "msk.ru", "msk.su", "nov.ru", "pp.ru", "spb.ru", "spb.su"}
+
+
+@pytest.mark.parametrize("broken", ["psl", "cctld"])
+def test_without_the_zone_data_the_open_zone_rule_stays_out(monkeypatch, broken):
+    """The fallback readings split web.de and know no open zone: the rule
+    would take login.web.de's allowlist and give paypal-login.go.ro one."""
+    if broken == "psl":
+        monkeypatch.setattr(ps, "LOAD_ERROR", "OSError: test")
+    else:
+        monkeypatch.setattr(ps, "CCTLD_NAMES", frozenset())
+    assert scoring._is_open_zone_above("login.web.de", "web.de") is False
+    assert scoring._is_open_zone_above("paypal-login.go.ro", "go.ro") is False
 
 
 def test_the_open_zones_stay_split():
@@ -586,6 +605,9 @@ _FEATURE_HOSTS = (
     "api.id.me", "amazon.com.be", "hsbc.bank.in", "www.111.nhs.uk", "x.com.de", "kvs.gov.spb.ru",
     "gosuslugi-lk.spb.ru", "paypal.com.evil.xyz", "accounts.google.sn.cn", "www.отель.сочи.рус",
     "xn--80abap1arsf.xn--p1ai", "192.168.1.10", "localhost", "foo.github.io",
+    # Open zones with a restricted label (2026-10-31): the rules read them
+    # as anyone's, the model keeps the reading it was trained on.
+    "paypal.com.govt.hu", "login.gov.gob.li", "apple.com.edu.si", "x.com.go.ro",
 )
 
 
@@ -597,6 +619,7 @@ def test_the_models_features_never_read_the_public_suffix_list(monkeypatch):
 
     before = {h: (extract_ml_features(h), extract_features(h, {})) for h in _FEATURE_HOSTS}
     monkeypatch.setattr(ps, "_RULES", _NoPsl())
+    monkeypatch.setattr(scoring, "CCTLD_OPEN_ZONES", frozenset())
     after = {h: (extract_ml_features(h), extract_features(h, {})) for h in _FEATURE_HOSTS}
     assert after == before
 

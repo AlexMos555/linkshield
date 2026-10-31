@@ -35,6 +35,7 @@ from api.services.hosting_platforms import dynamic_dns_suffix_of as _dynamic_dns
 from api.services.hosting_platforms import is_shared_platform_site, tenant_suffix_of
 from api.services.hosting_platforms import USER_CONTENT_HOSTS, is_user_content_service
 from api.services.hosting_platforms import OPERATOR_SUFFIXES, is_operator_zone_name
+from api.services import public_suffix as _public_suffix
 from api.services.public_suffix import CCTLD_OPEN_ZONES, ascii_name, heuristic_registrable_domain
 from api.services.public_suffix import is_icann_rule, is_ip_literal
 from api.services.public_suffix import registrable_domain as _psl_registrable_domain
@@ -491,11 +492,18 @@ def _is_open_zone_above(domain: str, key: str) -> bool:
     """`key`, the top entry `domain` is under, is a public suffix above
     `domain`'s registrable name rather than its site, and nobody's government:
     go.ro, where RCS&RDS's customers pick their names (#37,317 of the top 1M),
-    go.to, or.tv, web.ru. The top list is folded without the ccTLD default
+    or.tv (no longer in DNS). The top list is folded without the ccTLD default
     (scripts/build_top_domains.py), so the zone stays an entry, and until
     2026-10-31 paypal-login.go.ro was "safe 0" without analysis. Kept: the
-    zone itself and its www, and the restricted zones (gov.ro, sch.gr, gouv.bj),
-    whose names their owner hands out."""
+    zone itself and its www, and the restricted zones (gov.ro, sch.gr, gouv.bj,
+    go.to), whose names their owner hands out.
+
+    Not while the Public Suffix List or data/cctld_second_levels.json is
+    missing: the fallback reading splits the one-owner zones (web.de, id.me)
+    and has no open zones, so the rule would take the allowlist from
+    login.web.de and give it back to paypal-login.go.ro."""
+    if _public_suffix.LOAD_ERROR or not _public_suffix.CCTLD_NAMES:
+        return False
     if domain in (key, "www." + key) or _is_restricted_zone(key):
         return False
     return registrable_domain(domain).endswith("." + key)
@@ -1047,18 +1055,20 @@ _FAKE_TLD_LABELS = frozenset({"com", "org", "net", "gov", "edu", "co", "io", "me
 _REGISTERED_FAKE_TLD_LABELS = _FAKE_TLD_LABELS | {"ru", "su"}
 
 
-def _is_restricted_zone(suffix: str) -> bool:
+def _is_restricted_zone(suffix: str, legacy: bool = False) -> bool:
     # A known open zone is nobody's government whatever its label: FreeDNS's
     # govt.hu and mil.nf, ChangeIP's edu.si, gob.li and sch.in, RCS&RDS's
     # go.ro (data/cctld_second_levels.json 'registries'). Read as restricted,
     # paypal.com.govt.hu lost its fake-TLD signal and the extension's guard
-    # took any two names there for one site.
-    if suffix in CCTLD_OPEN_ZONES:
+    # took any two names there for one site. `legacy`: the reading before
+    # 2026-10-31, which the served model's has_fake_tld_subdomain was trained
+    # on — a new reading there is a retrain, not a side effect.
+    if not legacy and suffix in CCTLD_OPEN_ZONES:
         return False
     return suffix in _RU_RESTRICTED_ZONES or suffix.split(".")[0] in _RESTRICTED_ZONE_LABELS
 
 
-def _registered_tld_lookalike(domain: str) -> Optional[str]:
+def _registered_tld_lookalike(domain: str, legacy: bool = False) -> Optional[str]:
     """The registered name itself, when it spells a TLD and was bought under
     a multi-label public suffix anyone can register at: 'com' of
     vk.com.msk.ru, which a reader takes for vk.com. com.msk.ru, ru.msk.ru
@@ -1067,12 +1077,13 @@ def _registered_tld_lookalike(domain: str) -> Optional[str]:
     Education — nor for REGIONAL_GOVERNMENT_DOMAINS (gov.spb.ru).
 
     The LEGACY registrable domain (legacy_registrable_domain): this is half
-    of the model's has_fake_tld_subdomain."""
+    of the model's has_fake_tld_subdomain, which asks with legacy=True
+    (_is_restricted_zone)."""
     registrable = legacy_registrable_domain(domain)
     label, _, suffix = registrable.partition(".")
     if "." not in suffix or label not in _REGISTERED_FAKE_TLD_LABELS:
         return None
-    if registrable in REGIONAL_GOVERNMENT_DOMAINS or _is_restricted_zone(suffix):
+    if registrable in REGIONAL_GOVERNMENT_DOMAINS or _is_restricted_zone(suffix, legacy):
         return None
     return label
 
@@ -1085,7 +1096,7 @@ def _apparent_subdomain_levels(domain: str) -> int:
     return levels + 1 if levels and _registered_tld_lookalike(domain) else levels
 
 
-def _has_fake_tld_in_subdomain(domain: str) -> bool:
+def _has_fake_tld_in_subdomain(domain: str, legacy: bool = False) -> bool:
     """Detect paypal.com.evil.xyz pattern — real TLD used as subdomain.
 
     Only labels LEFT of the registrable domain are a subdomain. In
@@ -1094,11 +1105,14 @@ def _has_fake_tld_in_subdomain(domain: str) -> bool:
     dressing a TLD up as a subdomain. But where the registered name itself
     spells a TLD under an open zone (vk.com.msk.ru), whatever stands to its
     left is dressed up exactly that way.
+
+    legacy=True is the model's feature (has_fake_tld_subdomain): the reading
+    it was trained on, without the open zones of 2026-10-31.
     """
     subdomain = _subdomain_labels(domain)
     if any(part in _FAKE_TLD_LABELS for part in subdomain):
         return True
-    return bool(subdomain) and _registered_tld_lookalike(domain) is not None
+    return bool(subdomain) and _registered_tld_lookalike(domain, legacy) is not None
 
 
 # The tenant zones whose registrable's rank is the platform's, not its
