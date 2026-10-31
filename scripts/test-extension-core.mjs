@@ -2734,6 +2734,14 @@ const SITE_PAIRS = [
   ["secure-paypal.asn.im", "drop.asn.im", false],
   ["microsoft-login.or.lt", "collector.or.lt", false],
   ["www.paypal-login.ne.pw", "login.paypal-login.ne.pw", true],
+  // Free zones with a restricted label (FreeDNS's govt.hu, ChangeIP's
+  // gob.li, sch.in, edu.si): not a government's, so two strangers there are
+  // two sites; gov.hu, Hungary's own, stays one owner.
+  ["office365-login.govt.hu", "collector.govt.hu", false],
+  ["minsa.gob.li", "salud.gob.li", false],
+  ["appleid-verify.sch.in", "drop.sch.in", false],
+  ["login.edu.si", "steal.edu.si", false],
+  ["www.office365-login.govt.hu", "office365-login.govt.hu", true],
   ["www.net.hr", "forum.net.hr", true],
   ["www.amazon.com.be", "amazon.com.be", true],
 ];

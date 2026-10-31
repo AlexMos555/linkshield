@@ -30,6 +30,7 @@ from pathlib import Path
 import pytest
 
 from api.services import public_suffix as ps
+from api.services import scoring
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
@@ -428,6 +429,76 @@ def test_the_named_zones_are_one_owners_own_and_in_no_psl_section():
     assert not set(names) & set(data["registries"])
 
 
+@pytest.mark.parametrize("host", ["paypal.com.govt.hu", "login.gov.gob.li", "apple.com.edu.si", "x.com.go.ro"])
+def test_a_tld_bought_under_a_free_zone_with_a_restricted_label_dresses_the_host_up(host):
+    """FreeDNS's govt.hu, ChangeIP's gob.li and edu.si, RCS&RDS's go.ro: their
+    label reads like a government's, their names are anyone's. Read as
+    restricted zones, paypal.com.govt.hu lost its fake-TLD signal and the
+    extension's guard took every name there for one site (2026-10-31)."""
+    from api.services.scoring import _has_fake_tld_in_subdomain, _registered_tld_lookalike
+
+    assert _registered_tld_lookalike(host) is not None, host
+    assert _has_fake_tld_in_subdomain(host), host
+
+
+def test_no_open_zone_is_a_restricted_one_and_the_governments_stay():
+    from api.services.scoring import _RESTRICTED_ZONE_LABELS, _is_restricted_zone, _registered_tld_lookalike
+
+    open_zones = set(_cctld_file()["registries"])
+    assert open_zones == ps.CCTLD_OPEN_ZONES
+    labelled = {z for z in open_zones if z.split(".")[0] in _RESTRICTED_ZONE_LABELS}
+    assert {"govt.hu", "mil.nf", "edu.si", "gob.li", "sch.in", "go.ro"} <= labelled
+    assert not any(_is_restricted_zone(z) for z in open_zones)
+    for zone in ("gov.hu", "gov.hr", "gov.uk", "ac.uk", "go.jp", "gob.mx", "gov.ru", "edu.ru"):
+        assert _is_restricted_zone(zone), zone
+    assert _registered_tld_lookalike("com.gov.uk") is None
+
+
+@pytest.mark.parametrize("host, trusted", [
+    ("paypal-login.go.ro", False),   # RCS&RDS's customers' zone, in the top 100k
+    ("paypal-login.or.tv", False),
+    ("go.ro", True),                 # the zone itself and its www
+    ("www.go.ro", True),
+    ("paypal-login.gov.ro", True),   # a restricted zone: the government's names
+    ("geo.web.ru", True),            # one owner's zone ('names')
+    ("www.bbc.co.uk", True),
+    ("www.amazon.com.be", True),
+])
+def test_a_name_under_an_open_zone_in_the_top_list_is_not_the_zones(host, trusted):
+    """The top list is folded without the ccTLD default, so go.ro is an
+    entry, and every name under it was "safe 0" without analysis until
+    2026-10-31 (scoring._is_open_zone_above)."""
+    from api.services.scoring import is_trusted_top_domain
+
+    assert is_trusted_top_domain(host) is trusted
+
+
+def test_the_open_zone_rule_refuses_only_the_open_zones_of_the_top_list():
+    """No entry or its www loses the allowlist; a name under an entry does
+    only where the entry is an open zone (the FAITID zones and biz.ua were
+    refused already, as shared suffixes)."""
+    from api.services.scoring import TOP_DOMAINS, _is_open_zone_above, top_domain_key
+
+    lost = [h for e in TOP_DOMAINS for h in (e, "www." + e)
+            if top_domain_key(h) and _is_open_zone_above(h, top_domain_key(h))]
+    assert lost == []
+    refused = {e for e in TOP_DOMAINS
+               if top_domain_key("mail." + e) == e and _is_open_zone_above("mail." + e, e)}
+    assert refused == {"go.ro", "or.tv", "biz.ua", "msk.ru", "msk.su", "nov.ru", "pp.ru", "spb.ru", "spb.su"}
+
+
+@pytest.mark.parametrize("broken", ["psl", "cctld"])
+def test_without_the_zone_data_the_open_zone_rule_stays_out(monkeypatch, broken):
+    """The fallback readings split web.de and know no open zone: the rule
+    would take login.web.de's allowlist and give paypal-login.go.ro one."""
+    if broken == "psl":
+        monkeypatch.setattr(ps, "LOAD_ERROR", "OSError: test")
+    else:
+        monkeypatch.setattr(ps, "CCTLD_NAMES", frozenset())
+    assert scoring._is_open_zone_above("login.web.de", "web.de") is False
+    assert scoring._is_open_zone_above("paypal-login.go.ro", "go.ro") is False
+
+
 def test_the_open_zones_stay_split():
     """The free zones found merged by the ICANN-only reading (co.vu, info.gf
     …: 2026-10-28 review) and by the reading with a list of registries
@@ -534,6 +605,9 @@ _FEATURE_HOSTS = (
     "api.id.me", "amazon.com.be", "hsbc.bank.in", "www.111.nhs.uk", "x.com.de", "kvs.gov.spb.ru",
     "gosuslugi-lk.spb.ru", "paypal.com.evil.xyz", "accounts.google.sn.cn", "www.отель.сочи.рус",
     "xn--80abap1arsf.xn--p1ai", "192.168.1.10", "localhost", "foo.github.io",
+    # Open zones with a restricted label (2026-10-31): the rules read them
+    # as anyone's, the model keeps the reading it was trained on.
+    "paypal.com.govt.hu", "login.gov.gob.li", "apple.com.edu.si", "x.com.go.ro",
 )
 
 
@@ -545,6 +619,7 @@ def test_the_models_features_never_read_the_public_suffix_list(monkeypatch):
 
     before = {h: (extract_ml_features(h), extract_features(h, {})) for h in _FEATURE_HOSTS}
     monkeypatch.setattr(ps, "_RULES", _NoPsl())
+    monkeypatch.setattr(scoring, "CCTLD_OPEN_ZONES", frozenset())
     after = {h: (extract_ml_features(h), extract_features(h, {})) for h in _FEATURE_HOSTS}
     assert after == before
 

@@ -275,7 +275,7 @@ def extract_ml_features(domain: str, data: Optional[FeatureData] = None) -> dict
     # ── Structural ──
     f["subdomain_depth"] = len(sub_labels)
     f["is_hosting_subdomain"] = 1.0 if is_hosting_subdomain else 0.0
-    f["has_fake_tld_subdomain"] = 1.0 if _has_fake_tld_in_subdomain(domain) else 0.0
+    f["has_fake_tld_subdomain"] = 1.0 if _has_fake_tld_in_subdomain(domain, legacy=True) else 0.0
 
     # ── TLD risk ──
     f["tld_high_risk"] = 1.0 if tld in HIGH_RISK_TLDS else 0.0

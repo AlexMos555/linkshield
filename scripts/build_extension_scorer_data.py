@@ -153,6 +153,10 @@ EDGE_CASES = (
     # and keeps the named ones (data/cctld_second_levels.json) one site.
     "paypal-login.ne.pw", "www.aceoouu-asosmaoemsnouu.adqxeha.ne.pw", "secure-paypal.asn.im",
     "microsoft-login.or.lt", "appleid-verify.sch.in", "office365-login.govt.hu", "usmc.mil.nf",
+    # 2026-10-31: under those free zones a TLD bought as the name dresses
+    # the host up as a .com one; a restricted label does not make them a
+    # government's.
+    "paypal.com.govt.hu", "login.gov.gob.li", "apple.com.edu.si", "x.com.go.ro",
     "evil.com.tv", "login.evil.org.zz", "x.co.com", "www.in.gr", "www.ne.se", "repo.or.cz", "www.ne.ch",
     # malformed / degenerate input must not crash either side
     "a", "xn--", "xn---.com", "xn--a.com", "....xn--p1ai", "ru.com", "a.ru.com",
@@ -387,6 +391,9 @@ def scorer_data() -> dict:
         # zones, one owner's names (data/cctld_second_levels.json), as on the
         # server.
         "cctldNames": _sorted(public_suffix.CCTLD_NAMES),
+        # Open zones of that shape (govt.hu, gob.li …): never a restricted
+        # zone, whatever their label (scoring._is_restricted_zone).
+        "cctldOpenZones": _sorted(public_suffix.CCTLD_OPEN_ZONES),
         "fakeTldLabels": _sorted(scoring._FAKE_TLD_LABELS),
         "registeredFakeTldLabels": _sorted(scoring._REGISTERED_FAKE_TLD_LABELS),
         "ruZoneBrands": list(scoring._RU_ZONE_BRANDS_LONGEST_FIRST),
