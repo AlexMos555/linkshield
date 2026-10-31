@@ -174,3 +174,61 @@ def test_the_model_cannot_talk_a_young_ranked_name_down(gate, monkeypatch):
     on = scoring.calculate_score(_signals(host, _outcomes(121)))
     assert "ml_safe_override" in {r.signal for r in off[2]}
     assert "ml_safe_override" not in {r.signal for r in on[2]}
+
+
+# ── Review of #370 ──
+
+def _analyse(offline_analyzer, site, ranks=None, delays=None, values=None, host="primebonusworks.uk"):
+    import asyncio
+
+    base = {"tranco": RANKED, "whois": {"age_days": 121}}
+    base.update(values or {})
+    offline_analyzer(site=site, values=base, ranks=ranks, delays=delays)
+    return asyncio.run(analyzer.analyze_domain(host, budget_s=5.0))
+
+
+@pytest.mark.parametrize("site", ["reachable", "unreachable"])
+def test_shadow_gives_the_verdict_off_gives(gate, offline_analyzer, site):
+    gate("off")
+    off = _analyse(offline_analyzer, site)
+    gate("shadow")
+    shadow = _analyse(offline_analyzer, site)
+    assert (shadow.score, shadow.level, [r.signal for r in shadow.reasons]) == (
+        off.score, off.level, [r.signal for r in off.reasons])
+
+
+@pytest.mark.parametrize("site", ["reachable", "unreachable"])
+def test_the_shadow_log_says_what_on_gives(gate, offline_analyzer, caplog, site):
+    """Including the unreachable-site floor a withheld rank no longer vouches
+    past (review of #370: shadow logged 'safe' where 'on' said 'caution')."""
+    gate("on")
+    on = _analyse(offline_analyzer, site)
+    gate("shadow")
+    with caplog.at_level(logging.INFO, logger=analyzer.logger.name):
+        _analyse(offline_analyzer, site)
+    line = [r for r in caplog.records if r.getMessage() == "popularity_age_gate_shadow"][-1]
+    assert (line.gated_score, line.gated_verdict) == (on.score, on.level.value)
+    assert line.gated_score > line.score
+
+
+def test_a_cut_off_rank_check_does_not_let_the_vouch_trust_a_young_registrable(gate, offline_analyzer):
+    """The rank check timed out (or its breaker is open), so no rank was
+    withheld; the vouch's own lookup must not trust the young name's rank."""
+    host = "login.primebonusworks.uk"  # its registrable's rank is looked up by the vouch
+    gate("on")
+    result = _analyse(offline_analyzer, "unreachable", ranks={"primebonusworks.uk": 176_011},
+                      delays={"tranco": 30}, host=host)
+    assert result.level != scoring.RiskLevel.safe
+    gate("off")
+    result = _analyse(offline_analyzer, "unreachable", ranks={"primebonusworks.uk": 176_011},
+                      delays={"tranco": 30}, host=host)
+    assert result.level == scoring.RiskLevel.safe
+
+
+def test_otx_about_a_young_top_10k_name_is_neither_waived_nor_halved(gate, monkeypatch):
+    monkeypatch.setitem(scoring.TOP_10K_RANKS, "primebonusworks.uk", 5_000)
+    otx = lambda sig: sum(r.weight for r in scoring.calculate_score(sig)[2] if r.signal.startswith("alienvault_otx"))  # noqa: E731
+    gate("off")
+    assert otx(_signals("primebonusworks.uk", _outcomes(121, pulses=3))) == 0
+    gate("on")
+    assert otx(_signals("primebonusworks.uk", _outcomes(121, pulses=3))) == 30

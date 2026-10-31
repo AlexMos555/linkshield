@@ -189,6 +189,10 @@ async def _judge(
         gated = _build_signals(domain, raw_url, is_ip, outcomes, total, withhold_young_rank=True)
         gated["checks_succeeded"] = measured
         gated_score, gated_level, _ = calculate_score(gated)
+        # The unreachable-site floor below, as "on" would apply it: a
+        # withheld rank vouches for nothing but a government zone.
+        if gated["site_reachable"] is False and gated_level == RiskLevel.safe and not _government_name(domain):
+            gated_score, gated_level = max(gated_score, vb.CANNOT_VOUCH_SCORE), RiskLevel.caution
         logger.info("popularity_age_gate_shadow", extra={
             "domain": domain, "rank": signals["young_rank"], "age_days": whois_age,
             "score": score, "verdict": level.value, "gated_score": gated_score, "gated_verdict": gated_level.value,
@@ -444,6 +448,12 @@ def _popularity_rank(tranco_result: dict, domain: str) -> Optional[int]:
 _UNRANKED = {"ranked": False, "rank": None, "weight": 0, "label": "", "registrable_rank": None}
 
 
+def _is_young(age: Any) -> bool:
+    """A registration age (days) under popularity_min_age_days."""
+    limit = get_settings().popularity_min_age_days
+    return isinstance(age, int) and not isinstance(age, bool) and 0 < limit and age < limit
+
+
 def _young_rank(tranco_result: dict, whois_data: dict, domain: str) -> Optional[int]:
     """The rank of a name registered fewer than popularity_min_age_days ago
     (the registry's date for its registrable name, check_whois_age), else
@@ -452,9 +462,7 @@ def _young_rank(tranco_result: dict, whois_data: dict, domain: str) -> Optional[
     names registered the same day ranked 130k-360k, ruhlinkpay.com #17,140
     at 80 days (2026-10-31). An unknown age (.ru, .de, a failed lookup)
     keeps the rank, as before."""
-    age = whois_data.get("age_days")
-    limit = get_settings().popularity_min_age_days
-    if not isinstance(age, int) or isinstance(age, bool) or limit <= 0 or age >= limit:
+    if not _is_young(whois_data.get("age_days")):
         return None
     return _popularity_rank(tranco_result, domain)
 
@@ -676,9 +684,11 @@ async def _name_is_vouched_for(domain: str, signals: dict, deadline: Deadline) -
     x.repl.co or bucket.s3.amazonaws.com is not vouched for by its platform's
     rank — 35,631 of the 699,287 hosts of the 2026-10-24 feed snapshot were,
     none of the labelled legit sets or the top-100k."""
-    if signals.get("popularity_withheld"):
+    if signals.get("popularity_withheld") or (
+            get_settings().popularity_age_gate == "on" and _is_young(signals.get("domain_age_days"))):
         # A young registration's rank (_young_rank) vouches for nothing, nor
-        # does its registrable's.
+        # does its registrable's — also when the rank check itself gave no
+        # data (cut off, breaker open) and the lookup below would ask again.
         return _government_name(domain)
     if signals.get("tranco_ranked") or _government_name(domain):
         return True
