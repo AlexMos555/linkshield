@@ -132,7 +132,7 @@ def test_the_publishers_guards_leave_dead_names_out(monkeypatch):
     rdd = _script("refresh_dangerous_domains")
     monkeypatch.setattr(rdd, "DEAD_TOP_NAMES", frozenset({"postimg.org"}))
     guard = rdd.load_popular_guard()
-    assert "postimg.org" not in guard and "google.com" in guard
+    assert {"google.com"} <= guard and not {"postimg.org"} & guard
 
     class _Redis:
         async def hmget(self, key, names):
@@ -153,7 +153,7 @@ def test_the_phones_veto_leaves_dead_names_out():
     top10k = set(json.loads((ROOT / "data" / "top_10k.json").read_text()))
     dead_in_10k = dead_top_names.DEAD_TOP_NAMES & top10k
     assert dead_in_10k and not dead_in_10k & veto
-    assert "google.com" in veto
+    assert {"google.com"} <= veto
 
 
 # ── The sweep ──
