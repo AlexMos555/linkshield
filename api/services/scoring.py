@@ -35,7 +35,7 @@ from api.services.hosting_platforms import dynamic_dns_suffix_of as _dynamic_dns
 from api.services.hosting_platforms import is_shared_platform_site, tenant_suffix_of
 from api.services.hosting_platforms import USER_CONTENT_HOSTS, is_user_content_service
 from api.services.hosting_platforms import OPERATOR_SUFFIXES, is_operator_zone_name
-from api.services.public_suffix import heuristic_registrable_domain, is_ip_literal
+from api.services.public_suffix import ascii_name, heuristic_registrable_domain, is_icann_rule, is_ip_literal
 from api.services.public_suffix import registrable_domain as _psl_registrable_domain
 
 logger = logging.getLogger("cleanway.scoring")
@@ -1965,8 +1965,10 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # 2026-10-28 had no Russian zones). Not an IP address: it is its own
     # registrable domain since then (its last two numbers before), and
     # check_dns finds no MX for any IP URL.
+    # Nor in a zone only a government body or the NHS registers in
+    # (_registered_in_vetted_zone): NHS trust sites often take mail elsewhere.
     if signals.get("dns_has_mx") is False and not is_ip_literal(domain or ""):
-        if domain == registrable_domain(domain):
+        if domain == registrable_domain(domain) and not _registered_in_vetted_zone(domain):
             score += 8
             reasons.append(DomainReason(
                 signal="no_mx_record", weight=8,
@@ -3342,6 +3344,35 @@ def _is_tenant_lure(word: str, brand: str) -> bool:
 
 # ── Suspicious keywords ──
 
+# PSL ICANN zones whose names only a health service, a police force or a
+# government network gets, though no restricted label says so.
+_VETTED_ICANN_ZONES = frozenset({"nhs.uk", "police.uk", "nic.in"})
+
+
+def _registered_in_vetted_zone(domain: str) -> bool:
+    """The registrable domain sits in a zone only a government body, a health
+    service or a police force registers in: a Russian restricted zone, or a
+    zone the PSL's ICANN section lists with a restricted label (gov.uk,
+    sa.gov.au, pi.gov.br, ac.uk) or on _VETTED_ICANN_ZONES. Not a zone that
+    is a suffix only by the ccTLD default: sch.in, govt.hu and mil.nf carry a
+    restricted label but are ChangeIP's and FreeDNS's free zones.
+
+    With the PSL, login.nhs.uk's registered name is 'login' and every NHS
+    trust site is an apex; the differential check of 2026-10-31 found the
+    keyword and no-MX rules taking auth.login.nhs.uk, account.sa.gov.au,
+    login.pi.gov.br and 17 trust sites without MX to caution, two NHS
+    services to dangerous. Names there are not anyone's pick."""
+    suffix = registrable_domain(domain).partition(".")[2]
+    if not suffix:
+        return False
+    if suffix in _RU_RESTRICTED_ZONES:
+        return True
+    zone = ascii_name(suffix)
+    if not is_icann_rule(zone):
+        return False
+    return zone in _VETTED_ICANN_ZONES or bool(_RESTRICTED_ZONE_LABELS.intersection(zone.split(".")))
+
+
 def _check_suspicious_keywords(domain: str) -> Optional[str]:
     # The registered name. The last two labels were read until 2026-10-27:
     # 'co' of secure-login.co.uk and 'spb' of paypal-login.spb.ru, never a
@@ -3351,6 +3382,8 @@ def _check_suspicious_keywords(domain: str) -> Optional[str]:
     # safe→caution, 8 caution→dangerous) and on 91 of 214,671 Majestic
     # Million / Chrome UX Report hosts (6 caution→dangerous, the
     # vnpt-invoice.com.vn ones among them, before any popularity discount).
+    if _registered_in_vetted_zone(domain):
+        return None
     base = registrable_domain(domain)
     return _keyword_in_name(base.split(".")[0])
 

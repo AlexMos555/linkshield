@@ -2679,6 +2679,7 @@ const SITE_PAIRS = [
   ["127.0.0.1", "localhost", false],
   ["[::1]", "[::1]", true],
   ["[::1]", "[::2]", false],
+  ["2001:db8::1", "2001:db8::2", false],
   // Single-label hosts.
   ["localhost", "localhost", true],
   ["localhost", "intranet", false],

@@ -146,6 +146,8 @@ EDGE_CASES = (
     "x.com.de", "x.co.vu", "www.city.kobe.jp", "city.kobe.jp", "a.b.kobe.jp", "b.kobe.jp", "kobe.jp",
     "www.ck", "a.www.ck", "a.b.ck", "foo.github.io", "x.blogspot.com", "accounts.google.sn.cn",
     "allegro.gsm.pl", "my.id", "nhs.uk", "192.168.1.10", "[::1]", "localhost",
+    # 2026-10-31: one colon is a port, not IPv6; a scheme is neither.
+    "1.2.3.4:443", "2001:db8::1", "[2001:db8::1]", "https://alt-aj-https.mail.ru", "example.com:8080",
     # 2026-10-28, final review: the ccTLD default splits the free zones no
     # list knew (ChangeIP's ne.pw, asn.im, or.lt; FreeDNS's govt.hu, mil.nf)
     # and keeps the named ones (data/cctld_second_levels.json) one site.

@@ -73,6 +73,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from typing import Iterable, Mapping, NamedTuple, Optional
 
 logger = logging.getLogger("cleanway.public_suffix")
@@ -101,12 +102,20 @@ def ascii_name(name: str) -> str:
     return ".".join(ascii_label(p) for p in name.lower().split("."))
 
 
+_IPV6_SHAPE = re.compile(r"^\[?[0-9a-f:.]+\]?$")
+
+
 def is_ip_literal(dom: str) -> bool:
-    # IPv6 (bare or as a URL host, [::1]) has a colon; an IPv4 address ends in
-    # a number, which no TLD is (RFC 3696 §2). Its registrable domain is
-    # itself, not its last two numbers (10.0.1.10 vs 192.168.1.10).
+    # IPv6 (bare or as a URL host, [::1]) has two or more colons and nothing
+    # but hex digits and dots besides; one colon is a port (1.2.3.4:443). An
+    # IPv4 address ends in a number, which no TLD is (RFC 3696 §2). Its
+    # registrable domain is itself, not its last two numbers (10.0.1.10 vs
+    # 192.168.1.10). Any colon counted as IPv6 until 2026-10-31: a malformed
+    # Tranco entry, "https://alt-aj-https.mail.ru", became a site of its own.
     if ":" in dom:
-        return True
+        if dom.count(":") > 1:
+            return _IPV6_SHAPE.match(dom) is not None
+        dom = dom.partition(":")[0]
     if not dom[-1:].isdigit():  # the common case, without splitting
         return False
     tld = dom.rpartition(".")[2]
@@ -402,6 +411,12 @@ def service_rules(psl: PublicSuffixList) -> SuffixRules:
 
 
 _RULES: Optional[SuffixRules] = service_rules(LIST) if LIST is not None else None
+
+
+def is_icann_rule(zone: str) -> bool:
+    """`zone` (ASCII) is a rule of the PSL's ICANN section as written — not a
+    suffix only by the ccTLD default (sch.in, govt.hu) or an overlay."""
+    return LIST is not None and zone in LIST.icann.exact
 
 
 def registrable_domain(host: str) -> str:

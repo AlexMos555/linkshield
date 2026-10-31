@@ -296,6 +296,11 @@ nhs.uk	-	-	-	0	0	nhs.uk	-
 192.168.1.10	-	-	-	0	2	192.168.1.10	-
 [::1]	-	-	-	0	0	[::1]	-
 localhost	-	-	-	0	0	localhost	-
+1.2.3.4:443	-	-	-	0	2	1.2.3.4:443	-
+2001:db8::1	-	-	-	0	0	2001:db8::1	-
+[2001:db8::1]	-	-	-	0	0	[2001:db8::1]	-
+https://alt-aj-https.mail.ru	-	-	-	0	1	mail.ru	-
+example.com:8080	-	-	-	0	0	example.com:8080	-
 paypal-login.ne.pw	-	-	-	0	0	paypal-login.ne.pw	-
 www.aceoouu-asosmaoemsnouu.adqxeha.ne.pw	-	-	-	0	2	adqxeha.ne.pw	-
 secure-paypal.asn.im	-	-	-	0	0	secure-paypal.asn.im	-

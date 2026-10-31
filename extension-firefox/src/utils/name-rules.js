@@ -255,9 +255,14 @@
     return 1;
   }
 
-  // An IP literal is its own site: a colon (IPv6, [::1]) or a numeric TLD.
+  // An IP literal is its own site: IPv6 (two or more colons, hex digits and
+  // dots only, [::1]) or a numeric TLD; one colon is a port. public_suffix.
+  // is_ip_literal: any colon counted until 2026-10-31.
   function isIpLiteral(dom) {
-    return dom.indexOf(":") !== -1 || /^[0-9]+$/.test(dom.slice(dom.lastIndexOf(".") + 1));
+    var colons = dom.split(":").length - 1;
+    if (colons > 1) return /^\[?[0-9a-f:.]+\]?$/.test(dom);
+    if (colons === 1) dom = dom.slice(0, dom.indexOf(":"));
+    return /^[0-9]+$/.test(dom.slice(dom.lastIndexOf(".") + 1));
   }
 
   // registrable_domain: the Russian zones, else the PSL's ICANN rules with
