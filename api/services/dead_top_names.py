@@ -35,6 +35,11 @@ import os
 logger = logging.getLogger("cleanway.dead_top_names")
 
 DEAD_FILE = "top_domains_dead.json"
+# The rest of the top-1M ranking (ranks 100k-1M, scripts/refresh_tranco.py):
+# a file of its own, swept with a cap of its own (refresh_dead_top_names.py
+# --ranking). 2.46% of a 20,000-name sample of the band was dead on
+# 2026-10-31 — about 22,000 names that kept a rank.
+BAND_FILE = "top_1m_dead.json"
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
 
 
@@ -50,4 +55,4 @@ def load(path: str = os.path.join(_DATA_DIR, DEAD_FILE)) -> frozenset[str]:
         return frozenset()
 
 
-DEAD_TOP_NAMES = load()
+DEAD_TOP_NAMES = load() | load(os.path.join(_DATA_DIR, BAND_FILE))
