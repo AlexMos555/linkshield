@@ -229,6 +229,16 @@ in `data/top_domains_sources.json`):
 5. Top-N by that rank: 1,000 / 10,000 / 100,000 / 1,000,000 mean the same
    positions they meant in Tranco, so no threshold moved.
 
+Every consumer below skips the names of `data/top_domains_dead.json`
+(`api/services/dead_top_names.py`, since 2026-10-31): names of the top 100k
+and of `data/top_domains_reported.json` that both Cloudflare and Google
+answer NXDOMAIN for. A dead name can be bought by anyone, and would inherit
+everything a listed name gets — on the first sweep 1,139 of the 100,000 were
+dead and 215 registered to nobody (rank 105 among them). The weekly
+`refresh-dead-top-names.yml` adds them by PR; a tombstone is never removed
+automatically (whoever brought a dead name back may be anyone). The lists
+themselves are not edited: the model reads `data/top_100k.json`'s bytes.
+
 | Consumer | Reads | Note |
 |---|---|---|
 | Instant-safe allowlist (`scoring.is_trusted_top_domain`, `/check`, `/public/check`, scorer Layer 2) | `data/top_100k.json` | 55% of the names are Tranco's; 45,036 enter, 45,036 leave |

@@ -35,6 +35,7 @@ from api.services.hosting_platforms import dynamic_dns_suffix_of as _dynamic_dns
 from api.services.hosting_platforms import is_shared_platform_site, tenant_suffix_of
 from api.services.hosting_platforms import USER_CONTENT_HOSTS, is_user_content_service
 from api.services.hosting_platforms import OPERATOR_SUFFIXES, is_operator_zone_name
+from api.services import dead_top_names as _dead
 from api.services import public_suffix as _public_suffix
 from api.services.public_suffix import CCTLD_OPEN_ZONES, ascii_name, heuristic_registrable_domain
 from api.services.public_suffix import is_icann_rule, is_ip_literal
@@ -297,14 +298,18 @@ def top_domain_key(domain: str) -> Optional[str]:
     compound-ccTLD heuristic read as suffixes (it was that heuristic until
     2026-10-28; the PSL lists neither). The longer keys it reaches
     (www.nhs.uk, hdfc.bank.in: 572 entries) all come from the PSL's ICANN
-    section, so a name under one is that registrant's."""
+    section, so a name under one is that registrant's.
+
+    A tombstoned entry (dead_top_names: it stopped existing, so anyone may
+    have bought it since) is no key, and the search stops there: a shorter
+    entry above it is not its owner either."""
     d = (domain or "").lower().strip(".")
     parts = d.split(".")
     # Two labels at least: a bare TLD is nobody's site.
     for i in range(len(parts) - 1):
         candidate = ".".join(parts[i:])
         if candidate in TOP_DOMAINS:
-            return candidate
+            return None if candidate in _dead.DEAD_TOP_NAMES else candidate
     return None
 
 
@@ -1483,8 +1488,10 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         _rank = popularity_rank(signals, ascii_domain)
         _top_ranked = _rank is not None and _rank <= 100_000
         _ranked = _rank is not None
-        if _reg not in TOP_10K_RANKS and not _top_ranked and not (_ranked and otx_reports <= 5):
-            _discount = _reg in TOP_100K or _ranked
+        # A tombstoned name (dead_top_names) waives and halves nothing.
+        _dead_name = _reg in _dead.DEAD_TOP_NAMES
+        if (_dead_name or _reg not in TOP_10K_RANKS) and not _top_ranked and not (_ranked and otx_reports <= 5):
+            _discount = (_reg in TOP_100K and not _dead_name) or _ranked
             _copies = (f" ({otx_reports} distinct, the rest are copies)"
                        if otx_reports < alienvault_pulses else "")
             if otx_reports > 5:
@@ -2197,8 +2204,12 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
                     signal="ml_suspicious", weight=20,
                     detail=f"ML model: {ml_prob*100:.0f}% phishing probability",
                 ))
-            elif ml_prob < 0.1 and score > 30:
-                # ML says safe but rules say risky — reduce score slightly
+            elif (ml_prob < 0.1 and score > 30
+                  and legacy_registrable_domain(ascii_domain) not in _dead.DEAD_TOP_NAMES):
+                # ML says safe but rules say risky — reduce score slightly.
+                # Not for a tombstoned name: its in_top_domains feature
+                # still reads 1 (the model's copy of the list), so the
+                # model's "safe" is the dead name's old rank talking.
                 score -= 10
                 reasons.append(DomainReason(
                     signal="ml_safe_override", weight=-10,

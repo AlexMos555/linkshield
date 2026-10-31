@@ -1,0 +1,72 @@
+name: 'Tombstone dead popular names'
+
+# Weekly sweep of every name of data/top_100k.json and
+# data/top_domains_reported.json: one both Cloudflare and Google answer
+# NXDOMAIN for is added to data/top_domains_dead.json, which takes all the
+# lists' trust from it (api/services/dead_top_names.py) before anyone can
+# buy it — a name stays NXDOMAIN for weeks between its expiry and its
+# release. The phone's veto (popular_veto.txt) is rebuilt in the same PR,
+# as CI's build_mobile_assets.py --check requires.
+#
+# Opens a PR; humans review before merging. Names that resolve again are
+# listed in the PR body and stay tombstoned until a person checks who
+# holds them now.
+
+on:
+  schedule:
+    # Wednesday 04:53 UTC — away from the daily ranks (03:17) and the
+    # Sunday favicon refresh (04:42).
+    - cron: '53 4 * * 3'
+  workflow_dispatch:
+
+# Read-only by default; the one job that opens the PR gets write.
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install dnspython==2.9.0
+
+      - name: Sweep the lists
+        run: python3 scripts/refresh_dead_top_names.py --report "$RUNNER_TEMP/dead-report.md"
+
+      - name: Rebuild the phone's veto
+        run: python3 scripts/build_mobile_assets.py
+
+      - name: Detect changes
+        id: diff
+        run: |
+          if git diff --quiet data/top_domains_dead.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat "$RUNNER_TEMP/dead-report.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open PR with the new tombstones
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          branch: cleanway/refresh-dead-top-names
+          delete-branch: true
+          commit-message: 'chore(data): tombstone popular names that stopped existing'
+          title: 'chore(data): tombstone popular names that stopped existing'
+          body-path: ${{ runner.temp }}/dead-report.md
+          add-paths: |
+            data/top_domains_dead.json
+            mobile/modules/cleanway-vpn/android/src/main/assets/popular_veto.txt

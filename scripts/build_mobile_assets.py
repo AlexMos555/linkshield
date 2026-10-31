@@ -45,7 +45,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT))
 from blocklist_shared_zones import OPERATOR_SUFFIXES, default_shared_suffixes, platform_own_names  # noqa: E402
+from api.services.dead_top_names import DEAD_TOP_NAMES  # noqa: E402 — standard library only
 
 TOP10K = ROOT / "data" / "top_10k.json"
 REPORTED = ROOT / "data" / "top_domains_reported.json"
@@ -98,10 +100,12 @@ def attribution_header() -> str:
 
 def build_names() -> set[str]:
     """Every name the veto is cut from: the top 10k, the reported popular
-    names and the infrastructure names."""
+    names and the infrastructure names — not the tombstoned ones
+    (data/top_domains_dead.json): whoever holds a dead name now is not who
+    made it popular, and the veto would keep the phone from blocking it."""
     raw = json.loads(TOP10K.read_text())
-    return ({d.lower() for d in (raw.keys() if isinstance(raw, dict) else raw)} | load_infrastructure()
-            | load_reported_popular())
+    ranked = {d.lower() for d in (raw.keys() if isinstance(raw, dict) else raw)} | load_reported_popular()
+    return (ranked - DEAD_TOP_NAMES) | load_infrastructure()
 
 
 def build() -> list[str]:

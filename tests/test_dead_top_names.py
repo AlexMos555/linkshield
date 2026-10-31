@@ -1,0 +1,221 @@
+"""Popular names that stopped existing get none of the lists' trust.
+
+On 2026-10-31, 1,139 of data/top_100k.json's names were NXDOMAIN and 215
+registered to nobody — rank 105 among them. Whoever registers one inherits
+the allowlist, the popularity rank, the OTX waiver, the blocklist's
+never-block guard and the phone's veto (api/services/dead_top_names.py).
+"""
+from __future__ import annotations
+
+import asyncio
+import importlib.util
+import json
+import pathlib
+
+import pytest
+
+from api.services import dead_top_names, ml_features, scoring, tranco
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+
+def _script(name: str):
+    spec = importlib.util.spec_from_file_location(name, ROOT / "scripts" / f"{name}.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@pytest.fixture
+def dead(monkeypatch):
+    """Tombstone the given names for the test."""
+    def _set(*names: str) -> None:
+        monkeypatch.setattr(dead_top_names, "DEAD_TOP_NAMES", frozenset(names))
+    return _set
+
+
+def _signals(domain: str, **extra) -> dict:
+    return {"domain": domain, "raw_url": domain, "checks_succeeded": 18, "total_checks": 18, **extra}
+
+
+# ── The file ──
+
+def test_the_file_loads_and_every_tombstone_is_a_listed_name():
+    data = json.loads((ROOT / "data" / dead_top_names.DEAD_FILE).read_text(encoding="utf-8"))
+    names = data["names"]
+    assert set(names) == dead_top_names.DEAD_TOP_NAMES
+    assert list(names) == sorted(names)
+    listed = set(json.loads((ROOT / "data" / "top_100k.json").read_text())) | set(
+        json.loads((ROOT / "data" / "top_domains_reported.json").read_text()))
+    assert set(names) <= listed
+    # The first sweep (2026-10-31) found these dead; rank 105 among them.
+    assert {"w2rt6byl5nf1opmc-a.com", "postimg.org", "netdna-ssl.com"} <= set(names)
+
+
+def test_an_unreadable_file_tombstones_nothing(tmp_path, caplog):
+    assert dead_top_names.load(str(tmp_path / "missing.json")) == frozenset()
+    assert "not loaded" in caplog.text
+
+
+def test_every_tombstone_is_untrusted_and_so_is_anything_under_it():
+    for name in sorted(dead_top_names.DEAD_TOP_NAMES):
+        assert not scoring.is_trusted_top_domain(name), name
+        assert not scoring.is_trusted_top_domain(f"zq7.{name}"), name
+
+
+# ── The allowlist ──
+
+def test_a_dead_entry_is_no_key_and_no_shorter_entry_stands_in(dead):
+    assert scoring.top_domain_key("x.mai.gov.ro") == "mai.gov.ro"
+    dead("mai.gov.ro")
+    # gov.ro is an entry too, but it is not the dead name's owner.
+    assert scoring.top_domain_key("x.mai.gov.ro") is None
+    assert scoring.top_domain_key("gov.ro") == "gov.ro"
+    assert not scoring.is_trusted_top_domain("mai.gov.ro")
+
+
+def test_a_dead_name_is_scored_not_waved_through(dead):
+    assert scoring.calculate_score(_signals("postimg.org"))[1] == scoring.RiskLevel.safe
+    dead("postimg.org")
+    _, _, reasons = scoring.calculate_score(_signals("postimg.org", domain_age_days=2))
+    assert "known_legitimate" not in {r.signal for r in reasons}
+    assert "domain_very_new" in {r.signal for r in reasons}
+
+
+def test_the_lists_themselves_stay_the_models_bytes():
+    """Applied where the lists are read: data/top_100k.json and the set the
+    model is served (LIVE_FEATURE_DATA) are untouched."""
+    assert ml_features.LIVE_FEATURE_DATA.top_domains is scoring.TOP_DOMAINS
+    assert len(scoring.TOP_DOMAINS) == 100_000
+    assert dead_top_names.DEAD_TOP_NAMES <= scoring.TOP_DOMAINS | set(
+        json.loads((ROOT / "data" / "top_domains_reported.json").read_text()))
+
+
+# ── OTX ──
+
+def test_otx_reports_about_a_dead_top_10k_name_count(dead):
+    name = "w2rt6byl5nf1opmc-a.com"
+    assert name in scoring.TOP_10K_RANKS
+    dead(name)
+    _, _, reasons = scoring.calculate_score(_signals(name, alienvault_pulse_count=30))
+    assert sum(r.weight for r in reasons if r.signal.startswith("alienvault_otx")) == 60
+
+
+# ── The ML safe override ──
+
+def test_the_model_cannot_talk_a_dead_name_down(dead, monkeypatch):
+    from api.services import ml_scorer
+
+    monkeypatch.setattr(ml_scorer, "ml_predict", lambda d: {"phishing_probability": 0.02, "confidence": 0.9})
+    # The same shape under a name no list has: the model's "safe" counts.
+    _, _, reasons = scoring.calculate_score(_signals("paypal.com.login.qx7-unlisted.org", domain_age_days=2))
+    assert "ml_safe_override" in {r.signal for r in reasons}
+    dead("postimg.org")
+    _, _, reasons = scoring.calculate_score(_signals("paypal.com.login.postimg.org", domain_age_days=2))
+    assert "ml_safe_override" not in {r.signal for r in reasons}
+
+
+# ── The popularity rank ──
+
+def test_a_dead_name_has_no_rank_whatever_redis_holds(dead, monkeypatch):
+    async def _no_redis():
+        raise AssertionError("a dead name must not be looked up")
+    monkeypatch.setattr(tranco, "get_redis", _no_redis)
+    dead("postimg.org")
+    assert asyncio.run(tranco.get_tranco_rank("postimg.org")) is None
+
+
+# ── The blocklist publisher ──
+
+def test_the_publishers_guards_leave_dead_names_out(monkeypatch):
+    rdd = _script("refresh_dangerous_domains")
+    monkeypatch.setattr(rdd, "DEAD_TOP_NAMES", frozenset({"postimg.org"}))
+    guard = rdd.load_popular_guard()
+    assert "postimg.org" not in guard and "google.com" in guard
+
+    class _Redis:
+        async def hmget(self, key, names):
+            return ["105" for _ in names]
+
+    is_popular = asyncio.run(rdd._tranco_guard(_Redis(), ["i.postimg.org", "www.google.com"], None))
+    assert not is_popular("postimg.org") and is_popular("google.com")
+    out = rdd.build_blockset(["i.postimg.org"], guard, shared_suffixes=set(), is_popular=is_popular,
+                             brand_owned=frozenset())
+    assert out == {"i.postimg.org"}
+
+
+# ── The phone's veto ──
+
+def test_the_phones_veto_leaves_dead_names_out():
+    assets = _script("build_mobile_assets")
+    veto = set(assets.OUT.read_text(encoding="utf-8").split())
+    top10k = set(json.loads((ROOT / "data" / "top_10k.json").read_text()))
+    dead_in_10k = dead_top_names.DEAD_TOP_NAMES & top10k
+    assert dead_in_10k and not dead_in_10k & veto
+    assert "google.com" in veto
+
+
+# ── The sweep ──
+
+def _fake(answers: dict[tuple[str, str], str], default: str = "alive"):
+    async def resolve(name: str, server: str) -> str:
+        if name in ("google.com", "wikipedia.org", "cloudflare.com"):
+            return "alive"
+        if name.startswith("cleanway-dead-canary"):
+            return "nxdomain"
+        return answers.get((name, server), answers.get((name, "*"), default))
+    return resolve
+
+
+def _args(tmp_path, **kw):
+    import argparse
+    top = tmp_path / "top.json"
+    top.write_text(json.dumps(["a.com", "b.com", "c.com", "gone.com"]))
+    rep = tmp_path / "rep.json"
+    rep.write_text(json.dumps({"r.com": 5000}))
+    base = dict(dry_run=False, report=None, today="2026-10-31", max_new=100,
+                out=str(tmp_path / "dead.json"), top=str(top), reported=str(rep))
+    base.update(kw)
+    return argparse.Namespace(**base)
+
+
+def test_a_name_is_dead_only_when_both_resolvers_say_nxdomain(tmp_path):
+    sweep = _script("refresh_dead_top_names")
+    answers = {("a.com", "*"): "nxdomain",                                       # dead at both
+               ("b.com", "1.1.1.1"): "nxdomain", ("b.com", "8.8.8.8"): "alive",  # one says so
+               ("c.com", "*"): "unknown",                                        # SERVFAIL, timeouts
+               ("r.com", "*"): "nxdomain"}                                       # a reported name
+    args = _args(tmp_path)
+    assert asyncio.run(sweep.run(args, _fake(answers))) == 0
+    names = json.loads(pathlib.Path(args.out).read_text())["names"]
+    assert names == {"a.com": "2026-10-31", "r.com": "2026-10-31"}
+
+
+def test_tombstones_are_sticky_and_revived_names_are_reported(tmp_path):
+    sweep = _script("refresh_dead_top_names")
+    args = _args(tmp_path, report=str(tmp_path / "report.md"), today="2026-11-07")
+    pathlib.Path(args.out).write_text(sweep.render({"gone.com": "2026-10-31"}))
+    assert asyncio.run(sweep.run(args, _fake({("a.com", "*"): "nxdomain"}))) == 0
+    names = json.loads(pathlib.Path(args.out).read_text())["names"]
+    assert names == {"a.com": "2026-11-07", "gone.com": "2026-10-31"}  # gone.com resolves again, kept
+    assert "`gone.com`" in pathlib.Path(args.report).read_text() and "Revived" in pathlib.Path(args.report).read_text()
+
+
+@pytest.mark.parametrize("case", ["canary", "too_many"])
+def test_the_sweep_refuses_and_writes_nothing(tmp_path, case):
+    sweep = _script("refresh_dead_top_names")
+    args = _args(tmp_path, max_new=1)
+    if case == "canary":
+        async def resolve(name, server):  # a resolver that answers NXDOMAIN for everything
+            return "nxdomain"
+    else:
+        resolve = _fake({}, default="nxdomain")
+    assert asyncio.run(sweep.run(args, resolve)) == 2
+    assert not pathlib.Path(args.out).exists()
+
+
+def test_a_dry_run_writes_nothing(tmp_path):
+    sweep = _script("refresh_dead_top_names")
+    args = _args(tmp_path, dry_run=True)
+    assert asyncio.run(sweep.run(args, _fake({("a.com", "*"): "nxdomain"}))) == 0
+    assert not pathlib.Path(args.out).exists()
