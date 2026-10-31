@@ -235,7 +235,9 @@ _UPSTREAM_HOSTS = frozenset(
         "checkurl.phishtank.com",
         "phishstats.info",
         "crt.sh",
-        "rdap.org",
+        # The RDAP bootstrap file. The registries' own RDAP servers vary by
+        # zone and show as `[site]`, which is safe: the path holds the name.
+        "data.iana.org",
         "cloudflare-dns.com",
         "family.cloudflare-dns.com",
         "api.pwnedpasswords.com",

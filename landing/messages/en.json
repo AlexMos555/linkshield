@@ -875,7 +875,7 @@
           "To decide whether the site is dangerous, our server may:"
         ],
         "items": [
-          "ask external checking services about the name: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX and IPQualityScore, and look up when the site was registered through the RDAP service rdap.org. They receive only the site name, not who you are;",
+          "ask external checking services about the name: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX and IPQualityScore, and ask the registry of the site's domain zone over RDAP when the site was registered (for .com that is Verisign). They receive only the site name, not who you are;",
           "compare its answer with Cloudflare's DNS filter (1.1.1.1 for Families), which receives the site name in an ordinary DNS query;",
           "look at the site itself (its address, certificate and settings) — from our server, not from your phone;",
           "in borderline cases, ask an AI model made by Anthropic for a second opinion. It receives only abstract signals, without the site name."

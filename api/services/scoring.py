@@ -687,6 +687,8 @@ def _load_abused_registrars() -> tuple[set[str], set[str]]:
 
 
 _ABUSED_REGISTRARS_HIGH, _ABUSED_REGISTRARS_MEDIUM = _load_abused_registrars()
+# How long a registration is "recent" for the registrar rules (3.33).
+_RECENT_REGISTRATION_DAYS = 90
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1180,11 +1182,6 @@ DANGEROUS_ABOVE = 50
 _OTX_STALE_DAYS = 90
 
 
-# A domain registered this long ago has outlived a 90-day ACME certificate:
-# a fresh certificate on it is a renewal or a re-issue, not a new site.
-_RENEWAL_DOMAIN_AGE_DAYS = 90
-
-
 def _certificate_is_a_renewal(signals: dict) -> bool:
     """Something shows the name is older than its fresh certificate:
 
@@ -1205,22 +1202,26 @@ def _certificate_is_a_renewal(signals: dict) -> bool:
       bradesco.ne12topaz.digital, 2026-10-25);
     * the name is in the top-1M popularity ranking (popularity_rank — never a
       hosting platform's rank for its tenant): the ranking measures months of
-      links and visits;
-    * its registration is at least _RENEWAL_DOMAIN_AGE_DAYS old.
+      links and visits.
 
-    Without any of these the certificate may be the site's first, as for a
-    kit's fresh domain. (Certificate Transparency would tell a renewal apart
-    directly — crt.sh lists the previous, still valid certificate for 13 of
-    the 15 real sites it answered for — but on 2026-10-26 it took 7.2 s at
-    the median, and 31 of 96 queries failed (502s, timeouts): far past the
-    3 s analysis budget.)"""
+    Without either the certificate may be the site's first, as for a kit's
+    fresh domain. The age of the REGISTRATION is not evidence: once RDAP
+    measured it (2026-10-26), "registered 90+ days ago" took this signal from
+    11 of 1,046 live phishing hosts — kits on subdomains of old names
+    (klarna0001926538.sviluppo.host), fresh subdomains of them
+    (portal.mykraken.exchange), aged domains (vkk.com,
+    ingdirect-portal-ingreso.com), 3 of them losing a level — and from 2 of
+    1,260 real sites, which stayed 'safe' with it. Limited to the registrable
+    name itself and 365+ days, it still took it from 2 phishing hosts and
+    spared no real site a level. (Certificate Transparency would tell a
+    renewal apart directly — crt.sh lists the previous, still valid
+    certificate for 13 of the 15 real sites it answered for — but on
+    2026-10-26 it took 7.2 s at the median, and 31 of 96 queries failed
+    (502s, timeouts): far past the 3 s analysis budget.)"""
     host = (signals.get("domain") or "").lower().strip(".")
     if signals.get("cert_wildcard") and host and _platform_tenant_site(host) == host:
         return True
-    if popularity_rank(signals) is not None:
-        return True
-    age = signals.get("domain_age_days")
-    return isinstance(age, int) and age >= _RENEWAL_DOMAIN_AGE_DAYS
+    return popularity_rank(signals) is not None
 
 
 def _is_url_shortener(domain: str) -> bool:
@@ -2102,8 +2103,15 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         ))
 
     # ── 3.33 Registrar reputation ──
+    # data/abused_registrars.json ranks registrars by the phishing domains
+    # registered through them, which are used within days of registration.
+    # An old registration says nothing about its registrar: on the
+    # 2026-10-26 replay, the first with RDAP data, the rule fired on 192 of
+    # 376 real sites of known age (ncfr.org, 28 years at Tucows) and on 124
+    # of 527 phishing hosts. So it counts only for a recent registration,
+    # and only when the registry gave the date.
     registrar = signals.get("registrar", "")
-    if registrar:
+    if registrar and domain_age is not None and domain_age < _RECENT_REGISTRATION_DAYS:
         registrar_lower = registrar.lower()
         if any(ar in registrar_lower for ar in _ABUSED_REGISTRARS_HIGH):
             score += 12

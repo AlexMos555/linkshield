@@ -2426,7 +2426,7 @@
             "साइट ख़तरनाक है या नहीं, यह तय करने के लिए हमारा सर्वर:"
           ],
           "items": [
-            "बाहरी जाँच सेवाओं से नाम के बारे में पूछ सकता है: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX और IPQualityScore, और RDAP सेवा rdap.org से पता कर सकता है कि साइट कब रजिस्टर हुई। उन्हें सिर्फ़ साइट का नाम मिलता है, यह नहीं कि आप कौन हैं;",
+            "बाहरी जाँच सेवाओं से नाम के बारे में पूछ सकता है: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX और IPQualityScore, और RDAP के ज़रिए साइट के डोमेन ज़ोन की रजिस्ट्री से पता कर सकता है कि साइट कब रजिस्टर हुई (.com के लिए यह Verisign है)। उन्हें सिर्फ़ साइट का नाम मिलता है, यह नहीं कि आप कौन हैं;",
             "अपने जवाब की तुलना Cloudflare के DNS फ़िल्टर (1.1.1.1 for Families) के जवाब से कर सकता है, जिसे साइट का नाम एक आम DNS अनुरोध में मिलता है;",
             "ख़ुद साइट को देख सकता है (उसका पता, सर्टिफ़िकेट और सेटिंग्स) — हमारे सर्वर से, आपके फ़ोन से नहीं;",
             "उलझे मामलों में Anthropic के एक AI मॉडल से दूसरी राय ले सकता है। उसे सिर्फ़ सामान्य संकेत मिलते हैं, साइट का नाम नहीं।"
