@@ -473,3 +473,21 @@ def test_public_suffix_rules_cover_the_infrastructure_names_too():
     bases = {btd.psl_in_top._base(r) for r in rules}
     assert bases <= top | infra | zones.psl_operators
     assert bases & (infra - top)
+
+
+def test_a_tombstoned_name_is_skipped_on_the_allowlist_and_the_next_moves_up(small, monkeypatch):
+    """Step 4b: the rebuild stops carrying a dead name (data/top_domains_dead.json),
+    so a retrain on it no longer learns the name as popular. The Redis
+    ranking keeps it: get_tranco_rank skips it at read time."""
+    monkeypatch.setattr(btd, "REDIS_N", 44)
+    assert _build(small, _world()) == 0
+    before = json.loads((small / "top_100k.json").read_text())
+    dead = before[3]
+    (small / "top_domains_dead.json").write_text(json.dumps({"names": {dead: "2026-10-31"}}))
+    assert _build(small, _world()) == 0
+    after = json.loads((small / "top_100k.json").read_text())
+    assert dead not in after and len(after) == 20
+    assert after[:3] == before[:3] and after[3:19] == before[4:]
+    assert json.loads((small / "top_domains_sources.json").read_text())["tombstoned_names_skipped"] == 1
+    pairs, _ = btd.popularity_ranking(fetch=_fetch(_world()), limit=44, pinned={})
+    assert dead in {d for d, _ in pairs}
