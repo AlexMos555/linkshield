@@ -45,12 +45,14 @@ def test_the_file_loads_sorted_with_a_date_per_name():
     name's place on them (a rebuild may bring it back)."""
     import datetime
 
-    data = json.loads((ROOT / "data" / dead_top_names.DEAD_FILE).read_text(encoding="utf-8"))
-    names = data["names"]
-    assert set(names) == dead_top_names.DEAD_TOP_NAMES
-    assert list(names) == sorted(names)
-    assert all(n == n.lower().strip(".") and "." in n for n in names)
-    assert all(datetime.date.fromisoformat(d) for d in names.values())
+    loaded = set()
+    for file in (dead_top_names.DEAD_FILE, dead_top_names.BAND_FILE):
+        names = json.loads((ROOT / "data" / file).read_text(encoding="utf-8"))["names"]
+        assert list(names) == sorted(names), file
+        assert all(n == n.lower().strip(".") and "." in n for n in names), file
+        assert all(datetime.date.fromisoformat(d) for d in names.values()), file
+        loaded |= set(names)
+    assert loaded == dead_top_names.DEAD_TOP_NAMES
 
 
 def test_an_unreadable_file_tombstones_nothing(tmp_path, caplog):
@@ -59,7 +61,10 @@ def test_an_unreadable_file_tombstones_nothing(tmp_path, caplog):
 
 
 def test_every_tombstone_is_untrusted_and_so_is_anything_under_it():
-    for name in sorted(dead_top_names.DEAD_TOP_NAMES):
+    """Every tombstoned allowlist entry. A tombstone of ranks 100k-1M is no
+    entry: under a government zone on the list (certificat-covid.gov.ro
+    under gov.ro) the zone's own place still answers for it."""
+    for name in sorted(dead_top_names.DEAD_TOP_NAMES & scoring.TOP_DOMAINS):
         assert not scoring.is_trusted_top_domain(name), name
         assert not scoring.is_trusted_top_domain(f"zq7.{name}"), name
 
@@ -185,7 +190,9 @@ def _args(tmp_path, **kw):
     rep = tmp_path / "rep.json"
     rep.write_text(json.dumps({"r.com": 5000}))
     base = dict(dry_run=False, report=None, today="2026-10-31", max_new=100, pending=None, pending_base=None,
-                out=str(tmp_path / "dead.json"), top=str(top), reported=str(rep))
+                out=str(tmp_path / "dead.json"), top=str(top), reported=str(rep), ranking=None,
+                top_dead=str(tmp_path / "no-top-dead.json"), band_dead=str(tmp_path / "no-band-dead.json"),
+                carry_only=False)
     base.update(kw)
     return argparse.Namespace(**base)
 
@@ -431,3 +438,131 @@ def test_a_lame_referral_is_dead(monkeypatch):
         return "com", ["192.0.2.1"]
 
     assert asyncio.run(sweep.make_parent_check(zone_servers=zone)("x.example.com")) == "lame"
+
+
+# ── Ranks 100k-1M ──
+
+def _band_args(tmp_path, ranking, **kw):
+    rk = tmp_path / "ranking.json"
+    rk.write_text(json.dumps(ranking))
+    top_dead = tmp_path / "top_dead.json"
+    top_dead.write_text(json.dumps({"names": {"x.com": "2026-10-31"}}))
+    return _args(tmp_path, ranking=str(rk), top_dead=str(top_dead), out=str(tmp_path / "band.json"), **kw)
+
+
+def test_the_band_sweep_covers_the_rest_of_the_ranking_into_its_own_file(tmp_path):
+    sweep = _script("refresh_dead_top_names")
+    # a.com is on the top list (_args), x.com tombstoned there: neither is the band's.
+    args = _band_args(tmp_path, [["a.com", 1], ["x.com", 2], ["band-dead.com", 150000], ["band-live.com", 160000]])
+    swept = []
+    resolve, at_parent = _fake({("band-dead.com", "*"): "nxdomain", ("a.com", "*"): "nxdomain"})
+
+    async def tracking(name, server):
+        swept.append(name)
+        return await resolve(name, server)
+
+    assert asyncio.run(sweep.run(args, tracking, at_parent)) == 0
+    assert json.loads(pathlib.Path(args.out).read_text())["names"] == {"band-dead.com": "2026-10-31"}
+    assert not {"a.com", "x.com"} & set(swept)
+    assert not (tmp_path / "dead.json").exists()  # the top lists' file is not the band's
+
+
+def test_the_bands_cap_is_its_own(tmp_path):
+    sweep = _script("refresh_dead_top_names")
+    ranking = [[f"b{i}.com", 100_000 + i] for i in range(5)]
+    args = _band_args(tmp_path, ranking, max_new=4)
+    assert asyncio.run(sweep.run(args, *_fake({}, default="nxdomain"))) == 2
+    assert not pathlib.Path(args.out).exists()
+    args = _band_args(tmp_path, ranking, max_new=None)  # MAX_NEW_BAND
+    assert asyncio.run(sweep.run(args, *_fake({}, default="nxdomain"))) == 0
+    assert len(json.loads(pathlib.Path(args.out).read_text())["names"]) == 5
+
+
+def test_a_revived_band_name_is_counted_not_raised(tmp_path):
+    sweep = _script("refresh_dead_top_names")
+    args = _band_args(tmp_path, [["back.com", 200000]], report=str(tmp_path / "band.md"))
+    pathlib.Path(args.out).write_text(sweep.render({"back.com": "2026-10-31"}, sweep.ABOUT_BAND))
+    assert asyncio.run(sweep.run(args, *_fake({}))) == 0
+    text = pathlib.Path(args.report).read_text()
+    assert "1 tombstoned names of ranks 100k-1M resolve again" in text and "`back.com`" not in text
+    assert json.loads(pathlib.Path(args.out).read_text())["names"] == {"back.com": "2026-10-31"}
+
+
+def test_a_tombstoned_band_name_skips_the_parent_check(tmp_path):
+    sweep = _script("refresh_dead_top_names")
+    args = _band_args(tmp_path, [["old.com", 200000], ["new.com", 210000]])
+    pathlib.Path(args.out).write_text(sweep.render({"old.com": "2026-10-31"}, sweep.ABOUT_BAND))
+    resolve, at_parent = _fake({("old.com", "*"): "nxdomain", ("new.com", "*"): "nxdomain"})
+    asked = []
+
+    async def parent(name):
+        asked.append(name)
+        return await at_parent(name)
+
+    assert asyncio.run(sweep.run(args, resolve, parent)) == 0
+    assert set(asked) & {"old.com", "new.com"} == {"new.com"}  # the canaries are asked too
+
+
+def test_the_resolvers_are_checked_again_after_the_sweep(tmp_path):
+    """A resolver that goes bad during hours of sweeping must not tombstone
+    the second half of the list."""
+    sweep = _script("refresh_dead_top_names")
+    args = _args(tmp_path)
+    resolve, at_parent = _fake({})
+    calls = {"google.com": 0}
+
+    async def degrading(name, server):
+        if name == "google.com":
+            calls["google.com"] += 1
+            if calls["google.com"] > len(sweep.RESOLVERS):  # after the first canary
+                return "nxdomain"
+        return await resolve(name, server)
+
+    assert asyncio.run(sweep.run(args, degrading, at_parent)) == 2
+    assert not pathlib.Path(args.out).exists()
+
+
+def test_both_files_are_read(tmp_path, monkeypatch):
+    (tmp_path / "top_domains_dead.json").write_text(json.dumps({"names": {"a.com": "2026-10-31"}}))
+    (tmp_path / "top_1m_dead.json").write_text(json.dumps({"names": {"b.com": "2026-10-31"}}))
+    loaded = dead_top_names.load(str(tmp_path / "top_domains_dead.json")) | dead_top_names.load(
+        str(tmp_path / "top_1m_dead.json"))
+    assert loaded == {"a.com", "b.com"}
+    band = json.loads((ROOT / "data" / dead_top_names.BAND_FILE).read_text(encoding="utf-8"))["names"]
+    assert set(band) <= dead_top_names.DEAD_TOP_NAMES
+
+
+
+def test_a_band_tombstone_on_the_top_lists_is_reported_when_it_revives(tmp_path):
+    """A rebuild put it on the top lists: there it takes the allowlist and
+    the phone's veto, and the band sweep no longer looks at it."""
+    sweep = _script("refresh_dead_top_names")
+    band = tmp_path / "band-dead.json"
+    band.write_text(sweep.render({"a.com": "2026-10-31"}, sweep.ABOUT_BAND))
+    args = _args(tmp_path, band_dead=str(band), report=str(tmp_path / "report.md"))
+    assert asyncio.run(sweep.run(args, *_fake({}))) == sweep.EXIT_REVIVED
+    assert "`a.com`" in pathlib.Path(args.report).read_text()
+
+
+def test_carry_only_keeps_the_open_prs_band_additions_without_dns(tmp_path):
+    sweep = _script("refresh_dead_top_names")
+    out = tmp_path / "top_1m_dead.json"
+    out.write_text(sweep.render({"a.com": "2026-10-24"}, sweep.ABOUT_BAND))
+    pending = tmp_path / "pending.json"
+    pending.write_text(sweep.render({"a.com": "2026-10-24", "x.com": "2026-10-31", "gone.com": "2026-10-17"}))
+    base = tmp_path / "base.json"
+    base.write_text(sweep.render({"gone.com": "2026-10-17"}))
+    args = _args(tmp_path, carry_only=True, out=str(out), pending=str(pending), pending_base=str(base))
+
+    async def no_dns(*a, **kw):
+        raise AssertionError("carry-only asks no resolver")
+
+    assert asyncio.run(sweep.run(args, no_dns, no_dns)) == 0
+    data = json.loads(out.read_text())
+    assert data["names"] == {"a.com": "2026-10-24", "x.com": "2026-10-31"}
+    assert data["_about"] == sweep.ABOUT_BAND
+
+
+def test_an_unreadable_band_file_names_itself_in_the_log(tmp_path, caplog):
+    assert dead_top_names.load(str(tmp_path / "top_1m_dead.json")) == frozenset()
+    assert "top_1m_dead.json not loaded" in caplog.text

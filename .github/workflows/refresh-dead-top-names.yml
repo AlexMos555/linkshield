@@ -8,6 +8,11 @@ name: 'Tombstone dead popular names'
 # NXDOMAIN for weeks between its expiry and its release. The phone's veto
 # (popular_veto.txt) is rebuilt in the same PR.
 #
+# Then the rest of the top-1M ranking (ranks 100k-1M, rebuilt here as the
+# daily rank refresh builds it) is swept into data/top_1m_dead.json, in a
+# step of its own with a time limit and a cap of its own: when it fails or
+# runs out of time, the top lists' tombstones still ship.
+#
 # Opens a PR; humans review before merging. CI does not run on a PR this
 # token opens, so the checks CI would run on these files run here, before
 # the PR. Names that resolve again stay tombstoned: they are listed in the
@@ -20,6 +25,11 @@ on:
     # Sunday favicon refresh (04:42).
     - cron: '53 4 * * 3'
   workflow_dispatch:
+    inputs:
+      max_new_band:
+        description: 'Cap on new ranks 100k-1M tombstones (empty: the script default; for a bootstrap run)'
+        required: false
+        default: ''
 
 # Read-only by default; the one job that opens the PR gets write.
 permissions:
@@ -32,7 +42,7 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
-    timeout-minutes: 40
+    timeout-minutes: 330
     env:
       BRANCH: cleanway/refresh-dead-top-names
     steps:
@@ -72,12 +82,19 @@ jobs:
             --jq '[.[] | select(.isCrossRepository | not)] | length')
           if [ "$open" = "0" ]; then exit 0; fi
           git fetch --depth=1 origin "$BRANCH"
-          git show FETCH_HEAD:data/top_domains_dead.json > "$RUNNER_TEMP/pending.json"
+          head=$(git rev-parse FETCH_HEAD)
           base=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$BRANCH" --jq .merge_base_commit.sha)
           git fetch --depth=1 origin "$base"
-          git show "$base:data/top_domains_dead.json" > "$RUNNER_TEMP/pending-base.json" \
-            || echo '{"names": {}}' > "$RUNNER_TEMP/pending-base.json"
-          echo "PENDING=--pending $RUNNER_TEMP/pending.json --pending-base $RUNNER_TEMP/pending-base.json" >> "$GITHUB_ENV"
+          for f in top_domains_dead top_1m_dead; do
+            git show "$head:data/$f.json" > "$RUNNER_TEMP/pending-$f.json" \
+              || echo '{"names": {}}' > "$RUNNER_TEMP/pending-$f.json"
+            git show "$base:data/$f.json" > "$RUNNER_TEMP/base-$f.json" \
+              || echo '{"names": {}}' > "$RUNNER_TEMP/base-$f.json"
+          done
+          {
+            echo "PENDING=--pending $RUNNER_TEMP/pending-top_domains_dead.json --pending-base $RUNNER_TEMP/base-top_domains_dead.json"
+            echo "PENDING_BAND=--pending $RUNNER_TEMP/pending-top_1m_dead.json --pending-base $RUNNER_TEMP/base-top_1m_dead.json"
+          } >> "$GITHUB_ENV"
 
       - name: Sweep the lists
         id: sweep
@@ -92,13 +109,47 @@ jobs:
           if [ "$code" -eq 3 ]; then echo "revived=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           exit "$code"
 
+      - name: Build the top-1M ranking
+        id: ranking
+        continue-on-error: true
+        run: python3 scripts/refresh_tranco.py --dry-run --dump "$RUNNER_TEMP/ranking.json"
+
+      - name: Sweep ranks 100k-1M
+        if: steps.ranking.outcome == 'success'
+        id: band
+        continue-on-error: true
+        timeout-minutes: 240
+        env:
+          MAX_NEW_BAND: ${{ inputs.max_new_band }}
+        run: |
+          cap=()
+          if [ -n "$MAX_NEW_BAND" ]; then cap=(--max-new "$MAX_NEW_BAND"); fi
+          # shellcheck disable=SC2086 # PENDING_BAND is four words or none
+          python3 scripts/refresh_dead_top_names.py --ranking "$RUNNER_TEMP/ranking.json" "${cap[@]}" \
+            --report "$RUNNER_TEMP/band-report.md" $PENDING_BAND
+          { echo; cat "$RUNNER_TEMP/band-report.md"; } >> "$RUNNER_TEMP/dead-report.md"
+          cat "$RUNNER_TEMP/band-report.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Say when ranks 100k-1M were not swept
+        if: steps.ranking.outcome != 'success' || steps.band.outcome != 'success'
+        run: |
+          msg="Ranks 100k-1M were not swept this week (ranking: ${{ steps.ranking.outcome }}, sweep: ${{ steps.band.outcome }}); the top lists were."
+          echo "::warning::$msg"
+          { echo; echo "**Note:** $msg"; } >> "$RUNNER_TEMP/dead-report.md"
+          git checkout -- data/top_1m_dead.json 2>/dev/null || true
+          # The open PR's band tombstones stay in the replacement PR (no DNS).
+          # shellcheck disable=SC2086 # PENDING_BAND is four words or none
+          if [ -n "${PENDING_BAND:-}" ]; then
+            python3 scripts/refresh_dead_top_names.py --carry-only --out data/top_1m_dead.json $PENDING_BAND
+          fi
+
       - name: Rebuild the phone's veto
         run: python3 scripts/build_mobile_assets.py
 
       - name: Detect changes
         id: diff
         run: |
-          if git diff --quiet data/top_domains_dead.json; then
+          if git diff --quiet data/top_domains_dead.json data/top_1m_dead.json; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -123,6 +174,7 @@ jobs:
           body-path: ${{ runner.temp }}/dead-report.md
           add-paths: |
             data/top_domains_dead.json
+            data/top_1m_dead.json
             mobile/modules/cleanway-vpn/android/src/main/assets/popular_veto.txt
 
       - name: Ask a person about the revived names

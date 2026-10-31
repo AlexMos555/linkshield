@@ -191,3 +191,13 @@ def test_a_mirror_stands_in_for_the_majestic_million_only(monkeypatch):
     with pytest.raises(RuntimeError):
         rt.build_pairs("https://mirror.example/majestic_million.csv", fake_get)
     assert fetched == ["https://mirror.example/majestic_million.csv"]
+
+
+def test_a_dry_run_dumps_the_ranking_for_the_dead_name_sweep(monkeypatch, ranking, tmp_path):
+    """refresh-dead-top-names.yml sweeps ranks 100k-1M from this file; no
+    Redis is needed for it."""
+    monkeypatch.delenv("REDIS_URL", raising=False)
+    monkeypatch.delenv("TRANCO_LIST_URL", raising=False)
+    out = tmp_path / "ranking.json"
+    assert rt.main(["--dry-run", "--dump", str(out)]) == 0
+    assert json.loads(out.read_text()) == [["google.com", 1], ["gosuslugi.ru", 2], ["example.org", 3]]

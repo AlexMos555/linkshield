@@ -240,6 +240,14 @@ registered to nobody (rank 105 among them). The weekly
 `refresh-dead-top-names.yml` adds them by PR; a tombstone is never removed
 automatically (whoever brought a dead name back may be anyone). The lists
 themselves are not edited: the model reads `data/top_100k.json`'s bytes.
+The rest of the top-1M ranking (ranks 100k-1M, the Redis rank) is swept in a
+step of its own into `data/top_1m_dead.json`, with a cap of its own: on
+2026-10-31 21,273 of its 899,352 names were dead (2.37%, 77 min; 200 random
+tombstones re-checked at Quad9, OpenDNS and `www.`: none alive). They keep
+no rank, so no popularity bonus, vouch, OTX waiver or publisher never-block
+guard. Not covered: names in TLDs with a wildcard (`.ws`: an unregistered
+name answers), and live names that already changed hands — see the young-
+registration rank gate below.
 
 A rank is links and visits, gathered maybe under an earlier holder of the
 name (a dropped name keeps its backlinks) or bought from a link farm: of
