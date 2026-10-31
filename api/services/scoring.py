@@ -35,7 +35,8 @@ from api.services.hosting_platforms import dynamic_dns_suffix_of as _dynamic_dns
 from api.services.hosting_platforms import is_shared_platform_site, tenant_suffix_of
 from api.services.hosting_platforms import USER_CONTENT_HOSTS, is_user_content_service
 from api.services.hosting_platforms import OPERATOR_SUFFIXES, is_operator_zone_name
-from api.services.public_suffix import ascii_name, heuristic_registrable_domain, is_icann_rule, is_ip_literal
+from api.services.public_suffix import CCTLD_OPEN_ZONES, ascii_name, heuristic_registrable_domain
+from api.services.public_suffix import is_icann_rule, is_ip_literal
 from api.services.public_suffix import registrable_domain as _psl_registrable_domain
 
 logger = logging.getLogger("cleanway.scoring")
@@ -481,7 +482,23 @@ def is_trusted_top_domain(domain: str) -> bool:
     # A customer's name on a dynamic-DNS service in the top-100k (ns01.info).
     if _dynamic_dns_suffix_of(d):
         return False
+    if _is_open_zone_above(d, key):
+        return False
     return True
+
+
+def _is_open_zone_above(domain: str, key: str) -> bool:
+    """`key`, the top entry `domain` is under, is a public suffix above
+    `domain`'s registrable name rather than its site, and nobody's government:
+    go.ro, where RCS&RDS's customers pick their names (#37,317 of the top 1M),
+    go.to, or.tv, web.ru. The top list is folded without the ccTLD default
+    (scripts/build_top_domains.py), so the zone stays an entry, and until
+    2026-10-31 paypal-login.go.ro was "safe 0" without analysis. Kept: the
+    zone itself and its www, and the restricted zones (gov.ro, sch.gr, gouv.bj),
+    whose names their owner hands out."""
+    if domain in (key, "www." + key) or _is_restricted_zone(key):
+        return False
+    return registrable_domain(domain).endswith("." + key)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1031,6 +1048,13 @@ _REGISTERED_FAKE_TLD_LABELS = _FAKE_TLD_LABELS | {"ru", "su"}
 
 
 def _is_restricted_zone(suffix: str) -> bool:
+    # A known open zone is nobody's government whatever its label: FreeDNS's
+    # govt.hu and mil.nf, ChangeIP's edu.si, gob.li and sch.in, RCS&RDS's
+    # go.ro (data/cctld_second_levels.json 'registries'). Read as restricted,
+    # paypal.com.govt.hu lost its fake-TLD signal and the extension's guard
+    # took any two names there for one site.
+    if suffix in CCTLD_OPEN_ZONES:
+        return False
     return suffix in _RU_RESTRICTED_ZONES or suffix.split(".")[0] in _RESTRICTED_ZONE_LABELS
 
 

@@ -195,6 +195,9 @@
   // zone read as one name makes its strangers one site; one owner's read as
   // a registry only costs what it did before 2026-10-28.
   var CCTLD_NAMES = set(D && D.cctldNames);
+  // Open zones of that shape (cctldOpenZones: govt.hu, gob.li, edu.si …):
+  // a restricted label does not make one a government's (isRestrictedZone).
+  var CCTLD_OPEN = set(D && D.cctldOpenZones);
 
   // One TLD's rules: Sets of its exact rules, wildcards' bases and
   // exceptions, and its longest rule in labels (a wildcard's '*' counts).
@@ -294,6 +297,7 @@
   // ── Fake TLDs and nesting ──
 
   function isRestrictedZone(suffix) {
+    if (CCTLD_OPEN.has(suffix)) return false;
     return RU_RESTRICTED.has(suffix) || RESTRICTED_LABELS.has(suffix.split(".")[0]);
   }
 

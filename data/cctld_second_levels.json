@@ -8,7 +8,8 @@
     "ne.se": "Nationalencyklopedin's (NS Route 53); crt.sh: 16 names, all its own (www, auth, intranet, press …); top-100k #96,222.",
     "net.hr": "The Net.hr portal (NS Cloudflare); crt.sh: 88 names, its sections and regional portals (magazin, forum, igre, dubrovackidnevnik, ezadar, kaportal …); top-100k #5,824.",
     "or.cz": "Petr Baudiš's domain (SOA pasky.or.cz, NS ns.or.cz); crt.sh: 23 names (repo — the public Git hosting, projects are paths there, not subdomains — pasky, baudis, tetrinet …); top-100k #27,189.",
-    "web.de": "WEB.DE, 1&1 Mail & Media's mail portal (NS ns-webde.ui-dns.*, United Internet's); its sign-in is on subdomains (login, anmelden, auth); top-10k #2,424. The extension's guard listed it as one site before 2026-10-28."
+    "web.de": "WEB.DE, 1&1 Mail & Media's mail portal (NS ns-webde.ui-dns.*, United Internet's); its sign-in is on subdomains (login, anmelden, auth); top-10k #2,424. The extension's guard listed it as one site before 2026-10-28.",
+    "web.ru": "The web.ru geology portal (NS ns5/ns6.hosting.reg.ru, MX mail.web.ru): crt.sh: 20 names, all its own (geo, wiki, forum, petrolog, comagmat …); top-100k #92,874 (2026-10-31; split by the default, its own subdomains would read as strangers' names under an open zone, scoring._is_open_zone_above)."
   },
   "registries": {
     "asn.im": "ChangeIP's free zone (NS ns1/ns2.dyna-ns.net, SOA hostmaster.asn.im, wildcard A); crt.sh: 128 names.",

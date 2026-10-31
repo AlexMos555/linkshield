@@ -308,6 +308,10 @@ microsoft-login.or.lt	-	-	-	0	0	microsoft-login.or.lt	-
 appleid-verify.sch.in	-	-	-	0	0	appleid-verify.sch.in	-
 office365-login.govt.hu	-	-	-	0	0	office365-login.govt.hu	-
 usmc.mil.nf	-	-	-	0	0	usmc.mil.nf	-
+paypal.com.govt.hu	-	paypal	-	1	2	com.govt.hu	-
+login.gov.gob.li	-	-	-	1	2	gov.gob.li	-
+apple.com.edu.si	-	apple	-	1	2	com.edu.si	-
+x.com.go.ro	-	-	-	1	2	com.go.ro	-
 evil.com.tv	-	-	-	0	0	evil.com.tv	-
 login.evil.org.zz	-	-	-	0	1	evil.org.zz	-
 x.co.com	-	-	-	0	1	co.com	-

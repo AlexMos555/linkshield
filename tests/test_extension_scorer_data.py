@@ -164,4 +164,7 @@ def test_the_cctld_default_ships_whole():
     assert data["cctldSecondLevels"] == sorted(public_suffix.CCTLD_SECOND_LEVELS)
     assert data["cctldNames"] == sorted(public_suffix.CCTLD_NAMES)
     assert {"web.de", "id.me", "com.be"} <= set(data["cctldNames"])
+    # The open zones, for isRestrictedZone: govt.hu is FreeDNS's, not Hungary's.
+    assert data["cctldOpenZones"] == sorted(public_suffix.CCTLD_OPEN_ZONES)
+    assert {"govt.hu", "gob.li", "sch.in", "edu.si", "mil.nf", "go.ro"} <= set(data["cctldOpenZones"])
     assert "registrySuffixes" not in data

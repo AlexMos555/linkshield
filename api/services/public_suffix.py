@@ -364,17 +364,14 @@ def _covered(rules: SuffixRules, zone: str) -> bool:
     return rules.suffix_length(labels, default=0) >= len(labels)
 
 
-def _load_cctld_names() -> frozenset[str]:
-    """The zones of data/cctld_second_levels.json's 'names': one owner's,
-    read as a name rather than by the ccTLD default. Without the file every
-    such zone is split, the reading before 2026-10-28 — never the other way
-    round."""
+def _load_cctld_zones(section: str, without: str) -> frozenset[str]:
+    """The zones of one section of data/cctld_second_levels.json; `without`
+    says in the log what reading stands when the file cannot be read."""
     try:
         with open(os.path.join(_DATA_DIR, CCTLD_FILE), encoding="utf-8") as f:
-            return frozenset(ascii_name(z) for z in json.load(f)["names"])
+            return frozenset(ascii_name(z) for z in json.load(f)[section])
     except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
-        logger.error("%s not loaded (%s): one owner's ccTLD zones (web.de, id.me …) read as registries",
-                     CCTLD_FILE, exc)
+        logger.error("%s not loaded (%s): %s", CCTLD_FILE, exc, without)
         return frozenset()
 
 
@@ -397,7 +394,14 @@ def _load() -> tuple[Optional[PublicSuffixList], SuffixRules, Optional[str]]:
 
 
 LIST, RU_OVERLAY, LOAD_ERROR = _load()
-CCTLD_NAMES = _load_cctld_names()
+# 'names': one owner's zones, read as a name rather than by the ccTLD default.
+# Without the file every such zone is split, the reading before 2026-10-28 —
+# never the other way round.
+CCTLD_NAMES = _load_cctld_zones("names", "one owner's ccTLD zones (web.de, id.me …) read as registries")
+# 'registries': open zones of the same shape, each with its evidence. The
+# default splits them already; the scorer reads them to know that a
+# restricted label does not make one a government's (govt.hu is FreeDNS's).
+CCTLD_OPEN_ZONES = _load_cctld_zones("registries", "free zones with a restricted label (govt.hu …) read as a government's")
 # ICANN and the Russian overlay in one table, as one list's rules, with the
 # ccTLD default: the longest matching rule prevails. The Russian overlay's
 # TLDs carry no ICANN rule longer than the TLD (tests/test_public_suffix.py),
