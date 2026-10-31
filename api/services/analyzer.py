@@ -952,19 +952,24 @@ async def check_feodo_tracker(domain: str) -> bool:
 
 async def check_alienvault_otx(domain: str) -> dict:
     """
-    Check domain reputation via AlienVault OTX (free, no key for basic lookup).
+    Check domain reputation via AlienVault OTX (free community API).
     Returns reputation data including pulse count (community threat reports),
     how many of those pulses are distinct reports and how many days ago the
     newest of them was made (_otx_reports).
 
     Without a key OTX allows 100 lookups an hour per IP, then answers 429
-    (measured 2026-10-26). A non-2xx answer raises — a failed, unmeasured
+    (measured 2026-10-26); the free account key (OTX_API_KEY, sent as
+    X-OTX-API-KEY) lifts that. A non-2xx answer raises — a failed, unmeasured
     check the breaker counts — never reads as "no pulses".
     """
+    headers = {"Accept": "application/json"}
+    key = get_settings().otx_api_key
+    if key:
+        headers["X-OTX-API-KEY"] = key
     async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.get(
             f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/general",
-            headers={"Accept": "application/json"},
+            headers=headers,
         )
         resp.raise_for_status()
         data = resp.json()
