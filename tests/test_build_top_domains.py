@@ -88,11 +88,14 @@ def _corpus() -> list[str]:
     return sorted(hosts)
 
 
-def test_registrable_domain_is_the_scorers():
-    from api.services.scoring import registrable_domain
+def test_registrable_domain_is_the_models():
+    """The popularity list is the model's feature data: folded the way the
+    model reads a host (scoring.legacy_registrable_domain), not the way the
+    rules do since 2026-10-28 (the Public Suffix List)."""
+    from api.services.scoring import legacy_registrable_domain
 
     for host in _corpus():
-        assert btd.registrable_domain(host) == registrable_domain(host), host
+        assert btd.registrable_domain(host) == legacy_registrable_domain(host), host
 
 
 def test_the_redis_refresh_imports_nothing_the_runner_lacks():

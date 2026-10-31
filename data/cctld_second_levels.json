@@ -1,0 +1,41 @@
+{
+  "_about": "The second levels of two-letter ccTLDs (a generic label — co, com, net, org, gov, edu, web, id … public_suffix.CCTLD_SECOND_LEVELS — under a 2-letter TLD) that no section of the Public Suffix List lists. registrable_domain() (api/services/public_suffix.py) reads every such zone as a public suffix, as the compound-ccTLD heuristic did before 2026-10-28, so a stranger's name under it is a site of its own; only the zones under 'names' are read as one owner's name instead, as the PSL would read them. Splitting is the default because the two errors are not alike: an open zone read as one name makes every stranger under it one site with the attacker's, named 'co' or 'ne' to the brand and keyword checks (the 2026-10-28 final review found ChangeIP's and FreeDNS's free zones ne.pw, asn.im, or.lt, govt.hu … merged that way: 5,148 such zones exist, 1,844 with name servers), while one owner's zone read as a registry costs what it cost before 2026-10-28. 'names': one company's or organisation's own zone, with no restricted label (gov, edu, mil, sch, ac … — government zones stay split, as before; the extension's guard treats each as one site for its off-site check, _restrictedZoneOf), checked in DNS (SOA, NS) and on crt.sh; scripts/build_extension_scorer_data.py ships them to the extensions (cctldNames). 'registries': open zones of the same shape the default keeps split, with the evidence; no runtime effect — tests/test_public_suffix.py holds each to being split and off 'names'. Every zone here keeps the heuristic's shape and stays out of the PSL (tests). Sources: DNS on 2026-10-28, crt.sh (distinct names under the zone), the 2026-10-24 feed snapshot with all of Phishing.Database's links, SURBL's two-level-tlds list (https://www.surbl.org/static/two-level-tlds, fetched 2026-10-28), the Tranco top-1M of 2026-10-21.",
+  "names": {
+    "com.be": "Amazon's (NS Route 53, SOA root.amazon.com): amazon.com.be and its frontier hosts; top-1M #1,946.",
+    "id.me": "ID.me, Inc.'s identity service (NS Cloudflare): account, api, assets, verify, help, shop …; top-1M #1,341. The extension's guard listed it as one site before 2026-10-28.",
+    "in.gr": "The in.gr news portal (NS Cloudflare); crt.sh: 10 names, all its own (www, tv, tickets, secauth …); top-100k #23,765.",
+    "ne.ch": "The Canton of Neuchâtel's own domain (NS and SOA dns1/dns2.ne.ch); crt.sh: 57 names, all the canton's infrastructure (mail, vpn, sip, sap …); top-100k #51,088.",
+    "ne.se": "Nationalencyklopedin's (NS Route 53); crt.sh: 16 names, all its own (www, auth, intranet, press …); top-100k #96,222.",
+    "net.hr": "The Net.hr portal (NS Cloudflare); crt.sh: 88 names, its sections and regional portals (magazin, forum, igre, dubrovackidnevnik, ezadar, kaportal …); top-100k #5,824.",
+    "or.cz": "Petr Baudiš's domain (SOA pasky.or.cz, NS ns.or.cz); crt.sh: 23 names (repo — the public Git hosting, projects are paths there, not subdomains — pasky, baudis, tetrinet …); top-100k #27,189.",
+    "web.de": "WEB.DE, 1&1 Mail & Media's mail portal (NS ns-webde.ui-dns.*, United Internet's); its sign-in is on subdomains (login, anmelden, auth); top-10k #2,424. The extension's guard listed it as one site before 2026-10-28."
+  },
+  "registries": {
+    "asn.im": "ChangeIP's free zone (NS ns1/ns2.dyna-ns.net, SOA hostmaster.asn.im, wildcard A); crt.sh: 128 names.",
+    "asn.lc": "ChangeIP's free zone (NS ns1/ns2.dyna-ns.net, SOA hostmaster.asn.lc, wildcard A).",
+    "asn.me": "ChangeIP's free zone (NS ns1/ns2.dyna-ns.net, SOA hostmaster.asn.me, wildcard A).",
+    "biz.kg": "Sold by hoster.kg (NS ns1/ns2.hoster.kg); crt.sh: 74 names (advokat, arenda-shatrov, bishkek-porter-taxi …); feed: parfum.biz.kg.",
+    "biz.si": "ChangeIP's free zone (NS ns1/ns2.dyna-ns.net, SOA hostmaster.biz.si).",
+    "co.cc": "The free subdomain registry Google dropped from its index in 2011 (NS ns.cc.cc); SURBL two-level-tlds; top-1M #84,302.",
+    "co.nf": "Free hosting subdomains; crt.sh: 548 names; feed: 11 names (allert-help-centre, out-owa …); SURBL two-level-tlds.",
+    "co.nr": "Free domain redirection service; SURBL two-level-tlds; top-1M #618,554.",
+    "co.pt": "Sold by plako.net (SOA admin.plako.net); crt.sh: 185 names (1xbet, 22bet, aliexpress …); feed: ajs.co.pt.",
+    "co.vu": "Free subdomain registry; feed: 1,100 names (pgesaccntspprtaccs, 181page9707ik0647recovery789 …); SURBL two-level-tlds.",
+    "com.nl": "Own registry (NS ns1/ns2.com.nl); crt.sh: 982 names (casinos, 101domain …); top-100k: chickenroadcasino.com.nl; top-1M #324,309.",
+    "com.tc": "The .tc registry's second level (SOA roots.nic.tc); crt.sh: 233 names (aeroflot, airfrance …); feed: trezor.com.tc; SURBL two-level-tlds.",
+    "com.tg": "The .tg registry's second level (SOA hostmaster.nic.tg); crt.sh: 613 names; feed: roblox.com.tg, robiox.com.tg.",
+    "com.tl": "Second level of .tl; crt.sh: 15 different owners' names (fujitsu, google, tudor, roblox …); feed: ledger.com.tl.",
+    "edu.si": "ChangeIP's free zone (NS ns1/ns2.dyna-ns.net, SOA hostmaster.edu.si).",
+    "go.ro": "RCS&RDS customers' host names (SOA dns-adm.rdsnet.ro); crt.sh: 1,800 names; SURBL two-level-tlds; top-1M #37,317.",
+    "gob.li": "ChangeIP's free zone (NS ns1/ns2.dyna-ns.net, SOA hostmaster.gob.li); crt.sh: 5 names (minsa, salud …), not Liechtenstein's government.",
+    "govt.hu": "A shared domain of the FreeDNS service (NS ns1-4.afraid.org, SOA dnsadmin.afraid.org), not Hungary's government (that is gov.hu); crt.sh: 187 names (aracrandevuolusturun, arracrndvual …); feed: nid-session.govt.hu.",
+    "id.gd": "ChangeIP's free zone (NS ns1/ns2.dyna-ns.net, SOA hostmaster.id.gd).",
+    "id.hn": "Resold subdomains (SOA ns1.name.com); crt.sh: 86 different businesses' names (bhataragroup, bisnisonline …); feed: ibftrader.id.hn.",
+    "info.gf": "A shared domain of the FreeDNS service (NS ns1-4.afraid.org); crt.sh: 593 names; feed: correos-particulares, dgt, aplecacion; SURBL two-level-tlds; top-1M #270,247.",
+    "mil.nf": "A shared domain of the FreeDNS service (NS ns1-4.afraid.org, SOA dnsadmin.afraid.org); crt.sh: 4 names (usmc, secure …); SURBL two-level-tlds.",
+    "ne.pw": "ChangeIP's free zone (NS ns1/ns2.dyna-ns.net, SOA hostmaster.ne.pw, wildcard A); crt.sh: 1,469 names; feed (Phishing.Database links): 135 phishing hosts, 124 different names (www.aceoouu-asosmaoemsnouu.adqxeha.ne.pw …).",
+    "or.lt": "ChangeIP's free zone (NS ns1/ns2.dyna-ns.net, SOA hostmaster.or.lt).",
+    "or.st": "ChangeIP's free zone (NS ns1/ns2.dyna-ns.net, SOA hostmaster.or.st).",
+    "sch.in": "ChangeIP's free zone (NS ns1/ns2.dyna-ns.net, SOA hostmaster.sch.in)."
+  }
+}

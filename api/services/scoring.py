@@ -35,6 +35,8 @@ from api.services.hosting_platforms import dynamic_dns_suffix_of as _dynamic_dns
 from api.services.hosting_platforms import is_shared_platform_site, tenant_suffix_of
 from api.services.hosting_platforms import USER_CONTENT_HOSTS, is_user_content_service
 from api.services.hosting_platforms import OPERATOR_SUFFIXES, is_operator_zone_name
+from api.services.public_suffix import ascii_name, heuristic_registrable_domain, is_icann_rule, is_ip_literal
+from api.services.public_suffix import registrable_domain as _psl_registrable_domain
 
 logger = logging.getLogger("cleanway.scoring")
 
@@ -277,9 +279,9 @@ def top_domain_key(domain: str) -> Optional[str]:
     — else None. Also the TOP_10K_RANKS key for its rank.
 
     The list is keyed by registrable domain (scripts/build_top_domains.py
-    folds it with registrable_domain() and the PSL's ICANN section, and
-    leaves public suffixes out), so the host's own ancestors are what to look
-    up. The last two labels were looked up until 2026-10-27: 'co.uk' for
+    folds it with legacy_registrable_domain() and the PSL's ICANN section,
+    and leaves public suffixes out), so the host's own ancestors are what to
+    look up. The last two labels were looked up until 2026-10-27: 'co.uk' for
     www.amazon.co.uk, which no entry is, so 11,232 of the 100,000 entries
     (bbc.co.uk, yahoo.co.jp, amazon.com.br, www.nhs.uk, hdfc.bank.in) and
     every host under them never got the allowlist, and /public/check called
@@ -290,7 +292,8 @@ def top_domain_key(domain: str) -> Optional[str]:
     registrable_domain() as the key (measured before that), and no host
     trusted before is lost — registrable_domain() would
     have lost www.web.de and www.id.me, whose 2-label names the
-    compound-ccTLD heuristic reads as suffixes. The longer keys it reaches
+    compound-ccTLD heuristic read as suffixes (it was that heuristic until
+    2026-10-28; the PSL lists neither). The longer keys it reaches
     (www.nhs.uk, hdfc.bank.in: 572 entries) all come from the PSL's ICANN
     section, so a name under one is that registrant's."""
     d = (domain or "").lower().strip(".")
@@ -1037,8 +1040,11 @@ def _registered_tld_lookalike(domain: str) -> Optional[str]:
     vk.com.msk.ru, which a reader takes for vk.com. com.msk.ru, ru.msk.ru
     and gov.msk.ru are private persons' names (whois.flexireg.net,
     2026-09-27). Not under a restricted zone — edu.gov.ru is the Ministry of
-    Education — nor for REGIONAL_GOVERNMENT_DOMAINS (gov.spb.ru)."""
-    registrable = registrable_domain(domain)
+    Education — nor for REGIONAL_GOVERNMENT_DOMAINS (gov.spb.ru).
+
+    The LEGACY registrable domain (legacy_registrable_domain): this is half
+    of the model's has_fake_tld_subdomain."""
+    registrable = legacy_registrable_domain(domain)
     label, _, suffix = registrable.partition(".")
     if "." not in suffix or label not in _REGISTERED_FAKE_TLD_LABELS:
         return None
@@ -1426,8 +1432,15 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     _distinct = signals.get("alienvault_distinct_pulses")
     otx_reports = alienvault_pulses if _distinct is None else min(_distinct, alienvault_pulses)
     if otx_reports > 0:
-        from api.services.doh_gateway import _registrable_domain
-        _reg = _platform_tenant_site(ascii_domain) or _registrable_domain(domain)
+        # The registrable domain whose popularity counts
+        # (rank_registrable_domain), with the Russian zones: until 2026-10-28
+        # this read the compound-ccTLD heuristic, whose key for any x.spb.ru
+        # was spb.ru (top-10k #758) — so no OTX report ever scored under
+        # spb.ru or msk.ru (#2547), and under nov.ru, pp.ru and ras.ru it was
+        # halved: 14 of the 186 ru_heuristics_phish hosts. Never a zone above
+        # the name the old reading had: web.de (#2424) waives no report about
+        # login.web.de, as it did not before.
+        _reg = _platform_tenant_site(ascii_domain) or rank_registrable_domain(domain)
         _rank = popularity_rank(signals, ascii_domain)
         _top_ranked = _rank is not None and _rank <= 100_000
         _ranked = _rank is not None
@@ -1946,11 +1959,16 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # MX lives on the registrable domain, never on a `track.`/`go.` subdomain,
     # so penalising a subdomain for "no MX" dinged every legit redirect/CDN
     # host. Only apply when we're actually looking at the apex. Use the
-    # PSL-aware registrable-domain helper (not the naive 2-label split) so this
-    # stays correct for compound ccTLDs — foo.co.uk is an apex, not a subdomain.
-    if signals.get("dns_has_mx") is False:
-        from api.services.doh_gateway import _registrable_domain
-        if domain == _registrable_domain(domain):
+    # PSL-aware registrable domain (not the naive 2-label split) so this
+    # stays correct for compound suffixes — foo.co.uk and x.my.id are apexes,
+    # not subdomains, and so is herzen.spb.ru (the heuristic read before
+    # 2026-10-28 had no Russian zones). Not an IP address: it is its own
+    # registrable domain since then (its last two numbers before), and
+    # check_dns finds no MX for any IP URL.
+    # Nor in a zone only a government body or the NHS registers in
+    # (_registered_in_vetted_zone): NHS trust sites often take mail elsewhere.
+    if signals.get("dns_has_mx") is False and not is_ip_literal(domain or ""):
+        if domain == registrable_domain(domain) and not _registered_in_vetted_zone(domain):
             score += 8
             reasons.append(DomainReason(
                 signal="no_mx_record", weight=8,
@@ -2272,22 +2290,77 @@ def _ru_registrable_domain(domain: str) -> Optional[str]:
 
 
 def registrable_domain(domain: str) -> str:
-    """The registrable domain (eTLD+1) a host is judged by — PSL-aware.
+    """The registrable domain (eTLD+1) a host is judged by: the Public Suffix
+    List's ICANN rules with the Russian zones and the ccTLD default on top
+    (public_suffix.py: every generic second level of a 2-letter TLD is a
+    suffix but for the named zones) — login.example.co.uk → example.co.uk,
+    paypal-secure.my.id → itself, kvs.gov.spb.ru → gov.spb.ru,
+    mail.confirm-lnstagram.com.de → confirm-lnstagram.com.de,
+    x.paypal-login.ne.pw → paypal-login.ne.pw, login.web.de → web.de.
+    The DoH gateway's _registrable_domain is the same function; whose rank
+    counts for a host is rank_registrable_domain()'s question.
 
-    Under a Russian public suffix, _ru_registrable_domain(). Everywhere else
-    the compound-ccTLD heuristic the rest of the service already uses
-    (doh_gateway._registrable_domain): login.example.co.uk → example.co.uk.
-    """
-    from api.services.doh_gateway import _registrable_domain as heuristic_registrable
+    Not what the phishing model's features read: see
+    legacy_registrable_domain()."""
+    return _psl_registrable_domain(domain)
 
+
+def legacy_registrable_domain(domain: str) -> str:
+    """registrable_domain() as it was until 2026-10-28: under a Russian
+    public suffix _ru_registrable_domain(), elsewhere the compound-ccTLD
+    heuristic (public_suffix.heuristic_registrable_domain) — x.my.id is
+    under 'my.id', www.web.de is its own registrable domain.
+
+    Pinned for the phishing model: host_shape(), shared_tenant() and the
+    shape helpers below feed its features (dot_count, subdomain_depth, the
+    name every lexical feature reads, in_top_domains, is_hosting_subdomain,
+    has_fake_tld_subdomain), ml/train_model.py builds its corpus and split
+    groups with it and scripts/build_top_domains.py folds the popularity
+    list with a copy of it. A model is served with the feature data it was
+    trained on (model_meta.json feature_data); reading the PSL here would
+    have changed the feature vector of 643 top-100k names and 5,463 of the
+    699,287 hosts of the 2026-10-24 feed snapshot without a retrain
+    (measured 2026-10-27). Move it with a retrain, not before."""
     dom = (domain or "").lower().strip(".")
-    return _ru_registrable_domain(dom) or heuristic_registrable(dom)
+    return _ru_registrable_domain(dom) or heuristic_registrable_domain(dom)
+
+
+def rank_registrable_domain(domain: str) -> str:
+    """The name whose top-1M rank may speak for `domain` as its registrable
+    domain's: registrable_domain(), but never shorter than
+    legacy_registrable_domain() — under a zone public_suffix names as one
+    owner's (login.web.de), the name the reading before 2026-10-28 kept
+    apart from it. Everywhere else registrable_domain() is never shorter
+    than that reading by itself (tests/test_public_suffix.py).
+
+    Read by tranco._registrable_rank (the signals' tranco_registrable_rank:
+    the OTX gate, the fresh-certificate exemption, self-hosted products),
+    the OTX gate's own top-10k/100k key and the analyzer's vouch for an
+    unreachable site. Not by SURBL (dnsbl_checks.check_surbl): SURBL keys a
+    name under a named zone by the zone (none of them is on its
+    two-level-tlds list, 2026-10-28), as registrable_domain() does; the two
+    differ nowhere else. A zone's rank is everyone's under it: the
+    2026-10-28 review found 59 feed phishing hosts taking one (co.ua
+    #278,678, co.nl #284,346, info.gf #270,247 on the Tranco top-1M) before
+    those zones were split again. The cost is the old reading's for the
+    named zones: login.web.de is not vouched for by web.de's rank, as it
+    was not before."""
+    new = registrable_domain(domain)
+    old = legacy_registrable_domain(domain)
+    return old if len(old) > len(new) and old.endswith("." + new) else new
 
 
 def _subdomain_labels(domain: str) -> list[str]:
-    """Labels strictly LEFT of the registrable domain ([] for an apex)."""
+    """Labels strictly LEFT of the registrable domain ([] for an apex) — the
+    LEGACY one (legacy_registrable_domain): the model's subdomain_depth and
+    dot_count count them, and so do the excessive-subdomains and fake-TLD
+    rules, which stay with the feature they share this helper with. On the
+    PSL's reading they would have lost 2,496 and gained 28 'excessive
+    subdomains' on the 2026-10-24 feed hosts (03316951.zi-xz.my.id has one
+    level under the ICANN suffix my.id, not two) — a rule version of its
+    own, measured on its own, at the next retrain."""
     dom = (domain or "").lower().strip(".")
-    registrable = registrable_domain(dom)
+    registrable = legacy_registrable_domain(dom)
     if dom == registrable or not dom.endswith("." + registrable):
         return []
     return dom[: -(len(registrable) + 1)].split(".")
@@ -3035,13 +3108,18 @@ def _check_lure_combo_v1(name: str, brand: str) -> bool:
 # ── Brand subdomain abuse ──
 
 def _check_brand_in_subdomain(domain: str) -> Optional[str]:
-    from api.services.doh_gateway import _registrable_domain
-
     dom = domain.lower().strip(".")
-    reg = _registrable_domain(dom)
+    # The compound-ccTLD heuristic, not registrable_domain(): this is the
+    # model's brand_in_subdomain feature as well as the +30 rule, and its
+    # input stays the one the model learned (legacy_registrable_domain says
+    # why). On the PSL's reading the rule would also lose 23 feed phishing
+    # hosts of 2026-10-24 (accounts.google.sn.cn, allegro.gsm.pl: under the
+    # ICANN suffixes sn.cn and gsm.pl the brand becomes the registered
+    # name, which the typosquat rule's last-two-labels base does not reach).
+    reg = heuristic_registrable_domain(dom)
     # Only labels strictly BEFORE the registrable domain are real subdomains.
     # Naive parts[:-2] misfires on multi-part suffixes (barclays.co.uk would
-    # treat "barclays" as a spoof subdomain) — use the PSL-aware registrable.
+    # treat "barclays" as a spoof subdomain).
     if not reg or dom == reg:
         return None
     sub = dom[: -(len(reg) + 1)]
@@ -3266,6 +3344,35 @@ def _is_tenant_lure(word: str, brand: str) -> bool:
 
 # ── Suspicious keywords ──
 
+# PSL ICANN zones whose names only a health service, a police force or a
+# government network gets, though no restricted label says so.
+_VETTED_ICANN_ZONES = frozenset({"nhs.uk", "police.uk", "nic.in"})
+
+
+def _registered_in_vetted_zone(domain: str) -> bool:
+    """The registrable domain sits in a zone only a government body, a health
+    service or a police force registers in: a Russian restricted zone, or a
+    zone the PSL's ICANN section lists with a restricted label (gov.uk,
+    sa.gov.au, pi.gov.br, ac.uk) or on _VETTED_ICANN_ZONES. Not a zone that
+    is a suffix only by the ccTLD default: sch.in, govt.hu and mil.nf carry a
+    restricted label but are ChangeIP's and FreeDNS's free zones.
+
+    With the PSL, login.nhs.uk's registered name is 'login' and every NHS
+    trust site is an apex; the differential check of 2026-10-31 found the
+    keyword and no-MX rules taking auth.login.nhs.uk, account.sa.gov.au,
+    login.pi.gov.br and 17 trust sites without MX to caution, two NHS
+    services to dangerous. Names there are not anyone's pick."""
+    suffix = registrable_domain(domain).partition(".")[2]
+    if not suffix:
+        return False
+    if suffix in _RU_RESTRICTED_ZONES:
+        return True
+    zone = ascii_name(suffix)
+    if not is_icann_rule(zone):
+        return False
+    return zone in _VETTED_ICANN_ZONES or bool(_RESTRICTED_ZONE_LABELS.intersection(zone.split(".")))
+
+
 def _check_suspicious_keywords(domain: str) -> Optional[str]:
     # The registered name. The last two labels were read until 2026-10-27:
     # 'co' of secure-login.co.uk and 'spb' of paypal-login.spb.ru, never a
@@ -3275,6 +3382,8 @@ def _check_suspicious_keywords(domain: str) -> Optional[str]:
     # safe→caution, 8 caution→dangerous) and on 91 of 214,671 Majestic
     # Million / Chrome UX Report hosts (6 caution→dangerous, the
     # vnpt-invoice.com.vn ones among them, before any popularity discount).
+    if _registered_in_vetted_zone(domain):
+        return None
     base = registrable_domain(domain)
     return _keyword_in_name(base.split(".")[0])
 

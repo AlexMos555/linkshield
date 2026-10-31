@@ -34,7 +34,7 @@ import asyncio
 import ipaddress
 import logging
 
-from api.services.scoring import registrable_domain
+from api.services.scoring import _platform_tenant_site, registrable_domain
 
 logger = logging.getLogger("cleanway.analyzer")
 
@@ -116,8 +116,24 @@ async def check_surbl(domain: str) -> bool:
     licensed_intel). SURBL indexes registrable domains, so the registrable
     domain is what is asked about: evil.co.uk for login.evil.co.uk. The last
     two labels were asked until 2026-10-27 — co.uk.multi.surbl.org, which
-    SURBL never lists, for every host under a compound suffix."""
-    base = registrable_domain(domain)
+    SURBL never lists, for every host under a compound suffix.
+
+    A hosting platform's customer is asked about by its own name, as the
+    OTX key reads it (_platform_tenant_site): SURBL lists names under
+    pages.dev, vercel.app, github.io and duckdns.org, never the platform
+    (its two-level-tlds list has them). On the 2026-10-24 feed snapshot the
+    name asked agrees with SURBL's own two- and three-level lists for
+    657,907 of the 699,287 hosts, against 455,461 by the registrable domain
+    alone (measured 2026-10-28; 15,493 the other way: wixstudio.com,
+    cprapid.com, azurewebsites.net …, whose platform SURBL would list only
+    whole). A generic second level of a 2-letter ccTLD is split here as the
+    registrable domain splits it — evil.com.tv, evil.biz.nf, x.gov.hu are
+    asked by name, as SURBL lists them (147 such zones are on its list) —
+    and so are the few SURBL reads as one name (gov.hr, sch.gr, ne.pw …:
+    15 hosts of that snapshot, 338 of 2.39 million with all of
+    Phishing.Database's links), as before 2026-10-28; SURBL would list only
+    such a zone whole."""
+    base = _platform_tenant_site(domain) or registrable_domain(domain)
     answers = await _query(f"{base}.{SURBL_ZONE}")
     hit = surbl_verdict(answers)
     if hit:

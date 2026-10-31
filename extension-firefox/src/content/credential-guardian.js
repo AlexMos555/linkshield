@@ -135,10 +135,10 @@
   // ── Where one site ends ──
   // Both form checks ask it: Signal A whether the form posts to another
   // site, Signal B what the site is called. A site is the registrable
-  // domain, by the server's rule (scoring.registrable_domain: the Russian
-  // PSL zones, the compound-ccTLD heuristic elsewhere), ported in
-  // utils/name-rules.js, which every manifest loads before this file into
-  // the same content-script world.
+  // domain, by the server's rule (scoring.registrable_domain: the Public
+  // Suffix List's ICANN rules with the Russian PSL zones and the ccTLD
+  // default on top), ported in utils/name-rules.js, which every manifest
+  // loads before this file into the same content-script world.
   //
   // This file used to take the last two labels. Under a compound suffix
   // those are the suffix, so everyone there was one site:
@@ -148,19 +148,27 @@
   //      hosts under a compound suffix in the 2026-10-24 phishing feed
   //      snapshot, Signal B flagged none;
   // and an IP address was its last two numbers (10.0.1.10 = 192.168.1.10).
-  // The registrable domain is never shorter than the last two labels, so it
-  // only ever splits what they lumped together. Where the heuristic splits
-  // one owner (it takes gov.hr and web.de for suffixes), see below.
   //
-  // Only the suffixes that rule knows are split: the Russian PSL zones and a
-  // 2-letter ccTLD under one of the generic labels in cctldSecondLevels
-  // (utils/scorer-data.js: co, com, net, org, gov, ac …). Any other public
-  // suffix is still read as a name, as the last two labels read it: under
-  // my.id, io.vn, hl.cn, adv.br, kiev.ua, me.uk (or uk.com) everyone is
-  // still one site, and facebook-login.my.id is named "my" (Signal B). Most
-  // such feed hosts are under my.id. The fix belongs in the server's rule
-  // and its generated data, which this file follows, not in a list of its
-  // own here.
+  // Until 2026-10-28 the server's rule was a compound-ccTLD heuristic (a
+  // 2-letter ccTLD under co, com, gov, web, id …), which knew no other
+  // suffix: under my.id, io.vn, hl.cn, me.uk everyone was still one site and
+  // facebook-login.my.id was named "my". On that feed snapshot the PSL's
+  // reading flags 64 more look-alikes by Signal B (adsmanager-facebook.my.id,
+  // apiim-whatsapp.hl.cn: my.id 38, hl.cn 21) and none of the top-100k
+  // names. It also took web.de and id.me for suffixes, which this file had
+  // to correct with a list of its own; the PSL lists neither.
+  //
+  // Read by the ICANN section alone, the zones the heuristic split rightly
+  // would have been one site each: co.ua, com.de, co.nl (the PSL lists them
+  // in its PRIVATE section only), co.vu, com.tg and ChangeIP's free ne.pw,
+  // asn.im, or.lt (in no section), so paypal-login.ne.pw posting to
+  // collector.ne.pw was "the same site" and named "ne". The server keeps
+  // every generic second level of a 2-letter TLD split, as the heuristic
+  // did, but for the zones it names as one owner's — web.de, id.me, com.be,
+  // net.hr … (public_suffix's ccTLD default; cctldSecondLevels and
+  // cctldNames in scorer-data.js). The rest of the PRIVATE section stays out
+  // (github.io, blogspot.com): the server's curated platform lists decide
+  // those, and this file has none.
   var GUARD_ROOT = typeof self !== "undefined" ? self : globalThis;
 
   function _nameRules() {
@@ -181,26 +189,12 @@
     return host.charAt(0) === "[" || /^\d+\.\d+\.\d+\.\d+$/.test(host);
   }
 
-  // Two-label sites the compound heuristic reads as a suffix ('web' and
-  // 'id' are generic second-level labels under other ccTLDs) though the
-  // PSL does not list them. Measured 2026-10-27: under the 444 compound
-  // suffixes the heuristic sees in data/top_100k.json, 36 are not in the
-  // PSL (97 hosts); 25 of those are restricted zones (79 hosts, gov.hr,
-  // gov.hu, sch.gr …, see `_restrictedZoneOf`), and among the other 11
-  // these two are one company's sign-in service on its subdomains
-  // (web.de, #2424 of the top 10k: login.web.de; id.me: account.id.me).
-  var TWO_LABEL_SITES = ["web.de", "id.me"];
-
   // The site of a hostname: an IP address is its own, a single label
   // (localhost) is itself. Without the name rules (a packaging bug, which
   // scripts/test-extension-core.mjs guards) the old last two labels.
   function _siteOf(host) {
     var name = _hostname(host);
     if (!name || _isIpLiteral(name)) return name;
-    for (var i = 0; i < TWO_LABEL_SITES.length; i++) {
-      var site = TWO_LABEL_SITES[i];
-      if (name === site || name.slice(-(site.length + 1)) === "." + site) return site;
-    }
     var rules = _nameRules();
     return rules ? rules.registrableDomain(name) : _lastTwoLabels(name);
   }
@@ -211,11 +205,23 @@
   // had them: a sibling in the zone is not an attacker's, and the PSL itself
   // does not split gov.hr, gov.hu, gov.cz or sch.gr (mojprofil.gov.hr signs
   // in at nias.gov.hr, Croatia's state sign-in; kau.gov.hu at idp.gov.hu).
+  // The outermost such zone above the site: gov.uk for service.gov.uk, and
+  // gov.br for detran.sp.gov.br, whose own suffix (sp.gov.br, one of the 27
+  // state rules under gov.br the PSL reading of 2026-10-28 knows) carries no
+  // restricted label — the heuristic before it had every sp.gov.br agency
+  // one site. Outermost, not nearest: the state codes of Goiás and Acre are
+  // restricted labels themselves (go, ac), and educacao.go.gov.br signs in
+  // at sso.acesso.gov.br, the federal Login Único, like every other state.
+  // In the ICANN section only go.gov.br and ac.gov.br nest a restricted
+  // label under a restricted zone (2026-10-28).
   function _restrictedZoneOf(site) {
     var rules = _nameRules();
     if (!rules || typeof rules.isRestrictedZone !== "function" || _isIpLiteral(site)) return "";
-    var suffix = site.slice(site.indexOf(".") + 1);
-    if (suffix !== site && suffix.indexOf(".") !== -1 && rules.isRestrictedZone(suffix)) return suffix;
+    var zone = "";
+    for (var suffix = site.slice(site.indexOf(".") + 1); suffix.indexOf(".") !== -1; suffix = suffix.slice(suffix.indexOf(".") + 1)) {
+      if (rules.isRestrictedZone(suffix)) zone = suffix;
+    }
+    if (zone) return zone;
     // The zone's own site: gov.hr next to nias.gov.hr.
     return site.split(".").length === 2 && rules.isRestrictedZone(site) ? site : "";
   }

@@ -134,6 +134,26 @@ EDGE_CASES = (
     "micr0soft-login.trycloudflare.com", "faceb00k-login.netlify.app", "app1e-id-verify.vercel.app",
     "micr0softlogin.pages.dev", "paypa1.pages.dev", "72-bonus.pages.dev", "office365-tips.netlify.app",
     "netf1ix-clone.vercel.app", "micros0ft-account-verify.com",
+    # 2026-10-28: the registrable domain by the Public Suffix List's ICANN
+    # rules. Suffixes the compound-ccTLD heuristic did not know, the ones it
+    # invented, wildcard and exception rules, and the private section that
+    # stays out.
+    "paypal-secure.my.id", "www.paypal-secure.my.id", "adsmanager-facebook.my.id", "apple-id.io.vn",
+    "apiim-whatsapp.hl.cn", "paypa1.me.uk", "www.paypa1.me.uk", "shop.example.ltd.uk", "x.plc.uk",
+    "www.england.nhs.uk", "a.city.lg.jp", "netbanking.hdfc.bank.in", "hsbc.bank.in", "sber.bank.in",
+    "bet365.bet.br", "detran.sp.gov.br", "srv.hrdc-drhc.gc.ca", "www.web.de", "login.web.de", "web.de",
+    "account.id.me", "api.id.me", "id.me", "www.school.sch.gr", "kau.gov.hu", "www.net.hr", "amazon.com.be",
+    "x.com.de", "x.co.vu", "www.city.kobe.jp", "city.kobe.jp", "a.b.kobe.jp", "b.kobe.jp", "kobe.jp",
+    "www.ck", "a.www.ck", "a.b.ck", "foo.github.io", "x.blogspot.com", "accounts.google.sn.cn",
+    "allegro.gsm.pl", "my.id", "nhs.uk", "192.168.1.10", "[::1]", "localhost",
+    # 2026-10-31: one colon is a port, not IPv6; a scheme is neither.
+    "1.2.3.4:443", "2001:db8::1", "[2001:db8::1]", "https://alt-aj-https.mail.ru", "example.com:8080",
+    # 2026-10-28, final review: the ccTLD default splits the free zones no
+    # list knew (ChangeIP's ne.pw, asn.im, or.lt; FreeDNS's govt.hu, mil.nf)
+    # and keeps the named ones (data/cctld_second_levels.json) one site.
+    "paypal-login.ne.pw", "www.aceoouu-asosmaoemsnouu.adqxeha.ne.pw", "secure-paypal.asn.im",
+    "microsoft-login.or.lt", "appleid-verify.sch.in", "office365-login.govt.hu", "usmc.mil.nf",
+    "evil.com.tv", "login.evil.org.zz", "x.co.com", "www.in.gr", "www.ne.se", "repo.or.cz", "www.ne.ch",
     # malformed / degenerate input must not crash either side
     "a", "xn--", "xn---.com", "xn--a.com", "....xn--p1ai", "ru.com", "a.ru.com",
     # astral-plane letters: one character to Python, two UTF-16 units to JS
@@ -231,10 +251,109 @@ def _flags(rule) -> str:
     return "".join("1" if getattr(rule, f) else "0" for f in rule._fields)
 
 
+def _vendored_psl():
+    """The vendored list the server loaded (api/services/public_suffix.py);
+    refuse to build without it rather than ship the extension a heuristic."""
+    from api.services import public_suffix
+
+    if public_suffix.LIST is None:
+        raise SystemExit(f"data/{public_suffix.PSL_FILE} did not load: {public_suffix.LOAD_ERROR}")
+    return public_suffix.LIST
+
+
+def _trie_entries(rules) -> list[list[str]]:
+    """Every rule the registrable domain needs, as labels from the TLD down:
+    the exact rules of two labels or more (a one-label rule is the default
+    rule's answer anyway), each wildcard's base plus '*', and each exception
+    with '!' on its leftmost label."""
+    entries = [r.split(".")[::-1] for r in rules.exact if "." in r]
+    entries += [w.split(".")[::-1] + ["*"] for w in rules.wildcards]
+    for e in rules.exceptions:
+        labels = e.split(".")[::-1]
+        entries.append(labels[:-1] + ["!" + labels[-1]])
+    return entries
+
+
+def icann_suffix_trie(rules) -> dict[str, str]:
+    """The rules as {TLD: its rules below it}, each a trie of labels from
+    the TLD down: siblings sorted and joined by ',', a node's children in
+    '(…)', '+' in front of a label that is a rule itself AND has children (a
+    leaf always is one). {"jp": "…,kobe(!city,*),…", "uk": "+co,…,sch(*)"}
+    is *.kobe.jp, !city.kobe.jp, co.uk and *.sch.uk.
+
+    Keyed by TLD so the extension decodes only the TLD a host is under, on
+    first use: no ICANN rule has two labels under .com, .net or .org, so most
+    pages decode nothing, and .jp, the largest (1,776 rules), takes about a
+    millisecond. 39.3 KB for the 2026-10-22 list (16.8 KB gzipped), against
+    68 KB as a comma-joined list and 79 KB as a JSON array: content scripts
+    load it on every page."""
+    trie: dict = {}
+    for labels in _trie_entries(rules):
+        node = trie
+        for label in labels:
+            node = node.setdefault(label, {})
+        node[""] = {}
+
+    def encode(node: dict) -> str:
+        out = []
+        for label in sorted(k for k in node if k):
+            child = node[label]
+            kids = {k: v for k, v in child.items() if k}
+            if kids:
+                out.append(("+" if "" in child else "") + label + "(" + encode(kids) + ")")
+            else:
+                out.append(label)
+        return ",".join(out)
+
+    return {tld: encode(node) for tld, node in sorted(trie.items())}
+
+
+def decode_icann_suffix_trie(tries: dict[str, str]) -> tuple[frozenset[str], frozenset[str], frozenset[str]]:
+    """(exact rules, wildcard bases, exception names) back from
+    icann_suffix_trie(): what name-rules.js's decoder builds, for the test."""
+    exact: set[str] = set()
+    wild: set[str] = set()
+    exc: set[str] = set()
+
+    def parse(text: str, pos: int, suffix: str) -> int:
+        while True:
+            terminal = text.startswith("+", pos)
+            pos += terminal
+            end = pos
+            while end < len(text) and text[end] not in ",()":
+                end += 1
+            label, pos = text[pos:end], end
+            name = f"{label}.{suffix}"
+            kids = text.startswith("(", pos)
+            if label == "*":
+                wild.add(suffix)
+            elif label.startswith("!"):
+                exc.add(f"{label[1:]}.{suffix}")
+            elif terminal or not kids:
+                exact.add(name)
+            if kids:
+                pos = parse(text, pos + 1, name) + 1  # past ')'
+            if text.startswith(",", pos):
+                pos += 1
+                continue
+            return pos
+
+    for tld, text in tries.items():
+        if parse(text, 0, tld) != len(text):
+            raise ValueError(f"icannSuffixes[{tld!r}] does not parse to its end")
+    return frozenset(exact), frozenset(wild), frozenset(exc)
+
+
+def icann_suffix_counts(rules) -> list[int]:
+    """[exact rules of 2+ labels, wildcards, exceptions]."""
+    return [sum("." in r for r in rules.exact), len(rules.wildcards), len(rules.exceptions)]
+
+
 def scorer_data() -> dict:
     """The name-rule data the extension needs, from the server's module."""
-    from api.services import doh_gateway, hosting_platforms, ru_lures, scoring
+    from api.services import hosting_platforms, public_suffix, ru_lures, scoring
 
+    psl = _vendored_psl()
     targets = list(scoring.TYPOSQUAT_TARGETS.items())
     global_names = list(scoring.GLOBAL_TYPOSQUAT_TARGETS)
     # The merge puts the global list first, in its own order; the port relies
@@ -255,7 +374,19 @@ def scorer_data() -> dict:
         "ruRestrictedZones": _sorted(scoring._RU_RESTRICTED_ZONES),
         "restrictedZoneLabels": _sorted(scoring._RESTRICTED_ZONE_LABELS),
         "regionalGovernmentDomains": _sorted(scoring.REGIONAL_GOVERNMENT_DOMAINS),
-        "cctldSecondLevels": _sorted(doh_gateway._CCTLD_SECOND_LEVELS),
+        "cctldSecondLevels": _sorted(public_suffix.CCTLD_SECOND_LEVELS),
+        # registrable_domain(): the PSL's ICANN rules (icann_suffix_trie) —
+        # the Russian zones are ruPublicSuffixes, applied first, as on the
+        # server — with the list's version and the rule counts the port's
+        # decoder is checked against (scripts/test-local-scorer.mjs).
+        "icannSuffixes": icann_suffix_trie(psl.icann),
+        "icannSuffixesVersion": psl.version,
+        "icannSuffixCounts": icann_suffix_counts(psl.icann),
+        # The ccTLD default (public_suffix.SuffixRules.cc_second_levels): each
+        # of cctldSecondLevels under a 2-letter TLD is a suffix but for these
+        # zones, one owner's names (data/cctld_second_levels.json), as on the
+        # server.
+        "cctldNames": _sorted(public_suffix.CCTLD_NAMES),
         "fakeTldLabels": _sorted(scoring._FAKE_TLD_LABELS),
         "registeredFakeTldLabels": _sorted(scoring._REGISTERED_FAKE_TLD_LABELS),
         "ruZoneBrands": list(scoring._RU_ZONE_BRANDS_LONGEST_FIRST),
@@ -306,11 +437,12 @@ DATA_JS_HEADER = """\
 // GENERATED by scripts/build_extension_scorer_data.py — do not edit by hand.
 //
 // The server's name-rule data (api/services/scoring.py, loaded there from
-// data/typosquat_targets.json, data/typosquat_targets_ru.json and
-// data/ru_public_suffixes.json): the brands the typosquat rule compares
-// against, every Russian brand family's official domains and the verified
-// same-shaped sites of other owners, the per-name switches, the Russian
-// public suffixes and the rule constants. Read by name-rules.js.
+// data/typosquat_targets.json, data/typosquat_targets_ru.json,
+// data/ru_public_suffixes.json and data/public_suffix_list.dat): the brands
+// the typosquat rule compares against, every Russian brand family's official
+// domains and the verified same-shaped sites of other owners, the per-name
+// switches, the Russian public suffixes, the Public Suffix List's ICANN
+// rules and the rule constants. Read by name-rules.js.
 //
 // To change it, edit the data file or the server rule, then run
 //     python3 scripts/build_extension_scorer_data.py
@@ -326,11 +458,33 @@ DATA_JS_HEADER = """\
 def attribution_comment() -> str:
     """hostingTenantSuffixes are the public-suffix rules under the ranked
     names (data/public_suffixes_in_top.json), adapted from the Majestic
-    Million (CC BY 3.0) and the Chrome UX Report (CC BY 4.0): their notice."""
+    Million (CC BY 3.0) and the Chrome UX Report (CC BY 4.0): their notice.
+    icannSuffixes are the Public Suffix List's (MPL 2.0): its notice, and
+    where its source form is — a URL, since MPL 2.0 §3.2(a) asks that the
+    recipient of the shipped form can find it from the package alone (the
+    2026-10-28 final review). cctldNames are Cleanway's own."""
     sys.path.insert(0, str(ROOT / "scripts"))
     from ranking_attribution import attribution_lines
 
-    return "//\n// hostingTenantSuffixes:\n" + "".join(f"// {line}\n" for line in attribution_lines())
+    from api.services import public_suffix
+
+    psl = _vendored_psl()
+    return (
+        "//\n// hostingTenantSuffixes:\n" + "".join(f"// {line}\n" for line in attribution_lines())
+        + "//\n// icannSuffixes: the ICANN section of the Public Suffix List\n"
+        + f"// ({public_suffix.PSL_URL}), VERSION {psl.version}, COMMIT {psl.commit},\n"
+        + "// Mozilla Public License 2.0 (https://mozilla.org/MPL/2.0/). Source form:\n"
+        + f"// {SOURCE_FORM_URL}\n"
+        + "// (the unmodified list, as vendored; upstream at the COMMIT above). Changes\n"
+        + "// made: the rules of two labels or more, wildcards and exceptions, in\n"
+        + "// punycode, as a label trie (scripts/build_extension_scorer_data.py,\n"
+        + "// icann_suffix_trie).\n"
+    )
+
+
+# Where the shipped PSL's source form is (attribution_comment): the public
+# repository's vendored copy.
+SOURCE_FORM_URL = "https://github.com/AlexMos555/linkshield/blob/main/data/public_suffix_list.dat"
 
 
 def render_data_js() -> str:

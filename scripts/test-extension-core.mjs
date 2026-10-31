@@ -2679,6 +2679,7 @@ const SITE_PAIRS = [
   ["127.0.0.1", "localhost", false],
   ["[::1]", "[::1]", true],
   ["[::1]", "[::2]", false],
+  ["2001:db8::1", "2001:db8::2", false],
   // Single-label hosts.
   ["localhost", "localhost", true],
   ["localhost", "intranet", false],
@@ -2692,10 +2693,49 @@ const SITE_PAIRS = [
   ["www.tax.service.gov.uk", "signin.account.gov.uk", true],
   ["nias.gov.hr", "nias-gov.hr", false],
   ["mojprofil.gov.hr", "evil.com.hr", false],
-  // Two-label sites the compound heuristic reads as a suffix.
+  // Two-label sites the compound heuristic read as a suffix; the PSL lists
+  // neither (2026-10-28: the guard's own list of them is gone).
   ["www.web.de", "login.web.de", true],
   ["account.id.me", "api.id.me", true],
   ["web.de", "evilweb.de", false],
+  // Public suffixes the heuristic did not know (the PSL's ICANN section):
+  // every owner under one was a single site.
+  ["paypal-secure.my.id", "collector.my.id", false],
+  ["www.paypal-secure.my.id", "login.paypal-secure.my.id", true],
+  ["apple-id.io.vn", "drop.io.vn", false],
+  ["paypa1.me.uk", "steal.me.uk", false],
+  ["evil.ltd.uk", "example.ltd.uk", false],
+  ["netbanking.hdfc.bank.in", "hdfc.bank.in", true],
+  ["evil.bank.in", "hdfc.bank.in", false],
+  // Wildcard and exception rules: every b.kobe.jp is a suffix, city.kobe.jp
+  // is a name.
+  ["a.b.kobe.jp", "c.b.kobe.jp", false],
+  ["www.city.kobe.jp", "city.kobe.jp", true],
+  // A state's government suffix under a restricted zone: one owner, as the
+  // heuristic had it (sp.gov.br); never an open zone next to it.
+  ["detran.sp.gov.br", "www.ssp.sp.gov.br", true],
+  ["detran.sp.gov.br", "evil.com.br", false],
+  // The state governments whose own state code is a restricted label, go
+  // (Goiás) and ac (Acre): the outermost restricted zone is the site's, so
+  // they sign in at the federal gov.br Login Único as their own site.
+  ["educacao.go.gov.br", "sso.acesso.gov.br", true],
+  ["sei.ac.gov.br", "sso.acesso.gov.br", true],
+  ["sefaz.pe.gov.br", "sei.ac.gov.br", true],
+  ["educacao.go.gov.br", "evil.com.br", false],
+  // A ccTLD's generic second level the ICANN section does not list is split,
+  // as the heuristic split it, but for the named zones (cctldNames): one
+  // stranger's free name posting to another's is off-site (2026-10-28
+  // reviews: co.vu, co.ua, com.de; ChangeIP's ne.pw, asn.im, or.lt).
+  ["paypal-login.co.vu", "collector.co.vu", false],
+  ["acessar-conta-br.co.ua", "steal.co.ua", false],
+  ["login-check.com.de", "collector.com.de", false],
+  ["www.evil.co.ua", "login.evil.co.ua", true],
+  ["paypal-login.ne.pw", "collector.ne.pw", false],
+  ["secure-paypal.asn.im", "drop.asn.im", false],
+  ["microsoft-login.or.lt", "collector.or.lt", false],
+  ["www.paypal-login.ne.pw", "login.paypal-login.ne.pw", true],
+  ["www.net.hr", "forum.net.hr", true],
+  ["www.amazon.com.be", "amazon.com.be", true],
 ];
 
 // [visible host, the brand the guard says it imitates, or null]
@@ -2716,6 +2756,25 @@ const LOOKALIKES = [
     "rakuten-bank.co.jp", "upsdc.gov.in", "upsssc.gov.in", "maybank2u.com.my", "dhlottery.co.kr",
     "lloydsbank.co.uk", "ecitizen.go.ke", "citizen.co.za", "commbank.com.au",
     "aboutamazon.co.uk", "paypay-bank.co.jp"].map((host) => [host, null]),
+  // Under the public suffixes the heuristic did not know (2026-10-28): the
+  // feed's my.id, hl.cn and io.vn look-alikes, named "my", "hl" and "io"
+  // before.
+  ["paypal-secure.my.id", "paypal"],
+  ["adsmanager-facebook.my.id", "facebook"],
+  ["copyright-instagram.my.id", "instagram"],
+  ["apiim-whatsapp.hl.cn", "whatsapp"],
+  ["apple-id.io.vn", "apple"],
+  ["paypa1.me.uk", "paypal"],
+  // The two-label sites: their own names, as before.
+  ["login.web.de", null],
+  ["account.id.me", null],
+  // Under a ccTLD's generic second level the name is the registrant's.
+  ["apple-maps.com.de", "apple"],
+  ["paypal-login.co.vu", "paypal"],
+  ["secure-paypal.co.ua", "paypal"],
+  ["paypal-login.ne.pw", "paypal"],
+  ["secure-paypal.asn.im", "paypal"],
+  ["microsoft-login.or.lt", "microsoft"],
   // The brand's own name under another suffix.
   ["paypal.co.uk", null],
   ["www.amazon.co.jp", null],
@@ -2774,6 +2833,12 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     assert.equal(guard.siteOf("kvs.gov.spb.ru"), "gov.spb.ru");
     assert.equal(guard.siteOf("192.168.1.10"), "192.168.1.10");
     assert.equal(guard.siteOf("login.web.de"), "web.de");
+    assert.equal(guard.siteOf("www.paypal-secure.my.id"), "paypal-secure.my.id");
+    assert.equal(guard.siteOf("a.www.ck"), "www.ck");
+    assert.equal(guard.siteOf("x.paypal-login.co.vu"), "paypal-login.co.vu");
+    assert.equal(guard.siteOf("www.amazon.com.be"), "com.be");
+    assert.equal(guard.siteOf("www.aceoouu-asosmaoemsnouu.adqxeha.ne.pw"), "adqxeha.ne.pw");
+    assert.equal(guard.siteOf("kau.gov.hu"), "kau.gov.hu");
   });
 
   await check(`[${tree}] the credential guard's look-alike check reads the registrable name`, async () => {

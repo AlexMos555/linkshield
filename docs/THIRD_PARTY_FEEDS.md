@@ -381,6 +381,30 @@ resolver@cloudflare.com, on the 1.1.1.1 terms page, is for logo requests
 only. If the answer is no, drop `cloudflare_families` from the published
 resolvers and from `comparedRows`, as for VirusTotal and Safe Browsing.
 
+### 2c. The Public Suffix List, vendored (since 2026-10-28)
+
+`data/public_suffix_list.dat` is a byte-for-byte copy of
+`https://publicsuffix.org/list/public_suffix_list.dat` (Mozilla Public
+Suffix List, MPL 2.0, https://mozilla.org/MPL/2.0/; the file keeps its
+licence notice and its `// VERSION:` / `// COMMIT:` lines). Its ICANN
+section, with the Russian zones of `data/ru_public_suffixes.json` on top,
+draws the registrable domain for the scorer and the DoH gateway
+(`api/services/public_suffix.py`) and, as data generated from it, for the
+browser extensions (`utils/scorer-data.js`, `icannSuffixes`, which names the
+list, its version and its licence; its source form is named by URL, the
+vendored copy in the public repository, MPL 2.0 §3.2(a)). The private section
+is not read (github.io, blogspot.com …: the curated platform lists decide
+those). On top of both, every generic second level of a 2-letter ccTLD (co,
+com, net, gov, web …) is read as a suffix whether a section lists it or not,
+as the compound-ccTLD heuristic before it read it — co.ua, com.de, co.vu,
+ChangeIP's ne.pw — but for the zones `data/cctld_second_levels.json` names as
+one owner's (web.de, id.me, com.be …; Cleanway's own data, `cctldNames` in
+`scorer-data.js`). The
+copy changes only by `scripts/refresh_public_suffix_list.py` (no workflow
+runs it), and `tests/test_public_suffix.py` fails when it is malformed. The
+builders that fetch the live list (`build_top_domains.py`,
+`build_ru_public_suffixes.py`, `refresh_dangerous_domains.py`) still do.
+
 ## 3. ML training data (`scripts/refresh_training_feeds.py`, weekly)
 
 | Source | Terms | Use |
@@ -660,7 +684,7 @@ repository's Actions variables, read 2026-10-23), until 2026-10-23 CSIRT
 Italia / ACN (TLP:CLEAR events; no licence stated and ACN's terms bar
 commercial use, so the switch leaves it out — §1), and until 2026-10-21
 URLhaus (abuse.ch). Public suffixes from the Mozilla Public Suffix List
-(MPL 2.0).
+(MPL 2.0), vendored as `data/public_suffix_list.dat` (§2c).
 
 Cleanway's domain popularity ranking — the allowlist, the top-1M in Redis,
 the blocklist's popularity veto, the phone's veto list and the
