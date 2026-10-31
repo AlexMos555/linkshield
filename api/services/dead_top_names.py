@@ -51,7 +51,7 @@ def load(path: str = os.path.join(_DATA_DIR, DEAD_FILE)) -> frozenset[str]:
             names = json.load(f)["names"]
         return frozenset(n.lower() for n in names)
     except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
-        logger.error("%s not loaded (%s): dead popular names keep their trust", DEAD_FILE, exc)
+        logger.error("%s not loaded (%s): dead popular names keep their trust", os.path.basename(path), exc)
         return frozenset()
 
 

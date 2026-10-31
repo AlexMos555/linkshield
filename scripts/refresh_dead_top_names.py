@@ -377,7 +377,7 @@ def render(dead: dict[str, str], about: str = ABOUT) -> str:
 def report(added: list[str], revived: list[str], total: int, swept: int, carried: Iterable[str] = (),
            band: bool = False) -> str:
     carried = set(carried)
-    what = "names of ranks 100k-1M" if band else "names of the top lists"
+    what = "names of the ranking off the top lists (ranks 100k-1M)" if band else "names of the top lists"
     lines = [f"Swept {swept:,} {what}; {len(added):,} newly dead, {total:,} tombstoned in all.", ""]
     if added:
         lines += ["**Newly dead** (NXDOMAIN at 1.1.1.1 and 8.8.8.8, and the parent zone has no name or "
@@ -397,8 +397,32 @@ def report(added: list[str], revived: list[str], total: int, swept: int, carried
     return "\n".join(lines)
 
 
+def _carried(on_main: dict[str, str], pending: Optional[str], pending_base: Optional[str]) -> dict[str, str]:
+    """`on_main` plus what the open sweep PR adds (pending minus its base)."""
+    merged = dict(on_main)
+    if pending:
+        base = load_dead(pending_base) if pending_base else {}
+        for n, day in load_dead(pending).items():
+            if n not in base:
+                merged.setdefault(n, day)
+    return merged
+
+
 async def run(args: argparse.Namespace, resolve: Optional[Resolve] = None,
               at_parent: Optional[AtParent] = None) -> int:
+    if args.carry_only:
+        # No DNS at all: the band step failed, and the resolvers may be why;
+        # the open PR's additions must not be dropped with it.
+        out = args.out or DEAD_PATH
+        on_main = load_dead(out)
+        merged = _carried(on_main, args.pending, args.pending_base)
+        if merged != on_main and not args.dry_run:
+            about = ABOUT_BAND if os.path.basename(out) == os.path.basename(BAND_PATH) else ABOUT
+            with open(out + ".tmp", "w", encoding="utf-8") as f:
+                f.write(render(merged, about))
+            os.replace(out + ".tmp", out)
+        print(f"carried over {len(merged) - len(on_main):,} names into {os.path.basename(out)}")
+        return 0
     resolve = resolve or make_resolver()
     at_parent = at_parent or make_parent_check()
     why = await canary_ok(resolve, at_parent, dead_canary())
@@ -412,12 +436,11 @@ async def run(args: argparse.Namespace, resolve: Optional[Resolve] = None,
     if band:
         names = load_band(args.ranking, names, load_dead(args.top_dead))
     on_main = load_dead(out)
-    previous = dict(on_main)
-    if args.pending:
-        base = load_dead(args.pending_base) if args.pending_base else {}
-        for n, day in load_dead(args.pending).items():
-            if n not in base:
-                previous.setdefault(n, day)
+    previous = _carried(on_main, args.pending, args.pending_base)
+    # Band tombstones of names now on the top lists (a rebuild put them
+    # there): they take the allowlist and the phone's veto too, and the band
+    # no longer sweeps them, so a revived one is reported here.
+    band_on_top = set() if band else set(load_dead(args.band_dead)) & set(names)
     dead, alive = await sweep(names, resolve, at_parent, known_dead=previous if band else ())
     # The resolvers must still answer like the real DNS after hours of it.
     why = await canary_ok(resolve, at_parent, dead_canary())
@@ -431,7 +454,7 @@ async def run(args: argparse.Namespace, resolve: Optional[Resolve] = None,
     merged = dict(previous)
     for n in added:
         merged[n] = args.today
-    revived = sorted(set(previous) & alive)
+    revived = sorted((set(previous) | band_on_top) & alive)
     # What the PR adds to main: this run's finds and the open PR's carried over.
     new_vs_main = sorted(set(merged) - set(on_main))
     text = report(new_vs_main, revived, len(merged), len(names), carried=sorted(set(new_vs_main) - set(added)),
@@ -458,6 +481,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("--out", default=None, help="default data/top_domains_dead.json, or data/top_1m_dead.json with --ranking")
     p.add_argument("--ranking", help="sweep the rest of this top-1M ranking (refresh_tranco.py --dump) instead")
     p.add_argument("--top-dead", default=DEAD_PATH, help="the top lists' tombstones, left out of a --ranking sweep")
+    p.add_argument("--band-dead", default=BAND_PATH,
+                   help="the band's tombstones; those of names now on the top lists are reported when revived")
+    p.add_argument("--carry-only", action="store_true",
+                   help="no sweep: write --out plus what --pending adds over --pending-base")
     p.add_argument("--top", default=TOP_PATH)
     p.add_argument("--reported", default=REPORTED_PATH)
     p.add_argument("--pending", help="the tombstone file of an open sweep PR: the names it adds are kept")

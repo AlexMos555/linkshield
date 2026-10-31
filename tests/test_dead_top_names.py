@@ -191,7 +191,8 @@ def _args(tmp_path, **kw):
     rep.write_text(json.dumps({"r.com": 5000}))
     base = dict(dry_run=False, report=None, today="2026-10-31", max_new=100, pending=None, pending_base=None,
                 out=str(tmp_path / "dead.json"), top=str(top), reported=str(rep), ranking=None,
-                top_dead=str(tmp_path / "no-top-dead.json"))
+                top_dead=str(tmp_path / "no-top-dead.json"), band_dead=str(tmp_path / "no-band-dead.json"),
+                carry_only=False)
     base.update(kw)
     return argparse.Namespace(**base)
 
@@ -529,3 +530,39 @@ def test_both_files_are_read(tmp_path, monkeypatch):
     assert loaded == {"a.com", "b.com"}
     band = json.loads((ROOT / "data" / dead_top_names.BAND_FILE).read_text(encoding="utf-8"))["names"]
     assert set(band) <= dead_top_names.DEAD_TOP_NAMES
+
+
+
+def test_a_band_tombstone_on_the_top_lists_is_reported_when_it_revives(tmp_path):
+    """A rebuild put it on the top lists: there it takes the allowlist and
+    the phone's veto, and the band sweep no longer looks at it."""
+    sweep = _script("refresh_dead_top_names")
+    band = tmp_path / "band-dead.json"
+    band.write_text(sweep.render({"a.com": "2026-10-31"}, sweep.ABOUT_BAND))
+    args = _args(tmp_path, band_dead=str(band), report=str(tmp_path / "report.md"))
+    assert asyncio.run(sweep.run(args, *_fake({}))) == sweep.EXIT_REVIVED
+    assert "`a.com`" in pathlib.Path(args.report).read_text()
+
+
+def test_carry_only_keeps_the_open_prs_band_additions_without_dns(tmp_path):
+    sweep = _script("refresh_dead_top_names")
+    out = tmp_path / "top_1m_dead.json"
+    out.write_text(sweep.render({"a.com": "2026-10-24"}, sweep.ABOUT_BAND))
+    pending = tmp_path / "pending.json"
+    pending.write_text(sweep.render({"a.com": "2026-10-24", "x.com": "2026-10-31", "gone.com": "2026-10-17"}))
+    base = tmp_path / "base.json"
+    base.write_text(sweep.render({"gone.com": "2026-10-17"}))
+    args = _args(tmp_path, carry_only=True, out=str(out), pending=str(pending), pending_base=str(base))
+
+    async def no_dns(*a, **kw):
+        raise AssertionError("carry-only asks no resolver")
+
+    assert asyncio.run(sweep.run(args, no_dns, no_dns)) == 0
+    data = json.loads(out.read_text())
+    assert data["names"] == {"a.com": "2026-10-24", "x.com": "2026-10-31"}
+    assert data["_about"] == sweep.ABOUT_BAND
+
+
+def test_an_unreadable_band_file_names_itself_in_the_log(tmp_path, caplog):
+    assert dead_top_names.load(str(tmp_path / "top_1m_dead.json")) == frozenset()
+    assert "top_1m_dead.json not loaded" in caplog.text

@@ -137,6 +137,11 @@ jobs:
           echo "::warning::$msg"
           { echo; echo "**Note:** $msg"; } >> "$RUNNER_TEMP/dead-report.md"
           git checkout -- data/top_1m_dead.json 2>/dev/null || true
+          # The open PR's band tombstones stay in the replacement PR (no DNS).
+          # shellcheck disable=SC2086 # PENDING_BAND is four words or none
+          if [ -n "${PENDING_BAND:-}" ]; then
+            python3 scripts/refresh_dead_top_names.py --carry-only --out data/top_1m_dead.json $PENDING_BAND
+          fi
 
       - name: Rebuild the phone's veto
         run: python3 scripts/build_mobile_assets.py
