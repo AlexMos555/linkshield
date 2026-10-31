@@ -500,7 +500,7 @@ def test_a_tombstoned_band_name_skips_the_parent_check(tmp_path):
         return await at_parent(name)
 
     assert asyncio.run(sweep.run(args, resolve, parent)) == 0
-    assert "old.com" not in asked and "new.com" in asked
+    assert set(asked) & {"old.com", "new.com"} == {"new.com"}  # the canaries are asked too
 
 
 def test_the_resolvers_are_checked_again_after_the_sweep(tmp_path):
