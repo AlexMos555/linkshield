@@ -283,7 +283,7 @@ def test_one_requester_queues_at_most_twenty_names_a_minute(mode, registry, fake
         await allowlist_age.gate_many(names, requester="user:flood")
         flooded = len(allowlist_age._filler.queued) + (allowlist_age._filler.current is not None)
         await allowlist_age.gate_many(["google.com"], requester="user:victim")
-        return flooded, "google.com" in allowlist_age._filler.queued
+        return flooded, allowlist_age._filler.queued.get("google.com") is not None
 
     flooded, victim_queued = asyncio.run(go())
     assert flooded == allowlist_age.MAX_NEW_PER_REQUESTER == 20
