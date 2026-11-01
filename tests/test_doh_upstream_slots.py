@@ -1055,7 +1055,9 @@ async def test_slot_gauges_show_slots_in_use_and_queries_waiting(holding_upstrea
     """Counters say that queries waited at some point since start; these say
     what is held now — all slots taken by requests nobody waits for looks
     different from a slow upstream."""
-    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 0.3)
+    # Long enough to read the gauges before any query runs out of time: at 0.3 s
+    # a busy runner reached the deadline first (sweep run 41339154750).
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 1.0)
     share = doh_upstream.ZONE_MAX_IN_FLIGHT
     held = await _fill(doh_upstream.MAX_IN_FLIGHT - share)
     held += await _ask_many([f"r{i}.dead.example" for i in range(share + 4)])
