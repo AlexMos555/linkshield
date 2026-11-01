@@ -132,7 +132,7 @@ PhishTank can be ingested and the public number stays measurable.
 | **PhishStats** | `phishstats.info:2096/api/phishing` | Free API, no key; terms not located (*uncertain*) | On |
 | **AlienVault / LevelBlue OTX** | `otx.alienvault.com/api/v1/indicators/domain/…` | Free community API; OTX terms of service (*likely*: free use with attribution). **Without a key: 100 lookups an hour per IP, then 429 `{"detail": "Over throttling limit (100/hour)"}`** (measured 2026-10-26). With `OTX_API_KEY` set the free account key goes in the `X-OTX-API-KEY` header (founder's decision 2026-10-31: register a key rather than switch OTX off). The weekly benchmark alone asks up to 1,400 an hour. No rate-limit headers; the limit with a key is not published (searched 2026-10-26) | On. Until 2026-10-26 a non-200 read as "no pulses" and counted as a measured check; a non-2xx answer now raises (a failed, unmeasured check) and three in a row open `alienvault_breaker` for 60 s. An IP host is not sent: the domain endpoint answers 400 `Invalid domain` for every IP literal, and the `IPv4` endpoint lists bulk IOC dumps on shared hosting addresses (50 pulses each on Vercel's, GitHub Pages' and a Microsoft address, measured 2026-10-27), so for an IP OTX is neither asked nor counted among the checks (`analyzer._NOT_FOR_IPS`). Whether OTX stays in a paid product is §8 of `PAID_LAUNCH_SWITCHES.md` |
 | **IPQualityScore** | `ipqualityscore.com/api/json/url/…` | Vendor API terms, free tier 5,000/month, paid above; keyed | On with `IPQUALITYSCORE_KEY`, daily budget |
-| **RDAP** (registration date, registrar) | the zone registry's own server, from IANA's bootstrap file `data.iana.org/rdap/dns.json` (RFC 9224): `rdap.verisign.com/com/v1/domain/<registrable name>` for .com. `rdap.org` until 2026-10-26 — a redirector whose 302 the code never followed, so no data ever came back | Public registry protocol (RFC 9082/9083); each registry's own RDAP terms. Verisign's (read 2026-10-26): lawful purposes only, and the data must not "enable high volume, automated, electronic processes that send queries … to the systems of Verisign"; Verisign may restrict access. We send one query per analysed registrable name that is not a hosting tenant (*uncertain* how "high volume" reads at our traffic) | On; no RDAP for .ru/.su/.рф |
+| **RDAP** (registration date, registrar) | the zone registry's own server, from IANA's bootstrap file `data.iana.org/rdap/dns.json` (RFC 9224): `rdap.verisign.com/com/v1/domain/<registrable name>` for .com. `rdap.org` until 2026-10-26 — a redirector whose 302 the code never followed, so no data ever came back | Public registry protocol (RFC 9082/9083); each registry's own RDAP terms. Verisign's (read 2026-10-26): lawful purposes only, and the data must not "enable high volume, automated, electronic processes that send queries … to the systems of Verisign"; Verisign may restrict access. We send one query per analysed registrable name that is not a hosting tenant (*uncertain* how "high volume" reads at our traffic). With `ALLOWLIST_AGE_GATE` at `shadow` or `on` (**off by default**, until the founder says yes to this reading of the terms) also queries about top-100k names users check: per name once a week; once a day for one expired, expiring within 30 days or in auto-renew grace; hourly for one in redemption or pending delete, not in the registry, or whose last lookup failed. A record another process stored meanwhile is not asked again. The ceiling is the pace, one lookup a second per worker process (86,400 a day each); in practice it is the number of distinct listed names users check, and 47,089 of the 95,529 entries the gate reads are Verisign's (rdap.verisign.com: .com 43,183 and .net 3,553; tld-rdap.verisign.com, paced on its own: .cc 306, .name 47). A server that answers 429 or 5xx is left alone by every process (a Redis key) for its Retry-After (1 min to 6 h, 300 s if none) | On; no RDAP for .ru/.su/.рф |
 | **Popularity rank** (§2a) | Redis `tranco:ranks`: the top-1M of the Majestic Million + Chrome UX Report ranking, rebuilt daily by `scripts/refresh_tranco.py` (Tranco's list until 2026-10-23; a Tranco URL is now refused) | CC BY 3.0 / CC BY 4.0 (§2a) | On |
 | **crt.sh** (Watchtower) | `crt.sh/?q=…` | Sectigo's public CT log search, no terms beyond politeness | On |
 | **Anthropic Claude** (LLM judge, explainer) | `api.anthropic.com` | Commercial API terms; only a domain-free feature vector is sent | On with `ANTHROPIC_API_KEY`, daily budget |
@@ -264,7 +264,41 @@ product exemption, ML safe override (`analyzer._young_rank`; the age the
 analyzer already fetches, no extra RDAP). `POPULARITY_AGE_GATE=shadow` (the
 default until the logs say otherwise) only logs `popularity_age_gate_shadow`
 with the verdict it would give; `on` applies it. Not for the top-100k
-allowlist, which is answered before any analysis.
+allowlist, which is answered before any analysis — that is the next gate.
+
+The allowlist answers a top-100k name "safe" before any analysis (both
+check routes, `scoring.is_trusted_top_domain`), so no registry is asked
+about one, and a popular name re-registered by someone else right after it
+dropped — a drop-catch takes minutes, the dead-name sweep above needs it
+NXDOMAIN at a weekly run — keeps the instant "safe". `ALLOWLIST_AGE_GATE`
+(`api/services/allowlist_age.py`, **off by default**: it means RDAP queries
+for allowlisted names, see the RDAP row above) reads the entry's last known
+record from Redis (`rdap:reg:v1:<name>`, kept 30 days), and a background
+worker asks the registry about a name not known yet or due again (answered
+as before meanwhile). A registration younger than `POPULARITY_MIN_AGE_DAYS`,
+or a name the registry answers 404 for while DNS says NXDOMAIN too, is
+logged in `shadow` (`allowlist_age_gate_shadow`) and sent to the full
+analysis in `on`, where neither the allowlist nor the name's rank vouches
+for it. In `on` a name not known yet, on its way out or whose lookup failed
+is answered from the list but not cached as trusted. A 404 alone is not
+"absent": Nominet answers 404 for ox.ac.uk, www.nhs.uk and met.police.uk
+(264 entries under ac.uk, nhs.uk, police.uk), zones it does not run; a 404
+for a name the registry knew, or for one right under its TLD, while it still
+resolves (or DNS cannot tell), is asked hourly and not cached as trusted. A
+failed refresh keeps the last record unless another process stored a newer
+one. A worker asks first the name the most different users and addresses
+checked and drops the one the fewest checked when its queue (256) is full;
+one user or address may queue or move forward 20 names a minute (per worker
+process): no one keeps the queue busy with names of their choosing.
+Not covered: zones with no RDAP server in IANA's bootstrap file — 23,377 of
+the 95,529 entries the gate reads (24%: .ru 4,645, .jp 2,368, .de 2,195, .cn
+2,029, .edu 1,028, .it 954, .io 798, .es 648, .co 599, .me 364, .se 355, .eu
+332 … counted 2026-11-01 against the bootstrap file of 2026-10-28) —,
+government names, a name sold without a drop (its registration date stays), the DNS blocklist's never-block guard,
+the lookalike skip and the phone's `popular_veto.txt` (offline: bulk RDAP is
+against Verisign's terms), and the ML feature `in_top_domains` (train/serve
+parity). Before `on`: replay the names the shadow lines name through the
+analyzer with the gate on, against the labelled legit sets.
 
 | Consumer | Reads | Note |
 |---|---|---|

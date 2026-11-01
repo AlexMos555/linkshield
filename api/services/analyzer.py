@@ -40,7 +40,7 @@ from typing import Any, Optional
 import httpx
 
 from api.config import get_settings
-from api.services import licensed_intel, load_shedding, paid_budget, rdap, security_alerts
+from api.services import allowlist_age, licensed_intel, load_shedding, paid_budget, rdap, security_alerts
 from api.services import verdict_basis as vb
 from api.services.analysis_budget import MIN_STEP_S, Deadline, run_within_budget
 from api.services.tls_contexts import client_tls_context
@@ -109,11 +109,14 @@ SOURCE_TIMEOUT_S = 2.5
 
 async def analyze_domain(
     domain: str, raw_url: str = "", budget_s: Optional[float] = None,
+    allowlist_withheld: bool = False,
 ) -> DomainResult:
     """Analyze a domain inside one time budget.
 
     Returns a DomainResult with score, level, confidence, reasons,
-    `verdict_basis`, `exists` and `checks_incomplete`.
+    `verdict_basis`, `exists` and `checks_incomplete`. `allowlist_withheld`:
+    a router's age gate (allowlist_age) withheld the allowlist from this
+    name — whatever this analysis's own registry lookup gives.
     """
     # ── Validate & normalize domain (SSRF protection) ──
     try:
@@ -166,17 +169,21 @@ async def analyze_domain(
     )
     if not probes_allowed:
         unfinished = unfinished + sorted(_SITE_PROBES)
-    return await _judge(domain, raw_url, is_ip, exists, outcomes, unfinished, deadline)
+    return await _judge(domain, raw_url, is_ip, exists, outcomes, unfinished, deadline, allowlist_withheld)
 
 
 async def _judge(
     domain: str, raw_url: str, is_ip: bool, exists: Optional[bool],
     outcomes: dict, unfinished: list[str], deadline: Deadline,
+    allowlist_withheld: bool = False,
 ) -> DomainResult:
     """Score the gathered evidence, let the LLM judge use what budget is left,
     and assemble the result."""
     total = TOTAL_CHECKS - len(_not_consulted(domain))
-    signals = _build_signals(domain, raw_url, is_ip, outcomes, total)
+    # The argument only when it says something: wrappers of the old
+    # signature (tests/test_licensed_intel.py) see the call they always did.
+    withheld = {"allowlist_withheld": True} if allowlist_withheld else {}
+    signals = _build_signals(domain, raw_url, is_ip, outcomes, total, **withheld)
     whois_age = signals["domain_age_days"]
     measured = _measured_checks(outcomes, signals["site_reachable"])
     signals["checks_succeeded"] = measured
@@ -186,7 +193,7 @@ async def _judge(
     if (signals["young_rank"] is not None and not signals["popularity_withheld"]
             and get_settings().popularity_age_gate == "shadow"):
         # Shadow: what withholding the young name's rank would change.
-        gated = _build_signals(domain, raw_url, is_ip, outcomes, total, withhold_young_rank=True)
+        gated = _build_signals(domain, raw_url, is_ip, outcomes, total, withhold_young_rank=True, **withheld)
         gated["checks_succeeded"] = measured
         gated_score, gated_level, _ = calculate_score(gated)
         # The unreachable-site floor below, as "on" would apply it: a
@@ -257,11 +264,14 @@ async def _judge(
     return result.model_copy(update={"verdict_basis": basis})
 
 
-def rule_only_result(domain: str, raw_url: str = "") -> DomainResult:
+def rule_only_result(domain: str, raw_url: str = "", allowlist_withheld: bool = False) -> DomainResult:
     """The verdict on the address alone, no check run — what a caller gets
     when the analysis failed or there was no capacity to run it. It says it
-    is partial (`checks_incomplete: ["analysis"]`), and is never cached."""
+    is partial (`checks_incomplete: ["analysis"]`), and is never cached. A
+    name the age gate withheld the allowlist from stays without it."""
     signals = {"domain": domain, "raw_url": raw_url or domain}
+    if allowlist_withheld:
+        signals.update(allowlist_withheld=True, popularity_withheld=True)
     score, level, reasons = calculate_score(signals)
     partial = DomainResult(
         domain=domain,
@@ -468,7 +478,8 @@ def _young_rank(tranco_result: dict, whois_data: dict, domain: str) -> Optional[
 
 
 def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
-                   total_checks: int = TOTAL_CHECKS, withhold_young_rank: Optional[bool] = None) -> dict:
+                   total_checks: int = TOTAL_CHECKS, withhold_young_rank: Optional[bool] = None,
+                   allowlist_withheld: bool = False) -> dict:
     """The scorer's input — all 42+ signals, from the gathered outcomes. A
     source that was not consulted is simply absent from `outcomes`, so its
     hit reads False and it is not counted as measured.
@@ -477,13 +488,23 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
     anything reads it when popularity_age_gate is "on", or when
     `withhold_young_rank` says so (the shadow comparison in _judge): no
     popularity bonus, vouch, OTX waiver, LLM popularity prior, certificate
-    renewal or self-hosted-product exemption then comes from it."""
+    renewal or self-hosted-product exemption then comes from it.
+
+    The allowlist is withheld from a young registration of a top-100k name
+    (`allowlist_withheld`: a router's age gate said so, or the gate is "on"
+    and this analysis found the age itself): no instant "safe" (scoring
+    Layer 2), and its rank goes with it."""
     alienvault_data = _value(outcomes, "alienvault", {})
     ipqs_data = _value(outcomes, "ipqs", {})
     tranco_result = _value(outcomes, "tranco", {"ranked": False, "rank": None, "weight": 0, "label": ""})
     young_rank = _young_rank(tranco_result, _value(outcomes, "whois", {}), domain)
     gate = get_settings().popularity_age_gate
-    withheld = young_rank is not None and (gate == "on" if withhold_young_rank is None else withhold_young_rank)
+    list_withheld = allowlist_withheld or (
+        get_settings().allowlist_age_gate == "on"
+        and _is_young(_value(outcomes, "whois", {}).get("age_days"))
+        and allowlist_age.gated_entry(domain) is not None)
+    withheld = list_withheld or (
+        young_rank is not None and (gate == "on" if withhold_young_rank is None else withhold_young_rank))
     if withheld:
         tranco_result = dict(_UNRANKED)
     favicon_result = _value(outcomes, "favicon", {"cloned": False, "brand": None, "weight": 0, "detail": ""})
@@ -540,6 +561,7 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
         # whether it was withheld.
         "young_rank": young_rank,
         "popularity_withheld": withheld,
+        "allowlist_withheld": list_withheld,
         # Strategy #2 — favicon brand-clone
         "favicon_cloned": bool(favicon_result.get("cloned")),
         "favicon_brand": favicon_result.get("brand"),

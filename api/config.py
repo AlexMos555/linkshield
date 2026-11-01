@@ -143,6 +143,18 @@ class Settings(BaseSettings):
     popularity_min_age_days: int = 365
     popularity_age_gate: Literal["off", "shadow", "on"] = "shadow"
 
+    # The same limit for the top-100k allowlist's instant "safe", which the
+    # rank gate cannot reach: the allowlist answers before any analysis, so
+    # nobody asked a registry about those names (api/services/allowlist_age.py).
+    # "shadow" asks (RDAP, at most one lookup a second per worker, records
+    # kept in Redis) and logs a young or unregistered one (allowlist_age_gate_shadow);
+    # "on" sends it to the full analysis instead, where neither the allowlist
+    # nor its rank vouches for it. Off until the founder says yes to asking
+    # registries about allowlisted names too (Verisign's RDAP terms,
+    # docs/THIRD_PARTY_FEEDS.md). "on" also withholds the rank of such a name
+    # whatever popularity_age_gate says.
+    allowlist_age_gate: Literal["off", "shadow", "on"] = "off"
+
     # AlienVault OTX: a free account key. Without one OTX answers 100
     # lookups an hour per IP, then 429 (analyzer.check_alienvault_otx).
     otx_api_key: str = ""

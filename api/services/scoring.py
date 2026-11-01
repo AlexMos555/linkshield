@@ -1551,7 +1551,9 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # platforms / public suffixes (github.io, blogspot.com, us.org, s3…),
     # URL shorteners, or abused Google services. One rule, shared with the
     # public router: is_trusted_top_domain().
-    if is_trusted_top_domain(domain):
+    # Not for a young registration of a listed name (allowlist_age): the
+    # list says who ranked, not who holds the name now.
+    if is_trusted_top_domain(domain) and not signals.get("allowlist_withheld"):
         # The entry the allowlist matched (amazon.co.uk for www.amazon.co.uk).
         top_entry = top_domain_key(ascii_domain)
         rank = TOP_10K_RANKS.get(top_entry)

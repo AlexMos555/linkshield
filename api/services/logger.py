@@ -44,6 +44,8 @@ ALLOWED_EXTRAS = frozenset({
     "bytes", "mime", "kind", "type", "outcome", "alg",
     # popularity_age_gate_shadow: a young name's rank and what withholding it changes
     "rank", "age_days", "gated_score", "gated_verdict",
+    # allowlist_age_gate_shadow: the allowlist entry whose registration is young
+    "entry",
     # startup
     "environment", "strict_config", "has_supabase", "has_stripe",
     "has_revenuecat", "has_sentry", "supabase_server_key_kind", "role",

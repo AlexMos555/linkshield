@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.config import get_settings
 from api.models.schemas import DomainResult, RiskLevel
-from api.services import load_shedding, ml_scorer, public_stats
+from api.services import allowlist_age, load_shedding, ml_scorer, public_stats
 from api.services import verdict_basis as vb
 from api.services.cleanway_blocklist import listed_as
 from api.services.domain_validator import DomainValidationError, validate_domain
@@ -187,8 +187,14 @@ async def public_check(domain: str, request: Request):
     #    NOT for subdomains of shared platforms / public suffixes / hosting
     #    (us.org, github.io, tw1.ru, forms.yandex.ru …): anyone can publish
     #    there. One rule shared with the scorer and the authed /check.
+    #    Unless its age gate withholds it (allowlist_age, ALLOWLIST_AGE_GATE
+    #    "on"): a young registration of a listed name goes on like any other.
+    withheld = False
     if is_trusted_top_domain(domain):
-        return await _build_response(vb.allowlist_result(domain), modern)
+        requester = "ip:" + ip_rate_key(_extract_client_ip(request))
+        if await allowlist_age.gate(domain, requester) != allowlist_age.WITHHOLD:
+            return await _build_response(vb.allowlist_result(domain), modern)
+        withheld = True
 
     # 3) Our own blocklist — before the cache, so a verdict cached before the
     #    host was listed cannot outlive the listing. One Redis round-trip.
@@ -214,7 +220,7 @@ async def public_check(domain: str, request: Request):
     if domain not in _INFLIGHT:
         load_shedding.FRESH_ANALYSES.check()
     await _enforce_fresh_check_budget(request)
-    return _format_public_result(await _analyze_once(domain), modern_client=modern)
+    return _format_public_result(await _analyze_once(domain, withheld), modern_client=modern)
 
 
 async def _enforce_fresh_check_budget(request: Request) -> None:
@@ -262,7 +268,7 @@ async def _seconds_left(r, key: str, window: int) -> int:
     return ttl if 0 < ttl <= window else window
 
 
-async def _analyze_once(domain: str) -> DomainResult:
+async def _analyze_once(domain: str, allowlist_withheld: bool = False) -> DomainResult:
     """SINGLEFLIGHT: the first caller runs the analysis, concurrent callers
     for the same domain await its result. If the first caller goes away
     (its request was cancelled), a waiter runs its own analysis. Only the
@@ -278,7 +284,7 @@ async def _analyze_once(domain: str) -> DomainResult:
         fut = asyncio.get_event_loop().create_future()
         _INFLIGHT[domain] = fut
         try:
-            result = await _run_analyzer(domain)
+            result = await _run_analyzer(domain, allowlist_withheld)
             fut.set_result(result)
             return result
         finally:
@@ -289,24 +295,25 @@ async def _analyze_once(domain: str) -> DomainResult:
                 _INFLIGHT.pop(domain, None)
 
 
-async def _run_analyzer(domain: str) -> DomainResult:
+async def _run_analyzer(domain: str, allowlist_withheld: bool = False) -> DomainResult:
     """The full analysis, cached. Fail-soft: on an error — or the backstop
     firing — a rule-only verdict that says it is partial, NOT cached so the
     next request gets a real measurement."""
     from api.services.analyzer import analyze_domain
     backstop = get_settings().analysis_budget_seconds + _BACKSTOP_GRACE_SECONDS
     try:
-        result = await asyncio.wait_for(analyze_domain(domain, raw_url=domain), timeout=backstop)
+        extra = {"allowlist_withheld": True} if allowlist_withheld else {}
+        result = await asyncio.wait_for(analyze_domain(domain, raw_url=domain, **extra), timeout=backstop)
     except Exception as exc:
         logger.warning("public_check analyzer failed for %s: %r", domain, exc)
-        return _fallback_result(domain)
+        return _fallback_result(domain, allowlist_withheld)
     await _put_public_cache(result)
     return result
 
 
-def _fallback_result(domain: str) -> DomainResult:
+def _fallback_result(domain: str, allowlist_withheld: bool = False) -> DomainResult:
     from api.services.analyzer import rule_only_result
-    return rule_only_result(domain, raw_url=domain)
+    return rule_only_result(domain, raw_url=domain, allowlist_withheld=allowlist_withheld)
 
 
 def _verdict_reasons(result, modern_client: bool = True) -> list:
