@@ -419,3 +419,49 @@ def test_an_old_registration_says_nothing_about_its_registrar(age):
 def test_a_registrar_without_a_registration_date_says_nothing():
     fired = _fired(_registrar_signals(None))
     assert "abused_registrar" not in fired and "risky_registrar" not in fired
+
+
+# ── The record the allowlist's age gate reads (rdap.record) ──
+
+def _record_of(domain: str):
+    from api.services import rdap
+    return asyncio.run(rdap.record(domain, timeout=2.5))
+
+
+def test_the_record_gives_registration_expiry_and_status(net):
+    body = _record(days_ago=400)
+    body["status"] = ["client transfer prohibited", "Pending Delete"]
+    net.serve(VERISIGN_COM + "domain/example.com", body=body)
+    rec = _record_of("www.example.com")
+    assert rec["found"] is True
+    assert rec["registered"] == body["events"][0]["eventDate"]
+    assert rec["expires"] == "2030-01-01T00:00:00Z"
+    assert rec["status"] == ["client transfer prohibited", "pending delete"]
+    assert net.requested[-1] == VERISIGN_COM + "domain/example.com"
+
+
+def test_the_record_tells_no_such_name_from_no_one_to_ask(net):
+    """404 — the registry has no such name ({}); no RDAP server for the zone
+    or nothing to ask about (None). registration() reads both as {}."""
+    assert _record_of("example.com") == {}           # not served: the mock answers 404
+    assert _record_of("sberbank.ru") is None         # no server for .ru in the bootstrap file
+    assert _record_of("93.184.216.34") is None
+    assert _lookup("example.com") == {} and _lookup("sberbank.ru") == {}
+
+
+def test_the_record_raises_as_registration_does(net):
+    net.serve(VERISIGN_COM + "domain/example.com", status=429)
+    with pytest.raises(httpx.HTTPStatusError):
+        _record_of("example.com")
+
+
+def test_a_record_with_nothing_readable_still_says_the_name_was_found(net):
+    """A 200 without dates or status is not a 404: the name exists."""
+    net.serve(VERISIGN_COM + "domain/example.com", body={"objectClassName": "domain", "status": "active"})
+    assert _record_of("example.com") == {"found": True}
+
+
+def test_the_server_asked_is_named_by_its_host(net):
+    from api.services import rdap
+    assert asyncio.run(rdap.server("www.example.com", timeout=2.5)) == "rdap.verisign.com"
+    assert asyncio.run(rdap.server("sberbank.ru", timeout=2.5)) is None

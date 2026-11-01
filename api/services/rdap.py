@@ -80,22 +80,52 @@ async def registration(domain: str, timeout: float) -> dict:
     """{"age_days", "registered", "registrar"} — whichever the registry gives —
     or {} when there is no one to ask or the registry has no such name.
     Raises when the bootstrap file or the registry cannot be read."""
-    name = _registered_name(domain)
+    _, data = await _answer(domain, timeout)
+    return _parse(data, datetime.now(timezone.utc)) if data is not None else {}
+
+
+async def record(domain: str, timeout: float) -> Optional[dict]:
+    """For the allowlist's age gate (allowlist_age): {"found": True,
+    "registered", "expires", "status"} — the dates and status values the
+    registry gives, status lowercased — {} when it answered 404, None when
+    there is no one to ask. Raises as registration() does."""
+    asked, data = await _answer(domain, timeout)
+    if not asked:
+        return None
+    return {"found": True, **_lifecycle(data)} if data is not None else {}
+
+
+async def server(domain: str, timeout: float) -> Optional[str]:
+    """The host of the RDAP server asked about `domain`, or None when no one
+    is: one server often serves many zones (Verisign's .com and .net), so a
+    caller pacing itself paces per server."""
+    name = registered_name(domain)
     if name is None:
-        return {}
+        return None
+    base = _server_for(name, await _servers(timeout))
+    return httpx.URL(base).host if base else None
+
+
+async def _answer(domain: str, timeout: float) -> tuple[bool, Any]:
+    """(asked, the registry's JSON): (False, None) when there is no one to
+    ask, (True, None) for its 404."""
+    name = registered_name(domain)
+    if name is None:
+        return False, None
     base = _server_for(name, await _servers(timeout))
     if base is None:
-        return {}
+        return False, None
     # HTTP/2 offered: TWNIC (.tw) answers 426 Upgrade Required to HTTP/1.1.
     async with pinned_client(timeout=timeout, http2=True) as client:
         resp = await client.get(f"{base}domain/{name}", headers={"Accept": "application/rdap+json"})
     if resp.status_code == 404:
-        return {}
+        return True, None
     resp.raise_for_status()  # redirects too: never followed
-    return _parse(resp.json(), datetime.now(timezone.utc))
+    return True, resp.json()
 
 
-def _registered_name(domain: str) -> Optional[str]:
+def registered_name(domain: str) -> Optional[str]:
+    """The name the registry is asked about, or None when none is."""
     host = (domain or "").lower().strip().rstrip(".")
     try:
         ipaddress.ip_address(host.strip("[]"))
@@ -203,6 +233,25 @@ def _parse(data: Any, now: datetime) -> dict:
     registrar = _registrar_name(data.get("entities"))
     if registrar:
         out["registrar"] = registrar
+    return out
+
+
+def _lifecycle(data: Any) -> dict:
+    """Registration and expiry dates as the registry wrote them, and its
+    status values lowercased ("pending delete", "redemption period" …)."""
+    out: dict = {}
+    if not isinstance(data, dict):
+        return out
+    events = data.get("events")
+    for event in events if isinstance(events, list) else []:
+        if not isinstance(event, dict) or _parse_date(event.get("eventDate")) is None:
+            continue
+        key = {"registration": "registered", "expiration": "expires"}.get(event.get("eventAction"))
+        if key and key not in out:
+            out[key] = event["eventDate"]
+    status = data.get("status")
+    if isinstance(status, list):
+        out["status"] = [s.lower() for s in status if isinstance(s, str)]
     return out
 
 
