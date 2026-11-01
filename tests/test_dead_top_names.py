@@ -192,7 +192,7 @@ def _args(tmp_path, **kw):
     base = dict(dry_run=False, report=None, today="2026-10-31", max_new=100, pending=None, pending_base=None,
                 out=str(tmp_path / "dead.json"), top=str(top), reported=str(rep), ranking=None,
                 top_dead=str(tmp_path / "no-top-dead.json"), band_dead=str(tmp_path / "no-band-dead.json"),
-                carry_only=False)
+                carry_only=False, time_limit=None)
     base.update(kw)
     return argparse.Namespace(**base)
 
@@ -286,6 +286,103 @@ def test_the_sweep_refuses_and_writes_nothing(tmp_path, case):
             return "nxdomain"
     assert asyncio.run(sweep.run(args, resolve, at_parent)) == 2
     assert not pathlib.Path(args.out).exists()
+
+
+def test_out_of_time_keeps_what_was_swept_and_says_so(tmp_path, monkeypatch):
+    """The chunk under way when time runs out is dropped, whatever it found;
+    the chunks before it are kept, and the report says names were left."""
+    sweep = _script("refresh_dead_top_names")
+    monkeypatch.setattr(sweep, "CHUNK", 1)
+    names = [f"n{i}.com" for i in range(10)]
+    top = tmp_path / "top10.json"
+    top.write_text(json.dumps(names))
+    resolve, at_parent = _fake({(n, "*"): "nxdomain" for n in names + ["r.com"]})
+
+    async def slow(name, server):
+        if name == "n5.com":
+            await asyncio.sleep(60)
+        return await resolve(name, server)
+
+    args = _args(tmp_path, top=str(top), time_limit=0.01, report=str(tmp_path / "report.md"))
+    assert asyncio.run(sweep.run(args, slow, at_parent)) == 0
+    tombstoned = set(sweep.load_dead(args.out))
+    assert "n5.com" not in tombstoned and len(tombstoned) < 11
+    assert pathlib.Path(args.report).read_text().startswith(
+        f"Swept {len(tombstoned):,} of 11 names of the top lists (out of time")
+
+
+def test_with_a_time_limit_each_day_sweeps_all_in_an_order_of_its_own(monkeypatch):
+    """A week short of time leaves another random part for later."""
+    sweep = _script("refresh_dead_top_names")
+    monkeypatch.setattr(sweep, "CHUNK", 1)
+    names = [f"n{i}.com" for i in range(20)]
+
+    def order(day):
+        asked = []
+
+        async def resolve(name, server):
+            asked.append(name)
+            return "alive"
+
+        async def at_parent(name):
+            return "alive"
+
+        assert asyncio.run(sweep.sweep_until(names, resolve, at_parent, minutes=5, seed=day)) == (set(), set(names), 20)
+        return asked
+
+    assert sorted(order("2026-11-04")) == sorted(names)
+    assert order("2026-11-04") == order("2026-11-04") != order("2026-11-11")
+
+
+def test_a_zone_lookup_outlives_a_name_cut_off_by_the_time_limit(monkeypatch):
+    """The zone's servers are looked up once and shared: a name cut off when
+    time ran out must not cancel the lookup for the names after it."""
+    sweep = _script("refresh_dead_top_names")
+    asked = []
+
+    async def resolve(self, qname, rdtype="A", **kw):
+        asked.append(str(qname))
+        await asyncio.sleep(0.2)
+        raise sweep.dns.exception.Timeout
+
+    monkeypatch.setattr(sweep.dns.asyncresolver.Resolver, "resolve", resolve)
+
+    async def go():
+        at_parent = sweep.make_parent_check()
+        with pytest.raises(asyncio.TimeoutError):
+            await asyncio.wait_for(at_parent("x.com"), timeout=0.05)
+        return await at_parent("y.com")
+
+    assert asyncio.run(go()) == "unknown"
+    assert asked == ["com"]  # one lookup, neither cancelled nor repeated
+
+
+def test_out_of_time_before_a_single_chunk_is_a_refusal(tmp_path):
+    """A week of nothing swept must not pass for a quiet week."""
+    sweep = _script("refresh_dead_top_names")
+    resolve, at_parent = _fake({})
+
+    async def stuck(name, server):
+        if not name.startswith(("google.", "wikipedia.", "cloudflare.", "cleanway-canary-")):
+            await asyncio.sleep(60)
+        return await resolve(name, server)
+
+    args = _args(tmp_path, time_limit=0.005)
+    pathlib.Path(args.out).write_text(sweep.render({"gone.com": "2026-10-31"}))
+    before = pathlib.Path(args.out).read_text()
+    assert asyncio.run(sweep.run(args, stuck, at_parent)) == 2
+    assert pathlib.Path(args.out).read_text() == before
+
+
+def test_a_tombstone_a_rebuild_left_off_the_lists_is_still_asked(tmp_path):
+    """scripts/build_top_domains.py leaves tombstoned names out of the
+    lists: the sweep still asks them, so one that resolves again is
+    reported."""
+    sweep = _script("refresh_dead_top_names")
+    args = _args(tmp_path, report=str(tmp_path / "report.md"))
+    pathlib.Path(args.out).write_text(sweep.render({"dropped.com": "2026-10-31"}))
+    assert asyncio.run(sweep.run(args, *_fake({}))) == sweep.EXIT_REVIVED
+    assert "`dropped.com`" in pathlib.Path(args.report).read_text()
 
 
 def test_a_dry_run_writes_nothing(tmp_path):
@@ -478,13 +575,13 @@ def test_the_bands_cap_is_its_own(tmp_path):
     assert len(json.loads(pathlib.Path(args.out).read_text())["names"]) == 5
 
 
-def test_a_revived_band_name_is_counted_not_raised(tmp_path):
+def test_a_revived_band_name_is_listed_not_raised(tmp_path):
     sweep = _script("refresh_dead_top_names")
     args = _band_args(tmp_path, [["back.com", 200000]], report=str(tmp_path / "band.md"))
     pathlib.Path(args.out).write_text(sweep.render({"back.com": "2026-10-31"}, sweep.ABOUT_BAND))
     assert asyncio.run(sweep.run(args, *_fake({}))) == 0
     text = pathlib.Path(args.report).read_text()
-    assert "1 tombstoned names of ranks 100k-1M resolve again" in text and "`back.com`" not in text
+    assert "1 tombstoned names of ranks 100k-1M resolve again" in text and "- `back.com`" in text
     assert json.loads(pathlib.Path(args.out).read_text())["names"] == {"back.com": "2026-10-31"}
 
 

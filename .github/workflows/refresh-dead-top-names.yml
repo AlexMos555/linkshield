@@ -8,10 +8,13 @@ name: 'Tombstone dead popular names'
 # NXDOMAIN for weeks between its expiry and its release. The phone's veto
 # (popular_veto.txt) is rebuilt in the same PR.
 #
-# Then the rest of the top-1M ranking (ranks 100k-1M, rebuilt here as the
-# daily rank refresh builds it) is swept into data/top_1m_dead.json, in a
-# step of its own with a time limit and a cap of its own: when it fails or
-# runs out of time, the top lists' tombstones still ship.
+# The rest of the top-1M ranking (ranks 100k-1M, rebuilt here as the daily
+# rank refresh builds it) is swept into data/top_1m_dead.json by a job of
+# its own, on a runner of its own: when it fails, the top lists' tombstones
+# still ship. Both sweeps stop in time and keep what they swept
+# (--time-limit): on 2026-10-31 1.1.1.1 answered a runner ten times slower
+# in the evening than in the afternoon, and one job doing both ran out of
+# its time before the band began.
 #
 # Opens a PR; humans review before merging. CI does not run on a PR this
 # token opens, so the checks CI would run on these files run here, before
@@ -35,16 +38,204 @@ on:
 permissions:
   contents: read
 
+# Two runs at once would each replace the other's PR.
+concurrency:
+  group: refresh-dead-top-names
+  cancel-in-progress: false
+
+env:
+  BRANCH: cleanway/refresh-dead-top-names
+
 jobs:
-  sweep:
+  # The open PR of an earlier run is replaced by this run's: the names it
+  # adds are carried over, never dropped. Only what it adds against the
+  # commit it branched from (its merge base with main, whatever commits a
+  # person added on top), and only while it is open and ours (not a fork's):
+  # a merged or closed one, or a line removed on main by hand, never comes
+  # back. Fetched once, for both sweeps and the PR.
+  pending:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    timeout-minutes: 10
+    outputs:
+      found: ${{ steps.fetch.outputs.found }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Fetch an open sweep PR's tombstones
+        id: fetch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          git ls-remote --exit-code origin "refs/heads/$BRANCH" > /dev/null
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then exit 0; fi           # no such branch
+          if [ "$code" -ne 0 ]; then exit "$code"; fi     # cannot tell: stop, do not drop
+          open=$(gh pr list --head "$BRANCH" --state open --json isCrossRepository \
+            --jq '[.[] | select(.isCrossRepository | not)] | length')
+          if [ "$open" = "0" ]; then exit 0; fi
+          git fetch --depth=1 origin "$BRANCH"
+          head=$(git rev-parse FETCH_HEAD)
+          base=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$BRANCH" --jq .merge_base_commit.sha)
+          git fetch --depth=1 origin "$base"
+          mkdir -p "$RUNNER_TEMP/pending"
+          for f in top_domains_dead top_1m_dead; do
+            git show "$head:data/$f.json" > "$RUNNER_TEMP/pending/pending-$f.json" \
+              || echo '{"names": {}}' > "$RUNNER_TEMP/pending/pending-$f.json"
+            git show "$base:data/$f.json" > "$RUNNER_TEMP/pending/base-$f.json" \
+              || echo '{"names": {}}' > "$RUNNER_TEMP/pending/base-$f.json"
+          done
+          echo "found=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.fetch.outputs.found == 'true'
+        with:
+          name: pending
+          path: ${{ runner.temp }}/pending/
+          if-no-files-found: error
+          retention-days: 7  # a re-run of the failed jobs within the week
+
+  lists:
+    needs: pending
+    runs-on: ubuntu-latest
+    # As long as the band's: the PR waits for both anyway.
+    timeout-minutes: 350
+    outputs:
+      revived: ${{ steps.sweep.outputs.revived }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: needs.pending.outputs.found == 'true'
+        with:
+          name: pending
+          path: ${{ runner.temp }}/pending
+
+      - name: Sweep the lists
+        id: sweep
+        timeout-minutes: 320
+        run: |
+          pending=()
+          if [ -f "$RUNNER_TEMP/pending/pending-top_domains_dead.json" ]; then
+            pending=(--pending "$RUNNER_TEMP/pending/pending-top_domains_dead.json"
+                     --pending-base "$RUNNER_TEMP/pending/base-top_domains_dead.json")
+          fi
+          mkdir -p "$RUNNER_TEMP/out"
+          set +e
+          python3 scripts/refresh_dead_top_names.py --time-limit 300 \
+            --report "$RUNNER_TEMP/out/lists-report.md" "${pending[@]}"
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/out/lists-report.md" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          if grep -q "(out of time" "$RUNNER_TEMP/out/lists-report.md" 2>/dev/null; then
+            echo "::warning::The top lists were swept in part this week: $(head -1 "$RUNNER_TEMP/out/lists-report.md")"
+          fi
+          # 3: nothing new, but tombstoned names resolve again.
+          if [ "$code" -eq 3 ]; then echo "revived=true" >> "$GITHUB_OUTPUT"; code=0; fi
+          if [ "$code" -ne 0 ]; then exit "$code"; fi
+          cp data/top_domains_dead.json "$RUNNER_TEMP/out/"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lists
+          path: ${{ runner.temp }}/out/
+          if-no-files-found: error
+          retention-days: 7  # a re-run of the failed jobs within the week
+
+  band:
+    needs: pending
+    runs-on: ubuntu-latest
+    # A hosted runner's most is 6 hours.
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install deps
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: needs.pending.outputs.found == 'true'
+        with:
+          name: pending
+          path: ${{ runner.temp }}/pending
+
+      - name: Build the top-1M ranking
+        run: python3 scripts/refresh_tranco.py --dry-run --dump "$RUNNER_TEMP/ranking.json"
+
+      # The band leaves the top lists' tombstones out: main's, and those the
+      # open PR adds (the lists job carries them over on its own runner).
+      - name: Gather the top lists' tombstones
+        run: |
+          cp data/top_domains_dead.json "$RUNNER_TEMP/top-dead.json"
+          if [ -f "$RUNNER_TEMP/pending/pending-top_domains_dead.json" ]; then
+            python3 scripts/refresh_dead_top_names.py --carry-only --out "$RUNNER_TEMP/top-dead.json" \
+              --pending "$RUNNER_TEMP/pending/pending-top_domains_dead.json" \
+              --pending-base "$RUNNER_TEMP/pending/base-top_domains_dead.json"
+          fi
+
+      - name: Sweep ranks 100k-1M
+        timeout-minutes: 320
+        env:
+          MAX_NEW_BAND: ${{ inputs.max_new_band }}
+        run: |
+          cap=()
+          if [ -n "$MAX_NEW_BAND" ]; then cap=(--max-new "$MAX_NEW_BAND"); fi
+          pending=()
+          if [ -f "$RUNNER_TEMP/pending/pending-top_1m_dead.json" ]; then
+            pending=(--pending "$RUNNER_TEMP/pending/pending-top_1m_dead.json"
+                     --pending-base "$RUNNER_TEMP/pending/base-top_1m_dead.json")
+          fi
+          mkdir -p "$RUNNER_TEMP/out"
+          python3 scripts/refresh_dead_top_names.py --ranking "$RUNNER_TEMP/ranking.json" --time-limit 300 \
+            --top-dead "$RUNNER_TEMP/top-dead.json" "${cap[@]}" --report "$RUNNER_TEMP/out/band-report.md" \
+            "${pending[@]}"
+          cat "$RUNNER_TEMP/out/band-report.md" >> "$GITHUB_STEP_SUMMARY"
+          if grep -q "(out of time" "$RUNNER_TEMP/out/band-report.md"; then
+            echo "::warning::Ranks 100k-1M were swept in part this week: $(head -1 "$RUNNER_TEMP/out/band-report.md")"
+          fi
+          cp data/top_1m_dead.json "$RUNNER_TEMP/out/"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: band
+          path: ${{ runner.temp }}/out/
+          if-no-files-found: error
+          retention-days: 7  # a re-run of the failed jobs within the week
+
+  pr:
+    needs: [pending, lists, band]
+    # The band may have failed: the top lists' tombstones ship without it.
+    # Not when a person cancelled the run.
+    if: ${{ !cancelled() && needs.lists.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
       issues: write
-    timeout-minutes: 330
-    env:
-      BRANCH: cleanway/refresh-dead-top-names
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -62,85 +253,42 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
-      # The open PR of an earlier run is replaced by this run's: the names it
-      # adds are carried over, never dropped. Only what it adds against the
-      # commit it branched from (its merge base with main, whatever commits
-      # a person added on top), and only while it is open and ours (not a
-      # fork's): a merged or closed one, or a line removed on main by hand,
-      # never comes back.
-      - name: Carry over an open sweep PR
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: needs.pending.outputs.found == 'true'
+        with:
+          name: pending
+          path: ${{ runner.temp }}/pending
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: lists
+          path: ${{ runner.temp }}/lists
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: needs.band.result == 'success'
+        with:
+          name: band
+          path: ${{ runner.temp }}/band
+
+      - name: Put the sweeps' files in place
         env:
-          GH_TOKEN: ${{ github.token }}
+          BAND_RESULT: ${{ needs.band.result }}
         run: |
-          set +e
-          git ls-remote --exit-code origin "refs/heads/$BRANCH" > /dev/null
-          code=$?
-          set -e
-          if [ "$code" -eq 2 ]; then exit 0; fi           # no such branch
-          if [ "$code" -ne 0 ]; then exit "$code"; fi     # cannot tell: stop, do not drop
-          open=$(gh pr list --head "$BRANCH" --state open --json isCrossRepository \
-            --jq '[.[] | select(.isCrossRepository | not)] | length')
-          if [ "$open" = "0" ]; then exit 0; fi
-          git fetch --depth=1 origin "$BRANCH"
-          head=$(git rev-parse FETCH_HEAD)
-          base=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$BRANCH" --jq .merge_base_commit.sha)
-          git fetch --depth=1 origin "$base"
-          for f in top_domains_dead top_1m_dead; do
-            git show "$head:data/$f.json" > "$RUNNER_TEMP/pending-$f.json" \
-              || echo '{"names": {}}' > "$RUNNER_TEMP/pending-$f.json"
-            git show "$base:data/$f.json" > "$RUNNER_TEMP/base-$f.json" \
-              || echo '{"names": {}}' > "$RUNNER_TEMP/base-$f.json"
-          done
-          {
-            echo "PENDING=--pending $RUNNER_TEMP/pending-top_domains_dead.json --pending-base $RUNNER_TEMP/base-top_domains_dead.json"
-            echo "PENDING_BAND=--pending $RUNNER_TEMP/pending-top_1m_dead.json --pending-base $RUNNER_TEMP/base-top_1m_dead.json"
-          } >> "$GITHUB_ENV"
-
-      - name: Sweep the lists
-        id: sweep
-        run: |
-          set +e
-          # shellcheck disable=SC2086 # PENDING is two words or none
-          python3 scripts/refresh_dead_top_names.py --report "$RUNNER_TEMP/dead-report.md" $PENDING
-          code=$?
-          set -e
-          cat "$RUNNER_TEMP/dead-report.md" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
-          # 3: nothing new, but tombstoned names resolve again.
-          if [ "$code" -eq 3 ]; then echo "revived=true" >> "$GITHUB_OUTPUT"; exit 0; fi
-          exit "$code"
-
-      - name: Build the top-1M ranking
-        id: ranking
-        continue-on-error: true
-        run: python3 scripts/refresh_tranco.py --dry-run --dump "$RUNNER_TEMP/ranking.json"
-
-      - name: Sweep ranks 100k-1M
-        if: steps.ranking.outcome == 'success'
-        id: band
-        continue-on-error: true
-        timeout-minutes: 240
-        env:
-          MAX_NEW_BAND: ${{ inputs.max_new_band }}
-        run: |
-          cap=()
-          if [ -n "$MAX_NEW_BAND" ]; then cap=(--max-new "$MAX_NEW_BAND"); fi
-          # shellcheck disable=SC2086 # PENDING_BAND is four words or none
-          python3 scripts/refresh_dead_top_names.py --ranking "$RUNNER_TEMP/ranking.json" "${cap[@]}" \
-            --report "$RUNNER_TEMP/band-report.md" $PENDING_BAND
-          { echo; cat "$RUNNER_TEMP/band-report.md"; } >> "$RUNNER_TEMP/dead-report.md"
-          cat "$RUNNER_TEMP/band-report.md" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Say when ranks 100k-1M were not swept
-        if: steps.ranking.outcome != 'success' || steps.band.outcome != 'success'
-        run: |
-          msg="Ranks 100k-1M were not swept this week (ranking: ${{ steps.ranking.outcome }}, sweep: ${{ steps.band.outcome }}); the top lists were."
+          cp "$RUNNER_TEMP/lists/top_domains_dead.json" data/
+          cp "$RUNNER_TEMP/lists/lists-report.md" "$RUNNER_TEMP/dead-report.md"
+          if [ "$BAND_RESULT" = "success" ]; then
+            cp "$RUNNER_TEMP/band/top_1m_dead.json" data/
+            { echo; cat "$RUNNER_TEMP/band/band-report.md"; } >> "$RUNNER_TEMP/dead-report.md"
+            exit 0
+          fi
+          msg="Ranks 100k-1M were not swept this week (the band job: $BAND_RESULT); their tombstones on main stay."
           echo "::warning::$msg"
           { echo; echo "**Note:** $msg"; } >> "$RUNNER_TEMP/dead-report.md"
-          git checkout -- data/top_1m_dead.json 2>/dev/null || true
           # The open PR's band tombstones stay in the replacement PR (no DNS).
-          # shellcheck disable=SC2086 # PENDING_BAND is four words or none
-          if [ -n "${PENDING_BAND:-}" ]; then
-            python3 scripts/refresh_dead_top_names.py --carry-only --out data/top_1m_dead.json $PENDING_BAND
+          if [ -f "$RUNNER_TEMP/pending/pending-top_1m_dead.json" ]; then
+            python3 scripts/refresh_dead_top_names.py --carry-only --out data/top_1m_dead.json \
+              --pending "$RUNNER_TEMP/pending/pending-top_1m_dead.json" \
+              --pending-base "$RUNNER_TEMP/pending/base-top_1m_dead.json"
           fi
 
       - name: Rebuild the phone's veto
@@ -178,7 +326,7 @@ jobs:
             mobile/modules/cleanway-vpn/android/src/main/assets/popular_veto.txt
 
       - name: Ask a person about the revived names
-        if: steps.sweep.outputs.revived == 'true'
+        if: needs.lists.outputs.revived == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
