@@ -254,7 +254,12 @@ const fs = require("fs"); const [repo, m] = process.argv.slice(1);
 const p = JSON.parse(fs.readFileSync(repo + "/mobile/package.json", "utf8"));
 p.dependencies["@cleanway/api-client"] = "file:./vendor/api-client";
 p.dependencies["@cleanway/api-types"] = "file:./vendor/api-types";
-fs.writeFileSync(m + "/package.json", JSON.stringify(p, null, 2) + "\n");' "$REPO" "$M"
+fs.writeFileSync(m + "/package.json", JSON.stringify(p, null, 2) + "\n");
+// As in docs/IOS.md: without it a lock regenerated here says "*" for the
+// api-types of the vendored api-client, unlike one made in the iOS mirror.
+const c = JSON.parse(fs.readFileSync(m + "/vendor/api-client/package.json", "utf8"));
+c.dependencies["@cleanway/api-types"] = "file:../api-types";
+fs.writeFileSync(m + "/vendor/api-client/package.json", JSON.stringify(c, null, 2) + "\n");' "$REPO" "$M"
 cp "$REPO/mobile/package-lock.json" "$M/package-lock.json"
 node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"; "out of step" = STOP, regenerate the lock (end of §2)
 
@@ -567,7 +572,8 @@ cp "$M/package-lock.json" "$REPO/mobile/package-lock.json"     # commit it, then
 ```
 
 (2026-10-25, #329: undici 6.29.0 → 6.29.1 — the same entry Dependabot wrote,
-without its `"*"`; #329 closed unmerged.)
+without its `"*"`; #329 closed unmerged. 2026-11-01, #373: node-forge 1.4.0 →
+1.4.2, under `@expo/cli`, the release the root lock got in #371.)
 
 ---
 
