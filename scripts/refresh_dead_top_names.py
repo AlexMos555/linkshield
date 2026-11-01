@@ -27,10 +27,25 @@ not a week of expiries (1,155 on the first run, 2026-10-31).
 ...] as scripts/refresh_tranco.py --dump writes it; ranks 100k-1M, 2.46% dead
 in a 20,000-name sample on 2026-10-31) into data/top_1m_dead.json — a file
 of its own, with a cap of its own (MAX_NEW_BAND), so the band can neither
-cost nor drown the top lists' tombstones. Its revived names are counted,
-not listed, and raise no issue: a band name only loses a small bonus, the
-vouch and the publisher's guard. Already tombstoned band names skip the
-parent check (sticky; only the resolver's "alive" matters for them).
+cost nor drown the top lists' tombstones. Its revived names are listed in
+the report but raise no issue: a band name only loses a small bonus, the
+vouch and the publisher's guard — except one a rebuild of the lists left out
+for being tombstoned (scripts/build_top_domains.py), which the list shows a
+person too. Already tombstoned band names skip the parent check (sticky;
+only the resolver's "alive" matters for them).
+
+--time-limit MINUTES: stop in time and keep what was swept. The names are
+shuffled (seeded by the day) and swept in chunks of CHUNK; a chunk not done
+when time runs out is dropped, and the report says how many names were
+left. On a GitHub runner 1.1.1.1 answered the top lists in 20 minutes on
+2026-10-31 at 16:21 and in 3 hours 21 minutes the same evening, which left
+the band no time at all; a week short of time sweeps another random part.
+Not one chunk done in time is a refusal (exit 2): a week of nothing swept
+must not pass for a quiet one.
+
+The top lists' sweep asks its own tombstones too, those a rebuild of the
+lists left out (scripts/build_top_domains.py skips them): one that
+resolves again is reported, like any revived name.
 
 --pending FILE --pending-base FILE: the tombstone file of an open sweep PR
 and of the commit it was built on. The names that PR adds (FILE minus BASE)
@@ -50,8 +65,10 @@ import asyncio
 import datetime
 import json
 import os
+import random
 import secrets
 import sys
+import time
 from typing import Awaitable, Callable, Iterable, Optional
 
 import dns.asyncquery
@@ -78,6 +95,7 @@ MAX_DELEGATED = 4       # of a referral's servers, asked about the zone
 ATTEMPTS = 3
 MAX_NEW = 2_500
 MAX_NEW_BAND = 10_000  # a week's expiries in ranks 100k-1M; the bootstrap passes --max-new
+CHUNK = 25_000  # names swept at a time under --time-limit: the most a cut-off loses
 LIVE_CANARIES = ("google.com", "wikipedia.org", "cloudflare.com")
 # Exit code: swept, nothing new, but tombstoned names resolve again — the
 # workflow opens an issue for a person to check them.
@@ -110,6 +128,11 @@ Resolve = Callable[[str, str], Awaitable[str]]
 # `at_parent(name)` → NXDOMAIN when the parent zone's servers have no such
 # name, ALIVE when they delegate it, UNKNOWN when they could not be asked.
 AtParent = Callable[[str], Awaitable[str]]
+
+
+def _log(msg: str) -> None:
+    """Progress, for the workflow's log (the report is stdout)."""
+    print(msg, file=sys.stderr, flush=True)
 
 
 def dead_canary() -> str:
@@ -175,7 +198,8 @@ def make_parent_check(timeout: float = 4.0,
             zone = ".".join(labels)
             if zone not in servers:
                 servers[zone] = asyncio.ensure_future(_lookup(zone))
-            addrs = await servers[zone]
+            # Shared: a name cut off by --time-limit must not cancel it for the rest.
+            addrs = await asyncio.shield(servers[zone])
             if addrs:
                 return zone, addrs
             labels = labels[1:]
@@ -221,6 +245,8 @@ def make_parent_check(timeout: float = 4.0,
 
     async def at_parent(name: str) -> str:
         _, addrs = await (zone_servers or _zone_servers)(name)
+        if not addrs:
+            return UNKNOWN  # no server of the zone to ask, however long we wait
         qname = dns.name.from_text(name)
         # Registries rate-limit (GMO's .shop, DENIC, .xyz, .top dropped 48 of
         # 1,107 answers at 20 in flight, 2026-10-31): every server, three
@@ -323,14 +349,22 @@ async def sweep(names: list[str], resolve: Resolve, at_parent: AtParent,
     alive: NOERROR at the first resolver). `known_dead` skip the parent
     check: tombstoned already, they stay dead while the resolvers agree."""
     known_dead = set(known_dead)
+    t = time.monotonic()
     first = await _states(names, RESOLVERS[0], resolve)
     # A resolver drops answers at 150 in flight: the unanswered are asked
     # again, slowly (5 dead names were missed that way, 2026-10-31).
     unanswered = sorted(n for n, s in first.items() if s == UNKNOWN)
+    _log(f"{RESOLVERS[0]}: {len(names):,} names, {len(unanswered):,} unanswered ({time.monotonic() - t:.0f}s)")
+    t = time.monotonic()
     first.update(await _states(unanswered, RESOLVERS[0], resolve, concurrency=PARENT_CONCURRENCY))
     dead = {n for n, s in first.items() if s == NXDOMAIN}
+    _log(f"{RESOLVERS[0]} again: {sum(first[n] == UNKNOWN for n in unanswered):,} still unanswered, "
+         f"{len(dead):,} NXDOMAIN in all ({time.monotonic() - t:.0f}s)")
     for server in RESOLVERS[1:]:
+        t = time.monotonic()
         dead &= {n for n, s in (await _states(sorted(dead), server, resolve)).items() if s == NXDOMAIN}
+        _log(f"{server}: {len(dead):,} NXDOMAIN there too ({time.monotonic() - t:.0f}s)")
+    t = time.monotonic()
     sem = asyncio.Semaphore(PARENT_CONCURRENCY)
 
     async def parent(name: str) -> tuple[str, str]:
@@ -343,7 +377,40 @@ async def sweep(names: list[str], resolve: Resolve, at_parent: AtParent,
     # its servers serves it although the apex is denied (FC2) — a tombstone
     # of that kind is "revived" too.
     alive = {n for n, s in first.items() if s == ALIVE} | {n for n, s in at_parent_states.items() if s == ALIVE}
-    return {n for n, s in at_parent_states.items() if s in DEAD_STATES}, alive
+    gone = {n for n, s in at_parent_states.items() if s in DEAD_STATES}
+    _log(f"parent zones: {len(dead - known_dead):,} asked, {len(gone):,} dead in all ({time.monotonic() - t:.0f}s)")
+    return gone, alive
+
+
+async def sweep_until(names: list[str], resolve: Resolve, at_parent: AtParent, known_dead: Iterable[str] = (),
+                      minutes: Optional[float] = None, seed: str = "") -> tuple[set[str], set[str], int]:
+    """sweep(), and how many names it covered. With a time limit: in a
+    shuffled order (`seed`), CHUNK names at a time, until time runs out; the
+    chunk under way then is dropped, whatever it found."""
+    if minutes is None:
+        return (*await sweep(names, resolve, at_parent, known_dead), len(names))
+    deadline = time.monotonic() + minutes * 60
+    order = list(names)
+    random.Random(seed).shuffle(order)
+    dead: set[str] = set()
+    alive: set[str] = set()
+    swept = 0
+    for i in range(0, len(order), CHUNK):
+        left = deadline - time.monotonic()
+        if left <= 0:
+            break
+        chunk = order[i:i + CHUNK]
+        try:
+            found, up = await asyncio.wait_for(sweep(chunk, resolve, at_parent, known_dead), timeout=left)
+        except asyncio.TimeoutError:
+            break
+        dead |= found
+        alive |= up
+        swept += len(chunk)
+        _log(f"swept {swept:,} of {len(order):,}")
+    if swept < len(order):
+        _log(f"out of time: {len(order) - swept:,} names left for another week")
+    return dead, alive, swept
 
 
 def load_names(top_path: str = TOP_PATH, reported_path: str = REPORTED_PATH) -> list[str]:
@@ -375,9 +442,11 @@ def render(dead: dict[str, str], about: str = ABOUT) -> str:
 
 
 def report(added: list[str], revived: list[str], total: int, swept: int, carried: Iterable[str] = (),
-           band: bool = False) -> str:
+           band: bool = False, of: Optional[int] = None) -> str:
     carried = set(carried)
     what = "names of the ranking off the top lists (ranks 100k-1M)" if band else "names of the top lists"
+    if of is not None and of > swept:
+        what = f"of {of:,} {what} (out of time: the rest wait for another week)"
     lines = [f"Swept {swept:,} {what}; {len(added):,} newly dead, {total:,} tombstoned in all.", ""]
     if added:
         lines += ["**Newly dead** (NXDOMAIN at 1.1.1.1 and 8.8.8.8, and the parent zone has no name or "
@@ -387,8 +456,12 @@ def report(added: list[str], revived: list[str], total: int, swept: int, carried
             lines.append(f"- … and {len(added) - 300:,} more (see the diff)")
         lines.append("")
     if revived and band:
-        lines += [f"{len(revived):,} tombstoned names of ranks 100k-1M resolve again; they stay tombstoned, "
-                  "no action needed.", ""]
+        lines += [f"{len(revived):,} tombstoned names of ranks 100k-1M resolve again; they stay tombstoned "
+                  "(check one with RDAP before deleting its line by hand):", ""]
+        lines += [f"- `{n}`" for n in revived[:300]]
+        if len(revived) > 300:
+            lines.append(f"- … and {len(revived) - 300:,} more")
+        lines.append("")
     elif revived:
         lines += ["**Revived** (tombstoned, resolving again — NOT removed; check RDAP: registered since when, "
                   "by whom, before deleting a line by hand):", ""]
@@ -433,15 +506,21 @@ async def run(args: argparse.Namespace, resolve: Optional[Resolve] = None,
     out = args.out or (BAND_PATH if band else DEAD_PATH)
     cap = args.max_new if args.max_new is not None else (MAX_NEW_BAND if band else MAX_NEW)
     names = load_names(args.top, args.reported)
-    if band:
-        names = load_band(args.ranking, names, load_dead(args.top_dead))
     on_main = load_dead(out)
     previous = _carried(on_main, args.pending, args.pending_base)
+    if band:
+        names = load_band(args.ranking, names, load_dead(args.top_dead))
+    else:
+        names = sorted(set(names) | set(previous))
     # Band tombstones of names now on the top lists (a rebuild put them
     # there): they take the allowlist and the phone's veto too, and the band
     # no longer sweeps them, so a revived one is reported here.
     band_on_top = set() if band else set(load_dead(args.band_dead)) & set(names)
-    dead, alive = await sweep(names, resolve, at_parent, known_dead=previous if band else ())
+    dead, alive, swept = await sweep_until(names, resolve, at_parent, known_dead=previous if band else (),
+                                           minutes=args.time_limit, seed=args.today)
+    if names and not swept:
+        print("refused: out of time before a single chunk was swept", file=sys.stderr)
+        return 2
     # The resolvers must still answer like the real DNS after hours of it.
     why = await canary_ok(resolve, at_parent, dead_canary())
     if why:
@@ -457,8 +536,8 @@ async def run(args: argparse.Namespace, resolve: Optional[Resolve] = None,
     revived = sorted((set(previous) | band_on_top) & alive)
     # What the PR adds to main: this run's finds and the open PR's carried over.
     new_vs_main = sorted(set(merged) - set(on_main))
-    text = report(new_vs_main, revived, len(merged), len(names), carried=sorted(set(new_vs_main) - set(added)),
-                  band=band)
+    text = report(new_vs_main, revived, len(merged), swept, carried=sorted(set(new_vs_main) - set(added)),
+                  band=band, of=len(names))
     print(text)
     if args.report:
         with open(args.report, "w", encoding="utf-8") as f:
@@ -485,6 +564,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                    help="the band's tombstones; those of names now on the top lists are reported when revived")
     p.add_argument("--carry-only", action="store_true",
                    help="no sweep: write --out plus what --pending adds over --pending-base")
+    p.add_argument("--time-limit", type=float, default=None, metavar="MINUTES",
+                   help="stop in time: sweep a random part of the names, keep what was swept")
     p.add_argument("--top", default=TOP_PATH)
     p.add_argument("--reported", default=REPORTED_PATH)
     p.add_argument("--pending", help="the tombstone file of an open sweep PR: the names it adds are kept")
