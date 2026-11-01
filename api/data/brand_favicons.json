@@ -143,7 +143,8 @@
       "www.hsbc.co.uk"
     ],
     "known_favicon_hashes": [
-      "e326fc1e0be7ac7178e594a4"
+      "e326fc1e0be7ac7178e594a4",
+      "316a15cd35bc1c66be119df4"
     ]
   },
   "barclays": {
@@ -153,7 +154,8 @@
       "barclays.com"
     ],
     "known_favicon_hashes": [
-      "293b048dea708fbeb92dee78"
+      "293b048dea708fbeb92dee78",
+      "7fda4a49d5ab5400152fad94"
     ]
   },
   "santander": {
