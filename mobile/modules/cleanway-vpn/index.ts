@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
-import { AppState, PermissionsAndroid, Platform } from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
 
-import CleanwayVpn from './src/CleanwayVpnModule';
+import NativeShield, { shieldService } from './src/native';
 
 /** Must match CleanwayVpnService.CANARY_DOMAIN. */
 export const CANARY_DOMAIN = 'block-canary.cleanway.ai';
@@ -26,7 +25,7 @@ import type {
   ShieldBlockKind,
   ShieldBlockSource,
   ShieldStopReason,
-  VpnStoppedPayload,
+  ShieldStoppedPayload,
 } from './src/CleanwayVpn.types';
 import type {
   MessageAnalysis,
@@ -40,10 +39,6 @@ import type {
 import { MESSAGE_REASONS, parseMessageAnalysis } from './src/MessageAnalysis';
 import { analyzeMessageOnIos, iosMessageCheckSupported } from '../cleanway-sms-filter/index';
 import { parseKeepAliveStatus, parseRearmDecision, UNKNOWN_KEEP_ALIVE } from './src/KeepAliveStatus';
-import { parseIosDnsReport } from './src/IosDnsSettings';
-import type { IosDnsError, IosDnsReport } from './src/IosDnsSettings';
-
-export type { IosDnsError, IosDnsReport };
 
 export type {
   BlocklistStatus,
@@ -59,7 +54,7 @@ export type {
   ShieldBlockKind,
   ShieldBlockSource,
   ShieldStopReason,
-  VpnStoppedPayload,
+  ShieldStoppedPayload,
 };
 export type {
   MessageAnalysis,
@@ -78,12 +73,13 @@ export { MESSAGE_REASONS };
  */
 const MESSAGE_MAX_CHARS = 10_000;
 
-export async function startVpn(): Promise<boolean> {
-  return CleanwayVpn.startVpn();
+/** Starts the shield (asks for consent once); false when declined, or where there is none (iPhone, web). */
+export async function startShield(): Promise<boolean> {
+  return shieldService.start();
 }
 
-export async function stopVpn(): Promise<void> {
-  return CleanwayVpn.stopVpn();
+export async function stopShield(): Promise<void> {
+  return shieldService.stop();
 }
 
 /**
@@ -111,7 +107,7 @@ export async function stopVpn(): Promise<void> {
  *    network where the request never completes.
  */
 export async function verifyFiltering(): Promise<boolean> {
-  return probeCanary(CANARY_DOMAIN, () => CleanwayVpn.canaryAnswerCount?.());
+  return probeCanary(CANARY_DOMAIN, () => NativeShield.canaryAnswerCount?.());
 }
 
 /**
@@ -124,7 +120,7 @@ export async function verifyFiltering(): Promise<boolean> {
  * kind of claim this product does not make.
  */
 export async function verifyListFiltering(): Promise<boolean> {
-  return probeCanary(LIST_CANARY_DOMAIN, () => CleanwayVpn.listCanaryAnswerCount?.());
+  return probeCanary(LIST_CANARY_DOMAIN, () => NativeShield.listCanaryAnswerCount?.());
 }
 
 /**
@@ -182,18 +178,18 @@ async function probeCanary(domain: string, read: () => number | undefined): Prom
   }
 }
 
+/** Fires on every block/warn event from the service while JS is alive. */
+export function addDomainBlockedListener(cb: (p: DomainBlockedPayload) => void) {
+  return NativeShield.addListener('onDomainBlocked', cb);
+}
+
 /**
  * Subscribe to the tunnel being torn down without the user asking (revoked in
  * Settings, or another VPN app took over). Lets the UI drop its protected
  * state at the moment it stops being true.
  */
-/** Fires on every block/warn event from the service while JS is alive. */
-export function addDomainBlockedListener(cb: (p: DomainBlockedPayload) => void) {
-  return CleanwayVpn.addListener('onDomainBlocked', cb);
-}
-
-export function addVpnStoppedListener(cb: (p: VpnStoppedPayload) => void) {
-  return CleanwayVpn.addListener('onVpnStopped', cb);
+export function addShieldStoppedListener(cb: (p: ShieldStoppedPayload) => void) {
+  return shieldService.addStoppedListener(cb);
 }
 
 /**
@@ -201,12 +197,12 @@ export function addVpnStoppedListener(cb: (p: VpnStoppedPayload) => void) {
  * the app, the notification's "turn back on", or the clock running out.
  */
 export function addPauseChangedListener(cb: (p: PauseChangedPayload) => void) {
-  return CleanwayVpn.addListener('onPauseChanged', cb);
+  return NativeShield.addListener('onPauseChanged', cb);
 }
 
 /** Subscribe to the shield's list being loaded, synced or revoked. */
 export function addBlocklistChangedListener(cb: () => void) {
-  return CleanwayVpn.addListener('onBlocklistChanged', cb);
+  return NativeShield.addListener('onBlocklistChanged', cb);
 }
 
 /**
@@ -214,7 +210,7 @@ export function addBlocklistChangedListener(cb: () => void) {
  * only — no polling, and nothing for signal-strength updates.
  */
 export function addNetworkChangedListener(cb: (p: NetworkChangedPayload) => void) {
-  return CleanwayVpn.addListener('onNetworkChanged', cb);
+  return NativeShield.addListener('onNetworkChanged', cb);
 }
 
 // ── Calls (CallState.kt / CallGuard.kt / CloseContact.kt) ─────────────────
@@ -228,7 +224,7 @@ export function addNetworkChangedListener(cb: (p: NetworkChangedPayload) => void
 export function callState(): CallStatePayload | null {
   if (Platform.OS !== 'android') return null;
   try {
-    const s = CleanwayVpn.callState?.();
+    const s = NativeShield.callState?.();
     return s && typeof s.inCall === 'boolean' ? s : null;
   } catch {
     return null;
@@ -237,7 +233,7 @@ export function callState(): CallStatePayload | null {
 
 /** A call began or ended while the app is open. */
 export function addCallStateChangedListener(cb: (p: CallStatePayload) => void) {
-  return CleanwayVpn.addListener('onCallStateChanged', cb);
+  return NativeShield.addListener('onCallStateChanged', cb);
 }
 
 /**
@@ -247,7 +243,7 @@ export function addCallStateChangedListener(cb: (p: CallStatePayload) => void) {
  */
 export function noteCallEvent(kind: CallEventKind): void {
   try {
-    CleanwayVpn.noteCallEvent?.(kind);
+    NativeShield.noteCallEvent?.(kind);
   } catch {
     /* older native build */
   }
@@ -256,7 +252,7 @@ export function noteCallEvent(kind: CallEventKind): void {
 /** Bring the phone app to the front during a call — where "hang up" lives. */
 export function showInCallScreen(): boolean {
   try {
-    return CleanwayVpn.showInCallScreen?.() ?? false;
+    return NativeShield.showInCallScreen?.() ?? false;
   } catch {
     return false;
   }
@@ -265,7 +261,7 @@ export function showInCallScreen(): boolean {
 /** The saved "close one" number, or null. It never leaves the phone. */
 export function closeContactPhone(): string | null {
   try {
-    return CleanwayVpn.closeContactPhone?.() ?? null;
+    return NativeShield.closeContactPhone?.() ?? null;
   } catch {
     return null;
   }
@@ -281,7 +277,7 @@ export function closeContactPhone(): string | null {
  */
 export function setCloseContactPhone(phone: string | null): boolean {
   try {
-    return CleanwayVpn.setCloseContactPhone?.(phone) ?? false;
+    return NativeShield.setCloseContactPhone?.(phone) ?? false;
   } catch {
     return false;
   }
@@ -290,7 +286,7 @@ export function setCloseContactPhone(phone: string | null): boolean {
 /** Open the phone app on the saved number (the person presses call). False when none is saved. */
 export function dialCloseContact(): boolean {
   try {
-    return CleanwayVpn.dialCloseContact?.() ?? false;
+    return NativeShield.dialCloseContact?.() ?? false;
   } catch {
     return false;
   }
@@ -300,9 +296,9 @@ export function dialCloseContact(): boolean {
  * Open the system VPN settings so the user can enable "Always-on VPN".
  * Returns false when no such screen exists on this device.
  */
-export function openVpnSettings(): boolean {
+export function openShieldSystemSettings(): boolean {
   try {
-    return CleanwayVpn.openVpnSettings();
+    return shieldService.openSystemSettings();
   } catch {
     return false;
   }
@@ -318,7 +314,7 @@ export function openVpnSettings(): boolean {
 export function keepAliveStatus(): KeepAliveStatus {
   if (Platform.OS !== 'android') return UNKNOWN_KEEP_ALIVE;
   try {
-    return parseKeepAliveStatus(CleanwayVpn.keepAliveStatus?.());
+    return parseKeepAliveStatus(NativeShield.keepAliveStatus?.());
   } catch {
     return UNKNOWN_KEEP_ALIVE;
   }
@@ -331,7 +327,7 @@ export function keepAliveStatus(): KeepAliveStatus {
  */
 export function requestBatteryExemption(): boolean {
   try {
-    return typeof CleanwayVpn.requestBatteryExemption === 'function' && CleanwayVpn.requestBatteryExemption();
+    return typeof NativeShield.requestBatteryExemption === 'function' && NativeShield.requestBatteryExemption();
   } catch {
     return false;
   }
@@ -340,7 +336,7 @@ export function requestBatteryExemption(): boolean {
 /** Open the phone maker's own background/autostart screen (else App info). False if none opened. */
 export function openOemBackgroundSettings(): boolean {
   try {
-    return typeof CleanwayVpn.openOemBackgroundSettings === 'function' && CleanwayVpn.openOemBackgroundSettings();
+    return typeof NativeShield.openOemBackgroundSettings === 'function' && NativeShield.openOemBackgroundSettings();
   } catch {
     return false;
   }
@@ -356,7 +352,7 @@ export function openOemBackgroundSettings(): boolean {
 export function rearmShield(): RearmDecision | null {
   if (Platform.OS !== 'android') return null;
   try {
-    return parseRearmDecision(CleanwayVpn.rearmShield?.());
+    return parseRearmDecision(shieldService.rearm());
   } catch {
     return null;
   }
@@ -370,7 +366,7 @@ export function rearmShield(): RearmDecision | null {
  */
 export function pauseProtection(untilMs: number): void {
   try {
-    CleanwayVpn.pauseProtection?.(untilMs);
+    NativeShield.pauseProtection?.(untilMs);
   } catch {
     /* older native build */
   }
@@ -379,7 +375,7 @@ export function pauseProtection(untilMs: number): void {
 /** End a timed pause now. */
 export function resumeProtection(): void {
   try {
-    CleanwayVpn.resumeProtection?.();
+    NativeShield.resumeProtection?.();
   } catch {
     /* older native build */
   }
@@ -388,7 +384,7 @@ export function resumeProtection(): void {
 /** When the current pause ends (epoch ms); 0 when not paused or unknown. */
 export function pausedUntil(): number {
   try {
-    const until = CleanwayVpn.pausedUntil?.();
+    const until = NativeShield.pausedUntil?.();
     return typeof until === 'number' && until > Date.now() ? until : 0;
   } catch {
     return 0;
@@ -402,7 +398,7 @@ export function pausedUntil(): number {
 export function nativeInstallId(): string | null {
   if (Platform.OS !== 'android') return null;
   try {
-    const id = CleanwayVpn.installId?.();
+    const id = NativeShield.installId?.();
     return typeof id === 'string' && id.length > 0 ? id : null;
   } catch {
     return null;
@@ -415,7 +411,7 @@ export function nativeInstallId(): string | null {
  */
 export function notificationsEnabled(): boolean | null {
   try {
-    return typeof CleanwayVpn.notificationsEnabled === 'function' ? CleanwayVpn.notificationsEnabled() : null;
+    return typeof NativeShield.notificationsEnabled === 'function' ? NativeShield.notificationsEnabled() : null;
   } catch {
     return null;
   }
@@ -448,7 +444,7 @@ export async function turnOnBlockNotifications(): Promise<'on' | 'declined' | 's
 /** Open this app's page in the system notification settings. False if none opened. */
 export function openNotificationSettings(): boolean {
   try {
-    return typeof CleanwayVpn.openNotificationSettings === 'function' && CleanwayVpn.openNotificationSettings();
+    return typeof NativeShield.openNotificationSettings === 'function' && NativeShield.openNotificationSettings();
   } catch {
     return false;
   }
@@ -460,7 +456,7 @@ export function openNotificationSettings(): boolean {
  */
 export function wasUserEnabled(): boolean {
   try {
-    return typeof CleanwayVpn.wasUserEnabled === 'function' && CleanwayVpn.wasUserEnabled();
+    return typeof NativeShield.wasUserEnabled === 'function' && NativeShield.wasUserEnabled();
   } catch {
     return false;
   }
@@ -473,7 +469,7 @@ export function wasUserEnabled(): boolean {
  */
 export function lastStopReason(): ShieldStopReason | null {
   try {
-    const reason = typeof CleanwayVpn.lastStopReason === 'function' ? CleanwayVpn.lastStopReason() : null;
+    const reason = typeof NativeShield.lastStopReason === 'function' ? NativeShield.lastStopReason() : null;
     return reason === 'revoked' || reason === 'private_dns' ? reason : null;
   } catch {
     return null;
@@ -489,8 +485,8 @@ export function lastStopReason(): ShieldStopReason | null {
  */
 export function privateDnsStrictHost(): string | null {
   try {
-    return typeof CleanwayVpn.privateDnsStrictHost === 'function'
-      ? CleanwayVpn.privateDnsStrictHost()
+    return typeof NativeShield.privateDnsStrictHost === 'function'
+      ? NativeShield.privateDnsStrictHost()
       : null;
   } catch {
     return null;
@@ -500,7 +496,7 @@ export function privateDnsStrictHost(): string | null {
 /** Opens the settings screen where Private DNS lives. False if none exists. */
 export function openPrivateDnsSettings(): boolean {
   try {
-    return typeof CleanwayVpn.openPrivateDnsSettings === 'function' && CleanwayVpn.openPrivateDnsSettings();
+    return typeof NativeShield.openPrivateDnsSettings === 'function' && NativeShield.openPrivateDnsSettings();
   } catch {
     return false;
   }
@@ -513,8 +509,8 @@ export function openPrivateDnsSettings(): boolean {
  */
 export function recentShieldBlocks(limit = 50): ShieldBlockEntry[] {
   try {
-    if (typeof CleanwayVpn.recentBlocks !== 'function') return [];
-    return CleanwayVpn.recentBlocks(limit) ?? [];
+    if (typeof NativeShield.recentBlocks !== 'function') return [];
+    return NativeShield.recentBlocks(limit) ?? [];
   } catch {
     return [];
   }
@@ -523,7 +519,7 @@ export function recentShieldBlocks(limit = 50): ShieldBlockEntry[] {
 /** Count of block-log entries since `sinceMs` (epoch millis). */
 export function shieldBlockCountSince(sinceMs: number): number {
   try {
-    return typeof CleanwayVpn.blockCountSince === 'function' ? CleanwayVpn.blockCountSince(sinceMs) : 0;
+    return typeof NativeShield.blockCountSince === 'function' ? NativeShield.blockCountSince(sinceMs) : 0;
   } catch {
     return 0;
   }
@@ -538,8 +534,8 @@ export function shieldBlockCountSince(sinceMs: number): number {
  */
 export function shieldBlockTotals(): { blocked: number; warned: number } {
   try {
-    if (typeof CleanwayVpn.blockLifetimeCounts === 'function') {
-      const c = CleanwayVpn.blockLifetimeCounts() ?? {};
+    if (typeof NativeShield.blockLifetimeCounts === 'function') {
+      const c = NativeShield.blockLifetimeCounts() ?? {};
       return { blocked: c.blocked ?? 0, warned: c.warned ?? 0 };
     }
   } catch {
@@ -580,7 +576,7 @@ export function blocklistStatus(): BlocklistStatus {
     version: 0, count: 0, revoked: false, ageMs: null, stale: true, hasCanary: false, lastError: null, lastFetchAt: 0,
   };
   try {
-    return typeof CleanwayVpn.blocklistStatus === 'function' ? { ...none, ...CleanwayVpn.blocklistStatus() } : none;
+    return typeof NativeShield.blocklistStatus === 'function' ? { ...none, ...NativeShield.blocklistStatus() } : none;
   } catch {
     return none;
   }
@@ -588,7 +584,7 @@ export function blocklistStatus(): BlocklistStatus {
 
 export function refreshBlocklist(): void {
   try {
-    CleanwayVpn.refreshBlocklist?.();
+    NativeShield.refreshBlocklist?.();
   } catch {
     /* older native build */
   }
@@ -597,7 +593,7 @@ export function refreshBlocklist(): void {
 /** Sites the person marked "not a scam", newest first. */
 export function allowedDomains(): string[] {
   try {
-    return CleanwayVpn.allowedDomains?.() ?? [];
+    return NativeShield.allowedDomains?.() ?? [];
   } catch {
     return [];
   }
@@ -610,7 +606,7 @@ export function allowedDomains(): string[] {
  */
 export function allowDomain(domain: string): boolean {
   try {
-    return CleanwayVpn.allowDomain?.(domain) ?? false;
+    return NativeShield.allowDomain?.(domain) ?? false;
   } catch {
     return false;
   }
@@ -619,7 +615,7 @@ export function allowDomain(domain: string): boolean {
 /** Undo an allow — the site can be blocked again. */
 export function removeAllowedDomain(domain: string): void {
   try {
-    CleanwayVpn.removeAllowedDomain?.(domain);
+    NativeShield.removeAllowedDomain?.(domain);
   } catch {
     /* older native build */
   }
@@ -631,7 +627,7 @@ export function removeAllowedDomain(domain: string): void {
  */
 export function openInBrowser(url: string): boolean {
   try {
-    return typeof CleanwayVpn.openInBrowser === 'function' && CleanwayVpn.openInBrowser(url);
+    return typeof NativeShield.openInBrowser === 'function' && NativeShield.openInBrowser(url);
   } catch {
     return false;
   }
@@ -644,7 +640,7 @@ export function openInBrowser(url: string): boolean {
  */
 export function setNotificationLocale(code: string): void {
   try {
-    if (typeof CleanwayVpn.setNotificationLocale === 'function') CleanwayVpn.setNotificationLocale(code);
+    if (typeof NativeShield.setNotificationLocale === 'function') NativeShield.setNotificationLocale(code);
   } catch {
     /* older native build or non-Android */
   }
@@ -659,8 +655,8 @@ export function setNotificationLocale(code: string): void {
  */
 export function isLinkHandlerSupported(): boolean {
   try {
-    return typeof CleanwayVpn.isLinkHandlerSupported === 'function'
-      ? CleanwayVpn.isLinkHandlerSupported()
+    return typeof NativeShield.isLinkHandlerSupported === 'function'
+      ? NativeShield.isLinkHandlerSupported()
       : false;
   } catch {
     return false;
@@ -669,7 +665,7 @@ export function isLinkHandlerSupported(): boolean {
 
 export function isDefaultLinkHandler(): boolean {
   try {
-    return typeof CleanwayVpn.isDefaultLinkHandler === 'function' && CleanwayVpn.isDefaultLinkHandler();
+    return typeof NativeShield.isDefaultLinkHandler === 'function' && NativeShield.isDefaultLinkHandler();
   } catch {
     return false;
   }
@@ -678,7 +674,7 @@ export function isDefaultLinkHandler(): boolean {
 /** Ask the OS to make Cleanway the default link handler. Resolves false if nothing could be shown. */
 export async function requestLinkHandler(): Promise<boolean> {
   try {
-    return typeof CleanwayVpn.requestLinkHandler === 'function' ? await CleanwayVpn.requestLinkHandler() : false;
+    return typeof NativeShield.requestLinkHandler === 'function' ? await NativeShield.requestLinkHandler() : false;
   } catch {
     return false;
   }
@@ -692,7 +688,7 @@ export async function requestLinkHandler(): Promise<boolean> {
 export function isMessageCheckSupported(): boolean {
   try {
     if (Platform.OS === 'ios') return iosMessageCheckSupported();
-    return Platform.OS === 'android' && typeof CleanwayVpn.analyzeMessage === 'function';
+    return Platform.OS === 'android' && typeof NativeShield.analyzeMessage === 'function';
   } catch {
     return false;
   }
@@ -707,7 +703,7 @@ export function isMessageCheckSupported(): boolean {
  */
 export function setRemoteConfig(json: string): boolean {
   try {
-    return Platform.OS === 'android' ? (CleanwayVpn.setRemoteConfig?.(json) ?? false) : false;
+    return Platform.OS === 'android' ? (NativeShield.setRemoteConfig?.(json) ?? false) : false;
   } catch {
     return false;
   }
@@ -729,7 +725,7 @@ export async function analyzeMessage(text: string): Promise<MessageAnalysisResul
     // One character past the limit lets the native side report `truncated`
     // without carrying a whole pasted chat log across the bridge.
     const clipped = text.length > MESSAGE_MAX_CHARS ? text.slice(0, MESSAGE_MAX_CHARS + 1) : text;
-    const raw = Platform.OS === 'ios' ? await analyzeMessageOnIos(clipped) : await CleanwayVpn.analyzeMessage?.(clipped);
+    const raw = Platform.OS === 'ios' ? await analyzeMessageOnIos(clipped) : await NativeShield.analyzeMessage?.(clipped);
     if (raw === undefined) return { available: false, reason: 'unsupported' };
     const analysis = parseMessageAnalysis(raw);
     return analysis ? { available: true, ...analysis } : { available: false, reason: 'failed' };
@@ -748,7 +744,7 @@ export async function analyzeMessage(text: string): Promise<MessageAnalysisResul
 export async function matchBlocklist(host: string): Promise<string | null> {
   if (Platform.OS !== 'android') return null;
   try {
-    const hit = await CleanwayVpn.matchBlocklist?.(host);
+    const hit = await NativeShield.matchBlocklist?.(host);
     return typeof hit === 'string' && hit.length > 0 ? hit : null;
   } catch {
     return null;
@@ -764,108 +760,16 @@ export async function matchBlocklist(host: string): Promise<string | null> {
 export async function linkListAvailable(): Promise<boolean> {
   if (Platform.OS !== 'android') return false;
   try {
-    return (await CleanwayVpn.linkListAvailable?.()) === true;
+    return (await NativeShield.linkListAvailable?.()) === true;
   } catch {
     return false;
   }
 }
 
-export function isVpnRunning(): boolean {
+export function isShieldRunning(): boolean {
   try {
-    return CleanwayVpn.isRunning();
+    return shieldService.running();
   } catch {
     return false;
   }
-}
-
-// ── iPhone DNS protection (NEDNSSettingsManager, docs/IOS.md §4) ──────────
-
-/** This build can set up the iPhone's DNS protection (iOS, and a native build that has it). */
-export function isIosDnsSupported(): boolean {
-  return Platform.OS === 'ios' && typeof CleanwayVpn.dnsSettingsStatus === 'function';
-}
-
-type DnsCall = 'dnsSettingsStatus' | 'installDnsSettings' | 'removeDnsSettings';
-
-async function dnsCall(name: DnsCall): Promise<IosDnsReport | null> {
-  if (!isIosDnsSupported()) return null;
-  try {
-    const fn = CleanwayVpn[name];
-    if (typeof fn !== 'function') return null;
-    return parseIosDnsReport(await fn.call(CleanwayVpn));
-  } catch {
-    // The native side answers with a report, never a rejection; a throw here
-    // is a bridge failure — say "failed", not "not set up".
-    return parseIosDnsReport(null);
-  }
-}
-
-/** What iOS has saved and whether the person turned it on. Null where there is no such layer. */
-export function iosDnsStatus(): Promise<IosDnsReport | null> {
-  return dnsCall('dnsSettingsStatus');
-}
-
-/** Save Cleanway's encrypted DNS in iOS. It stays off until the person picks it in Settings. */
-export function installIosDns(): Promise<IosDnsReport | null> {
-  return dnsCall('installDnsSettings');
-}
-
-/** Remove it from iOS altogether. */
-export function removeIosDns(): Promise<IosDnsReport | null> {
-  return dnsCall('removeDnsSettings');
-}
-
-/** iOS changed the DNS configuration (usually: the person switched it in Settings). */
-export function addIosDnsChangedListener(cb: () => void): { remove: () => void } {
-  if (!isIosDnsSupported()) return { remove: () => {} };
-  return CleanwayVpn.addListener('onDnsSettingsChanged', cb);
-}
-
-/**
- * React hook for the protection toggle. Tracks running state + the most recent
- * blocked domain (from the native onDomainBlocked event).
- */
-export function useVpn() {
-  const [running, setRunning] = useState<boolean>(isVpnRunning);
-  const [verified, setVerified] = useState<boolean>(false);
-  const [lastBlocked, setLastBlocked] = useState<DomainBlockedPayload | null>(null);
-
-  useEffect(() => {
-    const sub = CleanwayVpn.addListener(
-      'onDomainBlocked',
-      (p: DomainBlockedPayload) => setLastBlocked(p),
-    );
-    return () => sub.remove();
-  }, []);
-
-  // Re-sync on foreground so the toggle reflects an external teardown (user revoked the
-  // VPN in Settings, always-on takeover, or the OS killed the service).
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active') {
-        const r = isVpnRunning();
-        setRunning(r);
-        if (r) void verifyFiltering().then(setVerified);
-        else setVerified(false);
-      }
-    });
-    return () => sub.remove();
-  }, []);
-
-  const start = useCallback(async () => {
-    const ok = await CleanwayVpn.startVpn();
-    // Trust the resolved boolean: the native service's isRunning flag is set asynchronously
-    // and is not yet true at the moment startVpn() resolves.
-    setRunning(ok);
-    if (ok) setVerified(await verifyFiltering());
-    return ok;
-  }, []);
-
-  const stop = useCallback(async () => {
-    await CleanwayVpn.stopVpn();
-    setRunning(false);
-    setVerified(false);
-  }, []);
-
-  return { running, verified, lastBlocked, start, stop };
 }

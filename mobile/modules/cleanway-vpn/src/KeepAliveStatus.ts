@@ -12,8 +12,9 @@ import type { KeepAliveStatus, OemFamily, RearmDecision } from './CleanwayVpn.ty
 /** Must match KeepAlivePolicy.OemFamily.wire (KeepAlivePolicyTest pins the native side). */
 export const OEM_FAMILIES: readonly OemFamily[] = ['samsung', 'xiaomi', 'huawei', 'oppo', 'vivo'];
 
+/** KeepAlivePolicy.Rearm in lower case, as src/native.android.ts passes it on (OTHER_VPN as 'other_tunnel'). */
 const REARM_DECISIONS: readonly RearmDecision[] = [
-  'start', 'running', 'not_wanted', 'taken_away', 'private_dns', 'other_vpn', 'budget', 'no_consent',
+  'start', 'running', 'not_wanted', 'taken_away', 'private_dns', 'other_tunnel', 'budget', 'no_consent',
 ];
 
 export const UNKNOWN_KEEP_ALIVE: KeepAliveStatus = { batteryUnrestricted: null, alwaysOn: null, oem: null };

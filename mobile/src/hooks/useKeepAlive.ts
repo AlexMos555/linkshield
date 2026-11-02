@@ -15,7 +15,7 @@ import {
   keepAliveStatus,
   notificationsEnabled,
   openOemBackgroundSettings,
-  openVpnSettings,
+  openShieldSystemSettings,
   requestBatteryExemption,
   turnOnBlockNotifications,
   type KeepAliveStatus,
@@ -72,7 +72,7 @@ export function useKeepAlive(shieldKey: string): KeepAlive {
   }, []);
 
   const openAlwaysOn = useCallback(() => {
-    openVpnSettings();
+    openShieldSystemSettings();
   }, []);
 
   return { status, notifications, requestBattery, openOemSettings, turnOnNotifications, openAlwaysOn, refresh };

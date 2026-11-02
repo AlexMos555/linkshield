@@ -1,6 +1,6 @@
 /**
  * The iPhone's DNS protection as the native side reports it
- * (ios/CleanwayVpnModule.swift, CleanwayDnsSettings.report). Pure — no React
+ * (ios/CleanwayDnsModule.swift, CleanwayDnsSettings.report). Pure — no React
  * Native — so mobile/scripts/test-ios-dns.mjs runs it under plain node.
  */
 

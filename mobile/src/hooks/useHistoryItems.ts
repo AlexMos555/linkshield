@@ -11,10 +11,8 @@ const CHECK_LIMIT = 200;
 /** The whole block log: it keeps at most 200 events (BlockLog.DEFAULT_CAP). */
 const SHIELD_LIMIT = 200;
 
-interface BlockEventsModule {
-  addDomainBlockedListener?(cb: () => void): { remove(): void };
-  shieldBlockTotals?(): { blocked: number; warned: number };
-}
+/** The module itself, so a name it does not export cannot type-check here (test-no-vpn-names.mjs). */
+type BlockEventsModule = typeof import("../../modules/cleanway-vpn");
 
 const NO_GAPS: HistoryGaps = { checksFull: false, shieldBlocked: false, shieldWarned: false };
 
@@ -27,11 +25,17 @@ function readTotals(mod: BlockEventsModule | null): { blocked: number; warned: n
   }
 }
 
+/**
+ * Outside any try block on purpose: Metro keeps the path of a require()
+ * written in one, even in a release bundle (test-no-vpn-names.mjs).
+ */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const requireShieldModule = () => require("../../modules/cleanway-vpn") as BlockEventsModule;
+
 function loadModule(): BlockEventsModule | null {
   if (Platform.OS !== "android") return null;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("../../modules/cleanway-vpn") as BlockEventsModule;
+    return requireShieldModule();
   } catch {
     return null;
   }

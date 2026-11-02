@@ -36,7 +36,7 @@ import { MessageCheckCard } from "../../src/components/shield/MessageCheckCard";
 import { KeepAliveCard } from "../../src/components/shield/KeepAliveCard";
 import { useKeepAlive } from "../../src/hooks/useKeepAlive";
 import { shieldForKeepAlive } from "../../src/utils/keep-alive";
-import { callState, isMessageCheckSupported, isVpnRunning, linkListAvailable, privateDnsStrictHost } from "../../modules/cleanway-vpn";
+import { callState, isMessageCheckSupported, isShieldRunning, linkListAvailable, privateDnsStrictHost } from "../../modules/cleanway-vpn";
 import { CallHelpButton } from "../../src/components/call/CallHelpButton";
 import { useCallGuard } from "../../src/components/call/CallGuardProvider";
 import type { HistoryFilter } from "../../src/utils/history-model";
@@ -216,7 +216,7 @@ export default function HomeScreen() {
     router.setParams({ setup: undefined });
     // Only where the button itself would show: not running, and no strict
     // Private DNS (then the card explains which setting to change instead).
-    if (network.available && !isVpnRunning() && !privateDnsStrictHost()) startWithDisclosure();
+    if (network.available && !isShieldRunning() && !privateDnsStrictHost()) startWithDisclosure();
     // startWithDisclosure is recreated each render; the param is the trigger.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setup, network.available]);
