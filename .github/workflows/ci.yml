@@ -331,6 +331,14 @@ jobs:
         # serves, with no pinned IPs and no on-demand rules. docs/IOS.md §4.
         run: node --experimental-strip-types mobile/scripts/test-ios-dns.mjs
 
+      - name: iPhone strings say "VPN" only for Apple's Settings page
+        # App Review read 1.0.4 as "contains VPN functionality" (2026-10-30).
+        # The base mobile/i18n files ship in the iPhone's bundle: /vpn/i only in
+        # the Settings → General → VPN & Device Management → DNS path, no
+        # landing.* / email.*; the strings only Android shows live in
+        # mobile/i18n/android/, which only src/i18n/resources.android.ts imports.
+        run: node mobile/scripts/test-ios-strings-no-vpn.mjs
+
       - name: Remote config (SMS text model kill switch) table test
         # The server can turn the on-device SMS text model off without an APK.
         # An answer without a valid block keeps the stored switches (an outage

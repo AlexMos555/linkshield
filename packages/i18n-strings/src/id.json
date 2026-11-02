@@ -4150,7 +4150,7 @@
         "status_turn_on": "Sudah ditambahkan. Sekarang pilih Cleanway di Pengaturan — layar ini diperbarui saat Anda kembali.",
         "status_on": "Aktif. iPhone Anda mencari situs melalui Cleanway.",
         "note_off": "Jika situs tidak bisa dibuka lagi, pilih Otomatis di pengaturan DNS yang sama, atau hapus Cleanway di bawah.",
-        "note_vpn": "Selama aplikasi VPN terhubung, iPhone Anda mungkin memakai DNS VPN tersebut, bukan DNS Cleanway.",
+        "note_other_dns": "Selama aplikasi lain yang mengubah koneksi atau DNS iPhone Anda aktif, iPhone Anda mungkin memakai DNS aplikasi tersebut, bukan DNS Cleanway.",
         "remove": "Hapus dari iPhone",
         "removing": "Menghapus…",
         "done": "Selesai",

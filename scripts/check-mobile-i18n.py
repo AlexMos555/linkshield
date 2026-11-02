@@ -37,6 +37,12 @@ Three invariants, each of which has been violated for real:
    (landing, extension and email too). And no v3 `<base>_plural` keys: i18next 24+
    never reads them, so they only mislead the next translator.
 
+Every invariant holds for what Android shows: the base file plus
+mobile/i18n/android/<locale>.json, the few strings only Android has (only
+src/i18n/resources.android.ts imports them, so they stay out of the iPhone's
+bundle — scripts/i18n_mobile.py). A key is in one of the two, never both,
+and every locale splits its keys the way English does.
+
 Dynamic template-literal keys (`mobile.result.verdict_${level}`) cannot be
 checked statically and are intentionally out of scope here.
 """
@@ -48,6 +54,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GEN = os.path.join(ROOT, "mobile", "i18n")
+GEN_ANDROID = os.path.join(GEN, "android")
 PH = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}")
 KEY_REF = re.compile(r'["`](mobile\.[a-z0-9_.]+)["`]')
 NATIVE_PREFIX = "mobile.android_native."
@@ -61,9 +68,17 @@ failures = []
 
 
 locales = {}
+android_only = {}
 for path in sorted(glob.glob(os.path.join(GEN, "*.json"))):
     code = os.path.basename(path)[:-5]
     data = json.load(open(path, encoding="utf-8"))
+    android_path = os.path.join(GEN_ANDROID, f"{code}.json")
+    extra = json.load(open(android_path, encoding="utf-8")) if os.path.exists(android_path) else {}
+    both = sorted(set(data) & set(extra))
+    if both:
+        failures.append(f"{code}: in both the base file and android/: {both[:5]}")
+    android_only[code] = set(extra)
+    data = {**data, **extra}
     locales[code] = {k: v for k, v in data.items() if k.startswith("mobile.")}
 
 if "en" not in locales:
@@ -71,6 +86,13 @@ if "en" not in locales:
     sys.exit(1)
 
 en = locales["en"]
+
+stray = sorted({os.path.basename(p)[:-5] for p in glob.glob(os.path.join(GEN_ANDROID, "*.json"))} - set(locales))
+if stray:
+    failures.append(f"android/ files with no base locale file: {stray}")
+for code, keys in sorted(android_only.items()):
+    if keys != android_only["en"]:
+        failures.append(f"{code}: android/ keys differ from en's: {sorted(android_only['en'] ^ keys)[:5]}")
 
 dead_v3_plurals = sorted(k for k in en if k.endswith("_plural") and k[: -len("_plural")] in en)
 if dead_v3_plurals:
@@ -119,6 +141,7 @@ if failures:
     sys.exit(1)
 
 print(
-    f"mobile i18n OK: {len(locales)} locales × {len(en)} keys, "
+    f"mobile i18n OK: {len(locales)} locales × {len(en)} keys "
+    f"({len(android_only['en'])} Android-only), "
     f"{len(used)} referenced keys resolve, placeholders exact"
 )
