@@ -25,11 +25,17 @@ function readTotals(mod: BlockEventsModule | null): { blocked: number; warned: n
   }
 }
 
+/**
+ * Outside any try block on purpose: Metro keeps the path of a require()
+ * written in one, even in a release bundle (test-no-vpn-names.mjs).
+ */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const requireShieldModule = () => require("../../modules/cleanway-vpn") as BlockEventsModule;
+
 function loadModule(): BlockEventsModule | null {
   if (Platform.OS !== "android") return null;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("../../modules/cleanway-vpn") as BlockEventsModule;
+    return requireShieldModule();
   } catch {
     return null;
   }

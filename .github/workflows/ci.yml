@@ -350,10 +350,11 @@ jobs:
       - name: No VPN names in the shared JS (iOS bundle) guard
         # Hermes keeps the shared code's function and property names and its
         # strings in the iPhone app. No /vpn/i name or text in app/, src/ or
-        # the modules' JS;
-        # Kotlin's startVpn/onVpnStopped/… live only in native.android.ts,
-        # which Metro bundles for Android alone. And every name the app takes
-        # from the shield module is exported, typed from the module itself.
+        # the modules' JS — nor an import path in a try block, which Metro
+        # keeps even in a release bundle (an optional dependency). Kotlin's
+        # startVpn/onVpnStopped/… live only in native.android.ts, which Metro
+        # bundles for Android alone. And every name the app takes from the
+        # shield module is exported, typed from the module itself.
         run: node mobile/scripts/test-no-vpn-names.mjs
 
       - name: Remote config (SMS text model kill switch) table test

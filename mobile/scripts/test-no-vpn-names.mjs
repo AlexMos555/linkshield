@@ -15,8 +15,14 @@
  *  1. No identifier, string, template, regex or JSX text in app/, src/ or the
  *     modules' shared JS (not *.android.ts, not android/ or ios/) matches
  *     /vpn/i or is one of Kotlin's names (isRunning included). Comments do
- *     not reach the bundle and import paths are replaced by module ids in a
- *     release build (Metro keeps them only in dev), so neither counts.
+ *     not reach the bundle, so they do not count. An import path counts
+ *     where a release bundle keeps it. Metro swaps a path for a module id,
+ *     but Expo's config allows optional dependencies — a require() or
+ *     import() inside a try block — and Metro keeps an optional one's path
+ *     next to its id, in a release build too (collect-dependencies.js). So
+ *     the shield module's lazy require()s sit in a helper outside the try.
+ *     (Hermes -O may drop such a require as dead code after a Platform.OS
+ *     check, but only while that check stays.)
  *  2. The Kotlin names appear in native.android.ts — the mapping is there.
  *  3. Every name the app takes from modules/cleanway-vpn is exported by it:
  *     named imports, and every member used on the module where a file
@@ -92,6 +98,18 @@ function isModulePath(node) {
   return ts.isLiteralTypeNode(p) && ts.isImportTypeNode(p.parent);
 }
 
+/**
+ * Is [node] in a try block (not its catch or finally)? Metro calls a require()
+ * or import() there optional and keeps its path. Metro looks only a few
+ * statements up for the try; this looks all the way, which is stricter.
+ */
+function inTryBlock(node) {
+  for (let p = node.parent; p; p = p.parent) {
+    if (ts.isBlock(p) && ts.isTryStatement(p.parent) && p.parent.tryBlock === p) return true;
+  }
+  return false;
+}
+
 /** Every name and text a file's code carries into the bundle: [kind, text, line]. */
 function codeWords(sf) {
   const out = [];
@@ -99,7 +117,7 @@ function codeWords(sf) {
     let text = null;
     if (ts.isIdentifier(node) || ts.isPrivateIdentifier(node)) text = node.text;
     else if (ts.isStringLiteralLike(node) || ts.isTemplateLiteralToken(node) || ts.isRegularExpressionLiteral(node)) {
-      text = isModulePath(node) ? null : node.text;
+      text = isModulePath(node) && !inTryBlock(node) ? null : node.text;
     } else if (ts.isJsxText(node)) text = node.text;
     if (text !== null) out.push([ts.SyntaxKind[node.kind], text, sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1]);
     ts.forEachChild(node, visit);
@@ -132,6 +150,23 @@ await check("the guard sees a Kotlin name in the shared code (startVpn put back 
   // …and in a hook, and in a string, but not in a comment or an import path.
   assert.equal(vpnWords("x.ts", "const a = shield.isRunning(); const b = 'onVpnStopped';").length, 2);
   assert.equal(vpnWords("x.ts", `// startVpn\nimport { a } from "../../modules/cleanway-vpn";`).length, 0);
+});
+
+await check("the guard sees an import path a release bundle keeps: a require() in a try block", () => {
+  const path = '"../../modules/cleanway-vpn"';
+  assert.equal(vpnWords("x.ts", `function f() { try { return require(${path}); } catch { return null; } }`).length, 1);
+  assert.equal(vpnWords("x.ts", `async function f() { try { const m = await import(${path}); return m; } catch {} }`).length, 1);
+  // A static import, a type and a require() called from the try are dropped.
+  const dropped = `import { a } from ${path}; type M = typeof import(${path});
+    const load = () => require(${path}) as M;
+    function f() { try { return load(); } catch { return null; } }`;
+  assert.equal(vpnWords("x.ts", dropped).length, 0);
+  // shield-log.ts with its require() back inside the try, as it was.
+  const rel = "src/services/shield-log.ts";
+  const text = read(rel);
+  const bad = text.replace("return requireShieldModule();", `return require(${path}) as ShieldLogModule;`);
+  assert.notEqual(bad, text, "shield-log.ts calls requireShieldModule() in its try");
+  assert.deepEqual(vpnWords(rel, bad).map((w) => w.replace(/:\d+/, "")), [`${rel} StringLiteral ${path}`]);
 });
 
 await check("native.android.ts maps every Kotlin name", () => {

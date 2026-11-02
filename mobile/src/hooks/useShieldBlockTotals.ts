@@ -4,11 +4,17 @@ import { AppState, Platform } from "react-native";
 /** The module itself, so a name it does not export cannot type-check here (test-no-vpn-names.mjs). */
 type ShieldLogModule = typeof import("../../modules/cleanway-vpn");
 
+/**
+ * Outside any try block on purpose: Metro keeps the path of a require()
+ * written in one, even in a release bundle (test-no-vpn-names.mjs).
+ */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const requireShieldModule = () => require("../../modules/cleanway-vpn") as ShieldLogModule;
+
 function loadModule(): ShieldLogModule | null {
   if (Platform.OS !== "android") return null;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("../../modules/cleanway-vpn") as ShieldLogModule;
+    return requireShieldModule();
   } catch {
     return null;
   }
