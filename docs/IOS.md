@@ -469,17 +469,17 @@ rather than to rely on Cloudflare not keeping it.
 >
 > VPN (2.1): no VPN, no tunnel, no NEVPNManager/NETunnelProviderManager, no
 > Network Extension provider target. Only the DNS Settings API (entitlement
-> "dns-settings"), which iOS lists under VPN & Device Management. The native
-> module "CleanwayVpn" is shared with Android; on iOS startVpn/stopVpn do
-> nothing and Android-only VPN text is never shown. With DNS protection on,
-> our server gets DNS queries (name, record type) and the request's IP. It
-> logs no names or IPs. It keeps aggregate counters, an in-memory answer cache
-> keyed by the question only, and an hourly rate-limit count under a keyed
-> hash of the IP. Unblocked, uncached names go to Cloudflare from our server.
-> Railway hosts us (EU West); its edge nearest the user ends HTTPS and keeps
-> request logs that can include the IP and URL (a GET query's URL holds the
-> name). iOS 26+ may fall back to the network's DNS. No sale, ads or
-> profiling.
+> "dns-settings"), which iOS lists under VPN & Device Management. The app's
+> DNS module is "CleanwayDns" (save, read, remove the setting); Android's
+> shield module is not built into the iOS app, and Android-only VPN text is
+> never shown. With DNS protection on, our server gets DNS queries (name,
+> record type) and the request's IP. It logs no names or IPs. It keeps
+> aggregate counters, an in-memory answer cache keyed by the question only,
+> and an hourly rate-limit count under a keyed hash of the IP. Unblocked,
+> uncached names go to Cloudflare from our server. Railway hosts us (EU West);
+> its edge nearest the user ends HTTPS and keeps request logs that can include
+> the IP and URL (a GET query's URL holds the name). iOS 26+ may fall back to
+> the network's DNS. No sale, ads or profiling.
 
 **"The app contains VPN functionality" (2.1, 2026-10-30).** App Review's
 automated analysis flagged 1.0.4 (3) and asked what user information the
@@ -496,7 +496,12 @@ Re-check it before reusing: GET vs POST from iOS and what Railway's request
 logs keep were not verified (the Railway session had expired); renaming the
 module or dropping the Android strings from the iOS bundle changes the second
 paragraph; a change to the DoH cache, rate limiter, upstreams or logging
-changes "2." and "3.".
+changes "2." and "3.". The module was split after the reply went: a build
+that has `modules/cleanway-dns` links `CleanwayDns` (iOS only) and no
+`CleanwayVpn`, which is Android-only now (`modules/cleanway-vpn`). The reply's
+"native module CleanwayVpn" sentence describes 1.0.6 (6) and earlier; the
+Notes paragraph above says what the newer builds carry
+(`mobile/scripts/test-ios-native-modules.mjs` pins the split).
 
 > Hello,
 >
@@ -607,13 +612,13 @@ existing DoH gateway.
 
 | Piece | Where |
 |---|---|
-| Native: save / read / remove the configuration, change notice | `mobile/modules/cleanway-vpn/ios/CleanwayVpnModule.swift` (`CleanwayDnsSettings`; JS names `dnsSettingsStatus`, `installDnsSettings`, `removeDnsSettings`, event `onDnsSettingsChanged`) |
-| JS bridge + report parser | `modules/cleanway-vpn/index.ts` (`isIosDnsSupported`, `iosDnsStatus`, `installIosDns`, `removeIosDns`, `addIosDnsChangedListener`), `modules/cleanway-vpn/src/IosDnsSettings.ts` |
+| Native: save / read / remove the configuration, change notice | `mobile/modules/cleanway-dns/ios/CleanwayDnsModule.swift` — its own iOS-only module `CleanwayDns` (`CleanwayDnsSettings`; JS names `dnsSettingsStatus`, `installDnsSettings`, `removeDnsSettings`, event `onDnsSettingsChanged`). Android's shield module (`modules/cleanway-vpn`) has no iOS half |
+| JS bridge + report parser | `modules/cleanway-dns/index.ts` (`isIosDnsSupported`, `iosDnsStatus`, `installIosDns`, `removeIosDns`, `addIosDnsChangedListener`; the native module is optional and asked for on iOS only), `modules/cleanway-dns/src/IosDnsSettings.ts` |
 | State machine (pure) | `src/utils/ios-dns.ts` — phases `unavailable → checking → add → turn_on → on`, the sheet model, the error wording |
 | Live hook | `src/hooks/useIosDnsProtection.ts` — reads iOS on mount, on every foreground (back from Settings) and on `NEDNSSettingsConfigurationDidChange` |
 | UI | home card row "DNS protection" (`IosProtectionCard`: "Set up" / check mark — both open the sheet) → `src/components/shield/IosDnsSetupSheet.tsx`; home privacy line and hero follow it |
 | Entitlement | `com.apple.developer.networking.networkextension = ["dns-settings"]`, added by `plugins/withIosAppStore.js` (VPN values stripped) — no `app.json` change |
-| Tests (CI) | `mobile/scripts/test-ios-dns.mjs`, `mobile/scripts/test-platform-gating.mjs` |
+| Tests (CI) | `mobile/scripts/test-ios-dns.mjs`, `mobile/scripts/test-platform-gating.mjs`, `mobile/scripts/test-ios-native-modules.mjs` |
 
 The configuration: `NEDNSOverHTTPSSettings(servers: [])`, `serverURL =
 https://dns.cleanway.ai/dns-query`, `localizedDescription = "Cleanway"`, no

@@ -92,9 +92,121 @@ export type CleanwayVpnModuleEvents = {
   onNetworkChanged: (params: NetworkChangedPayload) => void;
   /** A call began or ended (CallState.kt) — the stop screen and the home button follow it. */
   onCallStateChanged: (params: CallStatePayload) => void;
-  /** iPhone: the DNS configuration changed (turned on/off in Settings); read dnsSettingsStatus() again. */
-  onDnsSettingsChanged: (params: Record<string, never>) => void;
 };
+
+/** What every native-module subscription can do. */
+export type NativeSubscription = { remove(): void };
+
+/**
+ * The shield's native module (android/.../CleanwayVpnModule.kt) as the shared
+ * code sees it. src/native.android.ts is the Kotlin module itself; on iOS and
+ * web src/native.ts stands in with none of these calls, which index.ts reads
+ * as "not on this platform". So every call is optional — also because an app
+ * running against an older native build must degrade, not crash.
+ */
+export interface CleanwayVpnNativeModule {
+  addListener<E extends keyof CleanwayVpnModuleEvents>(event: E, listener: CleanwayVpnModuleEvents[E]): NativeSubscription;
+  /** Requests VPN consent (once) then starts the local DNS-filter VPN. Resolves false if the user declines. */
+  startVpn?(): Promise<boolean>;
+  /** Tears the VPN tunnel down. */
+  stopVpn?(): Promise<void>;
+  openVpnSettings?(): boolean;
+  /** True while the tunnel is active (reflects real service state). */
+  isRunning?(): boolean;
+  /**
+   * Monotonic count of canary queries the service has answered. Compared by
+   * delta in verifyFiltering() — see that function for why it is a counter
+   * and not a timestamp. Optional so an app running against an older native
+   * build degrades to "unverified" instead of crashing.
+   */
+  canaryAnswerCount?(): number;
+  /** Battery / Always-on / phone maker, raw (index.ts validates it). Optional: older native builds lack it. */
+  keepAliveStatus?(): Record<string, unknown>;
+  /** Open Android's "stop optimising battery for Cleanway?" dialog, or the closest screen. */
+  requestBatteryExemption?(): boolean;
+  /** Open the phone maker's own background/autostart screen, else App info. */
+  openOemBackgroundSettings?(): boolean;
+  /** Bring back a shield the person left ON that is not running (same rules as the watchdog). */
+  rearmShield?(): string;
+  /** True if the user last chose ON. Optional: older native builds lack it. */
+  wasUserEnabled?(): boolean;
+  /** Why protection last stopped by itself ("revoked" | "private_dns"), null when not known. */
+  lastStopReason?(): string | null;
+  /**
+   * Hostname of the device's strict Private DNS provider, or null when the
+   * setting is Off/Automatic. Strict + our tunnel = no DNS for any app.
+   */
+  privateDnsStrictHost?(): string | null;
+  /** Opens the settings screen where Private DNS lives. */
+  openPrivateDnsSettings?(): boolean;
+  /** Persisted block log, newest first. Optional: older native builds lack it. */
+  recentBlocks?(limit: number): ShieldBlockEntry[];
+  /** Number of block-log entries with ts >= sinceMs. */
+  blockCountSince?(sinceMs: number): number;
+  /** Lifetime totals per kind — {blocked, warned, allowed}. */
+  blockLifetimeCounts?(): { blocked?: number; warned?: number; allowed?: number };
+  /** Open a URL in a real (non-Cleanway) browser. False if none available. */
+  openInBrowser?(url: string): boolean;
+  /** Persist the chosen UI locale for native notifications. */
+  setNotificationLocale?(code: string): void;
+  /** RoleManager exists here (Android 10+), so the browser role can be verified. */
+  isLinkHandlerSupported?(): boolean;
+  /** True when Cleanway is the default web-link handler (browser role). */
+  isDefaultLinkHandler?(): boolean;
+  /** Ask the OS to make Cleanway the default link handler. */
+  requestLinkHandler?(): Promise<boolean>;
+  /** Loaded blocklist + freshness. Optional: older native builds lack it. */
+  blocklistStatus?(): BlocklistStatus;
+  /** Fetch the list now (background). */
+  refreshBlocklist?(): void;
+  /** Monotonic count of list-canary answers — proof the loaded list is live. */
+  listCanaryAnswerCount?(): number;
+  /** Sites the person marked "not a scam". */
+  allowedDomains?(): string[];
+  allowDomain?(domain: string): boolean;
+  removeAllowedDomain?(domain: string): void;
+  /**
+   * On-device check of a message's text. Raw native shape — index.ts
+   * validates it into a MessageAnalysis. Optional: older native builds lack it.
+   */
+  analyzeMessage?(text: string): Promise<Record<string, unknown>>;
+  /**
+   * Store the server's switches for the on-phone checks (remote_config, as
+   * JSON) where the native message check reads them. False, keeping the last
+   * stored ones, when it is not a config. Optional: older native builds lack it.
+   */
+  setRemoteConfig?(json: string): boolean;
+  /** The switches the message check uses now (stored, else defaults), as JSON. */
+  remoteConfig?(): string;
+  /** The blocklisted suffix covering this host (DNS rules), or null. */
+  matchBlocklist?(host: string): Promise<string | null>;
+  /** A blocklist exists for the link guard: the shield's, a synced copy on disk, or the bundled seed. */
+  linkListAvailable?(): Promise<boolean>;
+  /** Pause blocking until this epoch-ms time; the tunnel stays up and resumes by itself. */
+  pauseProtection?(untilMs: number): void;
+  /** End a timed pause now. */
+  resumeProtection?(): void;
+  /** End of the current pause (epoch ms), 0 when not paused. */
+  pausedUntil?(): number;
+  /** This install's random id, sent as X-Cleanway-Install with site checks. */
+  installId?(): string;
+  /** False when the person switched Cleanway's notifications off. */
+  notificationsEnabled?(): boolean;
+  /** Open this app's system notification settings. */
+  openNotificationSettings?(): boolean;
+  /** Is the person on the phone, and when did the last call end? Optional: older native builds lack it. */
+  callState?(): CallStatePayload;
+  /** The app saw something the after-call notice should name (CallGuard.kt). */
+  noteCallEvent?(kind: string): void;
+  /** Bring the phone app (its in-call screen) to the front. */
+  showInCallScreen?(): boolean;
+  /** The saved "close one" number, or null. Kept on the phone only. */
+  closeContactPhone?(): string | null;
+  /** Save (or clear with null) the "close one" number; false when not dialable. */
+  setCloseContactPhone?(phone: string | null): boolean;
+  /** Open the phone app on the saved number; false when none is saved. */
+  dialCloseContact?(): boolean;
+}
 
 /**
  * Is the person on the phone (CallState.kt)? Read from the audio mode — no

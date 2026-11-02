@@ -339,6 +339,14 @@ jobs:
         # mobile/i18n/android/, which only src/i18n/resources.android.ts imports.
         run: node mobile/scripts/test-ios-strings-no-vpn.mjs
 
+      - name: iPhone native modules (no shield module on iOS) table test
+        # The shield's native module is Android-only: the iPhone app links no
+        # module named after Android's VPN (App Review flagged "VPN", docs/IOS.md
+        # §3.6). iOS and web bundle a JS stub, and every export answers "not on
+        # this platform" over it without a throw — the app imports it at
+        # launch. DNS protection has its own iOS-only module, CleanwayDns.
+        run: node mobile/scripts/test-ios-native-modules.mjs
+
       - name: Remote config (SMS text model kill switch) table test
         # The server can turn the on-device SMS text model off without an APK.
         # An answer without a valid block keeps the stored switches (an outage

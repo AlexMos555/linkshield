@@ -1,38 +1,23 @@
 import ExpoModulesCore
 import NetworkExtension
 
-// The iOS half of the cleanway-vpn module. The JS API (modules/cleanway-vpn/index.ts)
-// is shared with Android, where it drives a local DNS-filter VPN; every
-// Android-only function is optional in JS and simply absent here, so the app
-// treats it as "not on this platform".
-//
-// iOS does NOT get a VPN (App Review 5.4 restricts VPN apps to Organization
-// accounts). Its protection layers (docs/MOBILE_AUTO_PROTECTION.md, docs/IOS.md)
+// The iPhone's DNS protection (docs/IOS.md §4), an iOS-only module; its JS
+// side is modules/cleanway-dns/index.ts. Android's shield is a separate,
+// Android-only module (modules/cleanway-vpn) and has no iOS half: the iPhone
+// gets no tunnel (App Review 5.4 restricts those to Organization accounts).
+// The iPhone's protection layers (docs/MOBILE_AUTO_PROTECTION.md, docs/IOS.md)
 // report their status to the home screen through src/utils/platform-features.ts:
-//   - DNS protection: NEDNSSettingsManager — the functions below;
+//   - DNS protection: NEDNSSettingsManager — this module;
 //   - scam-text filter: an ILMessageFilterExtension target;
 //   - Safari Web Extension target.
-// The VPN calls are honest no-ops: never "running".
-public class CleanwayVpnModule: Module {
+public class CleanwayDnsModule: Module {
   private var dnsObserver: NSObjectProtocol?
 
   public func definition() -> ModuleDefinition {
-    Name("CleanwayVpn")
+    Name("CleanwayDns")
 
-    Events("onDomainBlocked", "onDnsSettingsChanged")
+    Events("onDnsSettingsChanged")
 
-    AsyncFunction("startVpn") { () -> Bool in
-      return false
-    }
-
-    AsyncFunction("stopVpn") { () in
-    }
-
-    Function("isRunning") { () -> Bool in
-      return false
-    }
-
-    // ── DNS protection (docs/IOS.md §4) ────────────────────────────────
     // Every call answers with a report, never a rejection: the screen needs
     // the state the phone is in after a failure as much as the failure.
 

@@ -20,7 +20,7 @@
  *     entitlement, no microphone or Face ID string, a camera string,
  *     ITSAppUsesNonExemptEncryption=false (true only while the app is off the
  *     French App Store — docs/IOS.md §2), a privacy manifest with reasons,
- *     iPhone only, and the native module's pod not above the app's iOS
+ *     iPhone only, and the DNS module's pod not above the app's iOS
  *     deployment target (it was, and the app died at launch);
  *   • the Safari Web Extension inside the app: the home card's Safari layer
  *     follows what iOS and the extension report (safariLayerState), the
@@ -266,11 +266,12 @@ check("expo-notifications is kept out of the iOS build (no push on iPhone yet)",
   for (const file of files) assert.ok(!/from ["']expo-notifications["']/.test(read(file)), file);
 });
 
-check("the native module's pod is not above the app's iOS deployment target (Expo SDK 54: 15.1)", () => {
-  const podspec = read("modules/cleanway-vpn/ios/CleanwayVpn.podspec");
+check("the DNS module's pod is not above iOS 15.1 (Expo SDK 54); Android's shield module has no iOS half", () => {
+  const podspec = read("modules/cleanway-dns/ios/CleanwayDns.podspec");
   const m = /:ios => '(\d+)\.(\d+)'/.exec(podspec);
   assert.ok(m, "ios platform declared");
   assert.ok(Number(m[1]) * 100 + Number(m[2]) <= 1501, `pod needs iOS ${m[1]}.${m[2]}`);
+  assert.deepEqual(JSON.parse(read("modules/cleanway-vpn/expo-module.config.json")).platforms, ["android"]);
 });
 
 check("the share extension: links and text, one at a time — the URL itself, not the web page", () => {

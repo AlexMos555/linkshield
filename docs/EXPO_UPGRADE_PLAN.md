@@ -346,9 +346,10 @@ BUILD SUCCESSFUL. Мы так и задумывали — чтобы плаги�
 
 | Модуль | Что на SDK 58 | Проверено | Не проверено |
 |---|---|---|---|
-| `cleanway-vpn` (Kotlin + Swift) | Expo Modules API работает в новой архитектуре напрямую (JSI). В TS объявлен `isLinkHandlerSupported` (#253) | Android: компилируется в `assembleDebug` (#253) | Запуск и остановка VPN, события, `BootReceiver` в процессе `:boot`, `ShieldWatchdog`, `LinkGuardActivity`, `LinkCheckService`, будильник обновления списка. Всё это — с R8. Kotlin-тесты (`./gradlew :cleanway-vpn:testDebugUnitTest`) на 58 не запускались |
+| `cleanway-vpn` (Kotlin, только Android) | Expo Modules API работает в новой архитектуре напрямую (JSI). В TS объявлен `isLinkHandlerSupported` (#253) | Android: компилируется в `assembleDebug` (#253) | Запуск и остановка VPN, события, `BootReceiver` в процессе `:boot`, `ShieldWatchdog`, `LinkGuardActivity`, `LinkCheckService`, будильник обновления списка. Всё это — с R8. Kotlin-тесты (`./gradlew :cleanway-vpn:testDebugUnitTest`) на 58 не запускались |
 | `cleanway-sms-filter` (Swift) | pod 15.1 → 16.4 (#253) | Тесты платформ в CI | Компиляция |
 | `cleanway-safari` (Swift) | pod 15.1 → 16.4 (#253). Окно капчи (#277) появилось после основы #253 | Тесты платформ в CI | Компиляция и запуск |
+| `cleanway-dns` (Swift) | DNS-защита iPhone, вынесена из `cleanway-vpn` после основы #253: pod 15.1, при переносе поднять до 16.4, как у соседей | Тесты платформ в CI (`test-ios-dns.mjs`, `test-ios-native-modules.mjs`) | Компиляция и запуск |
 
 На iOS не собрано вообще ничего. В #253 сборка `xcodebuild` упала ещё до нашего
 кода: компилятор Swift 6.2.4 из Xcode 26.3 сам аварийно завершился на

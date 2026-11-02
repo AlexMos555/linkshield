@@ -43,7 +43,9 @@ messenger in-app webviews.
   - `android/src/main/AndroidManifest.xml` — declares the `<service>` (BIND_VPN_SERVICE,
     `foregroundServiceType=specialUse`, `PROPERTY_SPECIAL_USE_FGS_SUBTYPE=vpn`).
   - `ios/CleanwayVpnModule.swift` — **no-op stub** (iOS NE VPN is a separate track,
-    gated on an Organization Apple account; keeps the JS API uniform).
+    gated on an Organization Apple account; keeps the JS API uniform). *(Since
+    removed: the module is Android-only, iOS and web bundle the JS stub
+    `src/native.ts`, and the iPhone's DNS protection is `modules/cleanway-dns`.)*
   - `index.ts` — `startVpn/stopVpn/isVpnRunning` + a `useVpn()` React hook.
 - **`app.json`** — added `FOREGROUND_SERVICE_SPECIAL_USE` (BIND_VPN_SERVICE /
   FOREGROUND_SERVICE / POST_NOTIFICATIONS were already there).

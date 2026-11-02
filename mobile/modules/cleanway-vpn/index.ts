@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, PermissionsAndroid, Platform } from 'react-native';
 
-import CleanwayVpn from './src/CleanwayVpnModule';
+import CleanwayVpn from './src/native';
 
 /** Must match CleanwayVpnService.CANARY_DOMAIN. */
 export const CANARY_DOMAIN = 'block-canary.cleanway.ai';
@@ -40,10 +40,6 @@ import type {
 import { MESSAGE_REASONS, parseMessageAnalysis } from './src/MessageAnalysis';
 import { analyzeMessageOnIos, iosMessageCheckSupported } from '../cleanway-sms-filter/index';
 import { parseKeepAliveStatus, parseRearmDecision, UNKNOWN_KEEP_ALIVE } from './src/KeepAliveStatus';
-import { parseIosDnsReport } from './src/IosDnsSettings';
-import type { IosDnsError, IosDnsReport } from './src/IosDnsSettings';
-
-export type { IosDnsError, IosDnsReport };
 
 export type {
   BlocklistStatus,
@@ -78,12 +74,13 @@ export { MESSAGE_REASONS };
  */
 const MESSAGE_MAX_CHARS = 10_000;
 
+/** Starts the shield; false where this platform has none (iPhone, web). */
 export async function startVpn(): Promise<boolean> {
-  return CleanwayVpn.startVpn();
+  return typeof CleanwayVpn.startVpn === 'function' ? CleanwayVpn.startVpn() : false;
 }
 
 export async function stopVpn(): Promise<void> {
-  return CleanwayVpn.stopVpn();
+  if (typeof CleanwayVpn.stopVpn === 'function') return CleanwayVpn.stopVpn();
 }
 
 /**
@@ -302,7 +299,7 @@ export function dialCloseContact(): boolean {
  */
 export function openVpnSettings(): boolean {
   try {
-    return CleanwayVpn.openVpnSettings();
+    return CleanwayVpn.openVpnSettings?.() ?? false;
   } catch {
     return false;
   }
@@ -772,53 +769,10 @@ export async function linkListAvailable(): Promise<boolean> {
 
 export function isVpnRunning(): boolean {
   try {
-    return CleanwayVpn.isRunning();
+    return CleanwayVpn.isRunning?.() ?? false;
   } catch {
     return false;
   }
-}
-
-// ── iPhone DNS protection (NEDNSSettingsManager, docs/IOS.md §4) ──────────
-
-/** This build can set up the iPhone's DNS protection (iOS, and a native build that has it). */
-export function isIosDnsSupported(): boolean {
-  return Platform.OS === 'ios' && typeof CleanwayVpn.dnsSettingsStatus === 'function';
-}
-
-type DnsCall = 'dnsSettingsStatus' | 'installDnsSettings' | 'removeDnsSettings';
-
-async function dnsCall(name: DnsCall): Promise<IosDnsReport | null> {
-  if (!isIosDnsSupported()) return null;
-  try {
-    const fn = CleanwayVpn[name];
-    if (typeof fn !== 'function') return null;
-    return parseIosDnsReport(await fn.call(CleanwayVpn));
-  } catch {
-    // The native side answers with a report, never a rejection; a throw here
-    // is a bridge failure — say "failed", not "not set up".
-    return parseIosDnsReport(null);
-  }
-}
-
-/** What iOS has saved and whether the person turned it on. Null where there is no such layer. */
-export function iosDnsStatus(): Promise<IosDnsReport | null> {
-  return dnsCall('dnsSettingsStatus');
-}
-
-/** Save Cleanway's encrypted DNS in iOS. It stays off until the person picks it in Settings. */
-export function installIosDns(): Promise<IosDnsReport | null> {
-  return dnsCall('installDnsSettings');
-}
-
-/** Remove it from iOS altogether. */
-export function removeIosDns(): Promise<IosDnsReport | null> {
-  return dnsCall('removeDnsSettings');
-}
-
-/** iOS changed the DNS configuration (usually: the person switched it in Settings). */
-export function addIosDnsChangedListener(cb: () => void): { remove: () => void } {
-  if (!isIosDnsSupported()) return { remove: () => {} };
-  return CleanwayVpn.addListener('onDnsSettingsChanged', cb);
 }
 
 /**
@@ -853,7 +807,7 @@ export function useVpn() {
   }, []);
 
   const start = useCallback(async () => {
-    const ok = await CleanwayVpn.startVpn();
+    const ok = await startVpn();
     // Trust the resolved boolean: the native service's isRunning flag is set asynchronously
     // and is not yet true at the moment startVpn() resolves.
     setRunning(ok);
@@ -862,7 +816,7 @@ export function useVpn() {
   }, []);
 
   const stop = useCallback(async () => {
-    await CleanwayVpn.stopVpn();
+    await stopVpn();
     setRunning(false);
     setVerified(false);
   }, []);
