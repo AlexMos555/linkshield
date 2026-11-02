@@ -244,6 +244,7 @@ export default function RootLayout() {
         {/* The free plan's paywall: a sheet over the check that hit the daily limit, with its own close button. */}
         <Stack.Screen name="paywall" options={{ headerShown: false, presentation: "modal", contentStyle: { backgroundColor: "#0f172a" } }} />
         <Stack.Screen name="report" options={{ title: t("mobile.report.title") }} />
+        <Stack.Screen name="bypass-app" options={{ title: t("mobile.bypass.title") }} />
         {/* Without an entry the header renders the raw route slug "family". */}
         <Stack.Screen name="family" options={{ title: t("mobile.family.title") }} />
         {/* Deep-link sink for the OPTIONAL captcha flow. Unreachable unless

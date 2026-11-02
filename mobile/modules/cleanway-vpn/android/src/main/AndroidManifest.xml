@@ -14,6 +14,40 @@
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="http" />
         </intent>
+        <!-- "An app asks me to turn off the VPN": the person picks it from the
+             apps on their home screen (AppExclusions). Apps with a launcher
+             icon only — not QUERY_ALL_PACKAGES. The list stays on the phone. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <!-- Every app in assets/vpn_exclusions.json (AppExclusionsTest keeps the
+             two in step): the shield must see whether one is installed, even if
+             it has no launcher icon. -->
+        <package android:name="ru.oneme.app" />
+        <package android:name="ru.rostel" />
+        <package android:name="ru.sberbankmobile" />
+        <package android:name="ru.vtb24.mobilebanking.android" />
+        <package android:name="com.idamob.tinkoff.android" />
+        <package android:name="ru.alfabank.mobile.android" />
+        <package android:name="ru.letobank.Prometheus" />
+        <package android:name="ru.rshb.dbo" />
+        <package android:name="ru.gazprombank.android.mobilebank.app" />
+        <package android:name="ru.sovcomcard.halva.v1" />
+        <package android:name="logo.com.mbanking" />
+        <package android:name="ru.raiffeisennews" />
+        <package android:name="ru.ozon.app.android" />
+        <package android:name="com.wildberries.ru" />
+        <package android:name="com.avito.android" />
+        <package android:name="com.vkontakte.android" />
+        <package android:name="ru.ok.android" />
+        <package android:name="com.yandex.searchapp" />
+        <package android:name="ru.yandex.searchplugin" />
+        <package android:name="ru.mts.mymts" />
+        <package android:name="ru.lewis.dbo" />
+        <package android:name="ru.ozon.fintech.finance" />
+        <package android:name="ru.wildberries.bank" />
+        <package android:name="ru.vk.store" />
     </queries>
 
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />

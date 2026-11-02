@@ -1,0 +1,232 @@
+{
+  "_comment": [
+    "Apps the Android shield keeps OUT of its VPN tunnel (AppExclusions.kt).",
+    "PROPOSAL — the founder decides which entries are default:true. default:true = excluded on every phone that has the app;",
+    "default:false = not excluded, only offered at the top of the 'app asks to turn off the VPN' picker.",
+    "Excluding an app means its own DNS (including its built-in browser) is NOT filtered. Never list a browser.",
+    "Every package name must also be in the module AndroidManifest <queries> (AppExclusionsTest pins it):",
+    "without package visibility the shield cannot tell whether the app is installed.",
+    "package_source: where the package name was confirmed (RuStore catalog URL = the app's official listing).",
+    "certain:false = the package name is not confirmed from an official listing; check before relying on it.",
+    "vpn_evidence: a report that the app refuses or limits use while a VPN is on (empty = none found, listed for other reasons)."
+  ],
+  "version": 1,
+  "apps": [
+    {
+      "package": "ru.oneme.app",
+      "name": "МАКС",
+      "default": true,
+      "category": "messenger",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/ru.oneme.app",
+      "vpn_evidence": "https://www.ixbt.com/news/2026/04/21/messendzher-maks-nachal-ogranichivat-rabotu-pri-vkljuchennom-vpn.html"
+    },
+    {
+      "package": "ru.rostel",
+      "name": "Госуслуги",
+      "default": true,
+      "category": "government",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/ru.rostel",
+      "vpn_evidence": "https://www.ixbt.com/news/2026/04/16/prilozhenie-gosuslug-perestalo-otkryvatsja-s-vkljuchennym-vpn.html"
+    },
+    {
+      "package": "ru.sberbankmobile",
+      "name": "СберБанк Онлайн",
+      "default": true,
+      "category": "bank",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/ru.sberbankmobile",
+      "vpn_evidence": "https://www.iguides.ru/main/other/spisok_rossiyskikh_prilozheniy_i_servisov_kotorye_ne_otkryvayutsya_so_vklyuchennym_vpn/"
+    },
+    {
+      "package": "ru.vtb24.mobilebanking.android",
+      "name": "ВТБ Онлайн",
+      "default": true,
+      "category": "bank",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/ru.vtb24.mobilebanking.android",
+      "vpn_evidence": "https://www.iguides.ru/main/other/spisok_rossiyskikh_prilozheniy_i_servisov_kotorye_ne_otkryvayutsya_so_vklyuchennym_vpn/"
+    },
+    {
+      "package": "com.idamob.tinkoff.android",
+      "name": "Т-Банк",
+      "default": true,
+      "category": "bank",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/com.idamob.tinkoff.android",
+      "vpn_evidence": "https://www.iguides.ru/main/other/spisok_rossiyskikh_prilozheniy_i_servisov_kotorye_ne_otkryvayutsya_so_vklyuchennym_vpn/"
+    },
+    {
+      "package": "ru.alfabank.mobile.android",
+      "name": "Альфа-Банк",
+      "default": true,
+      "category": "bank",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/ru.alfabank.mobile.android",
+      "vpn_evidence": "https://www.iguides.ru/main/other/spisok_rossiyskikh_prilozheniy_i_servisov_kotorye_ne_otkryvayutsya_so_vklyuchennym_vpn/"
+    },
+    {
+      "package": "ru.letobank.Prometheus",
+      "name": "Почта Банк",
+      "default": true,
+      "category": "bank",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/ru.letobank.Prometheus",
+      "vpn_evidence": ""
+    },
+    {
+      "package": "ru.rshb.dbo",
+      "name": "Россельхозбанк",
+      "default": true,
+      "category": "bank",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/ru.rshb.dbo",
+      "vpn_evidence": ""
+    },
+    {
+      "package": "ru.gazprombank.android.mobilebank.app",
+      "name": "Газпромбанк",
+      "default": true,
+      "category": "bank",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/ru.gazprombank.android.mobilebank.app",
+      "vpn_evidence": ""
+    },
+    {
+      "package": "ru.sovcomcard.halva.v1",
+      "name": "Халва – Совкомбанк",
+      "default": true,
+      "category": "bank",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/ru.sovcomcard.halva.v1",
+      "vpn_evidence": ""
+    },
+    {
+      "package": "logo.com.mbanking",
+      "name": "ПСБ",
+      "default": true,
+      "category": "bank",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/logo.com.mbanking",
+      "vpn_evidence": ""
+    },
+    {
+      "package": "ru.raiffeisennews",
+      "name": "Райффайзен Онлайн",
+      "default": true,
+      "category": "bank",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/ru.raiffeisennews",
+      "vpn_evidence": ""
+    },
+    {
+      "package": "ru.ozon.app.android",
+      "name": "Ozon",
+      "default": false,
+      "category": "marketplace",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/ru.ozon.app.android",
+      "vpn_evidence": "https://adguard.com/ru/blog/android-apps-asking-to-disable-vpn.html"
+    },
+    {
+      "package": "com.wildberries.ru",
+      "name": "Wildberries",
+      "default": false,
+      "category": "marketplace",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/com.wildberries.ru",
+      "vpn_evidence": "https://www.iguides.ru/main/other/spisok_rossiyskikh_prilozheniy_i_servisov_kotorye_ne_otkryvayutsya_so_vklyuchennym_vpn/"
+    },
+    {
+      "package": "com.avito.android",
+      "name": "Авито",
+      "default": false,
+      "category": "marketplace",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/com.avito.android",
+      "vpn_evidence": "https://www.iguides.ru/main/other/spisok_rossiyskikh_prilozheniy_i_servisov_kotorye_ne_otkryvayutsya_so_vklyuchennym_vpn/"
+    },
+    {
+      "package": "com.vkontakte.android",
+      "name": "ВКонтакте",
+      "default": false,
+      "category": "social",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/com.vkontakte.android",
+      "vpn_evidence": "https://adguard.com/ru/blog/android-apps-asking-to-disable-vpn.html"
+    },
+    {
+      "package": "ru.ok.android",
+      "name": "Одноклассники",
+      "default": false,
+      "category": "social",
+      "certain": false,
+      "package_source": "Google Play id; RuStore listing not confirmed",
+      "vpn_evidence": "https://www.iguides.ru/main/other/spisok_rossiyskikh_prilozheniy_i_servisov_kotorye_ne_otkryvayutsya_so_vklyuchennym_vpn/"
+    },
+    {
+      "package": "com.yandex.searchapp",
+      "name": "Яндекс — с Алисой",
+      "default": false,
+      "category": "search",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/com.yandex.searchapp",
+      "vpn_evidence": ""
+    },
+    {
+      "package": "ru.yandex.searchplugin",
+      "name": "Яндекс (версия из Google Play)",
+      "default": false,
+      "category": "search",
+      "certain": false,
+      "package_source": "Google Play id; RuStore lists com.yandex.searchapp instead",
+      "vpn_evidence": ""
+    },
+    {
+      "package": "ru.mts.mymts",
+      "name": "Мой МТС",
+      "default": false,
+      "category": "operator",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/ru.mts.mymts",
+      "vpn_evidence": "https://www.iguides.ru/main/other/spisok_rossiyskikh_prilozheniy_i_servisov_kotorye_ne_otkryvayutsya_so_vklyuchennym_vpn/"
+    },
+    {
+      "package": "ru.lewis.dbo",
+      "name": "МТС Деньги",
+      "default": false,
+      "category": "bank",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/ru.lewis.dbo",
+      "vpn_evidence": ""
+    },
+    {
+      "package": "ru.ozon.fintech.finance",
+      "name": "Ozon Банк",
+      "default": false,
+      "category": "bank",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/ru.ozon.fintech.finance",
+      "vpn_evidence": ""
+    },
+    {
+      "package": "ru.wildberries.bank",
+      "name": "WB Банк",
+      "default": false,
+      "category": "bank",
+      "certain": true,
+      "package_source": "https://www.rustore.ru/catalog/app/ru.wildberries.bank",
+      "vpn_evidence": ""
+    },
+    {
+      "package": "ru.vk.store",
+      "name": "RuStore",
+      "default": false,
+      "category": "store",
+      "certain": false,
+      "package_source": "not confirmed from an official listing",
+      "vpn_evidence": "https://www.iguides.ru/main/other/spisok_rossiyskikh_prilozheniy_i_servisov_kotorye_ne_otkryvayutsya_so_vklyuchennym_vpn/"
+    }
+  ]
+}
