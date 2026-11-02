@@ -239,6 +239,8 @@ def test_a_sweep_drops_answers_past_the_serve_stale_window_and_keeps_the_rest():
     assert len(cache) == 2
     assert cache.get(query_shape(query("stale.example")), query("stale.example"), allow_stale=True).stale
     assert cache.get(query_shape(query("fresh.example")), query("fresh.example")) is not None
+    clock.now += 180  # stale: 60 s short of the end of its 300 + 600
+    assert cache.sweep() == 0 and cache.sweep(margin_s=120) == 1
 
 
 @pytest.mark.asyncio
@@ -253,14 +255,23 @@ async def test_the_gateway_sweeps_its_cache_while_it_runs(monkeypatch):
     monkeypatch.setattr(doh_router, "CACHE_SWEEP_EVERY_S", 0.01)
     clock.now += 660
     task = asyncio.get_running_loop().create_task(doh_router.cache_sweeper())
-    try:
+
+    async def emptied() -> bool:
         for _ in range(100):
             if not len(cache):
-                break
+                return True
             await asyncio.sleep(0.01)
+        return False
+
+    try:
+        assert await emptied()
+        # It keeps sweeping, and ends an answer before its window does: the
+        # next tick may come up to one interval after the end.
+        cache.put(query_shape(query("later.example")), answer(query("later.example"), ttls=(60,)))
+        clock.now += 660 - doh_router.CACHE_SWEEP_EVERY_S
+        assert await emptied()
     finally:
         task.cancel()
-    assert len(cache) == 0
 
 
 def test_cache_is_bounded():

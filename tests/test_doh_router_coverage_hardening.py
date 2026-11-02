@@ -376,3 +376,15 @@ async def test_startup_is_idempotent_and_shutdown_stops_everything(monkeypatch):
     assert stats.done() and refresher.done() and sweeper.done()
     assert doh_router._stats_task is None and doh_filter.HOLDER._task is None and doh_router._sweep_task is None
     await doh_router.shutdown()  # a second shutdown is a no-op
+
+
+@pytest.mark.asyncio
+async def test_a_process_without_the_blocklist_still_sweeps_its_answer_cache(monkeypatch):
+    """SERVICE_ROLE=api still answers /dns-query (the split's rollback) and
+    caches what it answers, so it sweeps like the DNS role."""
+    use_redis(monkeypatch, ArtifactRedis(LISTED))
+    await doh_router.startup(load_filter=False)
+    try:
+        assert doh_filter.HOLDER._task is None and doh_router._sweep_task is not None
+    finally:
+        await doh_router.shutdown()

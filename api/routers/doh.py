@@ -339,12 +339,13 @@ CACHE_SWEEP_EVERY_S = 60.0
 
 
 async def cache_sweeper() -> None:
-    """Answers nobody asks for again leave memory once they can no longer be
-    served (doh_cache.ResponseCache.sweep); the privacy policy promises it."""
+    """Answers nobody asks for again leave memory before their TTL plus the
+    serve-stale window ends (privacy policy §11). The margin of two sweeps
+    covers a tick that lands just short of an answer's end and a late loop."""
     while True:
         await asyncio.sleep(CACHE_SWEEP_EVERY_S)
         if _cache is not None:
-            _cache.sweep()
+            _cache.sweep(margin_s=2 * CACHE_SWEEP_EVERY_S)
 
 
 async def startup(load_filter: bool = True) -> None:
