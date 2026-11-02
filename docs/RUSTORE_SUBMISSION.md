@@ -970,6 +970,39 @@ battery exemption, `ShieldWatchdog`; #108 stay signed in, Account screen,
 unlink, delete; #72 sign-in error texts. The 500 limit above is our own
 target (RuStore allows more); short notes get read.
 
+### 7.5.1 Что нового (1.1.0)
+
+For the 1.1.0 (110) update, after 1.0.6 (107) is published in RuStore:
+upload build B, `cleanway-1.1.0-110-rustore.apk` (§2).
+
+<!-- count: rustore_whatsnew_110 max=500 -->
+```text
+• Новая основа приложения: Cleanway перешёл на свежую версию платформы, на которой он построен, и сможет дальше получать обновления и исправления.
+• Для вас всё как раньше: блокировка мошеннических сайтов через встроенный в Android механизм VPN, проверка СМС, ссылок и QR-кодов, «Мне звонят», история и настройки.
+• Нужен Android 7 или новее — как и раньше.
+```
+
+357 characters of the 500 target above (Python `len()`, 2026-11-02; the §7.7
+snippet prints it as `rustore_whatsnew_110`).
+
+The text is the change since 1.0.6, and on Android 1.1.0 changes nothing a
+person sees. Source: `CHANGELOG.md` → App 1.1.0. Its first item, Expo SDK 58,
+is the new foundation. The rest: iOS 16.4 does not concern Android; the
+Arabic and Italian strings and the publishable key, new on the iPhone, are
+already in Android 1.0.6, built from `release/1.0.x` (cut at `a74e5503`,
+after #310, #350 and #333); #386–#389 only keep Android code and text out of
+the iPhone build, and on Android the shield, its VPN strings and
+`BIND_VPN_SERVICE` stay as they were; `expo-share-intent` 9 without our
+patch, "Скачать мои данные" waiting for the write and a second share landing
+in the open check screen keep 1.0.6's behaviour. Android 7 or newer: minSdk
+24 on SDK 58 as on SDK 54 (`docs/EXPO_UPGRADE_PLAN.md` §2.1 table, `aapt2` in
+§10.2). "Всё как раньше" is the acceptance criterion of the phone check
+(`docs/EXPO_UPGRADE_PLAN.md` §6.2, Android): if it finds a difference a
+person would notice, rewrite this text. If 1.1.0 reaches RuStore before 1.0.6
+does, paste §7.5 instead (the changes since 1.0.3 are what that person gets)
+and put this text's first line above it; together they pass our 500 target,
+which RuStore allows.
+
 ### 7.6 Подписи к скриншотам
 
 Existing frames (v1.0.0 — recapture on 1.0.6, see §7.0):
@@ -995,7 +1028,8 @@ frames carry the three main promises (sites, SMS, calls).
 ### 7.7 Evidence and character counts
 
 Counts (Python `len()`, 2026-10-08): название 30 · краткое описание 69/80 ·
-полное описание and "Что нового" — run:
+"Что нового" 1.1.0 357/500 (2026-11-02) · полное описание and both "Что
+нового" — run:
 
 ```bash
 python3 - <<'EOF'

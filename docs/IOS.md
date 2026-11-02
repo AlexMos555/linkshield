@@ -443,6 +443,24 @@ rather than to rely on Cloudflare not keeping it.
 
 ### 3.6 Review notes (paste into "Notes")
 
+**Which text for which build.** For **1.1.0 (iOS build 7) and later**, paste
+the block below as it is: its last paragraph, the one that starts "VPN
+(2.1):", is the one for build 7+. Pasted, the block is 3,772 characters of the
+4,000 App Review allows (3,788 with the In-App Purchase sentence swapped in,
+below; counted with each paragraph's lines joined, a blank line between
+paragraphs and no backticks); count again after any edit. The Notes that went
+with **1.0.6 (6)** on 2026-11-02 differed only in that paragraph; it is kept
+as history after the reply, marked "do not paste". Before pasting for build 7,
+repeat on its archive the search of docs/EXPO_UPGRADE_PLAN.md §10.4: the
+paragraph says what it showed on SDK 54 (Release, simulator), and on SDK 58 it
+has not been run yet. With `$M` the mirror of §1.1:
+
+```bash
+A="$M/Cleanway.xcarchive/Products/Applications/Cleanway.app"
+LC_ALL=C grep -aci vpn "$A/main.jsbundle"                  # 0: no ASCII "vpn" (the Settings path is UTF-16)
+LC_ALL=C grep -aci vpn "$A/EXConstants.bundle/app.config"  # 0: no BIND_VPN_SERVICE in the app's config
+```
+
 > Cleanway checks links and text messages for scams. No account is needed:
 > paste a link or a message on the home screen, or share one to Cleanway from
 > Safari or Messages. A message is checked on the device and never sent; only
@@ -487,18 +505,20 @@ rather than to rely on Cloudflare not keeping it.
 > purchases or upsell of its own.
 >
 > VPN (2.1): no VPN, no tunnel, no NEVPNManager/NETunnelProviderManager, no
-> Network Extension provider target. Only the DNS Settings API (entitlement
-> "dns-settings"), which iOS lists under VPN & Device Management. The app's
-> DNS module is "CleanwayDns" (save, read, remove the setting); Android's
-> shield module is not built into the iOS app, and Android-only VPN text is
-> never shown. With DNS protection on, our server gets DNS queries (name,
-> record type) and the request's IP. It logs no names or IPs. It keeps
-> aggregate counters, an in-memory answer cache keyed by the question only,
-> and an hourly rate-limit count under a keyed hash of the IP. Unblocked,
-> uncached names go to Cloudflare from our server. Railway hosts us (EU West);
-> its edge nearest the user ends HTTPS and keeps request logs that can include
-> the IP and URL (a GET query's URL holds the name). iOS 26+ may fall back to
-> the network's DNS. No sale, ads or profiling.
+> Network Extension provider target. NetworkExtension.framework is used only
+> for the DNS Settings API (entitlement "dns-settings"), which iOS lists under
+> VPN & Device Management; that Settings path is the only "VPN" in the app's
+> text. The app's DNS module is "CleanwayDns" (save, read, remove the
+> setting). Since 1.1.0 the native module, text and BIND_VPN_SERVICE
+> permission of our Android app's VPN-based filter are not in the iOS build.
+> With DNS protection on, our server gets DNS queries (name, record type) and
+> the request's IP. It logs no names or IPs. It keeps aggregate counters, an
+> in-memory answer cache keyed by the question only, and an hourly rate-limit
+> count under a keyed hash of the IP. Unblocked, uncached names go to
+> Cloudflare from our server. Railway hosts us (EU West); its edge nearest the
+> user ends HTTPS and keeps request logs that can include the IP and URL (a
+> GET query's URL holds the name). iOS 26+ may fall back to the network's DNS.
+> No sale, ads or profiling.
 
 **"The app contains VPN functionality" (2.1, 2026-10-30).** App Review's
 automated analysis flagged 1.0.4 (3) and asked what user information the
@@ -515,17 +535,8 @@ Re-check it before reusing: GET vs POST from iOS and what Railway's request
 logs keep were not verified (the Railway session had expired); renaming the
 module or dropping the Android strings from the iOS bundle changes the second
 paragraph; a change to the DoH cache, rate limiter, upstreams or logging
-changes "2." and "3.". The module was split after the reply went: a build
-that has `modules/cleanway-dns` links `CleanwayDns` (iOS only) and no
-`CleanwayVpn`, which is Android-only now (`modules/cleanway-vpn`). The reply's
-"native module CleanwayVpn" sentence describes 1.0.6 (6) and earlier; the
-Notes paragraph above says what the newer builds carry
-(`mobile/scripts/test-ios-native-modules.mjs` pins the split). The shared
-JS's names no longer say VPN either: `startShield`/`stopShield`/
-`isShieldRunning` and the rest are neutral, and the Kotlin names live only in
-`modules/cleanway-vpn/src/native.android.ts`, which the iOS bundle does not
-include (`mobile/scripts/test-no-vpn-names.mjs`; its one exception is the
-i18n key `mobile.ios.dns.note_vpn`, which goes with the iOS strings).
+changes "2." and "3.". (Below: the reply as recorded when it went, the Notes
+paragraph that went with it, then what changed for 1.1.0.)
 
 > Hello,
 >
@@ -577,10 +588,115 @@ i18n key `mobile.ios.dns.note_vpn`, which goes with the iOS strings).
 >
 > We have added this to App Review Information.
 
-**Purchases: which sentence.** The text above is for a build made **without**
-`EXPO_PUBLIC_REVENUECAT_IOS_KEY` — every iPhone build so far (1.0.6 builds 5
-and 6 checked on 2026-10-25: no `appl_` key in their bundles; check a new one
-with §1.1). `PAID_PLANS_OFFERED` is false there: the paywall sends anyone who
+**History — the Notes "VPN (2.1)" paragraph as pasted for 1.0.6 (6) on
+2026-11-02, before the reply went** (the narrative's "the VPN paragraph
+above"; do not paste it for build 7 — that build has no `CleanwayVpn` and no
+startVpn/stopVpn):
+
+> VPN (2.1): no VPN, no tunnel, no NEVPNManager/NETunnelProviderManager, no
+> Network Extension provider target. Only the DNS Settings API (entitlement
+> "dns-settings"), which iOS lists under VPN & Device Management. The native
+> module "CleanwayVpn" is shared with Android; on iOS startVpn/stopVpn do
+> nothing and Android-only VPN text is never shown. With DNS protection on,
+> our server gets DNS queries (name, record type) and the request's IP. It
+> logs no names or IPs. It keeps aggregate counters, an in-memory answer cache
+> keyed by the question only, and an hourly rate-limit count under a keyed
+> hash of the IP. Unblocked, uncached names go to Cloudflare from our server.
+> Railway hosts us (EU West); its edge nearest the user ends HTTPS and keeps
+> request logs that can include the IP and URL (a GET query's URL holds the
+> name). iOS 26+ may fall back to the network's DNS. No sale, ads or
+> profiling.
+
+**1.1.0 (build 7 and later): what changed for the "VPN" question.** After
+the reply went, four PRs took the Android shield's code and text out of the
+iPhone build (in `main` on SDK 54, in 1.1.0 with the SDK 58 merge;
+docs/EXPO_UPGRADE_PLAN.md §10.4). The reply's second paragraph ("native
+module CleanwayVpn … startVpn/stopVpn") describes 1.0.6 (6) and earlier; the
+Notes paragraph for build 7+ above and the reply below say what 1.1.0
+carries.
+
+- #388: the iPhone's DNS protection is its own iOS-only module, `CleanwayDns`
+  (`modules/cleanway-dns`); `CleanwayVpn` (`modules/cleanway-vpn`) is
+  Android-only (`mobile/scripts/test-ios-native-modules.mjs`). The shared
+  JS's names no longer say VPN: `startShield`/`stopShield`/`isShieldRunning`
+  and the rest are neutral, and the Kotlin names live only in
+  `modules/cleanway-vpn/src/native.android.ts`, which the iOS bundle does not
+  include (`mobile/scripts/test-no-vpn-names.mjs`; its allowlist still names
+  `mobile.ios.dns.note_vpn`, which #387 renamed to `note_other_dns` without
+  the word, so nothing uses that exception).
+- #387: the four Android-only strings (the VpnService disclosure, the
+  "permission taken back" notice, the two Always-on VPN rows) live in
+  `mobile/i18n/android/`, which only `src/i18n/resources.android.ts` imports,
+  and the landing and email strings are no longer in the mobile JSON. In the
+  strings the iPhone carries, "VPN" is left only in
+  `mobile.ios.dns.step_on_body` and `mobile.ios.dns.error_remove`: Apple's
+  Settings path, in all 10 languages (`mobile/scripts/test-ios-strings-no-vpn.mjs`).
+- #386: `BIND_VPN_SERVICE` is declared in
+  `modules/cleanway-vpn/android/src/main/AndroidManifest.xml` instead of
+  `app.json`, so `expo-constants` no longer copies it into the iPhone app's
+  config (`mobile/scripts/check-android-permissions.mjs`).
+- #389: icons are imported per family, so the bundle carries no `vpn-key` or
+  `vpn-lock` names (`mobile/scripts/check-icon-imports.mjs`).
+
+What stays, because DNS protection needs it: NetworkExtension.framework and
+the `dns-settings` entitlement (`plugins/withIosAppStore.js`; only
+`CleanwayDnsModule.swift` imports NetworkExtension). The automated analysis
+can flag 1.1.0 for them again, so the Notes keep the VPN paragraph. Checked on
+SDK 54 (simulator, Release, 2026-11-02): no ASCII `vpn` in `main.jsbundle`,
+UTF-16 "VPN" only in the Settings path, none in the EXConstants config. Not
+yet repeated on the build 7 archive (SDK 58): do it before pasting the build
+7+ paragraph or sending the reply below.
+
+If App Review asks about the "VPN" again for 1.1.0, reply with the text below.
+Re-check it first, as for the 1.0.6 reply: GET vs POST from iOS and what
+Railway's request logs keep are still unverified, and a change to the DoH
+cache, rate limiter, upstreams or logging changes its "While it is on"
+paragraph. It is shorter than the 1.0.6 reply and carries the same data
+facts; send the longer one (with its second paragraph replaced by this
+reply's second) if they ask the three questions point by point again.
+
+> Hello,
+>
+> Cleanway has no VPN features: no tunnel, no NEVPNManager or
+> NETunnelProviderManager, and no Network Extension provider target (packet
+> tunnel, app proxy, DNS proxy or content filter). Its extensions are a share
+> extension, an SMS filter and a Safari Web Extension.
+>
+> The app links NetworkExtension.framework only for the DNS Settings API
+> (NEDNSSettingsManager, NEDNSOverHTTPSSettings, entitlement value
+> "dns-settings"), which iOS lists under VPN & Device Management. That
+> Settings path, which the app names where it explains the DNS setting, is
+> the only "VPN" in the app's text. In version 1.1.0 the DNS setting has its
+> own iOS module, "CleanwayDns", and the native module, text and
+> BIND_VPN_SERVICE permission of our Android app's VPN-based filter are not in
+> the iOS build.
+>
+> The app saves one encrypted DNS setting for
+> https://dns.cleanway.ai/dns-query. It stays off until the user selects
+> "Cleanway" in Settings > General > VPN & Device Management > DNS, and can be
+> removed in the app or there at any time.
+>
+> While it is on, iOS sends our server the device's DNS queries (the name
+> looked up and the record type; never a page link or content, other traffic,
+> or an account or device identifier), and our server sees each request's IP
+> address. They are used only to answer NXDOMAIN for known scam and phishing
+> sites, to resolve all other names and to rate-limit abuse. Our server writes
+> no log of names or IP addresses; it keeps aggregate counters, recent
+> answers in memory keyed by the question only, and an hourly rate-limit
+> count under a keyed hash of the IP. Names neither blocked nor cached go to
+> Cloudflare's public DNS resolver from our server's IP, not the user's.
+> Railway hosts our server (EU West, Amsterdam); HTTPS ends at its edge
+> nearest the user, and its standard request logs can include the IP and the
+> requested URL, which for a GET query contains the name. On iOS 26+, if our
+> server does not answer, iOS may use the network's own DNS. No ads,
+> profiling or sale.
+>
+> The same is in App Review Information.
+
+**Purchases: which sentence.** The Notes block at the top of §3.6 is for a
+build made **without** `EXPO_PUBLIC_REVENUECAT_IOS_KEY` — every iPhone build
+so far (1.0.6 builds 5 and 6 checked on 2026-10-25: no `appl_` key in their
+bundles; check a new one with §1.1). `PAID_PLANS_OFFERED` is false there: the paywall sends anyone who
 reaches it home (`app/paywall.tsx`), Settings has no Plan row, Account shows
 the plan as "Free" with no Upgrade, and "Restore purchases" appears only when
 App Store billing is on (`storeBillingOn()`, `app/account.tsx`). Attach **no**
