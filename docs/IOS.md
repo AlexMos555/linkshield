@@ -442,14 +442,15 @@ rather than to rely on Cloudflare not keeping it.
 > the public DNS Settings API (NEDNSSettingsManager with
 > NEDNSOverHTTPSSettings, Network Extensions entitlement value
 > `dns-settings`). It is not a VPN: there is no tunnel, no NEVPNManager and no
-> network extension target. The app saves an encrypted DNS-over-HTTPS setting
+> Network Extension provider target. The app saves an encrypted DNS-over-HTTPS setting
 > pointing at our resolver, https://dns.cleanway.ai/dns-query, which answers
 > NXDOMAIN for known scam and phishing sites and forwards every other name to
 > Cloudflare's DNS. Nothing changes until the user selects "Cleanway" in
 > Settings → General → VPN & Device Management → DNS. Before the user adds
 > it, the app explains that site names are sent to our DNS server (the
-> matching happens on our server) and that we keep no record of who looked up
-> what — privacy policy, section 11. The user can remove it in the app, or
+> matching happens on our server) and that our server keeps no log of them;
+> our host's standard request logs can include the IP address and requested
+> URL — privacy policy, section 11. The user can remove it in the app, or
 > choose "Automatic" on the same Settings page, at any time.
 >
 > The scam-text filter is an SMS filter extension. On iOS 26, enable it in
@@ -463,8 +464,89 @@ rather than to rely on Cloudflare not keeping it.
 > The Safari Web Extension warns about scam sites: Settings → Apps → Safari →
 > Extensions → Cleanway → Allow Extension, then Other Websites → Allow; open
 > any site in Safari (or the home screen's "Set up" → "Test it in Safari").
-> It sends only site names to api.cleanway.ai to check them; it has no
+> It sends the names of the sites it checks to api.cleanway.ai; it has no
 > purchases or upsell of its own.
+>
+> VPN (2.1): no VPN, no tunnel, no NEVPNManager/NETunnelProviderManager, no
+> Network Extension provider target. Only the DNS Settings API (entitlement
+> "dns-settings"), which iOS lists under VPN & Device Management. The native
+> module "CleanwayVpn" is shared with Android; on iOS startVpn/stopVpn do
+> nothing and Android-only VPN text is never shown. With DNS protection on,
+> our server gets DNS queries (name, record type) and the request's IP. It
+> logs no names or IPs. It keeps aggregate counters, an in-memory answer cache
+> keyed by the question only, and an hourly rate-limit count under a keyed
+> hash of the IP. Unblocked, uncached names go to Cloudflare from our server.
+> Railway hosts us (EU West); its edge nearest the user ends HTTPS and keeps
+> request logs that can include the IP and URL (a GET query's URL holds the
+> name). iOS 26+ may fall back to the network's DNS. No sale, ads or
+> profiling.
+
+**"The app contains VPN functionality" (2.1, 2026-10-30).** App Review's
+automated analysis flagged 1.0.4 (3) and asked what user information the
+"VPN" collects, why, and who else gets it. Likely triggers: the
+`dns-settings` Network Extensions entitlement with NetworkExtension.framework
+linked, the `CleanwayVpn` module name (`modules/cleanway-vpn`, startVpn/stopVpn
+are no-ops on iOS) and the Android-only VPN strings in `i18n/en.json`, which
+the iOS bundle carries but never shows. The reply below went on 2026-11-02
+(founder's «да»), the VPN paragraph above was added to Notes first because the
+reply says so, and the submission moved to 1.0.6 (6). Every statement was
+checked against the code (`api/routers/doh.py`, `api/services/doh_*.py`,
+`api/services/logger.py`, `modules/cleanway-vpn/ios/CleanwayVpnModule.swift`).
+Re-check it before reusing: GET vs POST from iOS and what Railway's request
+logs keep were not verified (the Railway session had expired); renaming the
+module or dropping the Android strings from the iOS bundle changes the second
+paragraph; a change to the DoH cache, rate limiter, upstreams or logging
+changes "2." and "3.".
+
+> Hello,
+>
+> Cleanway has no VPN features: no tunnel, no NEVPNManager or
+> NETunnelProviderManager, and no Network Extension provider target (packet
+> tunnel, app proxy, DNS proxy or content filter). Its extensions are a share
+> extension, an SMS filter and a Safari Web Extension.
+>
+> The app uses only the DNS Settings API (NEDNSSettingsManager,
+> NEDNSOverHTTPSSettings, entitlement value "dns-settings"). The analysis most
+> likely matched that entitlement and framework and our native module
+> "CleanwayVpn", shared with our Android app. On iOS its startVpn/stopVpn do
+> nothing, and Android-only VPN text in the shared code is never shown. iOS
+> also lists DNS settings under VPN & Device Management.
+>
+> When the user taps "Add to iPhone", the app saves one encrypted DNS setting
+> for https://dns.cleanway.ai/dns-query. It stays off until the user selects
+> "Cleanway" in Settings > General > VPN & Device Management > DNS, and can be
+> removed in the app or there at any time.
+>
+> 1. What is collected
+> The app itself receives no DNS data. While the setting is on, iOS sends our
+> server the device's DNS queries: standard DNS messages with the name looked
+> up (e.g. example.com) and record type. Never a page link or content, other
+> traffic, or an account or device identifier. Our server sees each request's
+> IP address.
+>
+> 2. Purposes
+> To answer NXDOMAIN for known scam and phishing sites and resolve all other
+> names. The IP address is used only to reply and to rate-limit abuse. No ads,
+> profiling or sale.
+> Our server writes no log of names or IP addresses. It keeps aggregate
+> counters; recent answers in memory, keyed by the question, never by who
+> asked (served for at most the TTL, max 1 hour, +6 hours if the upstream
+> fails; dropped when replaced, evicted or on restart); and an hourly
+> rate-limit count under a keyed hash of the IP, never with a name.
+>
+> 3. Third parties and storage
+> - Cloudflare's public DNS resolver gets names that are neither blocked nor
+>   cached, from our server's IP, not the user's, under Cloudflare's resolver
+>   privacy policy.
+> - Railway hosts our server (EU West, Amsterdam) and the database the filter
+>   checks names against (no IP). HTTPS ends at Railway's edge nearest the
+>   user, possibly outside the EU. Railway's standard request logs can include
+>   the IP and requested URL, which for an HTTP GET query contains the encoded
+>   name; Railway's retention applies.
+> Our server shares queries with no one else. On iOS 26+, if it does not
+> answer, iOS may use the network's own DNS.
+>
+> We have added this to App Review Information.
 
 **Purchases: which sentence.** The text above is for a build made **without**
 `EXPO_PUBLIC_REVENUECAT_IOS_KEY` — every iPhone build so far (1.0.6 builds 5
