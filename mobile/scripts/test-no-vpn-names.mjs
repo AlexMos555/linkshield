@@ -23,8 +23,12 @@
  *     the shield module's lazy require()s sit in a helper outside the try.
  *     (Hermes -O may drop such a require as dead code after a Platform.OS
  *     check, but only while that check stays.)
- *  2. The Kotlin names appear in native.android.ts — the mapping is there.
- *  3. Every name the app takes from modules/cleanway-vpn is exported by it:
+ *  2. No shared file names a platform file in an import path
+ *     ("…/native.android"): Metro resolves that path on every platform, so
+ *     the *.android.ts files item 1 skips would reach the iPhone — and
+ *     native.android.ts asks for a Kotlin module iOS does not have.
+ *  3. The Kotlin names appear in native.android.ts — the mapping is there.
+ *  4. Every name the app takes from modules/cleanway-vpn is exported by it:
  *     named imports, and every member used on the module where a file
  *     require()s it lazily. Those files type the module as
  *     `typeof import(...)`, never a hand-written interface: require() is
@@ -132,7 +136,23 @@ function vpnWords(rel, text) {
     .map(([kind, word, line]) => `${rel}:${line} ${kind} ${JSON.stringify(word)}`);
 }
 
-// ── 1–2. Names ───────────────────────────────────────────────────────
+/** Import paths that name a platform file — Metro would bundle it on every platform. */
+const PLATFORM_FILE = /\.(android|ios|native|web)(\.[cm]?[jt]sx?)?$/;
+
+function platformPaths(rel, text) {
+  const sf = parse(rel, text);
+  const out = [];
+  const visit = (node) => {
+    if (ts.isStringLiteralLike(node) && isModulePath(node) && PLATFORM_FILE.test(node.text)) {
+      out.push(`${rel}:${sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1} ${node.text}`);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sf);
+  return out;
+}
+
+// ── 1–3. Names ───────────────────────────────────────────────────────
 
 await check("no VPN or Kotlin name in the shared code — only native.android.ts says them", () => {
   const files = sharedSources();
@@ -169,12 +189,24 @@ await check("the guard sees an import path a release bundle keeps: a require() i
   assert.deepEqual(vpnWords(rel, bad).map((w) => w.replace(/:\d+/, "")), [`${rel} StringLiteral ${path}`]);
 });
 
+await check("no shared file names a platform file in an import path — Metro picks it by platform", () => {
+  assert.deepEqual(sharedSources().flatMap((f) => platformPaths(f, read(f))), []);
+});
+
+await check("the guard sees a platform file named in an import path (native.android from a hook)", () => {
+  const rel = "src/hooks/useProtectionActive.ts";
+  const bad = `import { shieldService } from "../../modules/cleanway-vpn/src/native.android";\n${read(rel)}`;
+  assert.deepEqual(platformPaths(rel, bad), [`${rel}:1 ../../modules/cleanway-vpn/src/native.android`]);
+  assert.equal(platformPaths("x.ts", 'const a = require("./native.ios.ts"); import("./b.web"); export * from "./c.native";').length, 3);
+  assert.equal(platformPaths("x.ts", 'import { a } from "./src/native"; import "react-native-web"; const s = "x.android";').length, 0);
+});
+
 await check("native.android.ts maps every Kotlin name", () => {
   const words = new Set(codeWords(parse(ADAPTER)).map(([, w]) => w));
   for (const name of KOTLIN_NAMES) assert.ok(words.has(name), name);
 });
 
-// ── 3. Every name the app takes from the module is exported ──────────
+// ── 4. Every name the app takes from the module is exported ──────────
 
 const MODULE_INDEX = resolve(root, MODULE, "index.ts");
 
