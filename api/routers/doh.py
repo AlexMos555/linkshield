@@ -334,26 +334,42 @@ async def doh_health() -> Response:
 
 # ── startup / shutdown (called from api.main lifespan) ────────────────
 _stats_task = None
+_sweep_task = None
+CACHE_SWEEP_EVERY_S = 60.0
+
+
+async def cache_sweeper() -> None:
+    """Answers nobody asks for again leave memory before their TTL plus the
+    serve-stale window ends (privacy policy §11). The margin of two sweeps
+    covers a tick that lands just short of an answer's end and a late loop."""
+    while True:
+        await asyncio.sleep(CACHE_SWEEP_EVERY_S)
+        if _cache is not None:
+            _cache.sweep(margin_s=2 * CACHE_SWEEP_EVERY_S)
 
 
 async def startup(load_filter: bool = True) -> None:
     """`load_filter=False` (SERVICE_ROLE=api): no blocklist in memory — a
     query that still arrives is decided by the per-query Redis fallback."""
     from api.config import get_settings
-    global _stats_task
+    global _stats_task, _sweep_task
     if load_filter:
         doh_filter.HOLDER.start(get_settings().doh_filter_refresh_s)
     if _stats_task is None or _stats_task.done():
         _stats_task = asyncio.get_running_loop().create_task(doh_metrics.stats_logger())
+    if _sweep_task is None or _sweep_task.done():
+        _sweep_task = asyncio.get_running_loop().create_task(cache_sweeper())
 
 
 async def shutdown() -> None:
-    global _stats_task
+    global _stats_task, _sweep_task
     await doh_filter.HOLDER.stop()
-    task, _stats_task = _stats_task, None
-    if task is not None:
+    tasks = {t for t in (_stats_task, _sweep_task) if t is not None}
+    _stats_task = _sweep_task = None
+    for task in tasks:
         task.cancel()
-        await asyncio.wait({task}, timeout=1.0)
+    if tasks:
+        await asyncio.wait(tasks, timeout=1.0)
     from api.services.doh_gateway import close_upstream_client
     await close_upstream_client()
 
