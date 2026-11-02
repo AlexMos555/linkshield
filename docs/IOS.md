@@ -501,7 +501,12 @@ that has `modules/cleanway-dns` links `CleanwayDns` (iOS only) and no
 `CleanwayVpn`, which is Android-only now (`modules/cleanway-vpn`). The reply's
 "native module CleanwayVpn" sentence describes 1.0.6 (6) and earlier; the
 Notes paragraph above says what the newer builds carry
-(`mobile/scripts/test-ios-native-modules.mjs` pins the split).
+(`mobile/scripts/test-ios-native-modules.mjs` pins the split). The shared
+JS's names no longer say VPN either: `startShield`/`stopShield`/
+`isShieldRunning` and the rest are neutral, and the Kotlin names live only in
+`modules/cleanway-vpn/src/native.android.ts`, which the iOS bundle does not
+include (`mobile/scripts/test-no-vpn-names.mjs`; its one exception is the
+i18n key `mobile.ios.dns.note_vpn`, which goes with the iOS strings).
 
 > Hello,
 >

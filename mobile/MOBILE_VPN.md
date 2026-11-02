@@ -47,6 +47,10 @@ messenger in-app webviews.
     removed: the module is Android-only, iOS and web bundle the JS stub
     `src/native.ts`, and the iPhone's DNS protection is `modules/cleanway-dns`.)*
   - `index.ts` — `startVpn/stopVpn/isVpnRunning` + a `useVpn()` React hook.
+    *(Since renamed `startShield/stopShield/isShieldRunning`, and `useVpn()` is
+    gone — nothing used it. Kotlin keeps its names; `src/native.android.ts`
+    maps them, and `mobile/scripts/test-no-vpn-names.mjs` keeps VPN names out
+    of the JS the iPhone app bundles.)*
 - **`app.json`** — added `FOREGROUND_SERVICE_SPECIAL_USE` (BIND_VPN_SERVICE /
   FOREGROUND_SERVICE / POST_NOTIFICATIONS were already there).
 - **`app/(tabs)/index.tsx`** — the home **shield toggle** (which was local state only)

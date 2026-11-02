@@ -54,19 +54,23 @@ export type KeepAliveStatus = {
   oem: OemFamily | null;
 };
 
-/** What rearmShield() decided (KeepAlivePolicy.Rearm, lower case). */
+/**
+ * What rearmShield() decided (KeepAlivePolicy.Rearm, lower case).
+ * "other_tunnel": another app holds the phone's tunnel — Kotlin's OTHER_VPN,
+ * renamed by src/native.android.ts.
+ */
 export type RearmDecision =
   | 'start'
   | 'running'
   | 'not_wanted'
   | 'taken_away'
   | 'private_dns'
-  | 'other_vpn'
+  | 'other_tunnel'
   | 'budget'
   | 'no_consent';
 
 /** Emitted when the tunnel is torn down without the user asking for it. */
-export type VpnStoppedPayload = {
+export type ShieldStoppedPayload = {
   /** A ShieldStopReason; kept as a string so a newer native reason still arrives. */
   reason: string;
 };
@@ -83,9 +87,13 @@ export type NetworkChangedPayload = {
   online: boolean;
 };
 
-export type CleanwayVpnModuleEvents = {
+/**
+ * The native module's events, except the one Kotlin names after the VPN: the
+ * shield stopping by itself reaches the shared code through
+ * ShieldService.addStoppedListener.
+ */
+export type NativeShieldEvents = {
   onDomainBlocked: (params: DomainBlockedPayload) => void;
-  onVpnStopped: (params: VpnStoppedPayload) => void;
   onPauseChanged: (params: PauseChangedPayload) => void;
   /** The list the shield blocks from was loaded, synced or revoked; read blocklistStatus() again. */
   onBlocklistChanged: (params: Record<string, never>) => void;
@@ -98,21 +106,37 @@ export type CleanwayVpnModuleEvents = {
 export type NativeSubscription = { remove(): void };
 
 /**
+ * The shield's start, stop and running state, its system settings screen,
+ * its re-arm and its stop event, under neutral names. CleanwayVpnModule.kt
+ * names most of them after Android's VPN; src/native.android.ts maps them and
+ * is the only shared-code file that says those names — Metro bundles it for
+ * Android alone, so the iPhone app (src/native.ts) carries none of them.
+ */
+export interface ShieldService {
+  /** Requests consent (once), then starts the local DNS filter. Resolves false if the user declines. */
+  start(): Promise<boolean>;
+  /** Tears the tunnel down. */
+  stop(): Promise<void>;
+  /** True while the tunnel is active (reflects real service state). */
+  running(): boolean;
+  /** Opens the system screen with Always-on; false when the phone has none. */
+  openSystemSettings(): boolean;
+  /** rearmShield's raw decision, Kotlin's names already mapped; undefined on builds without it. */
+  rearm(): string | undefined;
+  /** The tunnel was torn down without the user asking (revoked, another app took it). */
+  addStoppedListener(listener: (p: ShieldStoppedPayload) => void): NativeSubscription;
+}
+
+/**
  * The shield's native module (android/.../CleanwayVpnModule.kt) as the shared
- * code sees it. src/native.android.ts is the Kotlin module itself; on iOS and
- * web src/native.ts stands in with none of these calls, which index.ts reads
- * as "not on this platform". So every call is optional — also because an app
+ * code sees it — its neutral calls; ShieldService has the rest.
+ * src/native.android.ts is the Kotlin module itself; on iOS and web
+ * src/native.ts stands in with none of these calls, which index.ts reads as
+ * "not on this platform". So every call is optional — also because an app
  * running against an older native build must degrade, not crash.
  */
-export interface CleanwayVpnNativeModule {
-  addListener<E extends keyof CleanwayVpnModuleEvents>(event: E, listener: CleanwayVpnModuleEvents[E]): NativeSubscription;
-  /** Requests VPN consent (once) then starts the local DNS-filter VPN. Resolves false if the user declines. */
-  startVpn?(): Promise<boolean>;
-  /** Tears the VPN tunnel down. */
-  stopVpn?(): Promise<void>;
-  openVpnSettings?(): boolean;
-  /** True while the tunnel is active (reflects real service state). */
-  isRunning?(): boolean;
+export interface NativeShieldModule {
+  addListener<E extends keyof NativeShieldEvents>(event: E, listener: NativeShieldEvents[E]): NativeSubscription;
   /**
    * Monotonic count of canary queries the service has answered. Compared by
    * delta in verifyFiltering() — see that function for why it is a counter
@@ -126,8 +150,6 @@ export interface CleanwayVpnNativeModule {
   requestBatteryExemption?(): boolean;
   /** Open the phone maker's own background/autostart screen, else App info. */
   openOemBackgroundSettings?(): boolean;
-  /** Bring back a shield the person left ON that is not running (same rules as the watchdog). */
-  rearmShield?(): string;
   /** True if the user last chose ON. Optional: older native builds lack it. */
   wasUserEnabled?(): boolean;
   /** Why protection last stopped by itself ("revoked" | "private_dns"), null when not known. */

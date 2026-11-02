@@ -11,10 +11,8 @@ const CHECK_LIMIT = 200;
 /** The whole block log: it keeps at most 200 events (BlockLog.DEFAULT_CAP). */
 const SHIELD_LIMIT = 200;
 
-interface BlockEventsModule {
-  addDomainBlockedListener?(cb: () => void): { remove(): void };
-  shieldBlockTotals?(): { blocked: number; warned: number };
-}
+/** The module itself, so a name it does not export cannot type-check here (test-no-vpn-names.mjs). */
+type BlockEventsModule = typeof import("../../modules/cleanway-vpn");
 
 const NO_GAPS: HistoryGaps = { checksFull: false, shieldBlocked: false, shieldWarned: false };
 

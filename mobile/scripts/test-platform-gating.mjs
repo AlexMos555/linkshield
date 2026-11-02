@@ -194,7 +194,7 @@ check("onboarding uses the per-platform slides", () => {
 
 check("the native checks the iPhone lacks report 'not here', not a guess", () => {
   const vpn = read("modules/cleanway-vpn/index.ts");
-  assert.match(vpn, /return Platform\.OS === 'android' && typeof CleanwayVpn\.analyzeMessage === 'function'/);
+  assert.match(vpn, /return Platform\.OS === 'android' && typeof NativeShield\.analyzeMessage === 'function'/);
   assert.match(read("src/hooks/useProtectionActive.ts"), /useState\(\(\) => Platform\.OS === "android"\)/);
 });
 

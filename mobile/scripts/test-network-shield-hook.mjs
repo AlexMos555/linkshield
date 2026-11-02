@@ -90,10 +90,10 @@ function servicePausesUntil(until) {
   emit("pause", { until });
 }
 
-const VPN = {
-  startVpn: async () => true,
-  stopVpn: async () => {},
-  isVpnRunning: () => world.running,
+const SHIELD = {
+  startShield: async () => true,
+  stopShield: async () => {},
+  isShieldRunning: () => world.running,
   wasUserEnabled: () => world.userEnabled,
   rearmShield: () => {
     if (world.rearm === undefined) return undefined;
@@ -110,7 +110,7 @@ const VPN = {
     return world.probeOk;
   },
   verifyListFiltering: async () => world.probeOk,
-  addVpnStoppedListener: (cb) => subscribe("stopped", cb),
+  addShieldStoppedListener: (cb) => subscribe("stopped", cb),
   addPauseChangedListener: (cb) => subscribe("pause", cb),
   addBlocklistChangedListener: (cb) => subscribe("list", cb),
   addNetworkChangedListener: (cb) => subscribe("network", cb),
@@ -136,7 +136,7 @@ const STUBS = {
       addEventListener: (_type, cb) => subscribe("app", cb),
     },
   },
-  "../../modules/cleanway-vpn": VPN,
+  "../../modules/cleanway-vpn": SHIELD,
   // modules/cleanway-vpn/index.ts routes the iPhone message check here; this
   // test runs as Android, so the iOS module only has to load.
   "../cleanway-sms-filter/index": { analyzeMessageOnIos: async () => undefined, iosMessageCheckSupported: () => false },

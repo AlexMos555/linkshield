@@ -75,9 +75,12 @@ try {
   check("phone makers match KeepAlivePolicy.OemFamily.wire", [...OEM_FAMILIES],
     ["samsung", "xiaomi", "huawei", "oppo", "vivo"]);
 
-  for (const d of ["start", "running", "not_wanted", "taken_away", "private_dns", "other_vpn", "budget", "no_consent"]) {
+  for (const d of ["start", "running", "not_wanted", "taken_away", "private_dns", "other_tunnel", "budget", "no_consent"]) {
     check(`rearm decision ${d}`, parseRearmDecision(d), d);
   }
+  // Kotlin says OTHER_VPN; src/native.android.ts passes it on as other_tunnel,
+  // so the raw name is unknown here.
+  check("Kotlin's raw other_vpn is not a decision the shared code knows", parseRearmDecision("other_vpn"), null);
   check("unknown rearm decision", parseRearmDecision("START"), null);
   check("no rearm decision", parseRearmDecision(undefined), null);
 

@@ -15,12 +15,8 @@ export interface ShieldRow {
   source?: "dns" | "link" | null;
 }
 
-interface ShieldLogModule {
-  recentShieldBlocks(limit?: number): ShieldRow[];
-  allowedDomains(): string[];
-  allowDomain(domain: string): boolean;
-  removeAllowedDomain(domain: string): void;
-}
+/** The module itself, so a name it does not export cannot type-check here (test-no-vpn-names.mjs). */
+type ShieldLogModule = typeof import("../../modules/cleanway-vpn");
 
 function shieldModule(): ShieldLogModule | null {
   if (Platform.OS !== "android") return null;

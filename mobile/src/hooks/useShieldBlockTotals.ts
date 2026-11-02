@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { AppState, Platform } from "react-native";
 
-interface ShieldLogModule {
-  shieldBlockTotals(): { blocked: number; warned: number };
-  addDomainBlockedListener?(cb: () => void): { remove(): void };
-}
+/** The module itself, so a name it does not export cannot type-check here (test-no-vpn-names.mjs). */
+type ShieldLogModule = typeof import("../../modules/cleanway-vpn");
 
 function loadModule(): ShieldLogModule | null {
   if (Platform.OS !== "android") return null;
