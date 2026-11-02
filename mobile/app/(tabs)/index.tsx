@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, Modal, TouchableOpacity, Platform, Alert,
 } from "react-native";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { colors, type as typo, space, radius } from "../../src/utils/theme";

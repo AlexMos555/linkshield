@@ -6,7 +6,7 @@ import Constants from "expo-constants";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import * as Localization from "expo-localization";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 import { SUPPORTED_LOCALES, LOCALE_NAMES, changeLocale, localeChangeNeedsReload, type SupportedLocale } from "../../src/i18n";
 import { colors, type as typo, space, radius, sectionHeader } from "../../src/utils/theme";

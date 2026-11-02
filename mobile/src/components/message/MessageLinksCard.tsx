@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ActivityIndicator, Platform } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 import type { MessageLink } from "../../../modules/cleanway-vpn";
 import { colors, space, radius } from "../../utils/theme";
