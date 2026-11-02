@@ -131,9 +131,19 @@ function declares(text, needle) {
   return re.test(text);
 }
 
+/** XML without comments; repeated until nothing changes, so a nested or split marker cannot survive. */
+function withoutComments(xml) {
+  let prev;
+  do {
+    prev = xml;
+    xml = xml.replace(/<!--[\s\S]*?-->/g, "");
+  } while (xml !== prev);
+  return xml;
+}
+
 /** The permission names a manifest requests: comments and tools:node="remove" entries left out. */
 function usesPermissions(xml) {
-  return [...xml.replace(/<!--[\s\S]*?-->/g, "").matchAll(/<uses-permission\b([^>]*)>/g)]
+  return [...withoutComments(xml).matchAll(/<uses-permission\b([^>]*)>/g)]
     .filter((m) => !/tools:node\s*=\s*"remove"/.test(m[1]))
     .map((m) => /android:name\s*=\s*"([^"]+)"/.exec(m[1])?.[1])
     .filter(Boolean);
