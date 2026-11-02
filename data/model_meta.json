@@ -30,30 +30,30 @@
   ],
   "n_features": 27,
   "features_version": 6,
-  "train_samples": 52754,
-  "total_samples": 65931,
-  "test_auc": 0.9047,
+  "train_samples": 52809,
+  "total_samples": 65951,
+  "test_auc": 0.9043,
   "test_names_only": {
-    "n_phishing": 3593,
-    "n_benign": 9494,
-    "auc": 0.9023,
-    "recall_at_0.6": 0.3535,
-    "recall_at_0.85": 0.1534,
-    "benign_flagged_at_0.6": 0.0087
+    "n_phishing": 3466,
+    "n_benign": 9575,
+    "auc": 0.9015,
+    "recall_at_0.6": 0.3739,
+    "recall_at_0.85": 0.1619,
+    "benign_flagged_at_0.6": 0.0099
   },
-  "phishing_names": 17455,
-  "phishing_ips": 476,
-  "benign_host_shapes": 10666,
-  "benign_tenants": 3329,
+  "phishing_names": 17461,
+  "phishing_ips": 490,
+  "benign_host_shapes": 10680,
+  "benign_tenants": 3327,
   "held_out_registrable_domains": 665,
   "phishing_sources": {
-    "CERT Polska": 5957,
-    "PhishDestroy": 5070,
-    "Phishunt": 1155,
-    "TweetFeed": 5749
+    "CERT Polska": 5960,
+    "PhishDestroy": 5129,
+    "Phishunt": 1046,
+    "TweetFeed": 5816
   },
   "benign_sources": {
-    "fetched": "2026-10-26",
+    "fetched": "2026-11-02",
     "majestic_million": {
       "url": "https://downloads.majestic.com/majestic_million.csv",
       "licence": "CC BY 3.0",
@@ -73,7 +73,7 @@
       }
     },
     "files": {
-      "benign-domains.csv": 1571433,
+      "benign-domains.csv": 1571114,
       "benign-hosts.csv": 1555774
     }
   },
