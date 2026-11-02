@@ -445,20 +445,30 @@ rather than to rely on Cloudflare not keeping it.
 
 **Which text for which build.** For **1.1.0 (iOS build 7) and later**, paste
 the block below as it is: its last paragraph, the one that starts "VPN
-(2.1):", is the one for build 7+. Pasted, the block is 3,772 characters of the
-4,000 App Review allows (3,788 with the In-App Purchase sentence swapped in,
+(2.1):", is the one for build 7+. Pasted, the block is 3,808 characters of the
+4,000 App Review allows (3,824 with the In-App Purchase sentence swapped in,
 below; counted with each paragraph's lines joined, a blank line between
 paragraphs and no backticks); count again after any edit. The Notes that went
 with **1.0.6 (6)** on 2026-11-02 differed only in that paragraph; it is kept
 as history after the reply, marked "do not paste". Before pasting for build 7,
-repeat on its archive the search of docs/EXPO_UPGRADE_PLAN.md §10.4: the
-paragraph says what it showed on SDK 54 (Release, simulator), and on SDK 58 it
-has not been run yet. With `$M` the mirror of §1.1:
+repeat on its archive the whole search of docs/EXPO_UPGRADE_PLAN.md §10.4 —
+`main.jsbundle`, the EXConstants config and the binaries — and attach the
+output to the 1.1.0 PR (#327). The VPN paragraph rests on what the first two
+showed on SDK 54 (Release, simulator); the binaries were not searched there,
+and on SDK 58 none of the three has been run yet. With `$M` the mirror of §1.1:
 
 ```bash
 A="$M/Cleanway.xcarchive/Products/Applications/Cleanway.app"
 LC_ALL=C grep -aci vpn "$A/main.jsbundle"                  # 0: no ASCII "vpn" (the Settings path is UTF-16)
 LC_ALL=C grep -aci vpn "$A/EXConstants.bundle/app.config"  # 0: no BIND_VPN_SERVICE in the app's config
+# The binaries and every other file in the app: its executable, Frameworks/,
+# PlugIns/*.appex and their resources. Prints each file with a match.
+LC_ALL=C grep -rcai vpn "$A" | grep -v ':0$'
+# Expected until the next model retrain (EXPO_UPGRADE_PLAN.md §10.4), one line:
+#   .../PlugIns/CleanwaySmsFilter.appex/message_model.json:8
+# — its data_sha256 names 8 files under mobile/modules/cleanway-vpn/ (below,
+# "What stays"). Any other file: find out what matches and record it there
+# before pasting.
 ```
 
 > Cleanway checks links and text messages for scams. No account is needed:
@@ -509,8 +519,9 @@ LC_ALL=C grep -aci vpn "$A/EXConstants.bundle/app.config"  # 0: no BIND_VPN_SERV
 > for the DNS Settings API (entitlement "dns-settings"), which iOS lists under
 > VPN & Device Management; that Settings path is the only "VPN" in the app's
 > text. The app's DNS module is "CleanwayDns" (save, read, remove the
-> setting). Since 1.1.0 the native module, text and BIND_VPN_SERVICE
-> permission of our Android app's VPN-based filter are not in the iOS build.
+> setting). Since 1.1.0 the native module, the Android-only text that names
+> VPN and the BIND_VPN_SERVICE permission of our Android app's VPN-based
+> filter are not in the iOS build.
 > With DNS protection on, our server gets DNS queries (name, record type) and
 > the request's IP. It logs no names or IPs. It keeps aggregate counters, an
 > in-memory answer cache keyed by the question only, and an hourly rate-limit
@@ -608,12 +619,16 @@ startVpn/stopVpn):
 > profiling.
 
 **1.1.0 (build 7 and later): what changed for the "VPN" question.** After
-the reply went, four PRs took the Android shield's code and text out of the
-iPhone build (in `main` on SDK 54, in 1.1.0 with the SDK 58 merge;
-docs/EXPO_UPGRADE_PLAN.md §10.4). The reply's second paragraph ("native
-module CleanwayVpn … startVpn/stopVpn") describes 1.0.6 (6) and earlier; the
-Notes paragraph for build 7+ above and the reply below say what 1.1.0
-carries.
+the reply went, four PRs took out of the iPhone build the parts of the
+Android shield that name VPN: its native module, its four VPN strings,
+`BIND_VPN_SERVICE` and the `vpn-…` icon names (in `main` on SDK 54, in 1.1.0
+with the SDK 58 merge; docs/EXPO_UPGRADE_PLAN.md §10.4). The rest of the
+shield still ships in the iPhone bundle, without the word: its shared JS
+(`modules/cleanway-vpn/index.ts`, `useNetworkShield`, `KeepAliveCard` and
+others) under neutral names, and its other on-screen text (#387 below). The
+reply's second paragraph ("native module CleanwayVpn … startVpn/stopVpn")
+describes 1.0.6 (6) and earlier; the Notes paragraph for build 7+ above and
+the reply below say what 1.1.0 carries.
 
 - #388: the iPhone's DNS protection is its own iOS-only module, `CleanwayDns`
   (`modules/cleanway-dns`); `CleanwayVpn` (`modules/cleanway-vpn`) is
@@ -631,6 +646,12 @@ carries.
   strings the iPhone carries, "VPN" is left only in
   `mobile.ios.dns.step_on_body` and `mobile.ios.dns.error_remove`: Apple's
   Settings path, in all 10 languages (`mobile/scripts/test-ios-strings-no-vpn.mjs`).
+  The rest of the Android shield's text stays in `i18n/{locale}.json`, which
+  `src/i18n/resources.ts` imports on the iPhone too, in all 10 languages: 51
+  `mobile.shield.*` keys ("Every app", the Private DNS and pause states, "How
+  the shield works"), 42 `mobile.keep_alive.*` (battery and keep-protection
+  rows) and 29 `mobile.android_native.*` (the foreground notification and
+  block alerts). None of them says VPN.
 - #386: `BIND_VPN_SERVICE` is declared in
   `modules/cleanway-vpn/android/src/main/AndroidManifest.xml` instead of
   `app.json`, so `expo-constants` no longer copies it into the iPhone app's
@@ -641,10 +662,17 @@ carries.
 What stays, because DNS protection needs it: NetworkExtension.framework and
 the `dns-settings` entitlement (`plugins/withIosAppStore.js`; only
 `CleanwayDnsModule.swift` imports NetworkExtension). The automated analysis
-can flag 1.1.0 for them again, so the Notes keep the VPN paragraph. Checked on
-SDK 54 (simulator, Release, 2026-11-02): no ASCII `vpn` in `main.jsbundle`,
-UTF-16 "VPN" only in the Settings path, none in the EXConstants config. Not
-yet repeated on the build 7 archive (SDK 58): do it before pasting the build
+can flag 1.1.0 for them again, so the Notes keep the VPN paragraph. Also
+still in build 7, until the next model retrain (docs/EXPO_UPGRADE_PLAN.md
+§10.4): the SMS filter's `message_model.json`, which `plugins/withSmsFilter.js`
+copies from `modules/cleanway-vpn/android/src/main/assets` into
+`PlugIns/CleanwaySmsFilter.appex`, names 8 files under
+`mobile/modules/cleanway-vpn/` in its `data_sha256`. The app never shows it,
+but it is an ASCII "vpn" in the build. Checked on SDK 54 (simulator, Release,
+2026-11-02): no ASCII `vpn` in `main.jsbundle`, UTF-16 "VPN" only in the
+Settings path, none in the EXConstants config; the binaries and the
+extensions' files were not searched. Not yet repeated on the build 7 archive
+(SDK 58): run all three searches at the top of §3.6 before pasting the build
 7+ paragraph or sending the reply below.
 
 If App Review asks about the "VPN" again for 1.1.0, reply with the text below.
@@ -667,9 +695,9 @@ reply's second) if they ask the three questions point by point again.
 > "dns-settings"), which iOS lists under VPN & Device Management. That
 > Settings path, which the app names where it explains the DNS setting, is
 > the only "VPN" in the app's text. In version 1.1.0 the DNS setting has its
-> own iOS module, "CleanwayDns", and the native module, text and
-> BIND_VPN_SERVICE permission of our Android app's VPN-based filter are not in
-> the iOS build.
+> own iOS module, "CleanwayDns", and the native module, the Android-only text
+> that names VPN and the BIND_VPN_SERVICE permission of our Android app's
+> VPN-based filter are not in the iOS build.
 >
 > The app saves one encrypted DNS setting for
 > https://dns.cleanway.ai/dns-query. It stays off until the user selects

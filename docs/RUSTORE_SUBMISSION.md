@@ -990,7 +990,8 @@ person sees. Source: `CHANGELOG.md` → App 1.1.0. Its first item, Expo SDK 58,
 is the new foundation. The rest: iOS 16.4 does not concern Android; the
 Arabic and Italian strings and the publishable key, new on the iPhone, are
 already in Android 1.0.6, built from `release/1.0.x` (cut at `a74e5503`,
-after #310, #350 and #333); #386–#389 only keep Android code and text out of
+after #310, #350 and #333); #386–#389 only keep the Android shield's native
+module, its VPN strings, `BIND_VPN_SERVICE` and the `vpn-…` icon names out of
 the iPhone build, and on Android the shield, its VPN strings and
 `BIND_VPN_SERVICE` stay as they were; `expo-share-intent` 9 without our
 patch, "Скачать мои данные" waiting for the write and a second share landing

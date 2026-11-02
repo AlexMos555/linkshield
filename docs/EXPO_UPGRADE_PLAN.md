@@ -833,7 +833,10 @@ NEDNSSettingsManager. В `main.jsbundle` нет ASCII `vpn`; UTF-16 «VPN» —
 - пути `cleanway-vpn` в `data_sha256` файла `message_model.json` — убрать при
   следующем переобучении модели;
 - повторить на архиве SDK 58 (iOS build 7) поиск `vpn` в `main.jsbundle`,
-  конфиге EXConstants и бинарниках и приложить вывод к PR.
+  конфиге EXConstants и бинарниках и приложить вывод к PR. Команды и
+  ожидаемый вывод — `docs/IOS.md` §3.6 (в бинарниках и файлах расширений
+  ожидается одна строка — `message_model.json` из пункта выше; на SDK 54
+  бинарники не проверялись).
 
 ---
 
