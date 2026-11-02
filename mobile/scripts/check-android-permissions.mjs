@@ -19,18 +19,26 @@
  *    REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, declared once, in the native
  *    module's manifest, next to its justification (SPECIAL_ALLOWED below).
  *
+ * And what it does ask for: the permissions our own config puts in the
+ * merged manifest are pinned (DECLARED below), with BIND_VPN_SERVICE in the
+ * native module's manifest only, never in app.json (MODULE_ONLY below).
+ *
  * Checked: app.json's android.permissions (expo prebuild merges it into the
  * manifest), the native module's manifest and Kotlin sources, and the config
  * plugins. The Kotlin suite has the same list (PolicyGuardTest) but does not
  * run in CI. app.json's blockedPermissions must keep the phone permissions
  * listed, so that a library cannot bring one in at manifest-merge time.
+ *
+ * `--dir <path>` checks another copy of mobile/ (app.json, modules/,
+ * plugins/). Table test: scripts/test-check-android-permissions.mjs.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, dirname, resolve, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const mobile = resolve(here, "..");
+const dirArg = process.argv.indexOf("--dir");
+const mobile = dirArg >= 0 && process.argv[dirArg + 1] ? resolve(process.argv[dirArg + 1]) : resolve(here, "..");
 
 const FORBIDDEN = [
   "RECEIVE_SMS", "READ_SMS", "SEND_SMS", "RECEIVE_MMS",
@@ -72,6 +80,39 @@ const SPECIAL_ALLOWED = [
   },
 ];
 
+const MODULE_MANIFEST = join("modules", "cleanway-vpn", "android", "src", "main", "AndroidManifest.xml");
+
+/**
+ * Every permission our own config adds to the merged manifest: app.json's
+ * android.permissions plus the module manifests' <uses-permission> entries.
+ * Config plugins and libraries add the rest (CAMERA, VIBRATE, INTERNET…;
+ * docs/STORES.md §6.4 lists the whole APK). Pinned so that moving one
+ * between app.json and a manifest cannot drop it from the APK, and none may
+ * be in app.json's blockedPermissions: expo prebuild then drops it from
+ * android.permissions and writes tools:node="remove" into the app manifest,
+ * which strips the module manifest's entry too at manifest merge.
+ */
+const DECLARED = [
+  "android.permission.ACCESS_NETWORK_STATE",
+  "android.permission.BIND_VPN_SERVICE",
+  "android.permission.FOREGROUND_SERVICE",
+  "android.permission.FOREGROUND_SERVICE_SPECIAL_USE",
+  "android.permission.POST_NOTIFICATIONS",
+  "android.permission.RECEIVE_BOOT_COMPLETED",
+  "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+];
+
+/**
+ * Declared in the native module's manifest, never in app.json. expo-constants
+ * embeds the public app config, android.permissions included, in the iOS app
+ * (EXConstants.bundle/app.config), and App Review's scan flagged the iOS
+ * build as "contains VPN functionality" (2026-10-30). The module manifest
+ * reaches the Android build only; the merged manifest is the same. Not via a
+ * config plugin either: AndroidConfig.Permissions.withPermissions writes the
+ * permission back into config.android.permissions, i.e. the public config.
+ */
+const MODULE_ONLY = ["android.permission.BIND_VPN_SERVICE"];
+
 /** Phone permissions the app config must actively strip at manifest merge. */
 const MUST_BLOCK = [
   "android.permission.SYSTEM_ALERT_WINDOW",
@@ -89,6 +130,27 @@ function declares(text, needle) {
   );
   return re.test(text);
 }
+
+/** XML without comments; repeated until nothing changes, so a nested or split marker cannot survive. */
+function withoutComments(xml) {
+  let prev;
+  do {
+    prev = xml;
+    xml = xml.replace(/<!--[\s\S]*?-->/g, "");
+  } while (xml !== prev);
+  return xml;
+}
+
+/** The permission names a manifest requests: comments and tools:node="remove" entries left out. */
+function usesPermissions(xml) {
+  return [...withoutComments(xml).matchAll(/<uses-permission\b([^>]*)>/g)]
+    .filter((m) => !/tools:node\s*=\s*"remove"/.test(m[1]))
+    .map((m) => /android:name\s*=\s*"([^"]+)"/.exec(m[1])?.[1])
+    .filter(Boolean);
+}
+
+/** Expo prefixes a bare name the same way (prefixAndroidPermissionsIfNecessary). */
+const fullName = (p) => (p.includes(".") ? p : `android.permission.${p}`);
 
 function walk(dir, exts, acc = []) {
   for (const name of readdirSync(dir)) {
@@ -144,12 +206,33 @@ for (const { permission, file, justification } of SPECIAL_ALLOWED) {
   }
 }
 
+// 4. What our config asks for: the pinned set, none of it blocked, and the
+// VPN permission in the module manifest rather than app.json.
+const manifests = files.filter((f) => f.endsWith("AndroidManifest.xml"));
+const fromManifests = new Map(manifests.map((f) => [relative(mobile, f), usesPermissions(readFileSync(f, "utf8"))]));
+const fromApp = asked.map(fullName);
+const declared = new Set([...fromApp, ...[...fromManifests.values()].flat()]);
+const blockedFull = new Set([...blocked].map(fullName));
+for (const p of DECLARED) {
+  if (!declared.has(p)) failures.push(`${p} is no longer declared (app.json or ${MODULE_MANIFEST}): the APK would lose it`);
+  if (blockedFull.has(p)) failures.push(`app.json android.blockedPermissions strips ${p}: the APK would lose it`);
+}
+for (const p of declared) {
+  if (!DECLARED.includes(p)) failures.push(`${p} is declared but not in DECLARED: add it there and to the store permission tables`);
+}
+for (const p of MODULE_ONLY) {
+  if (fromApp.includes(p)) failures.push(`app.json android.permissions asks for ${p}: it ships in the iOS app; declare it in ${MODULE_MANIFEST}`);
+  if (!(fromManifests.get(MODULE_MANIFEST) ?? []).includes(p)) failures.push(`${MODULE_MANIFEST} does not declare <uses-permission> ${p}`);
+}
+
 if (failures.length > 0) {
   console.log("ANDROID PERMISSION GUARD FAILED:");
   for (const f of failures) console.log("  " + f);
   process.exit(1);
 }
 console.log(
-  `ok: ${asked.length} permissions asked, ${FORBIDDEN.length + FORBIDDEN_SPECIAL.length} forbidden ones absent from ${files.length} files, ` +
+  `ok: ${declared.size} permissions declared (${asked.length} in app.json, ${[...fromManifests.values()].flat().length} in ` +
+  `${manifests.length} module manifest${manifests.length === 1 ? "" : "s"}), ` +
+  `${FORBIDDEN.length + FORBIDDEN_SPECIAL.length} forbidden ones absent from ${files.length} files, ` +
   `${SPECIAL_ALLOWED.length} special-access declared where allowed, ${MUST_BLOCK.length} stripped at merge`,
 );
