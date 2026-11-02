@@ -374,6 +374,27 @@ CLAIMS: tuple[Claim, ...] = (
               "hi": r"जितनी देर में जवाब देना ज़रूरी",
               "ar": r"بالقدر الذي يكفي للرد",
           }),
+    # 2026-11-02 review: /dns also said "What we DO keep: an anonymous daily
+    # counter of total queries and total blocks, used to publish our quarterly
+    # transparency report. No domains, no IPs". The DoH counters are
+    # process-wide since start, reset on restart and logged as one doh_stats
+    # line every 300 s (api/services/doh_metrics.py); no transparency report
+    # carries a DNS figure (docs/transparency/); and the gateway does keep an
+    # hourly per-connection count under a keyed hash of the IP (policy §11).
+    Claim("says DNS keeps a 'daily counter' for a 'transparency report' — the counters are process-wide since "
+          "start, logged every 300 s (api/services/doh_metrics.py), no report has DNS figures, and the rate "
+          "limit counts per keyed hash of the IP for an hour; say what section 11 of the policy says", {
+              "en": r"daily counter[^.]{0,120}transparency",
+              "ru": r"суточн\w* сч[её]тчик[^.]{0,120}прозрачност",
+              "es": r"contador diario[^.]{0,120}transparencia",
+              "pt": r"contador di[aá]rio[^.]{0,120}transpar[eê]ncia",
+              "fr": r"compteur quotidien[^.]{0,120}transparence",
+              "de": r"tagesz[äa]hler[^.]{0,160}transparenzbericht",
+              "it": r"contatore giornaliero[^.]{0,120}trasparenza",
+              "id": r"penghitung harian[^.]{0,120}transparansi",
+              "hi": r"दैनिक काउंटर[^।]{0,160}पारदर्शिता",
+              "ar": r"عدّ?اد يومي[^.]{0,160}الشفافية",
+          }),
 )
 
 # Chrome CTAs are allowed again the moment install-urls.ts marks Chrome live.

@@ -185,6 +185,39 @@ def test_dns_just_long_enough_claim_is_caught_in_every_language(locale: str, tex
     assert _findings(locale, {"dns": {"privacy_body": text}}), f"{locale} over-claim passed"
 
 
+# landing.dns.privacy_logs as it read until 2026-11-02 (main @29b7136a).
+DNS_DAILY_COUNTER = {
+    "en": "What we DO keep: an anonymous daily counter of total queries and total blocks, used to publish "
+          "our quarterly transparency report. No domains, no IPs, no users.",
+    "ru": "Что мы СОХРАНЯЕМ: анонимный суточный счётчик общего числа запросов и блокировок — для квартального "
+          "отчёта о прозрачности. Никаких доменов, IP или пользователей.",
+    "es": "Lo que SÍ guardamos: un contador diario anónimo del total de consultas y bloqueos, usado para "
+          "publicar nuestro informe trimestral de transparencia. Sin dominios, sin IP, sin usuarios.",
+    "pt": "O que MANTEMOS: um contador diário anônimo do total de consultas e bloqueios, usado para publicar "
+          "o nosso relatório trimestral de transparência. Sem domínios, sem IPs, sem usuários.",
+    "fr": "Ce que nous CONSERVONS : un compteur quotidien anonyme du nombre total de requêtes et de blocages, "
+          "qui sert à publier notre rapport de transparence trimestriel. Aucun domaine, aucune adresse IP, "
+          "aucun utilisateur.",
+    "de": "Was wir SEHR WOHL behalten: einen anonymen Tageszähler über die Gesamtzahl der Anfragen und "
+          "Blockierungen — als Grundlage für unseren vierteljährlichen Transparenzbericht. Keine Domains, "
+          "keine IPs, keine Nutzer.",
+    "it": "Cosa CONSERVIAMO: un contatore giornaliero anonimo del totale di query e blocchi, usato per "
+          "pubblicare il nostro rapporto trimestrale sulla trasparenza. Nessun dominio, nessun IP, nessun utente.",
+    "id": "Yang kami SIMPAN: penghitung harian anonim untuk total kueri dan total pemblokiran, digunakan untuk "
+          "menerbitkan laporan transparansi triwulanan kami. Tanpa domain, tanpa IP, tanpa pengguna.",
+    "hi": "जो हम रखते हैं: कुल क्वेरीज़ और कुल ब्लॉक्स का एक अनाम दैनिक काउंटर, जिसका उपयोग हमारी त्रैमासिक "
+          "पारदर्शिता रिपोर्ट प्रकाशित करने के लिए होता है। न कोई डोमेन, न IP, न उपयोगकर्ता।",
+    "ar": "ما نحتفظ به فعلًا: عدّاد يومي مجهول الهوية لإجمالي عدد الاستعلامات والحجوبات، يُستخدم لإصدار تقرير "
+          "الشفافية الفصلي. بدون نطاقات، وبدون عناوين IP، وبدون مستخدمين.",
+}
+
+
+@pytest.mark.parametrize("locale,text", sorted(DNS_DAILY_COUNTER.items()))
+def test_dns_daily_counter_claim_is_caught_in_every_language(locale: str, text: str) -> None:
+    assert set(DNS_DAILY_COUNTER) == set(guard.LOCALES)
+    assert _findings(locale, {"dns": {"privacy_logs": text}}), f"{locale} daily-counter claim passed"
+
+
 def test_badge_may_not_call_the_server_verdict_blocking() -> None:
     assert _findings("ru", {"hero": {"badge": "{recall}% свежих фишинг-URL заблокированы (замерено)"}})
     assert _findings("en", {"hero": {"badge": "{recall}% of fresh phishing links blocked"}})
