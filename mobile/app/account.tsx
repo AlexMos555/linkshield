@@ -5,7 +5,7 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import Constants from "expo-constants";
 import * as Localization from "expo-localization";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 
 import { colors, type as typo, space, radius, sectionHeader } from "../src/utils/theme";

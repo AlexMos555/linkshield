@@ -20,7 +20,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius } from "../src/utils/theme";
 import { useMessageCheck } from "../src/hooks/useMessageCheck";

@@ -294,6 +294,11 @@ jobs:
         # are hidden from screen readers (#249).
         run: node mobile/scripts/check-a11y-labels.mjs
 
+      - name: Icon families imported by path
+        # The @expo/vector-icons index bundles every family's glyph names,
+        # MaterialIcons' "vpn-key" among them (App Review 2.1, docs/IOS.md §3.6).
+        run: node mobile/scripts/check-icon-imports.mjs --self-test && node mobile/scripts/check-icon-imports.mjs
+
       - name: Theme contrast (WCAG AA)
         # Text/background pairs in src/utils/theme.ts stay readable (#249).
         run: node mobile/scripts/test-theme-contrast.mjs

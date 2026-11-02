@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, FlatList, RefreshControl, ActivityIndicator, Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 import { colors, type as typo, space } from "../../src/utils/theme";
 import {

@@ -5,7 +5,7 @@
  * store builds (app/paywall.tsx).
  */
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 
 import { colors, space, radius } from "../../utils/theme";
