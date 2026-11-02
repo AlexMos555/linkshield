@@ -169,7 +169,7 @@ ALLOWED_ORIGINS=https://cleanway.ai,https://www.cleanway.ai,https://mail.google.
 - [ ] Миграция `supabase/migrations/024_store_purchases_revenuecat.sql` применена **до** включения вебхука: вебхук Stripe пишет `entitlements.source_event_at` (порядок событий), без колонки каждая запись упадёт и Stripe будет повторять
 - [ ] Webhook → создать endpoint `https://[api]/api/v1/payments/webhook` → signing secret → Railway env `STRIPE_WEBHOOK_SECRET`. Без него checkout тоже отвечает 503: платёж, который вебхук не запишет, не продаём
 - [ ] Customer portal → включить (self-service subscription management)
-- [ ] **Последним**: Vercel env `NEXT_PUBLIC_STRIPE_LIVE=1` + redeploy без build cache. До этого `/pricing` для мира — бесплатная страница (без «Get Unlimited» и без Offer в JSON-LD), см. `landing/lib/billing-config.ts`
+- [ ] **Последним**: Vercel env `NEXT_PUBLIC_STRIPE_LIVE=1` + Redeploy деплоя **Current** без галочек «Use existing Build Cache» и «Use project's Ignore Build Step» (`docs/PAID_LAUNCH_SWITCHES.md` §15). До этого `/pricing` для мира — бесплатная страница (без «Get Unlimited» и без Offer в JSON-LD), см. `landing/lib/billing-config.ts`
 
 ### Шаг 5.3 — SES / Resend (транзакционный email)
 - [ ] **Resend** (проще на старте): https://resend.com → add domain `mail.[brand].com` → DNS records (SPF, DKIM) → verify

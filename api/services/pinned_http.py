@@ -33,10 +33,11 @@ class BlockedDestination(httpx.ConnectError):
 
 
 class PinnedTransport(httpx.AsyncBaseTransport):
-    def __init__(self, resolver: Optional[Resolver] = None, inner: Optional[httpx.AsyncBaseTransport] = None):
+    def __init__(self, resolver: Optional[Resolver] = None, inner: Optional[httpx.AsyncBaseTransport] = None,
+                 http2: bool = False):
         self._resolver = resolver
         self._inner = inner or httpx.AsyncHTTPTransport(
-            verify=client_tls_context(),
+            verify=client_tls_context(), http2=http2,
             limits=httpx.Limits(max_keepalive_connections=0), retries=0,
         )
 
@@ -70,9 +71,11 @@ class PinnedTransport(httpx.AsyncBaseTransport):
         await self._inner.aclose()
 
 
-def pinned_client(**kwargs) -> httpx.AsyncClient:
+def pinned_client(http2: bool = False, **kwargs) -> httpx.AsyncClient:
     """An AsyncClient over PinnedTransport. Redirects are never followed
-    automatically: callers follow them by hand and vet every hop."""
-    kwargs.setdefault("transport", PinnedTransport())
+    automatically: callers follow them by hand and vet every hop. `http2`
+    offers HTTP/2 too, for servers that refuse HTTP/1.1."""
+    if "transport" not in kwargs:
+        kwargs["transport"] = PinnedTransport(http2=http2)
     kwargs["follow_redirects"] = False
     return httpx.AsyncClient(**kwargs)

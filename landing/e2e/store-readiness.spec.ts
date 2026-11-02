@@ -167,6 +167,24 @@ test.describe("signed in", () => {
     });
   }
 
+  // /pricing also goes by the visitor's country (Vercel's x-vercel-ip-country,
+  // lib/paid-plans.ts). /account went by the page's language alone, so once
+  // Stripe was live a free account in Russia reading it in English got "See
+  // plans", and /pricing then said there are none in its country. In Russia
+  // /pricing sells the operator subscription once that flag is on.
+  for (const path of ["/account", "/de/account"]) {
+    test(`${path} from Russia: "See plans" only when /pricing sells a plan there`, async ({ page }) => {
+      await signIn(page);
+      await fakeAccountApi(page, 200);
+      await page.route(`${BASE}${path}`, (route) =>
+        route.continue({ headers: { ...route.request().headers(), "x-vercel-ip-country": "RU" } }),
+      );
+      await page.goto(path);
+      await expect(page.getByTestId("account-plan")).toBeVisible();
+      await expect(page.getByTestId("account-plans-link")).toHaveCount(BILLING_ON ? 1 : 0);
+    });
+  }
+
   for (const entitlementStatus of [200, 503]) {
     test(`deleting the account works (entitlement ${entitlementStatus})`, async ({ page }) => {
       await signIn(page);

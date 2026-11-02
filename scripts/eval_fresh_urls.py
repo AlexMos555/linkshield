@@ -11,9 +11,11 @@ when asked for by name, and such a run is never published. Neither
 is a --local-analyzer run whose in-process analyzer asks Safe
 Browsing v4 (non_commercial_asked).
 
-Output goes to docs/benchmarks/<YYYY-MM>-fresh-urls.json (raw)
+Output goes to docs/benchmarks/<YYYY-MM-DD>-fresh-urls.json (raw)
 and .md (human-readable table). This is the source-of-truth
-for any "X% detection rate" claim on the landing page.
+for any "X% detection rate" claim on the landing page. A run that
+is not published, on a day whose report latest.json already points
+to, goes to <YYYY-MM-DD>T<HHMMSS>Z-fresh-urls.json instead.
 
 Usage:
     # The published run (Cleanway + PhishTank + Cloudflare):
@@ -1273,6 +1275,20 @@ def _update_latest_pointer(json_out: Path) -> None:
                 pass
 
 
+def _is_published(json_out: Path) -> bool:
+    """True when latest.json, next to `json_out`, points to it.
+
+    latest.json is a symlink (_update_latest_pointer), so rewriting the file it
+    names changes what the site shows exactly as moving the pointer would. The
+    plain-copy fallback is a file of its own: rewriting the original leaves it be.
+    """
+    latest = json_out.parent / "latest.json"
+    try:
+        return latest.exists() and json_out.exists() and os.path.samefile(latest, json_out)
+    except OSError:
+        return False
+
+
 async def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--sample", type=int, default=500,
@@ -1428,8 +1444,26 @@ async def main() -> int:
         },
     }
 
+    # ── Pre-publish quality gate ─────────────────────────────────
+    # The dated files are always written — history is cheap. `latest.json`
+    # is what the landing page + methodology page render, so we only flip
+    # it when the run is trustworthy. A rate-limit blowout that shows
+    # 30/50 unknown and FPR=null must NOT become the public number.
+    gate = check_quality_gate(report)
+    publish = gate.passed or (not args.enforce_quality_gate and gate.failed_gate != NON_COMMERCIAL_GATE)
+
     tag = args.out_tag or time.strftime("%Y-%m-%d", time.gmtime())
     json_out = out_dir / f"{tag}-fresh-urls.json"
+    if not publish and _is_published(json_out):
+        # A second run the same UTC day, whose tag names the very file
+        # latest.json points to: writing it would publish the run the gate
+        # just refused (or a VirusTotal / Safe Browsing rerun) through the
+        # pointer it never moved. It keeps the day's tag plus the time, a name
+        # that sorts after the published one.
+        tag = f"{tag}T{time.strftime('%H%M%S', time.gmtime())}Z"
+        log.warning("latest.json points to %s, and this run is not published: writing it as %s instead",
+                    json_out.name, f"{tag}-fresh-urls.json")
+        json_out = out_dir / f"{tag}-fresh-urls.json"
     md_out = out_dir / f"{tag}-fresh-urls.md"
     with open(json_out, "w") as f:
         json.dump(report, f, indent=2)
@@ -1439,13 +1473,6 @@ async def main() -> int:
     log.info("wrote %s", json_out)
     log.info("wrote %s", md_out)
 
-    # ── Pre-publish quality gate ─────────────────────────────────
-    # The dated files above are always written — history is cheap and
-    # nothing external reads dated files by mistake. `latest.json` is
-    # what the landing page + methodology page render, so we only flip
-    # it when the run is trustworthy. A rate-limit blowout that shows
-    # 30/50 unknown and FPR=null must NOT become the public number.
-    gate = check_quality_gate(report)
     if not args.enforce_quality_gate and gate.failed_gate != NON_COMMERCIAL_GATE:
         log.warning(
             "quality gate DISABLED via --no-enforce-quality-gate — "

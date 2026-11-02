@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 import { colors, type as typo, space } from "../../utils/theme";
 import { clockTime } from "../../utils/relative-time";

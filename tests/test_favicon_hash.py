@@ -11,9 +11,52 @@ import pathlib
 import pytest
 
 from api.services.favicon_hash import (
+    _fetch_favicon,
     _hash_bytes,
     check_favicon_brand_clone,
+    looks_like_favicon,
 )
+
+# Bodies that real sites returned for /favicon.ico with "200 OK" on 2026-10-25.
+AKAMAI_DENIED = (
+    b'<html><head><title>Access Denied</title></head><body><h1>Access Denied</h1>'
+    b'You don\'t have permission to access "/favicon.ico" on this server.<br/>'
+    b'0.7fb6d68.1793107707.caa77d6</body></html>'
+)
+WAF_DOWN = (
+    b'<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">\n'
+    b'<HTML><HEAD><TITLE>Brand | System Down</TITLE></HEAD><BODY></BODY></HTML>'
+)
+ICON_SAMPLES = {
+    "ico": b"\x00\x00\x01\x00\x04\x00\x10\x10" + b"\x00" * 32,
+    "cur": b"\x00\x00\x02\x00\x01\x00" + b"\x00" * 16,
+    "png": b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + b"\x00" * 16,
+    "gif": b"GIF89a\x10\x00\x10\x00" + b"\x00" * 16,
+    "jpeg": b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x00" * 16,
+    "bmp": b"BM6\x03\x00\x00" + b"\x00" * 16,
+    "webp": b"RIFF\x24\x00\x00\x00WEBPVP8 " + b"\x00" * 16,
+    "svg": b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"/>',
+    "svg-xml": b'\xef\xbb\xbf<?xml version="1.0"?>\n<svg xmlns="http://www.w3.org/2000/svg"/>',
+    "svg-doctype": b'<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "x"><svg xmlns="http://www.w3.org/2000/svg"/>',
+    # The <svg tag may sit far into the first KB, after a prolog and a comment.
+    "svg-late-tag": b'<?xml version="1.0"?><!-- ' + b"x" * 900 + b' --><svg xmlns="http://www.w3.org/2000/svg"/>',
+}
+NOT_ICONS = {
+    "akamai-denied": AKAMAI_DENIED,
+    "waf-down": WAF_DOWN,
+    "html-with-inline-svg": b"<!doctype html><html><body><svg></svg></body></html>",
+    # Pages that pass the SVG prefix check and contain an <svg>: only the
+    # <html guard turns them away.
+    "xhtml-with-svg": (
+        b'<?xml version="1.0"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "x">'
+        b'<html xmlns="http://www.w3.org/1999/xhtml"><body><svg/></body></html>'
+    ),
+    "comment-html-svg": b"<!-- x --><html><body><svg/></body></html>",
+    "xml-not-svg": b'<?xml version="1.0"?><error>denied</error>',
+    "json": b'{"error": "forbidden"}',
+    "text": b"Forbidden",
+    "empty": b"",
+}
 
 
 # ───────────────────────────────────────────────────────────────
@@ -104,6 +147,63 @@ def test_hash_bytes_differs_on_one_byte_change():
     a = _hash_bytes(b"abc")
     b = _hash_bytes(b"abd")
     assert a != b, "Even single-byte changes must change the hash"
+
+
+# ───────────────────────────────────────────────────────────────
+# looks_like_favicon / _fetch_favicon
+# ───────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("kind", sorted(ICON_SAMPLES))
+def test_looks_like_favicon_accepts_image_formats(kind):
+    assert looks_like_favicon(ICON_SAMPLES[kind])
+
+
+@pytest.mark.parametrize("kind", sorted(NOT_ICONS))
+def test_looks_like_favicon_rejects_error_pages(kind):
+    assert not looks_like_favicon(NOT_ICONS[kind])
+
+
+@pytest.fixture
+def mock_favicon_server(monkeypatch):
+    """Route _fetch_favicon's pinned client to an in-process handler."""
+    import httpx
+
+    import api.services.pinned_http as pinned_http
+    state = {"status": 200, "body": b""}
+
+    def _handler(request):
+        return httpx.Response(state["status"], content=state["body"])
+
+    def _client(**kwargs):
+        kwargs["transport"] = httpx.MockTransport(_handler)
+        return httpx.AsyncClient(**kwargs)
+
+    monkeypatch.setattr(pinned_http, "pinned_client", _client)
+    return state
+
+
+@pytest.mark.asyncio
+async def test_fetch_favicon_returns_image_bytes(mock_favicon_server):
+    mock_favicon_server["body"] = ICON_SAMPLES["ico"]
+    assert await _fetch_favicon("brand.example") == ICON_SAMPLES["ico"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", [AKAMAI_DENIED, WAF_DOWN])
+async def test_fetch_favicon_treats_200_error_page_as_missing(mock_favicon_server, body):
+    """A bot wall's "200 OK" HTML must not get a hash: a static error page
+    shared by many sites would otherwise match them all."""
+    mock_favicon_server["body"] = body
+    assert await _fetch_favicon("brand.example") is None
+
+
+@pytest.mark.asyncio
+async def test_error_page_is_cached_as_miss(fake_redis, mock_favicon_server):
+    from api.services.favicon_hash import get_favicon_hash
+
+    mock_favicon_server["body"] = AKAMAI_DENIED
+    assert await get_favicon_hash("brand.example") is None
+    assert fake_redis.store["favicon:hash:brand.example"] == "MISS"
 
 
 # ───────────────────────────────────────────────────────────────
@@ -243,3 +343,41 @@ def test_production_gallery_loads_and_has_known_brands():
         assert entry.get("verified_hosts"), f"{required} has no verified_hosts"
         # known_favicon_hashes may be empty for now — ops will fill.
         assert isinstance(entry.get("known_favicon_hashes", []), list)
+
+
+# sha256[:24] of https://www.fedex.com/etc.clientlibs/designs/fedex-common/images/
+# resources/fx-favicon.ico, the icon fedex.com's <link rel="shortcut icon"> names:
+# 5430 B ICO (16x16 + 32x32), fetched 2026-10-27 and identical in the Wayback
+# Machine's 2025-01-03 capture. www.fedex.com/favicon.ico is a "Page Not Found"
+# HTML page (every one of 24 Wayback captures in June 2026 is text/html).
+FEDEX_ICON = "eab1b9a0ef942d84e3a8ed8c"
+# Hashes of bot-wall pages the cron filed before it checked for images
+# (#174, #233 and the 2026-06-16 local run). Each page carries a per-request
+# incident id, so no fetch ever produces them again.
+DEAD_HTML_HASHES = {
+    "ups": {"5c2b47f43cadef4d9e8727e3", "279419b97fa7c89075bb3145"},
+    "fedex": {"f644a556676907e89b2144cf", "ece22f1455bba697ca6b50db", "437ef929a63eac5b2c5be708"},
+    "linkedin": {"19afb2a51408c29a7c654967", "254a2a36f43cc539cb6864b9"},
+}
+
+
+@pytest.mark.asyncio
+async def test_fedex_icon_on_an_off_brand_host_is_a_clone(monkeypatch):
+    import api.services.favicon_hash as mod
+    monkeypatch.setattr(mod, "_gallery_cache", None)  # the shipped gallery
+
+    async def _hash(domain):
+        return FEDEX_ICON
+
+    monkeypatch.setattr(mod, "get_favicon_hash", _hash)
+    out = await check_favicon_brand_clone("fedex-track-parcel.example")
+    assert out["cloned"] is True and out["brand"] == "fedex", out
+
+
+def test_production_gallery_has_no_bot_wall_hashes():
+    p = pathlib.Path(__file__).resolve().parent.parent / "api" / "data" / "brand_favicons.json"
+    gallery = json.loads(p.read_text(encoding="utf-8"))
+    for brand, dead in DEAD_HTML_HASHES.items():
+        known = set(gallery[brand]["known_favicon_hashes"])
+        assert not known & dead, brand
+        assert known, f"{brand} has no image hash left"

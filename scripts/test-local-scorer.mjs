@@ -328,6 +328,54 @@ for (const [treeName, tree] of TREES) {
     assert.strictEqual(wrong.length, 0, `${wrong.length} differ, e.g.\n        ${wrong.slice(0, 5).join("\n        ")}`);
   });
 
+  // The Public Suffix List's ICANN rules arrive as a trie per TLD; a
+  // decoder that drops a rule would only show on a host under it.
+  check("decodes every ICANN rule scorer-data.js carries", () => {
+    const want = ctx.cleanwayScorerData.icannSuffixCounts;
+    assert.ok(want[0] > 5000, `only ${want[0]} ICANN rules in scorer-data.js`);
+    assert.strictEqual(JSON.stringify(ctx.cleanwayNameRules.icannRuleCounts()), JSON.stringify(want));
+  });
+
+  check("registrable domain: wildcard, exception and default rules, IPs, one label", () => {
+    const rules = ctx.cleanwayNameRules;
+    const cases = [
+      ["a.b.kobe.jp", "a.b.kobe.jp"], ["b.kobe.jp", "b.kobe.jp"], ["www.city.kobe.jp", "city.kobe.jp"],
+      ["a.www.ck", "www.ck"], ["a.b.ck", "a.b.ck"], ["www.example.com", "example.com"],
+      ["WWW.Example.CO.UK.", "example.co.uk"], ["co.uk", "co.uk"], ["10.0.1.10", "10.0.1.10"],
+      ["[::1]", "[::1]"], ["localhost", "localhost"], ["", ""], ["x.constructor", "x.constructor"],
+      ["paypal-secure.my.id", "paypal-secure.my.id"], ["login.web.de", "web.de"],
+      ["kvs.gov.spb.ru", "gov.spb.ru"], ["evil.co.ua", "evil.co.ua"], ["x.paypal-login.co.vu", "paypal-login.co.vu"],
+      ["mail.confirm-lnstagram.com.de", "confirm-lnstagram.com.de"], ["co.ua", "co.ua"], ["www.amazon.com.be", "com.be"],
+      ["x.paypal-login.ne.pw", "paypal-login.ne.pw"], ["secure-paypal.asn.im", "secure-paypal.asn.im"],
+      ["office365-login.govt.hu", "office365-login.govt.hu"], ["kau.gov.hu", "kau.gov.hu"],
+      ["login.evil.org.zz", "evil.org.zz"], ["x.co.com", "co.com"], ["x.com.xn--80ac", "com.xn--80ac"],
+      ["x.com.\u0430\u0431", "com.\u0430\u0431"],
+    ];
+    const wrong = cases.filter(([h, want]) => rules.registrableDomain(h) !== want);
+    assert.strictEqual(wrong.map(([h, want]) => `${h}: ${rules.registrableDomain(h)}, expected ${want}`).join("; "), "");
+    // The ccTLD default, as public_suffix.registrable_domain reads it: every
+    // generic second level of a 2-letter TLD is split, but for cctldNames.
+    const labels = ctx.cleanwayScorerData.cctldSecondLevels;
+    const names = ctx.cleanwayScorerData.cctldNames;
+    assert.ok(Array.isArray(names) && names.includes("web.de") && names.includes("com.be"), "no cctldNames");
+    assert.ok(!("registrySuffixes" in ctx.cleanwayScorerData), "registrySuffixes is gone");
+    const merged = [];
+    for (const tld of ["zz", "pw", "im", "lt", "hu", "de", "be", "ua", "vu", "uk", "br", "jp"]) {
+      for (const label of labels) {
+        const zone = `${label}.${tld}`;
+        if (names.includes(zone)) continue;
+        const got = rules.registrableDomain(`a.x.${zone}`);
+        if (got !== `x.${zone}` && !got.endsWith(`.x.${zone}`)) merged.push(`${zone}: ${got}`);
+      }
+    }
+    assert.strictEqual(merged.join(", "), "");
+    const unnamed = names.filter((z) => rules.registrableDomain(`a.b.${z}`) !== z);
+    assert.strictEqual(unnamed.join(", "), "");
+    // The shape rules keep the model's reading.
+    assert.strictEqual(rules.legacyRegistrable("paypal-secure.my.id"), "my.id");
+    assert.strictEqual(rules.legacyRegistrable("www.web.de"), "www.web.de");
+  });
+
   check("loads in strict mode, as the background's ES module import does", () => {
     const strict = loadScorer(tree, { strict: true });
     for (const d of ["sberbamk.ru", "kvs.gov.spb.ru", "xn--pypal-4ve.com", "vk.com.msk.ru"]) {

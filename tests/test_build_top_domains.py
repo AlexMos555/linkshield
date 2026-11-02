@@ -88,11 +88,14 @@ def _corpus() -> list[str]:
     return sorted(hosts)
 
 
-def test_registrable_domain_is_the_scorers():
-    from api.services.scoring import registrable_domain
+def test_registrable_domain_is_the_models():
+    """The popularity list is the model's feature data: folded the way the
+    model reads a host (scoring.legacy_registrable_domain), not the way the
+    rules do since 2026-10-28 (the Public Suffix List)."""
+    from api.services.scoring import legacy_registrable_domain
 
     for host in _corpus():
-        assert btd.registrable_domain(host) == registrable_domain(host), host
+        assert btd.registrable_domain(host) == legacy_registrable_domain(host), host
 
 
 def test_the_redis_refresh_imports_nothing_the_runner_lacks():
@@ -237,7 +240,10 @@ def test_a_reported_name_needs_both_lists_or_many_links_or_the_very_top():
 # ── Building the files ──
 
 def _crux_gz(rows) -> bytes:
-    return gzip.compress(("origin,rank\n" + "".join(f"https://{h},{r}\n" for r, h in rows)).encode())
+    # mtime=0: tests build the world twice and compare sha256s; with the default
+    # header timestamp the two gzips differ whenever a second boundary falls
+    # between them (test_build_writes_the_five_files failed that way, 2026-10-28).
+    return gzip.compress(("origin,rank\n" + "".join(f"https://{h},{r}\n" for r, h in rows)).encode(), mtime=0)
 
 
 def _majestic_csv(names) -> str:
@@ -467,3 +473,21 @@ def test_public_suffix_rules_cover_the_infrastructure_names_too():
     bases = {btd.psl_in_top._base(r) for r in rules}
     assert bases <= top | infra | zones.psl_operators
     assert bases & (infra - top)
+
+
+def test_a_tombstoned_name_is_skipped_on_the_allowlist_and_the_next_moves_up(small, monkeypatch):
+    """Step 4b: the rebuild stops carrying a dead name (data/top_domains_dead.json),
+    so a retrain on it no longer learns the name as popular. The Redis
+    ranking keeps it: get_tranco_rank skips it at read time."""
+    monkeypatch.setattr(btd, "REDIS_N", 44)
+    assert _build(small, _world()) == 0
+    before = json.loads((small / "top_100k.json").read_text())
+    dead = before[3]
+    (small / "top_domains_dead.json").write_text(json.dumps({"names": {dead: "2026-10-31"}}))
+    assert _build(small, _world()) == 0
+    after = json.loads((small / "top_100k.json").read_text())
+    assert dead not in after and len(after) == 20
+    assert after[:3] == before[:3] and after[3:19] == before[4:]
+    assert json.loads((small / "top_domains_sources.json").read_text())["tombstoned_names_skipped"] == 1
+    pairs, _ = btd.popularity_ranking(fetch=_fetch(_world()), limit=44, pinned={})
+    assert dead in {d for d, _ in pairs}

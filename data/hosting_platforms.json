@@ -4,9 +4,10 @@
     "tenant_suffixes": "Every subdomain is a separate customer's site: <anything>.tw1.ru is whoever rented it. The apex itself (tw1.ru) stays trusted.",
     "user_content_hosts": "One hostname, many users' pages at different PATHS (forms.yandex.ru/u/<id>). The public check only sees the host, so it can vouch for the service, never for the page: the host itself gets the fixed 'real service, cannot vouch for the page' answer, never name/brand/ML scoring (its name is the platform's).",
     "operator_hosts": "Subdomains of a tenant suffix that the platform runs itself (dashboards, webmail, its own site), so they are NOT customer sites. www.<suffix> is always the operator's and need not be listed. Confirmed in the 2026-09-27 review: these lost the instant-safe path and drew 'anyone can publish here' plus ML caution.",
+    "operator_zones": "Parts of a tenant suffix that the platform runs itself: one host or a whole subzone, with every name under it: GoDaddy's sign-in, its Nebula API and the shared cPanel / Plesk servers of each data centre (a2plcpnl0019.prod.iad2.secureserver.net; a customer's own server is <ip>.host. or ip-<ip>.ip.secureserver.net, still a tenant), Teachable's Mailgun sending domains (email.m.teachable.com is the click tracking of its e-mails) and Leadpages site, Thinkific's file CDN, Typeform's form host (form.typeform.com/to/<id>) and image CDN. Phishing.Database ACTIVE listed each once (2026-10-24, review of #336); a block breaks the sign-in, the e-mail links or every school's files for everyone. So the blocklist never lists a name at or under one (scripts/refresh_dangerous_domains.py build_blockset), the Android shield keeps them under its popular veto ('!' lines of assets/shared_suffixes.txt), and the platform's rank counts for them as for any popular organisation's own host (scoring.popularity_rank). Unlike operator_hosts they are NOT vouched for instantly: several serve every customer's pages at a path, so they keep the full check.",
     "sources": "Confirmed on the live /public/check on 2026-09-25 (tw1.ru x2, weebly, wpcomstaging.com, screenconnect.com all came back 'safe, 99%'), plus the registrables of the 34,193 active feed hosts that sat under a top-100k name with no tenant rule (fullcheck recheck-tenant, PhishTank + OpenPhish + URLhaus, 2026-09-25). Names already covered by data/public_suffixes_in_top.json or the scorer's hand list need not be repeated here, but a duplicate is harmless. 2026-10-23: the platforms the licensed top 100k (Majestic Million + Chrome UX Report) ranks, most of them through Majestic link counts, whose tenants' phishing would otherwise be answered instant-safe: 994 Phishing.Database ACTIVE hosts and 164 hosts of the four licensed feeds that Tranco's top 100k had not allowlisted (easywp.com 231, preview-domain.com 185, ct.ws 110, blogspot.cl/.sk/.ae 213, byethost7.com 62, univer.se, gt.tc, drv.tw, softr.app, mybluemix.net, 22web.org, blogcu.com, eoldal.hu, page.gd ...), plus the other free-hosting and site-builder suffixes of the same operators in that list.",
     "dynamic_dns_services": "Free dynamic-DNS services: anyone gets <name>.<suffix> pointed at any address in a minute. The scorer weighs a name there (scoring 'dynamic_dns_host') and never trusts one as a top-100k name (mb-way.ns01.info, an MB WAY phish under ChangeIP's ns01.info, was answered 'safe' without analysis, 2026-10-15). The tenant_suffixes 'dynamic_dns' group counts too. Kept OUT of tenant_suffixes on purpose: those feed the ML model's tenant feature, which changes only with a retrain (model_meta shared_suffixes).",
-    "updated": "2026-10-23"
+    "updated": "2026-10-25"
   },
   "dynamic_dns_services": [
     "duckdns.org", "ddns.net", "no-ip.org", "no-ip.biz", "no-ip.info", "hopto.org",
@@ -105,5 +106,13 @@
     "email.secureserver.net", "my.wpengine.com",
     "admin.typeform.com", "api.typeform.com", "help.typeform.com",
     "microsoft.sharepoint.com"
+  ],
+  "operator_zones": [
+    "login.secureserver.net", "nebula.phx3.secureserver.net",
+    "prod.iad2.secureserver.net", "prod.ams3.secureserver.net", "prod.phx3.secureserver.net",
+    "prod.sin2.secureserver.net", "prod.sxb1.secureserver.net",
+    "m.teachable.com", "em.teachable.com", "pages.teachable.com",
+    "cdn.thinkific.com",
+    "form.typeform.com", "images.typeform.com"
   ]
 }

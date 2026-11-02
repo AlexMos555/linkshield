@@ -25,6 +25,7 @@ import {
   MIN_PHISHING_SAMPLE,
   comparedRows,
   falsePositiveRateIsPublishable,
+  legitSampleRanking,
   loadLatestBenchmark,
   recallIsPublishable,
   type BenchmarkSnapshot,
@@ -213,9 +214,14 @@ export default async function MethodologyPage({
   // sites outside our allowlist (data/benchmark_legit_ru.txt, run without
   // the rate-limit starvation) or the old Tranco sample.
   const curatedLegit = data?.sources?.legit_outside_allowlist === true;
+  // ...and outside which list: the one the server trusted on the day of the
+  // run (Tranco's before 2026-10-23), not necessarily today's.
+  const beforeMajestic = legitSampleRanking(data) === "tranco";
+  const curatedDatasetKey = beforeMajestic ? "dataset_safe_desc_curated_tranco" : "dataset_safe_desc_curated";
+  const curatedCaveatKey = beforeMajestic ? "caveat_allowlist_curated_tranco" : "caveat_allowlist_curated";
   const caveats = [
     t("caveat_endpoint"),
-    t(curatedLegit ? "caveat_allowlist_curated" : "caveat_allowlist"),
+    t(curatedLegit ? curatedCaveatKey : "caveat_allowlist"),
     ...(curatedLegit ? [] : [t("caveat_rate_limit")]),
     t("caveat_phishtank"),
     t("caveat_nxdomain"),
@@ -278,7 +284,7 @@ export default async function MethodologyPage({
             <strong>{t("dataset_phishing")}</strong>: {t("dataset_phishing_desc")}
           </li>
           <li>
-            <strong>{t("dataset_safe")}</strong>: {t(curatedLegit ? "dataset_safe_desc_curated" : "dataset_safe_desc")}
+            <strong>{t("dataset_safe")}</strong>: {t(curatedLegit ? curatedDatasetKey : "dataset_safe_desc")}
           </li>
         </ul>
       </section>

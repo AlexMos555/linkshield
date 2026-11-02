@@ -14,7 +14,7 @@
  * over): a canary through the resolver, as Android's shield has, needs a
  * public name the gateway alone blocks — docs/IOS.md §4.5.
  */
-import type { IosDnsError, IosDnsReport } from "../../modules/cleanway-vpn/src/IosDnsSettings";
+import type { IosDnsError, IosDnsReport } from "../../modules/cleanway-dns/src/IosDnsSettings";
 import type { IosLayerStatus } from "./platform-features";
 
 /**
@@ -148,7 +148,7 @@ export const IOS_DNS_SHEET_KEYS: readonly string[] = [
   "mobile.ios.dns.adding",
   "mobile.ios.dns.open_settings",
   "mobile.ios.dns.note_off",
-  "mobile.ios.dns.note_vpn",
+  "mobile.ios.dns.note_other_dns",
   "mobile.ios.dns.remove",
   "mobile.ios.dns.removing",
   "mobile.ios.dns.done",

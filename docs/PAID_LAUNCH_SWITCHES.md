@@ -444,8 +444,15 @@ Variables: нет `LICENSED_INTEL=all` и нет `PUBLISH_CONFIRMED_THREATS`.
   страница продаёт тариф по устройствам ([`landing/lib/billing-config.ts`](../landing/lib/billing-config.ts),
   [`BILLING_LANDING.md`](BILLING_LANDING.md)).
 - **Где.** Vercel → `cleanway-landing` → Settings → Environment Variables →
-  Production: `NEXT_PUBLIC_STRIPE_LIVE=1` → Deployments → Redeploy **без build cache**.
-  Откат: удалить переменную и снова пересобрать без кэша.
+  Production: `NEXT_PUBLIC_STRIPE_LIVE=1` → Deployments → деплой с пометкой
+  **Current** → ⋯ → Redeploy, снять **обе** галочки: «Use existing Build Cache» и
+  «Use project's Ignore Build Step». Верхняя строка списка часто отменённый деплой
+  (`Canceled` — его отменил `landing/scripts/vercel-ignore.sh`, потому что сайт тот
+  же); с галочкой «Ignore Build Step» Vercel снова прогоняет этот шаг. Шаг сам
+  собирает сайт, когда `NEXT_PUBLIC_*` отличаются от живого сайта
+  (`/build-env.txt`), но галочку всё равно снимаем: это гарантия от Vercel.
+  В логе сборки должна быть строка `BUILD - …`, а не `SKIP - …`.
+  Откат: удалить переменную и пересобрать так же.
 - **Сколько и кто.** 0 $. Основатель.
 - **Проверить.** `https://cleanway.ai/pricing` не из России: карточки тарифа и кнопка
   покупки; `/business` и `/account` ведут на цены. Купить своей картой → Stripe →

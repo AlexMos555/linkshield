@@ -61,6 +61,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+from api.services import dead_top_names as _dead
 from api.services.cache import get_redis
 
 logger = logging.getLogger(__name__)
@@ -90,6 +91,10 @@ async def get_tranco_rank(domain: str) -> Optional[int]:
     """
     domain_key = (domain or "").strip().lower()
     if not domain_key:
+        return None
+    # A tombstoned name (dead_top_names) has no rank, whatever the hash
+    # holds: the hash has no TTL and a failed refresh keeps the old one.
+    if domain_key in _dead.DEAD_TOP_NAMES:
         return None
     try:
         r = await get_redis()
@@ -146,10 +151,13 @@ async def _registrable_rank(domain: str, host_rank: Optional[int]) -> Optional[i
     but the scorer reads this one where a popular registrable changes what
     a signal means: an AlienVault OTX mention of a top-1M site is a victim
     reference far more often than a verdict, and gitlab.<bank>.ru is the
-    bank's own GitLab (scoring.calculate_score)."""
-    from api.services.scoring import registrable_domain
+    bank's own GitLab (scoring.calculate_score).
 
-    registrable = registrable_domain((domain or "").strip().lower())
+    The registrable domain whose rank this is: scoring.rank_registrable_domain
+    — never a zone above the registrant (co.ua for evil.co.ua)."""
+    from api.services.scoring import rank_registrable_domain
+
+    registrable = rank_registrable_domain((domain or "").strip().lower())
     if not registrable or registrable == (domain or "").strip().lower():
         return host_rank if host_rank and host_rank > 0 else None
     rank = await get_tranco_rank(registrable)

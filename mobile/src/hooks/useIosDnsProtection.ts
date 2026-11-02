@@ -3,8 +3,8 @@ import { AppState } from "react-native";
 
 import {
   addIosDnsChangedListener, installIosDns, iosDnsStatus, isIosDnsSupported, removeIosDns,
-} from "../../modules/cleanway-vpn";
-import type { IosDnsReport } from "../../modules/cleanway-vpn";
+} from "../../modules/cleanway-dns";
+import type { IosDnsReport } from "../../modules/cleanway-dns";
 import {
   INITIAL_IOS_DNS, iosDnsFinished, iosDnsLayerStatus, iosDnsPhase, iosDnsStarted,
   type IosDnsAction, type IosDnsPhase, type IosDnsState,

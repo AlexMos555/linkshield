@@ -1068,8 +1068,9 @@ def test_vowel_ratio_in_scoring():
 
 
 def test_registrar_reputation():
-    """Abused registrar adds to score."""
-    signals = {"domain": "suspicious.xyz", "registrar": "Namecheap, Inc."}
+    """Abused registrar adds to score — for a recent registration (see
+    tests/test_rdap_age.py: an old one says nothing about its registrar)."""
+    signals = {"domain": "suspicious.xyz", "registrar": "Namecheap, Inc.", "domain_age_days": 12}
     score, _, reasons = calculate_score(signals)
     sigs = [r.signal for r in reasons]
     assert "abused_registrar" in sigs

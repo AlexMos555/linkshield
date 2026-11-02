@@ -132,6 +132,33 @@ class Settings(BaseSettings):
     # IPQualityScore (free: 5K/month)
     ipqualityscore_key: str = ""
 
+    # A popularity rank is links and visits a name gathered, maybe under an
+    # earlier holder (a dropped name keeps its backlinks) or bought from a
+    # link farm: of ranked names with a known registration date, 24% of ranks
+    # 100k-1M and 8% of the top 100k were registered within a year
+    # (2026-10-31, mostly casinos, link farms, piracy). A ranked name
+    # registered fewer than popularity_min_age_days ago gets none of the
+    # rank's trust (analyzer._young_rank). "shadow" logs what that would
+    # change (popularity_age_gate_shadow), "on" applies it, "off" neither.
+    popularity_min_age_days: int = 365
+    popularity_age_gate: Literal["off", "shadow", "on"] = "shadow"
+
+    # The same limit for the top-100k allowlist's instant "safe", which the
+    # rank gate cannot reach: the allowlist answers before any analysis, so
+    # nobody asked a registry about those names (api/services/allowlist_age.py).
+    # "shadow" asks (RDAP, at most one lookup a second per worker, records
+    # kept in Redis) and logs a young or unregistered one (allowlist_age_gate_shadow);
+    # "on" sends it to the full analysis instead, where neither the allowlist
+    # nor its rank vouches for it. Off until the founder says yes to asking
+    # registries about allowlisted names too (Verisign's RDAP terms,
+    # docs/THIRD_PARTY_FEEDS.md). "on" also withholds the rank of such a name
+    # whatever popularity_age_gate says.
+    allowlist_age_gate: Literal["off", "shadow", "on"] = "off"
+
+    # AlienVault OTX: a free account key. Without one OTX answers 100
+    # lookups an hour per IP, then 429 (analyzer.check_alienvault_otx).
+    otx_api_key: str = ""
+
     # Sentry (error tracking)
     sentry_dsn: str = ""
 
@@ -266,9 +293,18 @@ class Settings(BaseSettings):
     # slot (inside the analysis budget); sized so that at the default fresh
     # budget nothing ever waits (32 x 13 licensed checks = 416).
     load_shed_outbound_max_inflight: int = 512
-    # A request body must arrive within this many seconds, plus its size at
-    # ~0.5 Mbit/s, or the request gets 408. It is read BEFORE the request
-    # takes a slot, so a slow client holds none.
+    # Request bodies over 64 KiB at once: read to their end BEFORE the
+    # request takes its slot (the voice upload: as its route reads it,
+    # instead of the API slot), so a slow upload holds only one of these.
+    # They are what bounds the memory big bodies take: 16 x the 4 MiB cap of
+    # /email/analyze = 64 MiB per worker. Past it: 503. Legit ones are rare
+    # (the opt-in webmail scanner, voice uploads).
+    load_shed_upload_max_inflight: int = 16
+    # A request body must keep up with ~0.5 Mbit/s after this many seconds
+    # (byte n due this + n / 64 KiB/s after the request came in), or the
+    # request gets 408: a client that stops sending is cut this long after
+    # it falls behind, whatever size it declared. No body is waited for on a
+    # request class's slot (only, past 64 KiB, on an uploads slot).
     load_shed_body_timeout_s: float = 10.0
     load_shed_retry_after_s: int = 2
 
@@ -385,7 +421,13 @@ class Settings(BaseSettings):
     # validate_settings() enforces this is set when env=production.
     trusted_proxy_cidrs: str = ""
 
-    # Rate limits — unsubscribe endpoint (per IP, very strict to prevent abuse)
+    # Rate limits — unsubscribe links (rate_limiter.unsubscribe_rate_limit).
+    # A link that verifies is limited per subscription (user + template),
+    # GET and POST apart, never per IP: one-click POSTs and link scanners
+    # arrive from a few shared provider addresses. While Redis is down the
+    # same budget is counted in each worker process.
+    unsubscribe_link_limit_per_window: int = 20    # per subscription and method
+    # A link that does not verify (forged, expired) is limited per IP.
     unsubscribe_limit_per_window: int = 20         # 20 attempts per hour per IP
     unsubscribe_window_seconds: int = 3600
 

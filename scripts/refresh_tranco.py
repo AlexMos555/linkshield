@@ -187,6 +187,8 @@ def main(argv: Optional[list[str]] = None, fetch=None) -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--url", default=os.environ.get("TRANCO_LIST_URL") or DEFAULT_URL,
                         help="a Majestic Million mirror (Tranco URLs are refused)")
+    parser.add_argument("--dump", help="also write the ranking as JSON [[domain, rank], ...] here "
+                        "(the weekly dead-name sweep reads it; with --dry-run no Redis is needed)")
     args = parser.parse_args(argv)
 
     if refused(args.url):
@@ -204,6 +206,9 @@ def main(argv: Optional[list[str]] = None, fetch=None) -> int:
         logger.error("Popularity ranking not built, keeping the current cache: %s", e)
         return 1
     logger.info("Built %d (domain, rank) pairs: %s", len(pairs), meta)
+    if args.dump:
+        with open(args.dump, "w", encoding="utf-8") as f:
+            json.dump(pairs, f)
     if args.dry_run:
         logger.info("Dry run — first 5 entries: %s", pairs[:5])
         return 0

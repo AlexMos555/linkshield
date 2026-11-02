@@ -1,7 +1,7 @@
 import { reasonLabel } from "../src/utils/reason-label";
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Share } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 import {
   colors, type as typo, space, radius,

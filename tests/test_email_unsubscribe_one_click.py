@@ -47,8 +47,9 @@ def client() -> TestClient:
 
 @pytest.fixture(autouse=True)
 def _fresh_rate_limit_window(fake_redis, monkeypatch):
-    """A fresh Redis per test: the unsubscribe limit (20/h per IP) never
-    carries over between tests, and no test depends on a real Redis.
+    """A fresh Redis per test: the unsubscribe limits (per subscription for a
+    valid link, per IP for one that does not verify) never carry over
+    between tests, and no test depends on a real Redis.
     rate_limiter imported get_redis by name, so patch it there too."""
     from api.services import rate_limiter
 

@@ -409,4 +409,4 @@ def test_health_doh_reports_the_counters(monkeypatch):
     body = TestClient(app).get("/health/doh").json()
     assert body["load_shed"]["api"]["shed"] == 4
     assert set(body["load_shed"]) >= {"dns", "dns_upstream", "health", "health_doh", "health_deep", "api",
-                                      "fresh_analysis", "outbound"}
+                                      "uploads", "fresh_analysis", "outbound"}

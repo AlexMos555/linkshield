@@ -20,7 +20,7 @@
  *     entitlement, no microphone or Face ID string, a camera string,
  *     ITSAppUsesNonExemptEncryption=false (true only while the app is off the
  *     French App Store — docs/IOS.md §2), a privacy manifest with reasons,
- *     iPhone only, and the native module's pod not above the app's iOS
+ *     iPhone only, and the DNS module's pod not above the app's iOS
  *     deployment target (it was, and the app died at launch);
  *   • the Safari Web Extension inside the app: the home card's Safari layer
  *     follows what iOS and the extension report (safariLayerState), the
@@ -59,10 +59,10 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const MOBILE = join(HERE, "..");
 const require = createRequire(import.meta.url);
 const LOCALES = ["en", "ru", "es", "pt", "fr", "de", "it", "id", "hi", "ar"];
-const STRINGS = Object.fromEntries(
-  LOCALES.map((loc) => [loc, JSON.parse(readFileSync(join(MOBILE, "i18n", `${loc}.json`), "utf8"))]),
-);
 const read = (rel) => readFileSync(join(MOBILE, rel), "utf8");
+// The iPhone gets the base files; Android adds i18n/android/ (src/i18n/resources.android.ts).
+const STRINGS = Object.fromEntries(LOCALES.map((loc) => [loc, JSON.parse(read(`i18n/${loc}.json`))]));
+const ANDROID_STRINGS = Object.fromEntries(LOCALES.map((loc) => [loc, { ...STRINGS[loc], ...JSON.parse(read(`i18n/android/${loc}.json`)) }]));
 
 let failures = 0;
 function check(name, fn) {
@@ -75,10 +75,10 @@ function check(name, fn) {
   }
 }
 
-function assertKeys(keys) {
+function assertKeys(keys, strings = STRINGS) {
   for (const loc of LOCALES) {
     for (const key of keys) {
-      assert.ok(typeof STRINGS[loc][key] === "string" && STRINGS[loc][key].length > 0, `${loc}: ${key}`);
+      assert.ok(typeof strings[loc][key] === "string" && strings[loc][key].length > 0, `${loc}: ${key}`);
     }
   }
 }
@@ -128,7 +128,8 @@ check("onboarding: the third slide is the iPhone one on iOS, the shield one else
   assert.deepEqual(ios.slice(0, 2), android.slice(0, 2));
   assert.equal(ios[2].titleKey, "mobile.onboarding.s3_title_ios");
   assert.equal(android[2].titleKey, "mobile.onboarding.s3_title");
-  assertKeys([...ios, ...android].flatMap((s) => [s.titleKey, s.descKey]));
+  assertKeys(ios.flatMap((s) => [s.titleKey, s.descKey]));
+  assertKeys(android.flatMap((s) => [s.titleKey, s.descKey]), ANDROID_STRINGS);
   // The iPhone slide never promises the Android shield.
   for (const loc of LOCALES) assert.ok(!/Android/.test(STRINGS[loc][ios[2].descKey]), loc);
 });
@@ -193,7 +194,7 @@ check("onboarding uses the per-platform slides", () => {
 
 check("the native checks the iPhone lacks report 'not here', not a guess", () => {
   const vpn = read("modules/cleanway-vpn/index.ts");
-  assert.match(vpn, /return Platform\.OS === 'android' && typeof CleanwayVpn\.analyzeMessage === 'function'/);
+  assert.match(vpn, /return Platform\.OS === 'android' && typeof NativeShield\.analyzeMessage === 'function'/);
   assert.match(read("src/hooks/useProtectionActive.ts"), /useState\(\(\) => Platform\.OS === "android"\)/);
 });
 
@@ -268,11 +269,12 @@ check("expo-notifications is kept out of the iOS build (no push on iPhone yet)",
   for (const file of files) assert.ok(!/from ["']expo-notifications["']/.test(read(file)), file);
 });
 
-check("the native module's pod is not above the app's iOS deployment target (Expo SDK 56+: 16.4)", () => {
-  const podspec = read("modules/cleanway-vpn/ios/CleanwayVpn.podspec");
+check("the DNS module's pod is not above the app's iOS deployment target (Expo SDK 56+: 16.4); Android's shield module has no iOS half", () => {
+  const podspec = read("modules/cleanway-dns/ios/CleanwayDns.podspec");
   const m = /:ios => '(\d+)\.(\d+)'/.exec(podspec);
   assert.ok(m, "ios platform declared");
   assert.ok(Number(m[1]) * 100 + Number(m[2]) <= 1604, `pod needs iOS ${m[1]}.${m[2]}`);
+  assert.deepEqual(JSON.parse(read("modules/cleanway-vpn/expo-module.config.json")).platforms, ["android"]);
 });
 
 check("the share extension: links and text, one at a time — the URL itself, not the web page", () => {

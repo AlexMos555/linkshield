@@ -15,14 +15,25 @@ Hot path (docs/runbooks/doh-gateway.md has the measurements):
   rate limit (in process) →
   resolve(): in-process blocklist filter → response cache → upstreams
   (Cloudflare, Quad9; HTTP/2, hedged failover; at most
-  LOAD_SHED_DNS_UPSTREAM_MAX_INFLIGHT waiting at once) → serve-stale →
-  SERVFAIL.
+  LOAD_SHED_DNS_UPSTREAM_MAX_INFLIGHT waiting at once; requests in flight
+  limited per upstream connection and per zone, doh_upstream.py) →
+  serve-stale → SERVFAIL.
 The FastAPI routes below stay for the OpenAPI contract and as the path
 taken when DOH_FAST_PATH=false; both call the same resolve().
 
 Fail-open, by decision: nothing that goes wrong on OUR side (filter, cache,
 Redis, a bug) may stop a query from being forwarded. The only SERVFAIL we
-ever send means "no upstream answered in 4 s and nothing was cached".
+ever send means "no upstream answered in 4 s and nothing was cached" — or
+that in those 4 s the query got no turn at the upstreams:
+LOAD_SHED_DNS_UPSTREAM_MAX_INFLIGHT queries already waiting (upstream_shed),
+every stream of the upstream connections taken (one more request would fail
+at once), or its zone's room at the upstreams taken the whole time. A zone's
+room is 16 requests plus half of the upstream's free slots — 43 with the
+upstream otherwise idle, 16 when other names hold its slots: a zone nobody
+answers fills it, and so does a zone that answers, but too slowly for the
+rate of its queries (stand: 1 s answers, 40 unique names a second per
+worker, 16 % of them SERVFAIL; docs/runbooks/doh-gateway.md, «A zone that
+never answers»).
 """
 
 from __future__ import annotations
@@ -309,6 +320,8 @@ async def doh_health() -> Response:
         "ok": any(u["healthy"] for u in ups),
         "filter": doh_filter.HOLDER.status(),
         "upstreams": ups,
+        # This worker's upstream slots now (api/services/doh_upstream.py).
+        "upstream_slots": doh_upstream.slots_status(),
         "http2": doh_upstream.HTTP2_AVAILABLE,
         "cache_entries": len(response_cache()),
         "stats": doh_metrics.METRICS.snapshot(),
@@ -321,26 +334,42 @@ async def doh_health() -> Response:
 
 # ── startup / shutdown (called from api.main lifespan) ────────────────
 _stats_task = None
+_sweep_task = None
+CACHE_SWEEP_EVERY_S = 60.0
+
+
+async def cache_sweeper() -> None:
+    """Answers nobody asks for again leave memory before their TTL plus the
+    serve-stale window ends (privacy policy §11). The margin of two sweeps
+    covers a tick that lands just short of an answer's end and a late loop."""
+    while True:
+        await asyncio.sleep(CACHE_SWEEP_EVERY_S)
+        if _cache is not None:
+            _cache.sweep(margin_s=2 * CACHE_SWEEP_EVERY_S)
 
 
 async def startup(load_filter: bool = True) -> None:
     """`load_filter=False` (SERVICE_ROLE=api): no blocklist in memory — a
     query that still arrives is decided by the per-query Redis fallback."""
     from api.config import get_settings
-    global _stats_task
+    global _stats_task, _sweep_task
     if load_filter:
         doh_filter.HOLDER.start(get_settings().doh_filter_refresh_s)
     if _stats_task is None or _stats_task.done():
         _stats_task = asyncio.get_running_loop().create_task(doh_metrics.stats_logger())
+    if _sweep_task is None or _sweep_task.done():
+        _sweep_task = asyncio.get_running_loop().create_task(cache_sweeper())
 
 
 async def shutdown() -> None:
-    global _stats_task
+    global _stats_task, _sweep_task
     await doh_filter.HOLDER.stop()
-    task, _stats_task = _stats_task, None
-    if task is not None:
+    tasks = {t for t in (_stats_task, _sweep_task) if t is not None}
+    _stats_task = _sweep_task = None
+    for task in tasks:
         task.cancel()
-        await asyncio.wait({task}, timeout=1.0)
+    if tasks:
+        await asyncio.wait(tasks, timeout=1.0)
     from api.services.doh_gateway import close_upstream_client
     await close_upstream_client()
 

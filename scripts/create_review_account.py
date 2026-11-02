@@ -10,13 +10,27 @@ in CI or in an agent session runs it against production.
 
 What it does, against the Supabase project in SUPABASE_URL:
 
-  1. looks the user up by email (GoTrue admin API, GET /auth/v1/admin/users);
+  1. looks the user up by email (GoTrue admin API, GET /auth/v1/admin/users)
+     and, if it exists, whether a reviewer deleted it (users row,
+     deletion_requested_at);
   2. creates it (POST, email_confirm=true) or rotates its password
      (PUT /auth/v1/admin/users/{id}: new password, email_confirm=true, a ban
      from "disable between reviews" lifted);
   3. stores the password in the macOS login Keychain — service
      "Cleanway app review account", account = the email — and prints only
-     the command that copies it to the clipboard.
+     the command that copies it to the clipboard;
+  4. if a reviewer deleted it (Apple tests account deletion), restores it
+     the way the app's "Restore my account" button does. DELETE
+     /user/account only marks the row and sets the Redis lock `deleted:{id}`
+     for the 30-day grace — the auth user stays until the purge — so a new
+     password alone leaves every API call answering 410 ("account on hold"
+     in the app). The script signs in as the account with the password it
+     has just set (POST /auth/v1/token), calls POST
+     /api/v1/user/account/restore on the API the production app talks to
+     (EXPO_PUBLIC_API_URL of mobile/eas.json) — the endpoint clears the row
+     and the lock and writes the audit log — and signs that session out.
+     It needs nothing beyond the inputs below (no Redis credentials on the
+     Mac). Past the window it stops before writing anything.
 
 Every run generates a new password: re-running IS the rotation.
 --dry-run looks the account up and says what it would do; nothing is written.
@@ -56,10 +70,12 @@ import shlex
 import string
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable, Mapping, Optional, Sequence, Tuple
 
@@ -76,6 +92,7 @@ REVIEW_EMAIL = "review@cleanway.ai"
 REVIEW_DOMAIN = "@cleanway.ai"  # the app's rule too (mobile/src/utils/review-login.ts)
 KEYCHAIN_SERVICE = "Cleanway app review account"
 REVIEW_EMAILS_VAR = "EXPO_PUBLIC_REVIEW_EMAILS"
+API_URL_VAR = "EXPO_PUBLIC_API_URL"
 
 PASSWORD_LENGTH = 32
 MIN_PASSWORD_LENGTH = 24
@@ -104,6 +121,18 @@ ENV_KEYS = ("SUPABASE_URL", "SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_KEY")
 PLACEHOLDER_MARKERS = ("YOUR_PROJECT", "REPLACE_WITH")
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
+# The deletion grace: _DELETION_GRACE_DAYS in api/routers/user.py and
+# GRACE_DAYS in api/services/account_purge.py (a test pins all three).
+GRACE_DAYS = 30
+# The app's "Restore my account" (api/routers/user.py restore_account).
+RESTORE_PATH = "/api/v1/user/account/restore"
+# Its 503 — the row cleared, the Redis lock not yet — says to retry; so does a
+# busy API. Repeating it is safe.
+RESTORE_ATTEMPTS = 3
+RESTORE_RETRY_S = 5
+USER_AGENT = "cleanway-review-account/1"
+RESTORE_IN_APP = "войдите этим аккаунтом в приложении и нажмите «Восстановить аккаунт»"
+
 
 class ConfigError(Exception):
     """Something to fix in .env, the flags or the machine (exit 1)."""
@@ -115,6 +144,10 @@ class ApiError(Exception):
 
 class KeychainError(Exception):
     """The password could not be stored in or read back from the Keychain (exit 3)."""
+
+
+class RestoreError(Exception):
+    """A deleted review account could not be restored (exit 4)."""
 
 
 # ─── The password ─────────────────────────────────────────────────
@@ -203,15 +236,21 @@ def check_email(email: str) -> str:
     return address
 
 
+def production_env(path: Optional[Path] = None) -> dict:
+    """The env of the production EAS profile ({} when it cannot be read)."""
+    try:
+        profiles = json.loads((path or EAS_JSON).read_text(encoding="utf-8"))["build"]
+        env = (profiles.get("production") or {}).get("env") or {}
+    except (OSError, ValueError, KeyError, AttributeError):
+        return {}
+    return env if isinstance(env, dict) else {}
+
+
 def build_allowlist(path: Path = EAS_JSON) -> list[str]:
     """EXPO_PUBLIC_REVIEW_EMAILS of the production EAS profile, parsed like the
     app does (parseReviewEmails): addresses on @cleanway.ai only, no "$…"
     references, no duplicates."""
-    try:
-        profiles = json.loads(path.read_text(encoding="utf-8"))["build"]
-        raw = str(((profiles.get("production") or {}).get("env") or {}).get(REVIEW_EMAILS_VAR, ""))
-    except (OSError, ValueError, KeyError, AttributeError):
-        return []
+    raw = str(production_env(path).get(REVIEW_EMAILS_VAR, ""))
     out: list[str] = []
     for part in raw.split(","):
         email = part.strip().lower()
@@ -232,6 +271,18 @@ def require_review_email(email: str) -> str:
             f"{REVIEW_EMAILS_VAR} (mobile/eas.json, production) — nothing was sent"
         )
     return address
+
+
+def production_api_url(path: Optional[Path] = None) -> str:
+    """The API the production app talks to (EXPO_PUBLIC_API_URL of the same
+    profile): the restore goes where the app's button sends it."""
+    url = str(production_env(path).get(API_URL_VAR, "")).strip().rstrip("/")
+    if not url.startswith("https://"):
+        raise ConfigError(
+            f"{API_URL_VAR} of the production profile in mobile/eas.json is missing or not https:// — "
+            "nothing was written"
+        )
+    return url
 
 
 # ─── GoTrue admin API ─────────────────────────────────────────────
@@ -316,6 +367,104 @@ class AdminApi:
         quoted = urllib.parse.quote(user_id, safe="")
         return self._call("PUT", f"/auth/v1/admin/users/{quoted}", update_payload(password))
 
+    def deletion_requested_at(self, user_id: str) -> Optional[str]:
+        """users.deletion_requested_at: set from DELETE /user/account until the
+        purge; None when the account is not deleted (or has no row)."""
+        query = urllib.parse.urlencode({"id": f"eq.{user_id}", "select": "deletion_requested_at"})
+        rows = self._call("GET", f"/rest/v1/users?{query}")
+        if not isinstance(rows, list):
+            raise ApiError("GET /rest/v1/users: unexpected answer (no list)")
+        value = rows[0].get("deletion_requested_at") if rows and isinstance(rows[0], dict) else None
+        return str(value) if value else None
+
+    def sign_in(self, email: str, password: str) -> str:
+        """The password grant, as the app's review sign-in sends it: the
+        session's access token (never printed)."""
+        data = self._call("POST", "/auth/v1/token?grant_type=password", {"email": email, "password": password})
+        token = data.get("access_token") if isinstance(data, dict) else None
+        if not isinstance(token, str) or not token:
+            raise ApiError("POST /auth/v1/token: unexpected answer (no access_token)")
+        return token
+
+    def sign_out(self, token: str) -> None:
+        """Ends the session sign_in opened, only that one."""
+        headers = supabase_keys.api_key_headers(self.headers["apikey"], Authorization=f"Bearer {token}")
+        status, data = self._transport("POST", self._base + "/auth/v1/logout?scope=local", headers, None)
+        if status >= 400:
+            raise ApiError(f"POST /auth/v1/logout → HTTP {status}: {_describe(data)}")
+
+
+def parse_timestamp(value: str) -> Optional[datetime]:
+    """A Postgres timestamptz as PostgREST sends it, on any python3 the Mac
+    has (3.9's fromisoformat wants exactly 6 fraction digits and "+00:00")."""
+    text = value.strip().replace(" ", "T", 1)
+    text = text[:-1] + "+00:00" if text.endswith("Z") else text
+    text = re.sub(r"\.(\d+)", lambda m: "." + m.group(1)[:6].ljust(6, "0"), text)
+    text = re.sub(r"([+-]\d{2})$", r"\1:00", text)
+    try:
+        moment = datetime.fromisoformat(text)
+    except ValueError:
+        return None  # the restore endpoint's own guard still decides
+    return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
+
+
+def grace_cutoff(now: Optional[datetime] = None) -> datetime:
+    return (now or datetime.now(timezone.utc)) - timedelta(days=GRACE_DAYS)
+
+
+# ─── «Восстановить аккаунт» ───────────────────────────────────────
+
+
+def _api_detail(data: object) -> str:
+    """FastAPI's error, short: {"detail": "…"} or {"detail": {"code", "error"}}."""
+    detail = data.get("detail") if isinstance(data, dict) else data
+    if isinstance(detail, dict):
+        code, text = detail.get("code") or "", detail.get("error") or detail.get("message") or ""
+        return (f"{code}: {text}" if code else str(text))[:300]
+    return str(detail)[:300]
+
+
+def restore_account(
+    api: AdminApi, api_url: str, email: str, password: str, transport: Transport, sleep: Callable[[float], object]
+) -> None:
+    """What the app's "Restore my account" does, as the account itself: sign
+    in, POST /api/v1/user/account/restore, sign out. Any failure is a
+    RestoreError that names the in-app way; the new password is kept."""
+    try:
+        token = api.sign_in(email, password)
+    except ApiError as exc:
+        raise RestoreError(
+            f"{email}: вход новым паролем не удался ({exc}). Пароль новый и в Keychain — {RESTORE_IN_APP}"
+        ) from None
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json", "User-Agent": USER_AGENT}
+    try:
+        for attempt in range(1, RESTORE_ATTEMPTS + 1):
+            try:
+                status, data = transport("POST", api_url + RESTORE_PATH, headers, b"")
+            except ApiError as exc:
+                raise RestoreError(f"{email}: {exc}. Пароль новый и в Keychain — {RESTORE_IN_APP}") from None
+            if status == 200 and isinstance(data, dict) and data.get("restored") is True:
+                return
+            if status == 410:
+                raise RestoreError(
+                    f"{email}: {_api_detail(data)} — окно {GRACE_DAYS} дней закрылось, аккаунт удаляет очистка. "
+                    "Пароль новый и в Keychain, но после очистки он не подойдёт: тогда запустите скрипт ещё раз — "
+                    "он создаст аккаунт заново"
+                )
+            if status != 503 or attempt == RESTORE_ATTEMPTS:
+                raise RestoreError(
+                    f"{email}: POST {RESTORE_PATH} → HTTP {status}: {_api_detail(data)}. "
+                    f"Пароль новый и в Keychain — {RESTORE_IN_APP}"
+                )
+            detail = data.get("detail") if isinstance(data, dict) else None
+            wait = detail.get("retry_after_seconds") if isinstance(detail, dict) else None
+            sleep(min(float(wait), 30.0) if isinstance(wait, (int, float)) and wait > 0 else RESTORE_RETRY_S)
+    finally:
+        try:
+            api.sign_out(token)
+        except ApiError as exc:  # the run's outcome stands; the session ends with the next rotation
+            print(f"! сессия скрипта не закрыта ({exc})", file=sys.stderr)
+
 
 # ─── Keychain ─────────────────────────────────────────────────────
 
@@ -378,17 +527,27 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def deletion_plan(email: str, deleted_at: str, past_window: bool, api_url: str) -> str:
+    if past_window:
+        return (f"dry run: {email} помечен на удаление {deleted_at}; {GRACE_DAYS} дней прошли — восстановить нельзя, "
+                "после очистки скрипт создаст аккаунт заново")
+    return (f"dry run: {email} помечен на удаление {deleted_at} — после смены пароля вошёл бы им и нажал бы "
+            f"«Восстановить аккаунт» за него (POST {api_url}{RESTORE_PATH})")
+
+
 def main(
     argv: Optional[Sequence[str]] = None,
     *,
     transport: Optional[Transport] = None,
     run: Optional[Callable[..., object]] = None,
     platform: Optional[str] = None,
+    sleep: Optional[Callable[[float], object]] = None,
 ) -> int:
     args = build_parser().parse_args(argv)
     transport = transport or urllib_transport
     run = run or subprocess.run
     platform = platform or sys.platform
+    sleep = sleep or time.sleep
     try:
         email = require_review_email(args.email)  # before any request, dry run included
         cfg = resolve_config(merged_env(os.environ, args.env_file))
@@ -404,15 +563,26 @@ def main(
         user_id = str(user.get("id") or "") if user else ""
         if user and not user_id:
             raise ApiError("the account was found but has no id")
+        deleted_at = api.deletion_requested_at(user_id) if user else None
+        since = parse_timestamp(deleted_at) if deleted_at else None
+        past_window = since is not None and since <= grace_cutoff()
+        api_url = production_api_url() if deleted_at and not past_window else ""
 
         if args.dry_run:
             if user:
                 print(f"dry run: сменил бы пароль {email} (id {user_id}), снял бы блокировку и обновил Keychain «{KEYCHAIN_SERVICE}»")
+                if deleted_at:
+                    print(deletion_plan(email, deleted_at, past_window, api_url))
             else:
                 print(f"dry run: создал бы {email} (адрес подтверждён) и сохранил пароль в Keychain «{KEYCHAIN_SERVICE}»")
             print("ничего не записано")
             return 0
 
+        if past_window:
+            raise RestoreError(
+                f"{email} помечен на удаление {deleted_at}: {GRACE_DAYS} дней прошли, аккаунт удалит очистка "
+                "(вместе со входом). После неё запустите скрипт ещё раз — он создаст аккаунт заново. Ничего не записано"
+            )
         if user:
             api.update_user(user_id, password)
             print(f"✓ {email}: новый пароль (id {user_id}), адрес подтверждён, блокировки нет")
@@ -422,6 +592,9 @@ def main(
             print(f"✓ {email}: аккаунт создан (id {new_id or '?'}), адрес подтверждён")
         store_in_keychain(email, password, run)
         print(f"✓ пароль в Keychain: служба «{KEYCHAIN_SERVICE}», аккаунт {email} (на экран не выводится)")
+        if deleted_at:
+            restore_account(api, api_url, email, password, transport, sleep)
+            print(f"✓ {email}: удаление отменено («Восстановить аккаунт», {api_url})")
         print("Скопировать в буфер обмена:")
         print(f"  {copy_command(email)}")
         print("Куда вставить адрес и пароль (App Store Connect, Play Console, RuStore): docs/runbooks/app-review-account.md")
@@ -439,6 +612,9 @@ def main(
             file=sys.stderr,
         )
         return 3
+    except RestoreError as exc:
+        print(f"restore error: {exc}", file=sys.stderr)
+        return 4
 
 
 if __name__ == "__main__":

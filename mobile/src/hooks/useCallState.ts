@@ -15,16 +15,20 @@ import {
   applyCallEvent, guardReason, windowEndsAt, type CallSnapshot, type GuardReason,
 } from "../utils/call-guard";
 
-interface CallModule {
-  callState(): CallSnapshot | null;
-  addCallStateChangedListener?(cb: (p: Partial<CallSnapshot>) => void): { remove(): void };
-}
+/** The module itself, so a name it does not export cannot type-check here (test-no-vpn-names.mjs). */
+type CallModule = typeof import("../../modules/cleanway-vpn");
+
+/**
+ * Outside any try block on purpose: Metro keeps the path of a require()
+ * written in one, even in a release bundle (test-no-vpn-names.mjs).
+ */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const requireShieldModule = () => require("../../modules/cleanway-vpn") as CallModule;
 
 function loadModule(): CallModule | null {
   if (Platform.OS !== "android") return null;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("../../modules/cleanway-vpn") as CallModule;
+    return requireShieldModule();
   } catch {
     return null;
   }

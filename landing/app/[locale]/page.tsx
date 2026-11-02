@@ -115,6 +115,10 @@ export default async function Home({ params }: HomeProps) {
   // can get. Where paid plans exist at all, a link leads to /pricing; Russian
   // visitors cannot buy them (Stripe) and get no link — until the operator-
   // billed subscription is switched on, when the block names it instead.
+  // By the page's language only: the home page is static, one page for every
+  // country, so it cannot see the visitor's. /pricing can, and in Russia shows
+  // no plans. So the copy promises plans only "in your country" (free_body_with_plans,
+  // plans_link) and /pricing answers for that country.
   const pricingVariant = pricingVariantFor({ locale });
   const showPlansLink = pricingVariant !== "free";
   const teaser = {

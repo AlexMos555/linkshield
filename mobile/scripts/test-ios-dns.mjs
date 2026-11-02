@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Table test for the iPhone's DNS protection (docs/IOS.md §4): the native
- * report parser (modules/cleanway-vpn/src/IosDnsSettings.ts), the setup state
+ * report parser (modules/cleanway-dns/src/IosDnsSettings.ts), the setup state
  * machine (src/utils/ios-dns.ts), its copy in all 10 locales, and source
  * checks on the Swift side and the home screen — nothing here can run
  * NetworkExtension or render React Native.
@@ -21,14 +21,15 @@
  *     path the API serves — with no pinned IPs and no on-demand rules, and
  *     never sets isEnabled (only the person can);
  *   • nothing calls this feature a VPN (App Review 5.4 misfile risk) except
- *     where it names Apple's own Settings page or a VPN app.
+ *     where it names Apple's own Settings page; the note that another app's
+ *     DNS may take over names no VPN either.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { parseIosDnsReport } from "../modules/cleanway-vpn/src/IosDnsSettings.ts";
+import { parseIosDnsReport } from "../modules/cleanway-dns/src/IosDnsSettings.ts";
 import {
   INITIAL_IOS_DNS,
   IOS_DNS_SHEET_KEYS,
@@ -254,24 +255,26 @@ check("policy §11 describes the gateway on main: Cloudflare only, no log line, 
   assert.match(ups, /DEFAULT_UPSTREAMS = \(CLOUDFLARE_DOH_URL, CLOUDFLARE_IP_DOH_URL\)/, "the copy names Cloudflare only");
 });
 
-check("never calls the feature a VPN — only Apple's Settings page and VPN apps may say it", () => {
-  const allowed = new Set([
-    "mobile.ios.dns.step_on_body", "mobile.ios.dns.error_remove", "mobile.ios.dns.note_vpn",
-  ]);
+check("never calls the feature a VPN — only Apple's Settings page may say it", () => {
+  const allowed = new Set(["mobile.ios.dns.step_on_body", "mobile.ios.dns.error_remove"]);
   for (const loc of LOCALES) {
     for (const [key, value] of Object.entries(STRINGS[loc])) {
       if (!key.startsWith("mobile.ios.") || allowed.has(key)) continue;
-      assert.ok(!/VPN/.test(value), `${loc}: ${key}`);
+      assert.ok(!/VPN/i.test(value), `${loc}: ${key}`);
     }
     // The Settings path names the real page, in each language.
     assert.match(STRINGS[loc]["mobile.ios.dns.step_on_body"], /DNS/, loc);
   }
   assert.match(STRINGS.en["mobile.ios.dns.step_on_body"], /General → VPN & Device Management → DNS/);
+  // Another app's DNS may take over: the sheet says so, without the word.
+  assert.ok(IOS_DNS_SHEET_KEYS.includes("mobile.ios.dns.note_other_dns"), "the sheet's keys list the note");
+  assert.ok(!IOS_DNS_SHEET_KEYS.some((k) => /vpn/i.test(k)), "a sheet key named after a VPN");
+  assert.match(read("src/components/shield/IosDnsSetupSheet.tsx"), /t\("mobile\.ios\.dns\.note_other_dns"\)/);
 });
 
 // ── Source checks ────────────────────────────────────────────────────
 
-const swift = read("modules/cleanway-vpn/ios/CleanwayVpnModule.swift");
+const swift = read("modules/cleanway-dns/ios/CleanwayDnsModule.swift");
 
 check("Swift: DoH to the gateway the API serves, no pinned IPs, no on-demand rules", () => {
   assert.match(swift, /static let serverURL = "https:\/\/dns\.cleanway\.ai\/dns-query"/);
@@ -294,18 +297,32 @@ check("Swift: loads before saving, re-reads after, never sets isEnabled; failove
   for (const fn of ["dnsSettingsStatus", "installDnsSettings", "removeDnsSettings"]) {
     assert.match(swift, new RegExp(`AsyncFunction\\("${fn}"\\)`), fn);
   }
-  assert.match(swift, /Events\("onDomainBlocked", "onDnsSettingsChanged"\)/);
   assert.match(swift, /\.NEDNSSettingsConfigurationDidChange/);
 });
 
-check("JS bridge: iOS only, optional native functions, the change event typed", () => {
-  const vpn = read("modules/cleanway-vpn/index.ts");
-  assert.match(vpn, /return Platform\.OS === 'ios' && typeof CleanwayVpn\.dnsSettingsStatus === 'function'/);
-  const decl = read("modules/cleanway-vpn/src/CleanwayVpnModule.ts");
+check("Swift: its own iOS-only module, DNS settings and nothing else", () => {
+  assert.match(swift, /public class CleanwayDnsModule: Module/);
+  assert.match(swift, /Name\("CleanwayDns"\)/);
+  assert.match(swift, /Events\("onDnsSettingsChanged"\)/);
+  const fns = [...swift.matchAll(/(?:Async)?Function\("(\w+)"\)/g)].map((m) => m[1]).sort();
+  assert.deepEqual(fns, ["dnsSettingsStatus", "installDnsSettings", "removeDnsSettings"]);
+  assert.ok(!/vpn/i.test(swift.replace(/\/\/.*$/gm, "")), "no VPN name outside comments");
+  const config = JSON.parse(read("modules/cleanway-dns/expo-module.config.json"));
+  assert.deepEqual(config, { platforms: ["apple"], apple: { modules: ["CleanwayDnsModule"] } });
+});
+
+check("JS bridge: iOS only, optional native module and functions, the change event typed", () => {
+  const dns = read("modules/cleanway-dns/index.ts");
+  assert.match(dns, /Platform\.OS === 'ios' \? requireOptionalNativeModule<CleanwayDnsNative>\('CleanwayDns'\) : null/);
+  assert.match(dns, /return typeof native\?\.dnsSettingsStatus === 'function'/);
   for (const fn of ["dnsSettingsStatus", "installDnsSettings", "removeDnsSettings"]) {
-    assert.match(decl, new RegExp(`${fn}\\?\\(\\)`), fn);
+    assert.match(dns, new RegExp(`${fn}\\?\\(\\)`), fn);
   }
-  assert.match(read("modules/cleanway-vpn/src/CleanwayVpn.types.ts"), /onDnsSettingsChanged:/);
+  assert.match(dns, /addListener\(event: 'onDnsSettingsChanged'/);
+  // Android's shield module no longer carries any of it.
+  for (const f of ["index.ts", "src/CleanwayVpn.types.ts", "src/native.ts", "src/native.android.ts"]) {
+    assert.ok(!/\b(dnsSettingsStatus|installDnsSettings|removeDnsSettings|onDnsSettingsChanged)\b|IosDns/.test(read(`modules/cleanway-vpn/${f}`)), f);
+  }
 });
 
 check("home: the DNS layer comes from iOS, its row opens the sheet; the sheet shows privacy before any button", () => {
@@ -322,6 +339,7 @@ check("home: the DNS layer comes from iOS, its row opens the sheet; the sheet sh
   assert.match(read("src/components/shield/IosProtectionCard.tsx"), /return ready && onSetUp \? \(/);
   // Live status: foreground and iOS's change notice both re-read.
   const hook = read("src/hooks/useIosDnsProtection.ts");
+  assert.match(hook, /from "\.\.\/\.\.\/modules\/cleanway-dns"/);
   assert.match(hook, /AppState\.addEventListener\("change"/);
   assert.match(hook, /addIosDnsChangedListener\(/);
 });

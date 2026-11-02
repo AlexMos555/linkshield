@@ -368,7 +368,7 @@ def extract_features(domain: str, signals: dict) -> dict[str, float]:
     features["has_at_symbol"] = 1.0 if _has_at_symbol(raw_url) else 0.0
     features["has_double_slash"] = 1.0 if _has_double_slash_redirect(raw_url) else 0.0
     features["has_hex_encoding"] = 1.0 if _has_hex_encoding(domain) else 0.0
-    features["has_fake_tld_subdomain"] = 1.0 if _has_fake_tld_in_subdomain(domain) else 0.0
+    features["has_fake_tld_subdomain"] = 1.0 if _has_fake_tld_in_subdomain(domain, legacy=True) else 0.0
     features["is_url_shortener"] = 1.0 if _is_url_shortener(domain) else 0.0
 
     # ── TLD risk ──

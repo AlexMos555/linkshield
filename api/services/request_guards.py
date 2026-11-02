@@ -40,6 +40,11 @@ _BODY_LIMITS = {
     "/api/v1/email/analyze": 4 * 1024 * 1024,
 }
 
+# Routes that check the caller before they read their body
+# (api/routers/scam.py analyze_voice). Load shedding reads none of it ahead
+# of the route, so an anonymous upload is answered 401 with no byte read.
+_READ_AFTER_AUTH = frozenset({"/api/v1/scam/analyze_voice"})
+
 DNS_ONLY_HOSTS = frozenset({"dns.cleanway.ai"})
 # /health is the Railway probe and the uptime monitor's; /health/doh the
 # DoH-specific probe (scripts/dns_canary.py, docs/runbooks/monitoring.md).
@@ -51,6 +56,10 @@ DNS_ONLY_PATHS = DNS_HOST_PATHS - {"/health"}
 
 def body_limit_for(path: str) -> int:
     return _BODY_LIMITS.get(path.rstrip("/") or "/", DEFAULT_BODY_LIMIT)
+
+
+def reads_body_after_auth(path: str) -> bool:
+    return (path.rstrip("/") or "/") in _READ_AFTER_AUTH
 
 
 def _header(scope, name: bytes) -> bytes | None:

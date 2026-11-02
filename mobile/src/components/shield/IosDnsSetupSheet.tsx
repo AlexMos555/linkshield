@@ -1,5 +1,5 @@
 import { ActivityIndicator, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 
 import { colors, type as typo, space, radius } from "../../utils/theme";
@@ -102,7 +102,7 @@ export function IosDnsSetupSheet({ visible, dns, onClose }: {
 
             {/* "…or remove Cleanway below" — only once there is something to remove. */}
             {(sheet.removable || sheet.removing) && <Text style={s.note}>{t("mobile.ios.dns.note_off")}</Text>}
-            <Text style={s.note}>{t("mobile.ios.dns.note_vpn")}</Text>
+            <Text style={s.note}>{t("mobile.ios.dns.note_other_dns")}</Text>
 
             {(sheet.removable || sheet.removing) && (
               <TouchableOpacity

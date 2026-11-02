@@ -360,6 +360,8 @@ def test_health_doh_reports_aggregates_only(monkeypatch):
     body = client.get("/health/doh").json()
     assert body["ok"] is True
     assert body["stats"]["counts"]["queries"] == 1
+    assert set(body["upstream_slots"]) == {"zones_full", "zone_waiting", "abandoned", "dropping"}
+    assert all({"in_flight", "waiting"} <= set(u) for u in body["upstreams"])
     assert "example" not in str(body)
 
 

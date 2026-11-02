@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AppState, Platform } from "react-native";
 import { useFocusEffect } from "expo-router";
 
-import { isDefaultLinkHandler, isVpnRunning } from "../../modules/cleanway-vpn";
+import { isDefaultLinkHandler, isShieldRunning } from "../../modules/cleanway-vpn";
 
 export interface ProtectionActive {
   /** A shield exists on this platform (Android). */
@@ -13,7 +13,7 @@ export interface ProtectionActive {
 
 function readActive(): boolean {
   if (Platform.OS !== "android") return false;
-  return isVpnRunning() || isDefaultLinkHandler();
+  return isShieldRunning() || isDefaultLinkHandler();
 }
 
 /**

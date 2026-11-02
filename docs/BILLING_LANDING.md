@@ -8,7 +8,13 @@ is `docs/BILLING.md` (branch `feat/billing-core`); the legal drafts are
 ## The flag and the settings
 
 `NEXT_PUBLIC_*` is inlined at build time: changing any of these needs a
-redeploy **without build cache** (the same lesson as `NEXT_PUBLIC_APK_URL`).
+redeploy **without build cache** (the same lesson as `NEXT_PUBLIC_APK_URL`):
+Deployments → the deployment marked **Current** → ⋯ → Redeploy, with both
+"Use existing Build Cache" and "Use project's Ignore Build Step" unticked. The
+newest row is often a push the ignore step (`landing/scripts/vercel-ignore.sh`)
+canceled, and a Redeploy runs that step again; it builds by itself when the
+`NEXT_PUBLIC_*` values differ from the live site's (`/build-env.txt`), and the
+second box makes sure of it.
 Parsing and defaults: `landing/lib/billing.ts`; the env binding:
 `landing/lib/billing-config.ts`. Names mirror the API's `BILLING_*` settings so
 the server and the site can be configured from one sheet.
@@ -95,7 +101,8 @@ Numbers never live in the strings: prices and windows are ICU arguments
 3. Run `python3 scripts/check-landing-claims.py --billing-on` and re-word the
    remaining "free" copy on the Russian pages (hero, features, FAQ, `/android`,
    `/dns`, `/check`, terms section 3, Android OG tags) or decide to keep each.
-4. Redeploy without build cache; open `/ru/pricing`, `/ru/cancel`, `/ru/terms`,
+4. Redeploy the Current deployment with "Use existing Build Cache" and "Use
+   project's Ignore Build Step" unticked (see above); open `/ru/pricing`, `/ru/cancel`, `/ru/terms`,
    `/ru/privacy-policy`, `/ru` from a phone on a Russian SIM.
 
 ## Not in this PR

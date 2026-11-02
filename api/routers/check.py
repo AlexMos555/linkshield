@@ -28,7 +28,7 @@ from api.models.schemas import (
 from api.config import get_settings
 from api.services.analysis_budget import Deadline
 from api.services.analyzer import analyze_domain, rule_only_result
-from api.services import load_shedding
+from api.services import allowlist_age, load_shedding
 from api.services import verdict_basis as vb
 from api.services.cleanway_blocklist import listed_as
 # /check is the most expensive auth-required endpoint — fans out to
@@ -48,13 +48,14 @@ router = APIRouter(prefix="/api/v1", tags=["check"])
 _BATCH_WINDOW_BUDGETS = 2
 
 
-async def _analyse_batch(domains: list[str], slots: int) -> list:
+async def _analyse_batch(domains: list[str], slots: int, withheld: frozenset[str] = frozenset()) -> list:
     """Analyse `domains` at most `slots` at a time — the request's share of
     the worker's fresh-analysis budget (load_shedding.fresh_share), so one
     big batch cannot take every slot; the rest wait their turn. Each gets
     what is left of the batch's window, at most one analysis budget. One that
     could not start in time is None: the caller answers it on the address
-    alone, marked partial. Exceptions are returned, not raised."""
+    alone, marked partial. Exceptions are returned, not raised. `withheld`:
+    the names whose allowlist answer the age gate withheld (allowlist_age)."""
     budget = get_settings().analysis_budget_seconds
     window = Deadline(budget * _BATCH_WINDOW_BUDGETS)
     turn = asyncio.Semaphore(slots)
@@ -64,7 +65,10 @@ async def _analyse_batch(domains: list[str], slots: int) -> list:
             left = window.remaining()
             if left < budget / 2:
                 return None
-            return await analyze_domain(domain, budget_s=min(budget, left))
+            # The argument only when it says something: callers of the old
+            # signature (and their test doubles) are unchanged.
+            extra = {"allowlist_withheld": True} if domain in withheld else {}
+            return await analyze_domain(domain, budget_s=min(budget, left), **extra)
 
     return await asyncio.gather(*[one(d) for d in domains], return_exceptions=True)
 
@@ -78,12 +82,14 @@ def _quick_allowlist_check(domain: str) -> DomainResult | None:
     list, so a tenant on a shared platform the public check already refused
     (gwcu.us.org, a tw1.ru page) was still "known legitimate" here.
     """
-    from api.services.scoring import TOP_10K_RANKS, _extract_base_domain, is_trusted_top_domain
+    from api.services.scoring import TOP_10K_RANKS, is_trusted_top_domain, top_domain_key
 
     if not is_trusted_top_domain(domain):
         return None  # Unknown or shared platform — needs full analysis
 
-    base = _extract_base_domain(domain)
+    # The entry the allowlist matched: amazon.co.uk for www.amazon.co.uk,
+    # where the last two labels named 'co.uk' and found no rank.
+    base = top_domain_key(domain)
     rank = TOP_10K_RANKS.get(base)
     detail = f"Ranked #{rank} globally" if rank else "In global top 100K"
     return DomainResult(
@@ -193,13 +199,23 @@ async def check_domains(
             uncached.remove(domain)
 
     # ── Step 2: Fast allowlist check (no API calls!) ──
+    # Unless the age gate withholds it (allowlist_age, ALLOWLIST_AGE_GATE
+    # "on"): a young registration of a listed name is analysed like any
+    # other, and one whose age is not known yet is not cached as trusted.
+    quick_results = {domain: _quick_allowlist_check(domain) for domain in uncached}
+    listed = [domain for domain, quick in quick_results.items() if quick]
+    gates = await allowlist_age.gate_many(listed, requester=f"user:{user.id}") if listed else {}
     needs_analysis: list[str] = []
+    withheld: set[str] = set()
     for domain in uncached:
-        quick = _quick_allowlist_check(domain)
-        if quick:
+        quick, state = quick_results[domain], gates.get(domain)
+        if quick and state != allowlist_age.WITHHOLD:
             results[domain] = quick
-            await cache_result(quick)  # Cache for future requests
+            if state != allowlist_age.TRUST_UNCACHED:
+                await cache_result(quick)  # Cache for future requests
         else:
+            if quick:
+                withheld.add(domain)
             needs_analysis.append(domain)
 
     # ── Step 3: Full analysis for unknown domains (parallel) ──
@@ -216,7 +232,7 @@ async def check_domains(
         try:
             # Rate limit only for domains that need full analysis
             remaining = await check_rate_limit(user, num_domains=len(needs_analysis))
-            analyses = await _analyse_batch(needs_analysis, granted)
+            analyses = await _analyse_batch(needs_analysis, granted, frozenset(withheld))
         finally:
             load_shedding.FRESH_ANALYSES.release(granted)
         deferred = [d for d, result in zip(needs_analysis, analyses) if result is None]
@@ -226,7 +242,7 @@ async def check_domains(
 
         for domain, result in zip(needs_analysis, analyses):
             if result is None:
-                results[domain] = rule_only_result(domain)
+                results[domain] = rule_only_result(domain, allowlist_withheld=domain in withheld)
             elif isinstance(result, Exception):
                 results[domain] = DomainResult(
                     domain=domain, score=25, level=RiskLevel.caution,

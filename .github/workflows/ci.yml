@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
           cache: pip
@@ -187,6 +187,21 @@ jobs:
       - name: Expo config plugins (release signing + ABI filters)
         run: node mobile/plugins/__tests__/plugins.test.js
 
+      - name: Build mirror lock matches mobile/package.json
+        # Store builds install from mobile/package-lock.json in a mirror outside
+        # the monorepo (docs/RUSTORE_SUBMISSION.md §2), not from the root lock
+        # this job's npm ci installs. #303 bumped i18next without it, and three
+        # 1.0.6 builds resolved three different 26.x releases; then the mirror
+        # locked 26.5.10 while this job kept testing 26.5.3. Ranges and the
+        # direct dependencies' resolved versions must both match.
+        run: node mobile/scripts/check-mirror-lock.mjs
+
+      - name: Mirror lock check table test
+        # The check itself: a range bump without the mirror lock (#303), equal
+        # ranges at different releases, a Dependabot security PR's "*" for the
+        # vendored packages (#329), and no root lock = STOP, not a pass.
+        run: node mobile/scripts/test-check-mirror-lock.mjs
+
       - name: Host parser table test
         run: node mobile/scripts/test-host-parser.mjs
 
@@ -279,6 +294,11 @@ jobs:
         # are hidden from screen readers (#249).
         run: node mobile/scripts/check-a11y-labels.mjs
 
+      - name: Icon families imported by path
+        # The @expo/vector-icons index bundles every family's glyph names,
+        # MaterialIcons' "vpn-key" among them (App Review 2.1, docs/IOS.md §3.6).
+        run: node mobile/scripts/check-icon-imports.mjs --self-test && node mobile/scripts/check-icon-imports.mjs
+
       - name: Theme contrast (WCAG AA)
         # Text/background pairs in src/utils/theme.ts stay readable (#249).
         run: node mobile/scripts/test-theme-contrast.mjs
@@ -315,6 +335,34 @@ jobs:
         # and the Swift side saves DoH to the /dns-query gateway the API
         # serves, with no pinned IPs and no on-demand rules. docs/IOS.md §4.
         run: node --experimental-strip-types mobile/scripts/test-ios-dns.mjs
+
+      - name: iPhone strings say "VPN" only for Apple's Settings page
+        # App Review read 1.0.4 as "contains VPN functionality" (2026-10-30).
+        # The base mobile/i18n files ship in the iPhone's bundle: /vpn/i only in
+        # the Settings → General → VPN & Device Management → DNS path, no
+        # landing.* / email.*; the strings only Android shows live in
+        # mobile/i18n/android/, which only src/i18n/resources.android.ts imports.
+        run: node mobile/scripts/test-ios-strings-no-vpn.mjs
+
+      - name: iPhone native modules (no shield module on iOS) table test
+        # The shield's native module is Android-only: the iPhone app links no
+        # module named after Android's VPN (App Review flagged "VPN", docs/IOS.md
+        # §3.6). iOS and web bundle a JS stub, and every export answers "not on
+        # this platform" over it without a throw — the app imports it at
+        # launch. DNS protection has its own iOS-only module, CleanwayDns, and
+        # the docs cite it, not the deleted CleanwayVpnModule.swift.
+        run: node mobile/scripts/test-ios-native-modules.mjs
+
+      - name: No VPN names in the shared JS (iOS bundle) guard
+        # Hermes keeps the shared code's function and property names and its
+        # strings in the iPhone app. No /vpn/i name or text in app/, src/ or
+        # the modules' JS — nor an import path in a try block, which Metro
+        # keeps even in a release bundle (an optional dependency). Kotlin's
+        # startVpn/onVpnStopped/… live only in native.android.ts, which Metro
+        # bundles for Android alone (no shared import names a .android path).
+        # And every name the app takes from the shield module is exported,
+        # typed from the module itself.
+        run: node mobile/scripts/test-no-vpn-names.mjs
 
       - name: Remote config (SMS text model kill switch) table test
         # The server can turn the on-device SMS text model off without an APK.
@@ -364,6 +412,13 @@ jobs:
         # manifest and Kotlin, and the config plugins. The Kotlin twin
         # (PolicyGuardTest) runs only in the local build sandbox.
         run: node mobile/scripts/check-android-permissions.mjs
+
+      - name: Android permission guard table test
+        # The guard itself: a permission our config declares that app.json
+        # also blocks (prebuild strips it from the APK), BIND_VPN_SERVICE back
+        # in app.json (whose public config ships in the iOS app), or one
+        # dropped from app.json, each fails it.
+        run: node mobile/scripts/test-check-android-permissions.mjs
 
       - name: Call stop-screen table test
         # When the stop screen applies (in a call, 30 minutes after one, and
@@ -419,7 +474,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
 
@@ -482,7 +537,7 @@ jobs:
       SUPABASE_JWT_SECRET: "test-secret-for-development-only-not-for-production-use"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.11"
           cache: pip

@@ -130,9 +130,9 @@ PhishTank can be ingested and the public number stays measurable.
 | **Spamhaus DBL** public mirror | DNS `<domain>.dbl.spamhaus.org` | DNSBL fair-use policy: "free of charge for non-commercial use by small and medium sized organisations"; queries must come from an identifiable resolver, not large shared hosting (read 2026-09-29). Through a public resolver the mirror answers `127.255.255.254` — until 2026-09-29 the analyzer read that as "not listed" (`api/services/dnsbl_checks.py` fixes it: an error code is "not consulted") | **Off by default** (`LICENSED_INTEL=licensed`) |
 | **SURBL** multi | DNS `<base>.multi.surbl.org` | surbl.org/guidelines: `127.0.0.1` means access is blocked, sign up for the Sponsored Data Service; the usage policy excludes the free service from paid products (*likely*, read 2026-09-21/29) | **Off by default** (`LICENSED_INTEL=licensed`) |
 | **PhishStats** | `phishstats.info:2096/api/phishing` | Free API, no key; terms not located (*uncertain*) | On |
-| **AlienVault / LevelBlue OTX** | `otx.alienvault.com/api/v1/indicators/domain/…` | Free community API; OTX terms of service (*likely*: free use with attribution) | On |
+| **AlienVault / LevelBlue OTX** | `otx.alienvault.com/api/v1/indicators/domain/…` | Free community API; OTX terms of service (*likely*: free use with attribution). **Without a key: 100 lookups an hour per IP, then 429 `{"detail": "Over throttling limit (100/hour)"}`** (measured 2026-10-26). With `OTX_API_KEY` set the free account key goes in the `X-OTX-API-KEY` header (founder's decision 2026-10-31: register a key rather than switch OTX off). The weekly benchmark alone asks up to 1,400 an hour. No rate-limit headers; the limit with a key is not published (searched 2026-10-26) | On. Until 2026-10-26 a non-200 read as "no pulses" and counted as a measured check; a non-2xx answer now raises (a failed, unmeasured check) and three in a row open `alienvault_breaker` for 60 s. An IP host is not sent: the domain endpoint answers 400 `Invalid domain` for every IP literal, and the `IPv4` endpoint lists bulk IOC dumps on shared hosting addresses (50 pulses each on Vercel's, GitHub Pages' and a Microsoft address, measured 2026-10-27), so for an IP OTX is neither asked nor counted among the checks (`analyzer._NOT_FOR_IPS`). Whether OTX stays in a paid product is §8 of `PAID_LAUNCH_SWITCHES.md` |
 | **IPQualityScore** | `ipqualityscore.com/api/json/url/…` | Vendor API terms, free tier 5,000/month, paid above; keyed | On with `IPQUALITYSCORE_KEY`, daily budget |
-| **RDAP** | `rdap.org/domain/…` | Public registry protocol (redirector) | On |
+| **RDAP** (registration date, registrar) | the zone registry's own server, from IANA's bootstrap file `data.iana.org/rdap/dns.json` (RFC 9224): `rdap.verisign.com/com/v1/domain/<registrable name>` for .com. `rdap.org` until 2026-10-26 — a redirector whose 302 the code never followed, so no data ever came back | Public registry protocol (RFC 9082/9083); each registry's own RDAP terms. Verisign's (read 2026-10-26): lawful purposes only, and the data must not "enable high volume, automated, electronic processes that send queries … to the systems of Verisign"; Verisign may restrict access. We send one query per analysed registrable name that is not a hosting tenant (*uncertain* how "high volume" reads at our traffic). With `ALLOWLIST_AGE_GATE` at `shadow` or `on` (**off by default**, until the founder says yes to this reading of the terms) also queries about top-100k names users check: per name once a week; once a day for one expired, expiring within 30 days or in auto-renew grace; hourly for one in redemption or pending delete, not in the registry, or whose last lookup failed. A record another process stored meanwhile is not asked again. The ceiling is the pace, one lookup a second per worker process (86,400 a day each); in practice it is the number of distinct listed names users check, and 47,089 of the 95,529 entries the gate reads are Verisign's (rdap.verisign.com: .com 43,183 and .net 3,553; tld-rdap.verisign.com, paced on its own: .cc 306, .name 47). A server that answers 429 or 5xx is left alone by every process (a Redis key) for its Retry-After (1 min to 6 h, 300 s if none) | On; no RDAP for .ru/.su/.рф |
 | **Popularity rank** (§2a) | Redis `tranco:ranks`: the top-1M of the Majestic Million + Chrome UX Report ranking, rebuilt daily by `scripts/refresh_tranco.py` (Tranco's list until 2026-10-23; a Tranco URL is now refused) | CC BY 3.0 / CC BY 4.0 (§2a) | On |
 | **crt.sh** (Watchtower) | `crt.sh/?q=…` | Sectigo's public CT log search, no terms beyond politeness | On |
 | **Anthropic Claude** (LLM judge, explainer) | `api.anthropic.com` | Commercial API terms; only a domain-free feature vector is sent | On with `ANTHROPIC_API_KEY`, daily budget |
@@ -229,14 +229,85 @@ in `data/top_domains_sources.json`):
 5. Top-N by that rank: 1,000 / 10,000 / 100,000 / 1,000,000 mean the same
    positions they meant in Tranco, so no threshold moved.
 
+Every consumer below skips the names of `data/top_domains_dead.json`
+(`api/services/dead_top_names.py`, since 2026-10-31): names of the top 100k
+and of `data/top_domains_reported.json` that both Cloudflare and Google
+answer NXDOMAIN for and whose parent zone has no delegation for (a delegated
+name whose own servers deny its apex — FC2, DNSPod — is not dead). A dead
+name can be bought by anyone, and would inherit everything a listed name
+gets — on the first sweep 1,129 of the 100,000 were dead and about 215
+registered to nobody (rank 105 among them). The weekly
+`refresh-dead-top-names.yml` adds them by PR; a tombstone is never removed
+automatically (whoever brought a dead name back may be anyone). The lists
+themselves are not edited: the model reads `data/top_100k.json`'s bytes.
+The rest of the top-1M ranking (ranks 100k-1M, the Redis rank) is swept by a
+job of its own, on a runner of its own, into `data/top_1m_dead.json`, with a
+cap of its own: on 2026-10-31 21,273 of its 899,352 names were dead (2.37%,
+77 min; 200 random tombstones re-checked at Quad9, OpenDNS and `www.`: none
+alive). They keep no rank, so no popularity bonus, vouch, OTX waiver or
+publisher never-block guard. Both sweeps run under a time limit: names are
+swept in a random order of the day, and what time ran out for waits for
+another week (the report says how many) — a runner's resolver answered ten
+times slower one evening than the same afternoon, and the top lists alone
+then took 3 h 21 min. Not covered: names in TLDs with a wildcard (`.ws`: an
+unregistered name answers), and live names that already changed hands — see
+the young-registration rank gate below.
+
+A rank is links and visits, gathered maybe under an earlier holder of the
+name (a dropped name keeps its backlinks) or bought from a link farm: of
+ranked names with a known registration date on 2026-10-31, 24% of ranks
+100k-1M and 8% of the top 100k were registered within a year. So a ranked
+name the registry says was registered fewer than `POPULARITY_MIN_AGE_DAYS`
+(365) days ago gets none of the rank's trust — bonus, unreachable-site
+vouch, OTX waiver, LLM popularity prior, certificate renewal, self-hosted
+product exemption, ML safe override (`analyzer._young_rank`; the age the
+analyzer already fetches, no extra RDAP). `POPULARITY_AGE_GATE=shadow` (the
+default until the logs say otherwise) only logs `popularity_age_gate_shadow`
+with the verdict it would give; `on` applies it. Not for the top-100k
+allowlist, which is answered before any analysis — that is the next gate.
+
+The allowlist answers a top-100k name "safe" before any analysis (both
+check routes, `scoring.is_trusted_top_domain`), so no registry is asked
+about one, and a popular name re-registered by someone else right after it
+dropped — a drop-catch takes minutes, the dead-name sweep above needs it
+NXDOMAIN at a weekly run — keeps the instant "safe". `ALLOWLIST_AGE_GATE`
+(`api/services/allowlist_age.py`, **off by default**: it means RDAP queries
+for allowlisted names, see the RDAP row above) reads the entry's last known
+record from Redis (`rdap:reg:v1:<name>`, kept 30 days), and a background
+worker asks the registry about a name not known yet or due again (answered
+as before meanwhile). A registration younger than `POPULARITY_MIN_AGE_DAYS`,
+or a name the registry answers 404 for while DNS says NXDOMAIN too, is
+logged in `shadow` (`allowlist_age_gate_shadow`) and sent to the full
+analysis in `on`, where neither the allowlist nor the name's rank vouches
+for it. In `on` a name not known yet, on its way out or whose lookup failed
+is answered from the list but not cached as trusted. A 404 alone is not
+"absent": Nominet answers 404 for ox.ac.uk, www.nhs.uk and met.police.uk
+(264 entries under ac.uk, nhs.uk, police.uk), zones it does not run; a 404
+for a name the registry knew, or for one right under its TLD, while it still
+resolves (or DNS cannot tell), is asked hourly and not cached as trusted. A
+failed refresh keeps the last record unless another process stored a newer
+one. A worker asks first the name the most different users and addresses
+checked and drops the one the fewest checked when its queue (256) is full;
+one user or address may queue or move forward 20 names a minute (per worker
+process): no one keeps the queue busy with names of their choosing.
+Not covered: zones with no RDAP server in IANA's bootstrap file — 23,377 of
+the 95,529 entries the gate reads (24%: .ru 4,645, .jp 2,368, .de 2,195, .cn
+2,029, .edu 1,028, .it 954, .io 798, .es 648, .co 599, .me 364, .se 355, .eu
+332 … counted 2026-11-01 against the bootstrap file of 2026-10-28) —,
+government names, a name sold without a drop (its registration date stays), the DNS blocklist's never-block guard,
+the lookalike skip and the phone's `popular_veto.txt` (offline: bulk RDAP is
+against Verisign's terms), and the ML feature `in_top_domains` (train/serve
+parity). Before `on`: replay the names the shadow lines name through the
+analyzer with the gate on, against the labelled legit sets.
+
 | Consumer | Reads | Note |
 |---|---|---|
 | Instant-safe allowlist (`scoring.is_trusted_top_domain`, `/check`, `/public/check`, scorer Layer 2) | `data/top_100k.json` | 55% of the names are Tranco's; 45,036 enter, 45,036 leave |
-| "Ranked #N", OTX gating | `data/top_10k.json`, `data/top_100k.json` and the Redis rank of the host or its registrable (top 100k: OTX skipped; top 1M: skipped up to 5 pulses, halved above; an OTX mention of a ranked name is not a blocklist hit, so the LLM judge still runs) | |
+| "Ranked #N", OTX gating | `data/top_10k.json`, `data/top_100k.json` and the Redis rank of the host or its registrable (top 100k: OTX skipped; top 1M: skipped up to 5 pulses, halved above; an OTX mention of a ranked name is not a blocklist hit, so the LLM judge still runs). A customer's site on a hosting platform or a public-suffix zone is judged by its own name: the platform's rank and top-list place are not its tenant's (`scoring._platform_tenant_site`, 2026-10-25; not under an operator's own suffix such as `googleapis.com`, nor at an operator zone of `data/hosting_platforms.json` such as `login.secureserver.net`) | |
 | Popularity bonus −25/−15/−8/−3, unreachable-site vouch, LLM judge (`popularity_*`), publisher's top-1M guard, a company's own GitLab / Jira / Confluence | Redis `tranco:ranks` (key name kept) — the whole ranking, step 4 not applied — loaded daily by `scripts/refresh_tranco.py` from the same `rank()`; `tranco:ranks:meta` says what it was built from (`/health/deep` `components.popularity`); a CrUX month recorded in `data/top_domains_sources.json` that comes back with other bytes is refused | |
 | ML features `in_top_domains`, `is_homograph` and the tenant features | `data/top_100k.json`, `data/public_suffixes_in_top.json` — the copies named by hash in `model_meta.json` `feature_data` | see "Sequencing" |
 | Publisher popular / tenant guards, own-source lookalike gate | `data/top_100k.json` + `data/top_domains_reported.json` + `data/infrastructure_domains.txt`, `data/public_suffixes_in_top.json`, Redis top-1M | see "Blocklist" |
-| Android veto (`popular_veto.txt`, `shared_suffixes.txt`) and the extensions' `hostingTenantSuffixes` | `data/top_10k.json` + the reported names of that rank + `data/infrastructure_domains.txt`, `data/public_suffixes_in_top.json` | each file starts with the CC BY attribution of §5; ship with the next app / extension releases; installed copies keep Tranco's until then, and the methodology page says so (the committed `dist/store-artifacts/cleanway-0.2.2-*`, not uploaded yet, carry the new files since #286) |
+| Android veto (`popular_veto.txt`, `shared_suffixes.txt`) and the extensions' `hostingTenantSuffixes` | `data/top_10k.json` + the reported names of that rank + `data/infrastructure_domains.txt`, `data/public_suffixes_in_top.json`; `shared_suffixes.txt` is the publisher's whole shared set since 2026-10-25 (`scripts/blocklist_shared_zones.py`: also `data/hosting_platforms.json` and `UNRANKED_SHARED_DOMAINS`), then, as `!` lines, the platforms' own names under it (`operator_hosts`, `operator_zones`), which the publisher never lists and the phone vetoes by the platform's rank | each file starts with the CC BY attribution of §5; ship with the next app / extension releases; installed copies keep Tranco's until then, and the methodology page says so (the committed `dist/store-artifacts/cleanway-0.2.2-*`, not uploaded yet, carry the new files since #286) |
 
 **Sequencing.** The model reads the two data files as features, so a model
 must be served the copies it was trained on. `ml/train_model.py` records
@@ -380,6 +451,30 @@ under §6. The terms' contact is support@cloudflare.com (§15);
 resolver@cloudflare.com, on the 1.1.1.1 terms page, is for logo requests
 only. If the answer is no, drop `cloudflare_families` from the published
 resolvers and from `comparedRows`, as for VirusTotal and Safe Browsing.
+
+### 2c. The Public Suffix List, vendored (since 2026-10-28)
+
+`data/public_suffix_list.dat` is a byte-for-byte copy of
+`https://publicsuffix.org/list/public_suffix_list.dat` (Mozilla Public
+Suffix List, MPL 2.0, https://mozilla.org/MPL/2.0/; the file keeps its
+licence notice and its `// VERSION:` / `// COMMIT:` lines). Its ICANN
+section, with the Russian zones of `data/ru_public_suffixes.json` on top,
+draws the registrable domain for the scorer and the DoH gateway
+(`api/services/public_suffix.py`) and, as data generated from it, for the
+browser extensions (`utils/scorer-data.js`, `icannSuffixes`, which names the
+list, its version and its licence; its source form is named by URL, the
+vendored copy in the public repository, MPL 2.0 §3.2(a)). The private section
+is not read (github.io, blogspot.com …: the curated platform lists decide
+those). On top of both, every generic second level of a 2-letter ccTLD (co,
+com, net, gov, web …) is read as a suffix whether a section lists it or not,
+as the compound-ccTLD heuristic before it read it — co.ua, com.de, co.vu,
+ChangeIP's ne.pw — but for the zones `data/cctld_second_levels.json` names as
+one owner's (web.de, id.me, com.be …; Cleanway's own data, `cctldNames` in
+`scorer-data.js`). The
+copy changes only by `scripts/refresh_public_suffix_list.py` (no workflow
+runs it), and `tests/test_public_suffix.py` fails when it is malformed. The
+builders that fetch the live list (`build_top_domains.py`,
+`build_ru_public_suffixes.py`, `refresh_dangerous_domains.py`) still do.
 
 ## 3. ML training data (`scripts/refresh_training_feeds.py`, weekly)
 
@@ -660,7 +755,7 @@ repository's Actions variables, read 2026-10-23), until 2026-10-23 CSIRT
 Italia / ACN (TLP:CLEAR events; no licence stated and ACN's terms bar
 commercial use, so the switch leaves it out — §1), and until 2026-10-21
 URLhaus (abuse.ch). Public suffixes from the Mozilla Public Suffix List
-(MPL 2.0).
+(MPL 2.0), vendored as `data/public_suffix_list.dat` (§2c).
 
 Cleanway's domain popularity ranking — the allowlist, the top-1M in Redis,
 the blocklist's popularity veto, the phone's veto list and the

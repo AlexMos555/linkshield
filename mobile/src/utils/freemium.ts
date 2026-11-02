@@ -264,9 +264,13 @@ export function marketFor(language: string, region: string | null | undefined): 
 
 /**
  * Show "Upgrade", the Plan row and "Add a device"? Not where the paywall can
- * only say "coming soon" (purchaseAction: the "ru" market — Stripe and Google
- * Play cannot take Russian cards, phone-balance billing is not merged; the old
- * upgrade screen led there to a page in dollars no one could pay, report #15).
+ * only say "coming soon":
+ *   • the "ru" market (purchaseAction "soon") — Stripe and Google Play cannot
+ *     take Russian cards, phone-balance billing is not merged; the old upgrade
+ *     screen led there to a page in dollars no one could pay, report #15;
+ *   • a build that cannot take a payment at all (paywallSaleOff) — RuStore,
+ *     or a store build whose billing SDK is not there. Its paywall only says
+ *     "coming soon"; an Upgrade row there was a sign-in detour to that note.
  * The upgrade code stays; only its entry points are hidden.
  *
  * Decided by marketFor, the paywall's own signal (region, else language), so
@@ -274,10 +278,17 @@ export function marketFor(language: string, region: string | null | undefined): 
  * app started in the first language it has (utils/device-locale.ts), a phone
  * set to Ukrainian, Kazakh or Belarusian with Russian second lost every entry
  * point in a country where it can pay, while the paywall still priced it in
- * dollars.
+ * dollars. [storeBillingOn] is services/store-billing.ts storeBillingOn().
  */
-export function paidPlansVisible(language: string, region: string | null | undefined): boolean {
-  return marketFor(language, region) !== "ru";
+export function paidPlansVisible(input: {
+  language: string;
+  region: string | null | undefined;
+  distribution: Distribution;
+  storeBillingOn: boolean;
+}): boolean {
+  const { language, region, distribution, storeBillingOn } = input;
+  const action = purchaseAction({ signedIn: true, market: marketFor(language, region), distribution });
+  return action !== "soon" && !paywallSaleOff({ action, distribution, storeBillingOn });
 }
 
 /** Prices shown on the paywall. Amounts are display strings; the store / checkout charges. */
@@ -343,7 +354,8 @@ export function selfUpdateAllowed(distribution: Distribution): boolean {
  * What the paywall's one button does:
  *   sign_in      — paying needs an account: sign in first, then come back;
  *   web_checkout — the site's checkout (site APK, world prices);
- *   store        — Google Play / RuStore billing (startStorePurchase);
+ *   store        — the build's own store billing (startStorePurchase) — only
+ *                  when paywallSaleOff says the build can take it;
  *   soon         — no way to pay here yet (Russia: phone-balance billing is not merged).
  */
 export type PurchaseAction = "sign_in" | "web_checkout" | "store" | "soon";
@@ -353,6 +365,26 @@ export function purchaseAction(input: { signedIn: boolean; market: Market; distr
   if (market === "ru") return "soon";
   if (!signedIn) return "sign_in";
   return webCheckoutAllowed(distribution) ? "web_checkout" : "store";
+}
+
+/**
+ * The button would end at "paying in the app is coming soon" whatever the
+ * person does: a build with no web checkout that cannot bill through a store
+ * — RuStore (its billing is not built), or Google Play / the App Store made
+ * without the RevenueCat key or SDK ([storeBillingOn] false). The paywall then
+ * says so up front with the button off, instead of sending a signed-out
+ * person to sign in first for a purchase that cannot happen. The "ru"
+ * market's own "coming soon" (action "soon") is not this.
+ */
+export function paywallSaleOff(input: {
+  action: PurchaseAction;
+  distribution: Distribution;
+  storeBillingOn: boolean;
+}): boolean {
+  const { action, distribution, storeBillingOn } = input;
+  if (action !== "store" && action !== "sign_in") return false;
+  if (webCheckoutAllowed(distribution)) return false;
+  return !revenueCatStore(distribution) || !storeBillingOn;
 }
 
 /**
