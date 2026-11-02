@@ -17,7 +17,7 @@ const RELEASED_APP: string = JSON.parse(
 const NEXT_PATCH = RELEASED_APP.replace(/\d+$/, (n) => String(Number(n) + 1));
 // As a whole version number: from 1.1.0 on the next patch, "1.1.1", is also the
 // start of Cloudflare's "1.1.1.1", which the policy names.
-const NEXT_PATCH_VERSION = new RegExp(`(?<![\\d.])${NEXT_PATCH.replace(/\./g, "\\.")}(?![\\d.])`);
+const NEXT_PATCH_VERSION = new RegExp(`(?<![\\d.])${NEXT_PATCH.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\d.])`);
 
 // The committed weekly benchmark the transparency pages render. Each run can move
 // a figure across the publishability gate, so the tests ask the same gate the
