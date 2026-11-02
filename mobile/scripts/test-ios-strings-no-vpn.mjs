@@ -10,18 +10,29 @@
  *
  * Pinned:
  *   • in the base files every platform ships (mobile/i18n/<locale>.json),
- *     /vpn/i matches only mobile.ios.dns.step_on_body and
+ *     /vpn/i matches only the values of mobile.ios.dns.step_on_body and
  *     mobile.ios.dns.error_remove — the path Settings → General → VPN &
- *     Device Management → DNS;
+ *     Device Management → DNS — and no key name in any namespace. Key names
+ *     are ASCII, so Hermes keeps them as ASCII strings, while both values
+ *     carry → or ←, which makes Hermes store them as UTF-16; the check on the
+ *     built archive expects 0 ASCII "vpn" in main.jsbundle;
  *   • the landing site's and the emails' strings are not in them: the app
  *     reads neither, and the support FAQ talks about the Android VPN;
  *   • the strings only Android shows (the VpnService disclosure, the
  *     "permission taken back" notice, the Always-on VPN rows) are in
  *     mobile/i18n/android/<locale>.json for all 10 locales, only there, and
  *     still say VPN (Google Play's disclosure must name it);
+ *   • RESOURCES, as each file builds it (transpiled and run here):
+ *     resources.ts gives every locale its own base file and nothing else;
+ *     resources.android.ts gives every locale its own base file plus its own
+ *     android/ file, so Android shows what it showed before the split —
+ *     Play's VpnService disclosure in the person's language included;
  *   • only src/i18n/resources.android.ts imports i18n/android/ (Metro picks
- *     it on Android, resources.ts on iOS and web), and src/i18n/index.ts
- *     takes RESOURCES from ./resources instead of importing the files.
+ *     it on Android, resources.ts on iOS and web), no file names
+ *     resources.android outright, and src/i18n/index.ts takes RESOURCES from
+ *     ./resources instead of importing the files. Imports are read the way
+ *     Metro follows them: import/export … from, import "…", import() and
+ *     require().
  *
  * Generated files: edit packages/i18n-strings/src, then run
  * python3 scripts/build-i18n.py (scripts/i18n_mobile.py decides which key
@@ -29,10 +40,12 @@
  */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const MOBILE = join(dirname(fileURLToPath(import.meta.url)), "..");
+const ts = createRequire(join(MOBILE, "package.json"))("typescript");
 const LOCALES = ["en", "ru", "es", "pt", "fr", "de", "it", "id", "hi", "ar"];
 const SETTINGS_PATH_KEYS = ["mobile.ios.dns.error_remove", "mobile.ios.dns.step_on_body"];
 const ANDROID_ONLY_KEYS = [
@@ -64,9 +77,19 @@ check("base files: 'VPN' only in the two Settings-path strings, in every locale"
     assert.ok(Object.keys(BASE[loc]).length > 500, `${loc}: base file read`);
     const vpn = Object.keys(BASE[loc]).filter((k) => /vpn/i.test(BASE[loc][k])).sort();
     assert.deepEqual(vpn, SETTINGS_PATH_KEYS, loc);
-    for (const key of SETTINGS_PATH_KEYS) assert.match(BASE[loc][key], /DNS/, `${loc}: ${key} names the DNS page`);
+    for (const key of SETTINGS_PATH_KEYS) {
+      assert.match(BASE[loc][key], /DNS/, `${loc}: ${key} names the DNS page`);
+      assert.match(BASE[loc][key], /[^\x00-\x7f]/, `${loc}: ${key} is all ASCII, so the bundle keeps its "VPN" as ASCII`);
+    }
   }
   assert.match(BASE.en["mobile.ios.dns.step_on_body"], /General → VPN & Device Management → DNS/);
+});
+
+check("base files: no key name says 'vpn', in any namespace", () => {
+  for (const loc of LOCALES) {
+    const named = Object.keys(BASE[loc]).filter((k) => /vpn/i.test(k));
+    assert.deepEqual(named, [], loc);
+  }
 });
 
 check("base files: no landing.* or email.* strings (the app reads neither)", () => {
@@ -96,9 +119,48 @@ check("Android still says VPN where it means it (Play's VpnService disclosure, A
   }
 });
 
+// ── What each resources file builds ──────────────────────────────────
+
+/** RESOURCES as `rel` builds it, every .json it imports read from disk. */
+function resourcesOf(rel) {
+  const file = join(MOBILE, rel);
+  const { outputText } = ts.transpileModule(readFileSync(file, "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true },
+    fileName: file,
+  });
+  const module = { exports: {} };
+  const requireJson = (spec) => {
+    assert.ok(spec.endsWith(".json"), `${rel} requires ${spec}`);
+    return JSON.parse(readFileSync(join(dirname(file), spec), "utf8"));
+  };
+  new Function("require", "module", "exports", outputText)(requireJson, module, module.exports);
+  return module.exports.RESOURCES ?? {};
+}
+
+check("resources.ts: every locale gets its own base file, nothing added", () => {
+  const resources = resourcesOf("src/i18n/resources.ts");
+  assert.deepEqual(Object.keys(resources).sort(), [...LOCALES].sort());
+  for (const loc of LOCALES) {
+    assert.deepEqual(resources[loc], { translation: BASE[loc] }, `${loc}: not exactly i18n/${loc}.json`);
+  }
+});
+
+check("resources.android.ts: every locale gets its own base file plus its own android/ file", () => {
+  const resources = resourcesOf("src/i18n/resources.android.ts");
+  assert.deepEqual(Object.keys(resources).sort(), [...LOCALES].sort());
+  for (const loc of LOCALES) {
+    const want = { translation: { ...BASE[loc], ...ANDROID[loc] } };
+    assert.deepEqual(resources[loc], want, `${loc}: not exactly i18n/${loc}.json + i18n/android/${loc}.json`);
+  }
+});
+
 // ── Which file imports what (Metro resolves by platform) ─────────────
 
-const importsOf = (src) => [...src.matchAll(/from\s+["']([^"']+)["']/g)].map((m) => m[1]);
+/** Every module the source asks for, as Metro follows them: import/export …
+ *  from, import "…", import() and require(); comments and strings skipped. */
+const importsOf = (src) => ts.preProcessFile(src, true, true).importedFiles.map((f) => f.fileName);
+const STRINGS_FILE = /(^|\/)i18n\/(android\/)?[a-z]{2}(\.json)?$|(^|\/)i18n\/android(\/|$)/;
+const ANDROID_RESOURCES = /(^|\/)resources\.android(\.[jt]sx?)?$/;
 
 check("resources.ts: the 10 base files, nothing from i18n/android/", () => {
   const imports = importsOf(read("src/i18n/resources.ts"));
@@ -117,7 +179,7 @@ check("index.ts takes RESOURCES from ./resources and imports no strings file its
   assert.ok(!importsOf(index).some((p) => p.endsWith(".json")), "a .json import in index.ts");
 });
 
-check("nothing else in the app imports i18n/android/ or a strings file", () => {
+check("nothing else in the app imports i18n/android/, a strings file or resources.android", () => {
   const files = ["app", "src", "modules"].flatMap((dir) =>
     readdirSync(join(MOBILE, dir), { recursive: true })
       .map(String)
@@ -128,7 +190,7 @@ check("nothing else in the app imports i18n/android/ or a strings file", () => {
   const own = new Set(["src/i18n/resources.ts", "src/i18n/resources.android.ts"]);
   for (const file of files) {
     if (own.has(file)) continue;
-    const bad = importsOf(read(file)).filter((p) => /(^|\/)i18n\/(android\/)?[a-z]{2}\.json$|i18n\/android\//.test(p));
+    const bad = importsOf(read(file)).filter((p) => STRINGS_FILE.test(p) || ANDROID_RESOURCES.test(p));
     assert.deepEqual(bad, [], file);
   }
 });

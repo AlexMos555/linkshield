@@ -18,7 +18,9 @@ locale saying "VPN", while the iPhone shows only two of them:
   * 2 that name Apple's own Settings page, General → VPN & Device
     Management → DNS. They stay.
 
-mobile/scripts/test-ios-strings-no-vpn.mjs pins the result. Used by
+mobile/scripts/test-ios-strings-no-vpn.mjs pins the result, and
+scripts/check-mobile-i18n.py fails when the app references a key of a
+namespace left out here, or any key the generated files lack. Used by
 scripts/build-i18n.py.
 """
 from __future__ import annotations

@@ -13,11 +13,16 @@ Three invariants, each of which has been violated for real:
    byte-exact in every translation. A translated or dropped token renders
    as literal braces or silently loses the number it was carrying.
 
-3. USED KEYS EXIST — every `t("mobile.…")` string literal referenced in
-   mobile/app or mobile/src resolves in the generated en.json, accounting
-   for i18next plural suffixes (base key present is sufficient — i18next
-   tries the v4 suffix the locale's plural rule picks, _one/_few/_other…,
-   and falls back to the base key when that variant is absent).
+3. USED KEYS EXIST — every string literal naming a key of any namespace
+   of packages/i18n-strings/src (`t("mobile.…")`, `t("extension.…")`, …)
+   referenced in mobile/app, mobile/src or mobile/modules resolves in the
+   generated en.json, accounting for i18next plural suffixes (base key
+   present is sufficient — i18next tries the v4 suffix the locale's plural
+   rule picks, _one/_few/_other…, and falls back to the base key when that
+   variant is absent). The app reads extension.* too (the locked-account
+   modal), and landing.* / email.* never reach mobile/i18n
+   (scripts/i18n_mobile.py), so a reference to one of those fails by name:
+   each would show the raw key on screen.
 
 4. NO LINKS, NO PHONE NUMBERS IN OUR OWN NOTIFICATIONS — the
    `mobile.android_native.*` strings are what the service posts (block
@@ -55,20 +60,27 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GEN = os.path.join(ROOT, "mobile", "i18n")
 GEN_ANDROID = os.path.join(GEN, "android")
+SOURCE_EN = os.path.join(ROOT, "packages", "i18n-strings", "src", "en.json")
 PH = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}")
-KEY_REF = re.compile(r'["`](mobile\.[a-z0-9_.]+)["`]')
 NATIVE_PREFIX = "mobile.android_native."
 LINK = re.compile(r"https?://|www\.|tel:", re.IGNORECASE)
 PHONE = re.compile(r"\+?\d[\d\s\-()]{6,}\d")
 
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from i18n_mobile import MOBILE_SKIP_NAMESPACES  # noqa: E402
 from i18n_notes import is_translator_note  # noqa: E402
+
+# A key literal of any namespace the source has, not only mobile.*.
+with open(SOURCE_EN, encoding="utf-8") as _f:
+    NAMESPACES = sorted(json.load(_f))
+KEY_REF = re.compile(r'["`]((?:' + "|".join(map(re.escape, NAMESPACES)) + r')\.[a-z0-9_.]+)["`]')
 
 failures = []
 
 
 locales = {}
 android_only = {}
+en_all = {}  # every key the app can look up in English, any namespace
 for path in sorted(glob.glob(os.path.join(GEN, "*.json"))):
     code = os.path.basename(path)[:-5]
     data = json.load(open(path, encoding="utf-8"))
@@ -79,6 +91,8 @@ for path in sorted(glob.glob(os.path.join(GEN, "*.json"))):
         failures.append(f"{code}: in both the base file and android/: {both[:5]}")
     android_only[code] = set(extra)
     data = {**data, **extra}
+    if code == "en":
+        en_all = data
     locales[code] = {k: v for k, v in data.items() if k.startswith("mobile.")}
 
 if "en" not in locales:
@@ -124,15 +138,23 @@ for code, flat in sorted(locales.items()):
         failures.append(f"{code}: values hold a translator note, not a string {noted[:5]}")
 
 used = set()
-for pattern in ("mobile/app/**/*.tsx", "mobile/src/**/*.ts", "mobile/src/**/*.tsx"):
-    for path in glob.glob(os.path.join(ROOT, pattern), recursive=True):
-        with open(path, encoding="utf-8") as f:
-            for match in KEY_REF.finditer(f.read()):
-                used.add(match.group(1))
+for folder in ("app", "src", "modules"):
+    for ext in ("ts", "tsx"):
+        for path in glob.glob(os.path.join(ROOT, "mobile", folder, "**", f"*.{ext}"), recursive=True):
+            if f"{os.sep}node_modules{os.sep}" in path:
+                continue
+            with open(path, encoding="utf-8") as f:
+                for match in KEY_REF.finditer(f.read()):
+                    used.add(match.group(1))
 
-unresolved = sorted(k for k in used if k not in en)
+left_out = sorted(k for k in used if k.startswith(MOBILE_SKIP_NAMESPACES))
+if left_out:
+    failures.append(
+        f"referenced keys of a namespace scripts/i18n_mobile.py keeps out of mobile/i18n: {left_out}"
+    )
+unresolved = sorted(k for k in used if k not in en_all and k not in left_out)
 if unresolved:
-    failures.append(f"referenced keys absent from en.json: {unresolved}")
+    failures.append(f"referenced keys absent from en.json (+ android/en.json): {unresolved}")
 
 if failures:
     print("MOBILE I18N CHECK FAILED:")
