@@ -370,7 +370,7 @@ names them, so either answer is consistent with it.
 
 | Permission | Why | Play declaration needed |
 |---|---|---|
-| `BIND_VPN_SERVICE` (on the service) | The on-device DNS filter (`CleanwayVpnService`) | **VPN service declaration** — §6.5 |
+| `BIND_VPN_SERVICE` (on the service) | The on-device DNS filter (`CleanwayVpnService`). Declared in `mobile/modules/cleanway-vpn/android/src/main/AndroidManifest.xml`, not `app.json`: expo-constants copies `app.json`'s public config into the iOS app (pinned by `mobile/scripts/check-android-permissions.mjs`) | **VPN service declaration** — §6.5 |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_SPECIAL_USE` | The shield runs as a foreground service while protection is on (`foregroundServiceType="specialUse"`, subtype `vpn`, `mobile/modules/cleanway-vpn/android/src/main/AndroidManifest.xml`) | **Foreground service declaration** — §6.6 |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Asks once, after explaining why, to exempt the shield from battery optimisation (`KeepAlive.kt`) | Justify if asked — §6.7 (no separate form; Play reviews it under the "Device and network abuse" policy) |
 | `RECEIVE_BOOT_COMPLETED` | Restarts the shield after a reboot if it was on | No |

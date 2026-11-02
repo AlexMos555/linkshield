@@ -47,6 +47,8 @@ messenger in-app webviews.
   - `index.ts` — `startVpn/stopVpn/isVpnRunning` + a `useVpn()` React hook.
 - **`app.json`** — added `FOREGROUND_SERVICE_SPECIAL_USE` (BIND_VPN_SERVICE /
   FOREGROUND_SERVICE / POST_NOTIFICATIONS were already there).
+  *(BIND_VPN_SERVICE has since moved to the module's `AndroidManifest.xml`:
+  expo-constants copies `app.json`'s public config into the iOS app.)*
 - **`app/(tabs)/index.tsx`** — the home **shield toggle** (which was local state only)
   now drives the real VPN via `useVpn()`. iOS taps show a "coming soon" alert.
   *(Since replaced by the Shield Checklist home: `useNetworkShield`, canary-proven

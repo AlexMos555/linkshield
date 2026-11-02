@@ -634,6 +634,12 @@ The "removed" rows are blocked in `mobile/app.json`
 (`expo.android.blockedPermissions` + `expo-camera` → `recordAudioAndroid: false`),
 which makes `expo prebuild` write `tools:node="remove"` entries so library
 manifests cannot re-add them. Only v1.0.0 (versionCode 100) still declared them.
+`BIND_VPN_SERVICE` is declared in the shield module's own manifest
+(`mobile/modules/cleanway-vpn/android/src/main/AndroidManifest.xml`), not in
+`app.json`: expo-constants copies `app.json`'s public config into the iPhone
+app, and App Review flagged the word there. The APK's list is the same;
+`check-android-permissions.mjs` pins what our config declares and keeps the
+permission out of `app.json`.
 Before uploading 1.0.6, run `aapt2 dump permissions` on the RuStore APK (§2 build B)
 and confirm the list matches this table (and that `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`
 is there, and `com.android.vending.BILLING` is not).
