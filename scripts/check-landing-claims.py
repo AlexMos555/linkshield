@@ -357,6 +357,23 @@ CLAIMS: tuple[Claim, ...] = (
               "hi": r"(sms|एसएमएस|मैसेज|संदेश)\w*\W+(की\W+)?(स्वचालित|ऑटोमैटिक|अपने आप)",
               "ar": r"(فحص|تحقق)\W+(تلقائي\W+)?(لل)?(رسائل|sms)\W*(النصية\W+)?تلقائي",
           }),
+    # 2026-11-02: /dns said queries "stay in memory just long enough to answer
+    # the request". The gateway caches answers by the question for up to the
+    # TTL (≤ 1 h) plus 6 h serve-stale (api/services/doh_cache.py), and the
+    # host's request logs can hold the IP — policy section 11 is the reference.
+    Claim("says DNS queries stay in memory 'just long enough to answer' — answers are cached by the question "
+          "for up to 1 h + 6 h serve-stale (api/services/doh_cache.py); say what section 11 of the policy says", {
+              "en": r"long enough to answer",
+              "ru": r"ровно столько, чтобы (дать )?ответ",
+              "es": r"el tiempo necesario para responder",
+              "pt": r"o tempo necess[aá]rio para responder",
+              "fr": r"juste le temps de r[ée]pondre",
+              "de": r"nur so lange im arbeitsspeicher, wie f[üu]r die antwort n[öo]tig",
+              "it": r"il tempo necessario per rispondere",
+              "id": r"selama waktu yang dibutuhkan untuk menjawab",
+              "hi": r"जितनी देर में जवाब देना ज़रूरी",
+              "ar": r"بالقدر الذي يكفي للرد",
+          }),
 )
 
 # Chrome CTAs are allowed again the moment install-urls.ts marks Chrome live.

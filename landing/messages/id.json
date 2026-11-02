@@ -499,7 +499,7 @@
     "benefit_3": "Domain peniru merek (paypal-secure-login.com) diblokir di tingkat resolver — peramban Anda bahkan tidak sempat memuatnya.",
     "benefit_4": "Di iPhone, iPad, dan Mac, berfungsi di setiap aplikasi, bukan hanya peramban: tautan WhatsApp, aplikasi perbankan, peramban dalam aplikasi — semuanya terlindungi.",
     "privacy_heading": "Privasi — apa yang kami lihat dan apa yang tidak",
-    "privacy_body": "Cleanway DNS hanya melakukan resolusi domain. Kami tidak pernah mencatat kueri ke disk, tidak pernah mengirimnya ke Sentry, dan tidak pernah menjualnya kepada siapa pun. Kueri hanya berada di memori selama waktu yang dibutuhkan untuk menjawab permintaan.",
+    "privacy_body": "Cleanway DNS hanya menerima nama situs, misalnya example.com — tidak pernah tautan lengkapnya. Server memblokir nama yang ada di daftar penipuan dan menanyakan alamat sisanya ke Cloudflare. Server kami tidak membuat log nama situs maupun alamat IP Anda. Jawaban terbaru disimpan di memori hanya berdasarkan nama situs, tidak pernah berdasarkan siapa yang bertanya, paling lama 7 jam; jawaban itu hilang saat server dimulai ulang. Penyedia hosting kami menyimpan log permintaan standar yang dapat berisi alamat IP Anda, tetapi tidak berisi nama situs. Kami tidak pernah menjual data ini.",
     "privacy_logs": "Yang kami SIMPAN: penghitung harian anonim untuk total kueri dan total pemblokiran, digunakan untuk menerbitkan laporan transparansi triwulanan kami. Tanpa domain, tanpa IP, tanpa pengguna.",
     "privacy_more": "Arsitektur dan metodologi lengkap:",
     "transparency_link": "laporan transparansi",

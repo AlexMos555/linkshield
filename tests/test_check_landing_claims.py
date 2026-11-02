@@ -164,6 +164,27 @@ def test_policy_may_not_pin_what_the_app_sends_to_one_version(locale: str) -> No
     assert not _findings(locale, _policy(since))
 
 
+# landing.dns.privacy_body as it read until 2026-11-02 (main @29b7136a).
+DNS_MEMORY = {
+    "en": "Queries stay in memory just long enough to answer the request.",
+    "ru": "Запросы лежат в памяти ровно столько, чтобы дать ответ.",
+    "es": "Las consultas viven en memoria justo el tiempo necesario para responder.",
+    "pt": "As consultas ficam na memória só o tempo necessário para responder.",
+    "fr": "Les requêtes restent en mémoire juste le temps de répondre.",
+    "de": "Anfragen bleiben nur so lange im Arbeitsspeicher, wie für die Antwort nötig ist.",
+    "it": "Le query restano in memoria solo il tempo necessario per rispondere.",
+    "id": "Kueri hanya berada di memori selama waktu yang dibutuhkan untuk menjawab permintaan.",
+    "hi": "क्वेरीज़ केवल इतनी देर मेमोरी में रहती हैं जितनी देर में जवाब देना ज़रूरी हो।",
+    "ar": "تبقى الاستعلامات في الذاكرة فقط بالقدر الذي يكفي للرد عليها.",
+}
+
+
+@pytest.mark.parametrize("locale,text", sorted(DNS_MEMORY.items()))
+def test_dns_just_long_enough_claim_is_caught_in_every_language(locale: str, text: str) -> None:
+    assert set(DNS_MEMORY) == set(guard.LOCALES)
+    assert _findings(locale, {"dns": {"privacy_body": text}}), f"{locale} over-claim passed"
+
+
 def test_badge_may_not_call_the_server_verdict_blocking() -> None:
     assert _findings("ru", {"hero": {"badge": "{recall}% свежих фишинг-URL заблокированы (замерено)"}})
     assert _findings("en", {"hero": {"badge": "{recall}% of fresh phishing links blocked"}})

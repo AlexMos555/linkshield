@@ -2050,7 +2050,7 @@
       "benefit_3": "I domini che imitano marchi noti (paypal-secure-login.com) vengono bloccati direttamente sul resolver — il browser non li carica nemmeno.",
       "benefit_4": "Su iPhone, iPad e Mac funziona in ogni app, non solo nel browser: link di WhatsApp, app bancarie, browser integrati — tutto protetto.",
       "privacy_heading": "Privacy — cosa vediamo e cosa no",
-      "privacy_body": "Cleanway DNS si limita a risolvere il dominio. Non registriamo mai le query su disco, non le inviamo a Sentry, non le vendiamo a nessuno. Le query restano in memoria solo il tempo necessario per rispondere.",
+      "privacy_body": "Cleanway DNS riceve solo i nomi dei siti, come example.com, mai il link completo. Blocca i nomi presenti nell’elenco delle truffe e chiede a Cloudflare l’indirizzo degli altri. Il nostro server non tiene alcun registro dei nomi né del tuo indirizzo IP. Conserva le risposte recenti in memoria solo per nome del sito, mai per chi ha chiesto, al massimo per 7 ore; spariscono al riavvio del server. Il nostro fornitore di hosting conserva i normali registri delle richieste, che possono includere il tuo indirizzo IP, ma non i nomi dei siti. Non vendiamo nulla di tutto questo.",
       "privacy_logs": "Cosa CONSERVIAMO: un contatore giornaliero anonimo del totale di query e blocchi, usato per pubblicare il nostro rapporto trimestrale sulla trasparenza. Nessun dominio, nessun IP, nessun utente.",
       "privacy_more": "Architettura e metodologia complete:",
       "transparency_link": "rapporto sulla trasparenza",
@@ -4137,7 +4137,7 @@
       "dns": {
         "title": "Protezione DNS",
         "privacy_title": "Cosa viene inviato, e dove",
-        "privacy_body": "Su iPhone il controllo avviene sul server di Cleanway, non sul telefono come su Android. Finché la protezione DNS è attiva, l'iPhone invia il nome di ogni sito che un'app apre (come example.com, mai il link completo né la pagina), cifrato, al server DNS di Cleanway. Il server blocca i nomi presenti nell'elenco delle truffe e chiede al DNS di Cloudflare l'indirizzo degli altri. Cleanway non registra quali siti apri: il server non tiene alcun registro dei nomi, conserva solo totali, come quanti siti ha bloccato, e ricorda le risposte recenti in memoria solo per nome del sito, mai per chi ha chiesto. Il nostro fornitore di hosting conserva i suoi normali registri delle richieste (informativa sulla privacy, sezione 11).",
+        "privacy_body": "Su iPhone il controllo avviene sul server di Cleanway, non sul telefono come su Android. Finché la protezione DNS è attiva, l'iPhone invia il nome di ogni sito che un'app apre (come example.com, mai il link completo né la pagina), cifrato, al server DNS di Cleanway. Il server blocca i nomi presenti nell'elenco delle truffe e chiede al DNS di Cloudflare l'indirizzo degli altri. Il nostro server non registra quali siti apri: non tiene alcun registro dei nomi, conserva solo totali, come quanti siti ha bloccato, e ricorda le risposte recenti in memoria solo per nome del sito, mai per chi ha chiesto. Il nostro fornitore di hosting conserva i suoi normali registri delle richieste (informativa sulla privacy, sezione 11).",
         "step_add_title": "Aggiungi il DNS di Cleanway all'iPhone",
         "step_add_body": "Salva l'impostazione sull'iPhone. Resta disattivata finché non la scegli in Impostazioni.",
         "step_on_title": "Scegli Cleanway in Impostazioni",

@@ -499,7 +499,7 @@
     "benefit_3": "Domínios que se passam por marcas (paypal-secure-login.com) são bloqueados no próprio resolvedor — o seu navegador nem chega a carregá-los.",
     "benefit_4": "No iPhone, no iPad e no Mac, funciona em todos os apps, não só no navegador: links de WhatsApp, apps de banco, navegadores embutidos — tudo protegido.",
     "privacy_heading": "Privacidade — o que vemos e o que não vemos",
-    "privacy_body": "O Cleanway DNS apenas resolve o domínio. Nunca gravamos as consultas em disco, nunca enviamos para o Sentry, nunca vendemos para ninguém. As consultas ficam na memória só o tempo necessário para responder.",
+    "privacy_body": "O Cleanway DNS recebe só nomes de sites, como example.com — nunca o link completo. Ele bloqueia os nomes da lista de golpes e pergunta à Cloudflare o endereço dos demais. Nosso servidor não mantém log dos nomes nem do seu endereço IP. Ele guarda as respostas recentes na memória apenas pelo nome do site, nunca por quem perguntou, por no máximo 7 horas; elas somem quando o servidor reinicia. Nosso provedor de hospedagem mantém registros comuns das requisições, que podem incluir o seu endereço IP, mas não os nomes dos sites. Nunca vendemos nada disso.",
     "privacy_logs": "O que MANTEMOS: um contador diário anônimo do total de consultas e bloqueios, usado para publicar o nosso relatório trimestral de transparência. Sem domínios, sem IPs, sem usuários.",
     "privacy_more": "Arquitetura e metodologia completas:",
     "transparency_link": "relatório de transparência",
