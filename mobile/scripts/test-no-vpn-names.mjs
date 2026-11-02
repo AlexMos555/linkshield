@@ -14,7 +14,9 @@
  * Pinned:
  *  1. No identifier, string, template, regex or JSX text in app/, src/ or the
  *     modules' shared JS (not *.android.ts, not android/ or ios/) matches
- *     /vpn/i or is one of Kotlin's names (isRunning included). Comments do
+ *     /vpn/i or is one of Kotlin's names (isRunning included) — i18n keys
+ *     too: #387 renamed the last one (mobile.ios.dns.note_vpn →
+ *     note_other_dns), so there is no exception. Comments do
  *     not reach the bundle, so they do not count. An import path counts
  *     where a release bundle keeps it. Metro swaps a path for a module id,
  *     but Expo's config allows optional dependencies — a require() or
@@ -51,12 +53,6 @@ const ADAPTER = `${MODULE}/src/native.android.ts`;
 
 /** What CleanwayVpnModule.kt calls things; only the adapter may say them. */
 const KOTLIN_NAMES = ["startVpn", "stopVpn", "isRunning", "openVpnSettings", "onVpnStopped", "other_vpn"];
-
-/**
- * An i18n key, renamed together with its texts in all 10 languages (the
- * strings' own guard is test-ios-dns.mjs). Nothing else may say VPN.
- */
-const ALLOWED_STRINGS = new Set(["mobile.ios.dns.note_vpn"]);
 
 let failures = 0;
 async function check(name, fn) {
@@ -132,7 +128,7 @@ function codeWords(sf) {
 
 function vpnWords(rel, text) {
   return codeWords(parse(rel, text))
-    .filter(([, word]) => (/vpn/i.test(word) && !ALLOWED_STRINGS.has(word)) || KOTLIN_NAMES.includes(word))
+    .filter(([, word]) => /vpn/i.test(word) || KOTLIN_NAMES.includes(word))
     .map(([kind, word, line]) => `${rel}:${line} ${kind} ${JSON.stringify(word)}`);
 }
 
@@ -170,6 +166,14 @@ await check("the guard sees a Kotlin name in the shared code (startVpn put back 
   // …and in a hook, and in a string, but not in a comment or an import path.
   assert.equal(vpnWords("x.ts", "const a = shield.isRunning(); const b = 'onVpnStopped';").length, 2);
   assert.equal(vpnWords("x.ts", `// startVpn\nimport { a } from "../../modules/cleanway-vpn";`).length, 0);
+});
+
+await check("the guard sees an i18n key that says VPN (note_vpn, renamed by #387, put back)", () => {
+  const rel = "src/components/shield/IosDnsSetupSheet.tsx";
+  const text = read(rel);
+  const bad = text.replace('"mobile.ios.dns.note_other_dns"', '"mobile.ios.dns.note_vpn"');
+  assert.notEqual(bad, text, `${rel} shows mobile.ios.dns.note_other_dns`);
+  assert.deepEqual(vpnWords(rel, bad).map((w) => w.replace(/:\d+/, "")), [`${rel} StringLiteral "mobile.ios.dns.note_vpn"`]);
 });
 
 await check("the guard sees an import path a release bundle keeps: a require() in a try block", () => {
