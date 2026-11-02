@@ -305,7 +305,7 @@ versions incrementally, one at a time». #253 показал, что прыжо�
 | `react-native-get-random-values` | 1.11.0 (март 2024) → 1.11 или 2.0.0 | Старый bridge-модуль с синхронным методом (`RCT_EXPORT_SYNCHRONOUS_TYPED_METHOD` на iOS, `@ReactMethod(isBlockingSynchronousMethod = true)` на Android). JS ищет его через `NativeModules.RNGetRandomValues`, то есть через тот же слой совместимости новой архитектуры, что и RevenueCat. На нём держатся nonce капчи (`src/services/captcha.ts`), ключи семьи через tweetnacl (`src/lib/family-crypto.ts`), id устройства (`src/services/device-id.ts`) и id установки на iPhone (`src/services/install-id.ts`; на Android его даёт наш модуль). Если модуль не найдётся, капча и «Семья» упадут с ошибкой, а id устройства и установки **молча** станут пустыми: `catch` возвращает `null`. Заметить это будет трудно: при обновлении поверх 1.0.6 id устройства и ключи семьи уже лежат в SecureStore, и новый вызов не нужен. `expo install --fix` пакет не трогает: в `bundledNativeModules.json` SDK 58 его нет (в SDK 54 был `~1.11.0`). Есть 2.0.0 (22.10.2025): codegen TurboModule через `TurboModuleRegistry.getEnforcing`, peer RN ≥ 0.81 | Решено в #327: 2.0.0 (→ 10.1 п. 7). Проверка — раздел 6.2 |
 | `@sentry/react-native` | 7.2 → 8.28 | Нужны iOS 15+ и Xcode 16.4+ — выполнено. Без `EXPO_PUBLIC_SENTRY_DSN` SDK спит (`src/lib/sentry.ts`). Окружение берётся из `NODE_ENV`, а в SDK 58 его выставляет Expo CLI: для release это `production`, так и задумано | Сделано в #253 |
 | `react-native-purchases` | 10.11 | Требует RN ≥ 0.73. В README про новую архитектуру ничего нет. И наш код (`src/services/store-billing.ts:78`), и сам SDK RevenueCat ищут модуль через `NativeModules.RNPurchases`, а в новой архитектуре это работает через слой совместимости. Если поиск вернёт пусто, платные планы **молча** исчезнут, без падения | Проверить на телефоне: Play AAB и iOS. Подумать о последней 10.x |
-| TypeScript | 5.9 → 6.0.3 | `types: ["node"]`. В 10 тестовых скриптах добавлен `--ignoreConfig`. `react-i18next` 15 и `openapi-typescript` ждут TS 5 (у первого это необязательная зависимость — только предупреждение). Можно и остаться на 5.9 через `expo.install.exclude` | В #327 остаёмся на 5.9: с TS 6 `npm install` падает (→ 10.1 п. 3) |
+| TypeScript | 5.9 → 6.0.3 | `types: ["node"]`. В 10 тестовых скриптах добавлен `--ignoreConfig`. `react-i18next` 15 и `openapi-typescript` ждут TS 5 (у первого это необязательная зависимость — только предупреждение). Можно и остаться на 5.9 через `expo.install.exclude` | В #327 остаёмся на 5.9. После переноса на `main` (`react-i18next` 17) TS 6 ставится без ERESOLVE, переход — отдельным PR после 1.1.0 (→ 10.1 п. 3) |
 | `i18next` | — | В `main` уже `^26.5.11` (#303, #361), а `react-i18next` — `^17.1.9` (#339, #359): обе версии пришли после основы #253 и ни в одной вышедшей сборке не были (iOS 1.0.6 (6) собрана на i18next 26.5.10 и react-i18next 15.7.4). CI сверяет `mobile/package-lock.json` (lock зеркала) с `mobile/package.json` и с версиями корневого lock (`check-mirror-lock.mjs`, #333). При обновлении его пересобирать (`docs/RUSTORE_SUBMISSION.md`, конец §2) | Сделано в #327: после переноса на `main` оба lock собраны заново (i18next 26.5.12, react-i18next 17.1.9). Проверить на телефоне: язык по умолчанию, plural-ключи всех 10 локалей, переключение языка |
 | `expo prebuild` (SDK 57) | — | Теперь по умолчанию стирает `android/` и `ios/`. Наши инструкции и так используют `--clean` и после каждого prebuild возвращают ключ подписи (`docs/RUSTORE_SUBMISSION.md` §2). В комментарии `plugins/withDistributionGuard.js` осталось «без `--clean`» — поправить | Сделано в #327 |
 | Сценовый цикл iOS (SDK 58) | — | prebuild создаёт `SceneDelegate.swift`, окно создаёт сцена. Ни один наш плагин не меняет `AppDelegate` (проверено). Окно для капчи (ASWebAuthenticationSession) уже берётся из `connectedScenes` (`modules/cleanway-safari/ios/CleanwaySafariModule.swift:146-150`). Ссылки `cleanway://` и передача из «Поделиться» теперь приходят через сцену; Expo обещает передавать их подписчикам `ExpoAppDelegate` | Проверить холодный и тёплый старт |
@@ -643,11 +643,18 @@ pre-launch нет новых падений.
    `patches/xcode+3.0.1.patch` и закрепление `xcode: 3.0.1` в корневом
    `package.json` удалены; `mobile/patches/` пуст. Safari-расширение и
    SMS-фильтр prebuild создаёт как раньше (4 цели, у всех 16.4).
-3. **TypeScript 5.9, а не 6 (запасной вариант решения 6).** С TS 6 чистый
-   `npm install` в зеркале падает с ERESOLVE: `react-i18next` 15 требует
-   `typescript ^5`. `typescript` в `expo.install.exclude`; `--ignoreConfig`
-   и `types: ["node"]` из #253 не понадобились. TS 6 — позже, вместе с
-   `react-i18next` 17.
+3. **TypeScript 5.9, а не 6 (запасной вариант решения 6).** До переноса на
+   `main` чистый `npm install` в зеркале с TS 6 падал с ERESOLVE:
+   `react-i18next` 15 требовал `typescript ^5`. С `main` пришёл
+   `react-i18next` 17 (#339, #359), он принимает `^5 || ^6 || ^7`, и
+   препятствия больше нет: 02.11 `npm install --package-lock-only` с
+   `typescript ~6.0.3` проходит и в зеркале, и в корне. `openapi-typescript`
+   7.13 (`packages/api-types`) просит `^5.x`, но получает свою 5.9 — так же,
+   как `landing` уже живёт на 6.0.3. В 1.1.0 всё равно остаёмся на 5.9:
+   новый компилятор — ещё одна непроверенная перемена в релизе, а #253 ради
+   него менял `tsconfig` и 10 тестовых скриптов (`--ignoreConfig`,
+   `types: ["node"]`). `typescript` в `expo.install.exclude`. TS 6 —
+   отдельным PR после 1.1.0.
 4. **`router.push` в SDK 58 всегда добавляет экран** (действие `PUSH`). В
    SDK 54 повторный «Поделиться» при открытом экране проверки попадал в тот
    же экран (report #5). `ShareIntentRouter` теперь вызывает
@@ -696,7 +703,7 @@ pre-launch нет новых падений.
 |---|---|---|
 | CI в #327 | Все проверки зелёные (`mobile`: typecheck, i18n, тесты плагинов, все `test-*.mjs`; lock sync; CodeQL; Security) | Проверки на последнем коммите PR |
 | Защиты release-сборки на AGP 9.2.1 / Gradle 9.4.1: `withShareIntentGuard`, `withSeedGuard`, `withDistributionGuard` (25.10) | Отдельный минимальный Android-проект: те же AGP 9.2.1, Gradle 9.4.1 и флаги шаблона 58 (`android.builtInKotlin=false`, `android.newDsl=false`). Конец `app/build.gradle` — то, что пишут `_patch()` наших трёх плагинов; рядом настоящий `scripts/check-share-intent.mjs`, `app.json` ветки, `expo-share-intent` 9.0.0 и `@expo/config-plugins` 58.0.10 (хеш архива совпал с lock). `preReleaseBuild` есть в графе `assembleRelease` и `bundleRelease` и выполняется до компиляции. `assembleRelease`: строка магазина, пять строк `ok:` от проверки share-intent, BUILD SUCCESSFUL (с `-PcleanwayNoSeed`). Падают, как задумано: без стартового списка (`assembleRelease` и `bundleRelease`); `expo-share-intent` с версией 8.0.0; фильтр `text/*` в манифесте; AAB с `site`; сборка для другого магазина. `assembleDebug` защиты не запускает. React Native и Kotlin-плагина в проекте нет: проверен механизм AGP, а не сборка приложения | Выдержки из логов — [комментарий в #327](https://github.com/AlexMos555/linkshield/pull/327#issuecomment-6389656068) |
-| Версии зависимостей против SDK 58 | Все 24 прямые зависимости, которые есть в `bundledNativeModules.json` `expo@58.0.19`, по `mobile/package-lock.json` попадают в его диапазоны (expo 58.0.19, react-native 0.88.0, react 19.3.0). Это та же сверка, что делает `expo install --check`, но без установки, а не сама команда | Повторяется за минуту: `npm pack expo@58.0.19` и сверка с lock |
+| Версии зависимостей против SDK 58 | 02.11, после переноса на `main` и перехода на последние патчи SDK 58: в чистом зеркале `npm install` ставит ровно `mobile/package-lock.json` (`cmp` без разницы), `check-share-intent` — 4× `ok:`, `npx expo install --check` — «Dependencies are up to date» (expo 58.0.22, react-native 0.88.1, react 19.3.0; `typescript` исключён), `npx expo-doctor` — 20/20. До переноса (25.10) сверялось только без установки: 24 прямые зависимости против `bundledNativeModules.json` `expo@58.0.19` | Повторяется за несколько минут: `docs/RUSTORE_SUBMISSION.md` §2, шаги 1–2 и `npm install` |
 | Таймаут на `expo/fetch` (10.1 п. 10) | Тесты в `scripts/test-api-client-errors.mjs` и `mobile/scripts/test-account-session.mjs` падали на старом коде и проходят на новом | CI (`test`, `mobile`) |
 
 **По записям сессии 24–25.10, лог не сохранился.** Зеркало
@@ -708,8 +715,8 @@ pre-launch нет новых падений.
 
 | Что | Записано |
 |---|---|
-| `npx expo-doctor` в зеркале | 20/20 |
-| `npx expo install --check` | «Dependencies are up to date» (`typescript` исключён) |
+| `npx expo-doctor` в зеркале | 20/20 (02.11 повторено после переноса — первая таблица) |
+| `npx expo install --check` | «Dependencies are up to date» (`typescript` исключён; 02.11 повторено — первая таблица) |
 | `scripts/check-prebuild-gradle.mjs` после каждого prebuild | Все шесть меток плагинов на месте (подпись, ABI, стартовый список, магазин, share-intent, тёмные панели) |
 | Android `assembleRelease`, сайт и RuStore | Собираются без ключа (debug-подпись). 62 МБ, armeabi-v7a + arm64-v8a. Первая сборка 14 мин, следующие 6–8 мин |
 | Android `bundleRelease` + `assembleRelease`, Play | AAB 49 МБ (ARM), APK 64 МБ; BILLING и RevenueCat только тут |
@@ -729,8 +736,8 @@ pre-launch нет новых падений.
   release-сборки по `docs/RUSTORE_SUBMISSION.md` §2 (`cw_build` теперь пишет
   лог gradle в `$OUT/logs/` и останавливается, если защиты не напечатали свои
   строки), проверки `aapt2`, `zipalign`, `llvm-readelf` с выводом в файл, хеши
-  файлов, `expo-doctor`, `expo install --check`,
-  `:cleanway-vpn:testDebugUnitTest`, iOS-сборка. Выдержки и хеши — в PR.
+  файлов, `:cleanway-vpn:testDebugUnitTest`, iOS-сборка (`expo-doctor` и
+  `expo install --check` повторены 02.11, 10.2). Выдержки и хеши — в PR.
   Отметка [x] без них доказательством не считается.
 - Проверка на телефонах — весь раздел 6.2 (ничего не ставилось ни на
   телефон, ни в эмулятор).
@@ -739,8 +746,8 @@ pre-launch нет новых падений.
   подписанные сборки по `docs/RUSTORE_SUBMISSION.md` §2 с ключом;
   `mapping.txt` каждого релиза — в Play.
 - Отдельными PR после 1.1.0 (решение 7): удалить `withXcode26Patches`;
-  `@expo/vector-icons` → `@react-native-vector-icons/*`; TS 6 вместе с
-  `react-i18next` 17; Gradle модуля VPN на `expo-module-gradle-plugin`.
+  `@expo/vector-icons` → `@react-native-vector-icons/*`; TS 6 (с переноса
+  на `main` его ничто не держит, 10.1 п. 3); Gradle модуля VPN на `expo-module-gradle-plugin`.
 
 ---
 

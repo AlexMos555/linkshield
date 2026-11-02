@@ -200,7 +200,7 @@ Turning the model back on = unset `SMS_TEXT_MODEL_ENABLED` (or `true`).
 > npm workspaces hoist the app's packages to the repo root next to landing's
 > React (19.2 at the root, while the app pins **19.3.0** for Expo SDK 58), and
 > root-hoisted Expo/RN packages then resolve the wrong copies. A standalone copy
-> of `mobile/` with its own `node_modules` has exactly one `react-native@0.88.0`
+> of `mobile/` with its own `node_modules` has exactly one `react-native@0.88.1`
 > and one `react@19.3.0`. (On SDK 52 the same hoisting put `react-native@0.86`
 > at the root and Metro died in `VirtualView.js`.) Fixing the hoisting is a
 > nice-to-have, not a launch blocker; the mirror is the proven path.
@@ -276,7 +276,7 @@ node scripts/check-share-intent.mjs   # 4× "ok:" (1.0.x: 3×); "CHECK FAILED" =
 # (This block has no `set -e`, so the lines below would still run. A release
 # build refuses to start anyway without the fix — plugins/withShareIntentGuard.js
 # re-runs the check before compiling — but do not count on getting that far.)
-npx expo install --check   # "Dependencies are up to date" (typescript is excluded on purpose: 5.9, react-i18next 15 needs TS 5)
+npx expo install --check   # "Dependencies are up to date" (typescript is excluded on purpose: 1.1.0 stays on TS 5.9, docs/EXPO_UPGRADE_PLAN.md §10.1 item 3)
 
 # 3) The starter blocklist (1.0.2+): download + verify it into the module's
 #    assets, AFTER the rsync (its --delete removes the gitignored file). It
