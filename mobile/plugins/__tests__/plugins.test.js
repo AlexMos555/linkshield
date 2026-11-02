@@ -758,4 +758,44 @@ console.log("not-linked native modules (react-native.config.js):");
   });
 }
 
+{
+  // Patch 4: Xcode 26.3 (this iMac's last Xcode) and expo-modules-jsi 58.0.21 (expo/expo#52754).
+  console.log("withXcode26Patches (expo-modules-jsi on Xcode < 26.4):");
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  const { execFileSync } = require("node:child_process");
+  const { _patchPodfile } = require("../withXcode26Patches.js");
+  const podfile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "cw-podfile-")), "Podfile");
+  fs.writeFileSync(podfile, "target 'Cleanway' do\n  post_install do |installer|\n    react_native_post_install(installer)\n  end\nend\n");
+  _patchPodfile(podfile);
+  const once = fs.readFileSync(podfile, "utf8");
+  check("adds the JSI block after the toolchain patches, inside post_install", () => {
+    assert.ok(once.indexOf("Cleanway: Xcode 26 toolchain patches") < once.indexOf("Cleanway: expo-modules-jsi 58.0.21"));
+    assert.ok(once.includes("Gem::Version.new('26.4')"), "only below Xcode 26.4");
+    assert.ok(once.includes("UncheckedSendable(slot)"));
+  });
+  check("keeps the Ruby escapes verbatim (String.raw)", () => {
+    assert.ok(once.includes('"    try runtime._withUnsafeGuaranteedRef { runtime in\\n" \\'));
+  });
+  check("is idempotent across repeated prebuilds", () => {
+    _patchPodfile(podfile);
+    assert.strictEqual(fs.readFileSync(podfile, "utf8"), once);
+  });
+  check("the generated Podfile is valid Ruby", () => {
+    execFileSync("ruby", ["-c", podfile], { stdio: "pipe" });
+  });
+  // The anchor must still be in the installed expo-modules-jsi: if upstream changes it the
+  // patch silently does nothing, so a dependency bump has to re-check Xcode 26.3.
+  const jsi = path.join(__dirname, "..", "..", "node_modules", "expo-modules-jsi", "apple", "Sources",
+    "ExpoModulesJSI", "Runtime", "Values", "JavaScriptObject.swift");
+  if (fs.existsSync(jsi)) {
+    check("its anchor matches the installed expo-modules-jsi", () => {
+      const src = fs.readFileSync(jsi, "utf8");
+      assert.ok(src.includes("try encode(JavaScriptValue.Slot(slot), runtime)") || src.includes("Cleanway: Swift 6.2 sending"),
+        "expo-modules-jsi changed withEncodedValue: rebuild on Xcode 26.3 and update or drop patch 4");
+    });
+  }
+}
+
 console.log(`\n${passed} assertions passed`);
