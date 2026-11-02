@@ -28,13 +28,17 @@
  * plugins. The Kotlin suite has the same list (PolicyGuardTest) but does not
  * run in CI. app.json's blockedPermissions must keep the phone permissions
  * listed, so that a library cannot bring one in at manifest-merge time.
+ *
+ * `--dir <path>` checks another copy of mobile/ (app.json, modules/,
+ * plugins/). Table test: scripts/test-check-android-permissions.mjs.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, dirname, resolve, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const mobile = resolve(here, "..");
+const dirArg = process.argv.indexOf("--dir");
+const mobile = dirArg >= 0 && process.argv[dirArg + 1] ? resolve(process.argv[dirArg + 1]) : resolve(here, "..");
 
 const FORBIDDEN = [
   "RECEIVE_SMS", "READ_SMS", "SEND_SMS", "RECEIVE_MMS",
@@ -83,7 +87,10 @@ const MODULE_MANIFEST = join("modules", "cleanway-vpn", "android", "src", "main"
  * android.permissions plus the module manifests' <uses-permission> entries.
  * Config plugins and libraries add the rest (CAMERA, VIBRATE, INTERNET…;
  * docs/STORES.md §6.4 lists the whole APK). Pinned so that moving one
- * between app.json and a manifest cannot drop it from the APK.
+ * between app.json and a manifest cannot drop it from the APK, and none may
+ * be in app.json's blockedPermissions: expo prebuild then drops it from
+ * android.permissions and writes tools:node="remove" into the app manifest,
+ * which strips the module manifest's entry too at manifest merge.
  */
 const DECLARED = [
   "android.permission.ACCESS_NETWORK_STATE",
@@ -189,14 +196,16 @@ for (const { permission, file, justification } of SPECIAL_ALLOWED) {
   }
 }
 
-// 4. What our config asks for: the pinned set, and the VPN permission in the
-// module manifest rather than app.json.
+// 4. What our config asks for: the pinned set, none of it blocked, and the
+// VPN permission in the module manifest rather than app.json.
 const manifests = files.filter((f) => f.endsWith("AndroidManifest.xml"));
 const fromManifests = new Map(manifests.map((f) => [relative(mobile, f), usesPermissions(readFileSync(f, "utf8"))]));
 const fromApp = asked.map(fullName);
 const declared = new Set([...fromApp, ...[...fromManifests.values()].flat()]);
+const blockedFull = new Set([...blocked].map(fullName));
 for (const p of DECLARED) {
   if (!declared.has(p)) failures.push(`${p} is no longer declared (app.json or ${MODULE_MANIFEST}): the APK would lose it`);
+  if (blockedFull.has(p)) failures.push(`app.json android.blockedPermissions strips ${p}: the APK would lose it`);
 }
 for (const p of declared) {
   if (!DECLARED.includes(p)) failures.push(`${p} is declared but not in DECLARED: add it there and to the store permission tables`);

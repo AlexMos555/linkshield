@@ -380,6 +380,13 @@ jobs:
         # (PolicyGuardTest) runs only in the local build sandbox.
         run: node mobile/scripts/check-android-permissions.mjs
 
+      - name: Android permission guard table test
+        # The guard itself: a permission our config declares that app.json
+        # also blocks (prebuild strips it from the APK), BIND_VPN_SERVICE back
+        # in app.json (whose public config ships in the iOS app), or one
+        # dropped from app.json, each fails it.
+        run: node mobile/scripts/test-check-android-permissions.mjs
+
       - name: Call stop-screen table test
         # When the stop screen applies (in a call, 30 minutes after one, and
         # never on a build that cannot see calls), the 5-second slow path a
