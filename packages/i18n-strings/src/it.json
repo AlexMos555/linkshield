@@ -4150,7 +4150,7 @@
         "status_turn_on": "Aggiunta. Ora scegli Cleanway in Impostazioni: questa schermata si aggiorna quando torni.",
         "status_on": "Attiva. L'iPhone cerca i siti tramite Cleanway.",
         "note_off": "Se i siti smettono di aprirsi, scegli Automatico nella stessa impostazione DNS o rimuovi Cleanway qui sotto.",
-        "note_vpn": "Mentre un'app VPN è connessa, l'iPhone potrebbe usare il DNS di quella VPN invece di quello di Cleanway.",
+        "note_other_dns": "Mentre è attiva un'altra app che cambia la connessione o il DNS dell'iPhone, l'iPhone potrebbe usare il DNS di quell'app invece di quello di Cleanway.",
         "remove": "Rimuovi dall'iPhone",
         "removing": "Rimozione in corso…",
         "done": "Fine",

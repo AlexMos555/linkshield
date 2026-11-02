@@ -377,15 +377,19 @@ def test_the_pre_commit_hook_runs_on_a_source_edit():
         assert files.search(path), f"{files.pattern} skips {path}"
 
 
+# The mobile check reads the source too: its namespaces name the key literals.
+MOBILE_DATA = ("mobile/i18n", "packages/i18n-strings/src")
+
+
 def test_mobile_baseline_passes(tmp_path):
-    result = _run(tmp_path, "check-mobile-i18n.py", ("mobile/i18n",), {})
+    result = _run(tmp_path, "check-mobile-i18n.py", MOBILE_DATA, {})
     assert result.returncode == 0, result.stdout + result.stderr
 
 
 @pytest.mark.parametrize("case", sorted(F1_SHAPES))
 def test_mobile_check_fails_on_a_note_naming_a_variant_key(tmp_path, case):
     locale, key, value = F1_SHAPES[case]
-    result = _run(tmp_path, "check-mobile-i18n.py", ("mobile/i18n",), {(f"mobile/i18n/{locale}.json", (key,)): value})
+    result = _run(tmp_path, "check-mobile-i18n.py", MOBILE_DATA, {(f"mobile/i18n/{locale}.json", (key,)): value})
     assert result.returncode == 1, f"{case} passed: {result.stdout}"
     assert "translator note" in result.stdout
     assert key in result.stdout

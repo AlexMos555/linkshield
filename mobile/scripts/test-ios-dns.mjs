@@ -21,7 +21,8 @@
  *     path the API serves — with no pinned IPs and no on-demand rules, and
  *     never sets isEnabled (only the person can);
  *   • nothing calls this feature a VPN (App Review 5.4 misfile risk) except
- *     where it names Apple's own Settings page or a VPN app.
+ *     where it names Apple's own Settings page; the note that another app's
+ *     DNS may take over names no VPN either.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -254,19 +255,21 @@ check("policy §11 describes the gateway on main: Cloudflare only, no log line, 
   assert.match(ups, /DEFAULT_UPSTREAMS = \(CLOUDFLARE_DOH_URL, CLOUDFLARE_IP_DOH_URL\)/, "the copy names Cloudflare only");
 });
 
-check("never calls the feature a VPN — only Apple's Settings page and VPN apps may say it", () => {
-  const allowed = new Set([
-    "mobile.ios.dns.step_on_body", "mobile.ios.dns.error_remove", "mobile.ios.dns.note_vpn",
-  ]);
+check("never calls the feature a VPN — only Apple's Settings page may say it", () => {
+  const allowed = new Set(["mobile.ios.dns.step_on_body", "mobile.ios.dns.error_remove"]);
   for (const loc of LOCALES) {
     for (const [key, value] of Object.entries(STRINGS[loc])) {
       if (!key.startsWith("mobile.ios.") || allowed.has(key)) continue;
-      assert.ok(!/VPN/.test(value), `${loc}: ${key}`);
+      assert.ok(!/VPN/i.test(value), `${loc}: ${key}`);
     }
     // The Settings path names the real page, in each language.
     assert.match(STRINGS[loc]["mobile.ios.dns.step_on_body"], /DNS/, loc);
   }
   assert.match(STRINGS.en["mobile.ios.dns.step_on_body"], /General → VPN & Device Management → DNS/);
+  // Another app's DNS may take over: the sheet says so, without the word.
+  assert.ok(IOS_DNS_SHEET_KEYS.includes("mobile.ios.dns.note_other_dns"), "the sheet's keys list the note");
+  assert.ok(!IOS_DNS_SHEET_KEYS.some((k) => /vpn/i.test(k)), "a sheet key named after a VPN");
+  assert.match(read("src/components/shield/IosDnsSetupSheet.tsx"), /t\("mobile\.ios\.dns\.note_other_dns"\)/);
 });
 
 // ── Source checks ────────────────────────────────────────────────────

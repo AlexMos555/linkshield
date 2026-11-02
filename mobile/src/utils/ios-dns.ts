@@ -148,7 +148,7 @@ export const IOS_DNS_SHEET_KEYS: readonly string[] = [
   "mobile.ios.dns.adding",
   "mobile.ios.dns.open_settings",
   "mobile.ios.dns.note_off",
-  "mobile.ios.dns.note_vpn",
+  "mobile.ios.dns.note_other_dns",
   "mobile.ios.dns.remove",
   "mobile.ios.dns.removing",
   "mobile.ios.dns.done",

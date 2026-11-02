@@ -59,10 +59,10 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const MOBILE = join(HERE, "..");
 const require = createRequire(import.meta.url);
 const LOCALES = ["en", "ru", "es", "pt", "fr", "de", "it", "id", "hi", "ar"];
-const STRINGS = Object.fromEntries(
-  LOCALES.map((loc) => [loc, JSON.parse(readFileSync(join(MOBILE, "i18n", `${loc}.json`), "utf8"))]),
-);
 const read = (rel) => readFileSync(join(MOBILE, rel), "utf8");
+// The iPhone gets the base files; Android adds i18n/android/ (src/i18n/resources.android.ts).
+const STRINGS = Object.fromEntries(LOCALES.map((loc) => [loc, JSON.parse(read(`i18n/${loc}.json`))]));
+const ANDROID_STRINGS = Object.fromEntries(LOCALES.map((loc) => [loc, { ...STRINGS[loc], ...JSON.parse(read(`i18n/android/${loc}.json`)) }]));
 
 let failures = 0;
 function check(name, fn) {
@@ -75,10 +75,10 @@ function check(name, fn) {
   }
 }
 
-function assertKeys(keys) {
+function assertKeys(keys, strings = STRINGS) {
   for (const loc of LOCALES) {
     for (const key of keys) {
-      assert.ok(typeof STRINGS[loc][key] === "string" && STRINGS[loc][key].length > 0, `${loc}: ${key}`);
+      assert.ok(typeof strings[loc][key] === "string" && strings[loc][key].length > 0, `${loc}: ${key}`);
     }
   }
 }
@@ -128,7 +128,8 @@ check("onboarding: the third slide is the iPhone one on iOS, the shield one else
   assert.deepEqual(ios.slice(0, 2), android.slice(0, 2));
   assert.equal(ios[2].titleKey, "mobile.onboarding.s3_title_ios");
   assert.equal(android[2].titleKey, "mobile.onboarding.s3_title");
-  assertKeys([...ios, ...android].flatMap((s) => [s.titleKey, s.descKey]));
+  assertKeys(ios.flatMap((s) => [s.titleKey, s.descKey]));
+  assertKeys(android.flatMap((s) => [s.titleKey, s.descKey]), ANDROID_STRINGS);
   // The iPhone slide never promises the Android shield.
   for (const loc of LOCALES) assert.ok(!/Android/.test(STRINGS[loc][ios[2].descKey]), loc);
 });

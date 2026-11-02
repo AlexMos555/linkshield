@@ -1,0 +1,6 @@
+{
+  "mobile.home.interrupted_revoked": "Android stopped protection: the VPN permission was taken back in the phone's settings, or another VPN app took its place. Tap the button below, then \"{{button}}\". If Android asks you to allow the connection, tap \"OK\". The other VPN app will switch off: Android runs only one at a time.",
+  "mobile.shield.disclosure.body": "Cleanway sets up a local VPN on your phone. That is how Android lets an app filter website lookups for every other app.\n\n• The list of known scam sites is stored on your phone. Website names are matched here, not sent to us.\n• Lookups we don't block go to your network's own DNS server — your operator's or your router's, as they do without Cleanway. If it doesn't answer, they go to a public resolver (Cloudflare or Quad9).\n• No other traffic is read, recorded or redirected. It is not a privacy VPN and does not hide your browsing.\n\nIf Android asks you to allow the connection, tap \"OK\".",
+  "mobile.keep_alive.always_on_ok": "Always-on VPN: on",
+  "mobile.keep_alive.always_on_optional": "Always-on VPN (optional): starts protection with the phone"
+}
