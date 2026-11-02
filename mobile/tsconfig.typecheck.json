@@ -1,12 +1,15 @@
 {
   // Typecheck-only config: `npx tsc -p tsconfig.typecheck.json --noEmit`.
   //
-  // Two copies of @types/react live in this workspace — landing's ^19 hoists
-  // to the repo root (19.2), mobile pins ~19.1 for Expo SDK 54 (it pinned
-  // ~18.3 on SDK 52). Packages that hoist to the root (@expo/vector-icons
-  // among them) are then typed against the root copy while the app is typed
-  // against its own, and on SDK 52 every <Ionicons /> failed with TS2786
-  // "cannot be used as a JSX component".
+  // Two copies of @types/react can live in this workspace — landing's ^19
+  // hoists to the repo root, and mobile pinned ~19.1 for Expo SDK 54 (~18.3 on
+  // SDK 52). Packages that hoist to the root (@expo/vector-icons among them)
+  // are then typed against the root copy while the app is typed against its
+  // own, and on SDK 52 every <Ionicons /> failed with TS2786 "cannot be used
+  // as a JSX component". On Expo SDK 58 (1.1.0) mobile's ~19.3 satisfies
+  // landing too, so npm keeps a single 19.3 at the root: the mapping then
+  // finds no mobile/node_modules/@types/react and tsc falls back to that one
+  // copy. It stays for the next time the two drift apart.
   //
   // The mapping below pins one React for the compile. It deliberately does NOT
   // live in tsconfig.json: Expo's Metro reads that file's `paths` for real

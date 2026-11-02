@@ -17,9 +17,10 @@ RuStore is the **primary** channel for the Tele2 RF launch.
 > **Google Play: the target-API blocker is fixed in code (2026-10-08), not yet
 > shipped.** Since **31 Aug 2026** Play requires new apps and updates to target
 > **API 36** (Android 16) — [Target API level requirements](https://developer.android.com/google/play/requirements/target-sdk)
-> (an extension to 1 Nov 2026 can be requested). The app is now on **Expo SDK 54
-> / React Native 0.81**, and the build from §2 produces an APK/AAB with
-> `targetSdkVersion 36` (compileSdk 36) whose 64-bit native libraries are all
+> (an extension to 1 Nov 2026 can be requested). From 1.1.0 the app is on **Expo
+> SDK 58 / React Native 0.88** (1.0.x, `release/1.0.x`: SDK 54 / RN 0.81), and the
+> build from §2 produces an APK/AAB with `targetSdkVersion 36` (compileSdk 37;
+> 36 on 1.0.x) whose 64-bit native libraries are all
 > 16 KB-aligned (Play's [16 KB page-size requirement](https://developer.android.com/guide/practices/page-sizes)
 > for apps targeting Android 15+). What is still open before a Play upload: a
 > release-signed build retested on a real phone (VPN shield, boot restart, link
@@ -291,8 +292,8 @@ bash scripts/fetch-seed-blocklist.sh
 #    succeeds but is signed with the DEBUG key (big warning in the log).
 KEYS="/path/to/the/folder/with/keystore.properties"
 OUT="$HOME/Desktop/cleanway-android-out"; mkdir -p "$OUT"
-V=$(node -p "require('./app.json').expo.version")                  # 1.0.6
-VC=$(node -p "require('./app.json').expo.android.versionCode")     # 107
+V=$(node -p "require('./app.json').expo.version")                  # 1.1.0
+VC=$(node -p "require('./app.json').expo.android.versionCode")     # 110
 
 # 5) One build per store. EXPO_PUBLIC_DISTRIBUTION decides the paywall (a web
 #    checkout link or not), the "download the new version" banner and whether
@@ -339,11 +340,15 @@ export EXPO_PUBLIC_REVIEW_EMAILS="review@cleanway.ai"
 #    phones: also export CLEANWAY_ABIS=arm64-v8a before cw_build.)
 cw_build site assembleRelease
 cp "$APK" "$OUT/cleanway-$V-$VC-arm.apk"
+# R8 is on for release since SDK 58: keep each build's mapping for its crash
+# stacks (Play wants the AAB's; `prebuild --clean` deletes android/ next time).
+cp android/app/build/outputs/mapping/release/mapping.txt "$OUT/mapping-$V-$VC-site.txt"
 
 # B) RuStore APK — no web-checkout link, no self-update banner, no Play
 #    Billing; paying in the app says "coming soon".
 cw_build rustore assembleRelease
 cp "$APK" "$OUT/cleanway-$V-$VC-rustore.apk"
+cp android/app/build/outputs/mapping/release/mapping.txt "$OUT/mapping-$V-$VC-rustore.txt"
 
 # C) Google Play AAB (35 MB on SDK 54, 49 MB on SDK 58) — pays only through Google Play. Needs the public
 #    RevenueCat key too (goog_…, docs/runbooks/revenuecat.md §5; never sk_):
@@ -357,6 +362,7 @@ export EXPO_PUBLIC_REVENUECAT_ANDROID_KEY="goog_…"   # the real public key fro
 cw_build play bundleRelease assembleRelease
 cp "$AAB" "$OUT/cleanway-$V-$VC-play.aab"
 cp "$APK" "$OUT/cleanway-$V-$VC-play-check.apk"
+cp android/app/build/outputs/mapping/release/mapping.txt "$OUT/mapping-$V-$VC-play.txt"   # upload with the AAB (Play Console → App bundle explorer → Downloads)
 unset EXPO_PUBLIC_DISTRIBUTION EXPO_PUBLIC_REVENUECAT_ANDROID_KEY EXPO_PUBLIC_REVIEW_EMAILS
 
 # The seed is inside every build (≈2.8 MB):
@@ -386,7 +392,9 @@ more reason those are rebuilt, together with the #318 rebuild above.
 **Play Billing only in the Play build** — check before uploading anything:
 
 ```bash
-BT="$ANDROID_HOME/build-tools/36.0.0"
+BT="$ANDROID_HOME/build-tools/37.0.0"   # SDK 58 (1.1.0+); 1.0.x: 36.0.0
+# `script -q` below starts a new shell, which sees exported variables only:
+export V VC OUT BT APK AAB
 cd "$OUT"
 "$BT/aapt2" dump permissions cleanway-$V-$VC-arm.apk        | grep -c com.android.vending.BILLING   # → 0
 "$BT/aapt2" dump permissions cleanway-$V-$VC-rustore.apk    | grep -c com.android.vending.BILLING   # → 0
@@ -592,13 +600,16 @@ iOS 1.0.6 (6) was built with.)
 
 **`overrides` in `mobile/package.json` are read only by the mirror** (npm
 ignores them in a workspace; the root `package.json` carries the same ones for
-CI). Keep the two sets equal. `xcode` stays at `3.0.1` because
-`patches/xcode+3.0.1.patch` and `plugins/withSafariExtension.js` depend on it:
-`@expo/config-plugins` 54.0.6 asks for `xcode ^4.0.0`, and without the override
-the mirror got an unpatched `xcode` 4.0.0 nested under it while CI kept testing
-3.0.1 — a difference `check-mirror-lock.mjs` cannot see, since it compares
-direct dependencies only (#338). After a regeneration,
-`grep '/node_modules/xcode"' "$M/package-lock.json"` should find nothing.
+CI). Keep the two sets equal. Since Expo SDK 58 (1.1.0) there is no `xcode`
+override: `@expo/config-plugins` 58 asks for `xcode ^4.0.0`, and 4.0.0 already
+carries the `correctForPath` fix `plugins/withSafariExtension.js` needs, so
+`patches/xcode+3.0.1.patch` is gone and both locks hold `xcode` 4.0.0 only. Do
+not bring back the `"xcode": "3.0.1"` override 1.0.x had (#338, `release/1.0.x`):
+on SDK 58 it would pin an unpatched 3.0.1 under a config-plugins that wants
+4.x — a difference `check-mirror-lock.mjs` cannot see, since it compares direct
+dependencies only. After a regeneration,
+`grep -c '/node_modules/xcode"' "$M/package-lock.json"` should print `0` (no
+nested copy) and `node_modules/xcode` should be 4.0.0.
 
 **The check names a version, not a range** (`<name>: mirror lock X, root
 package-lock.json Y`): the ranges match, but CI tests one release and the store

@@ -49,8 +49,9 @@ npm install                                    # installs mobile/package-lock.js
 bash "$REPO/scripts/build-extensions.sh" > /dev/null
 CLEANWAY_SAFARI_EXTENSION_DIR="$REPO/extension-safari" CI=1 npx expo prebuild -p ios --no-install
 cd ios && LANG=en_US.UTF-8 pod install --repo-update   # --repo-update: RevenueCat's pods are newer than a stale CDN index
+SIM="iPhone 16e"   # a name `xcrun simctl list devices available` prints — the set differs per Xcode
 xcodebuild -workspace Cleanway.xcworkspace -scheme Cleanway -configuration Debug \
-  -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone Air' \
+  -sdk iphonesimulator -destination "platform=iOS Simulator,name=$SIM" \
   -derivedDataPath ../build build
 ```
 
@@ -71,8 +72,9 @@ them. Short on disk, build one architecture without the index or dSYMs (~2 GB
 of DerivedData instead of ~4 GB): add `ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES
 COMPILER_INDEX_STORE_ENABLE=NO DEBUG_INFORMATION_FORMAT=dwarf` to the
 `xcodebuild` line. Not yet tried on SDK 58: running it, a Release build, an
-archive — App Store builds go through EAS (docs/EXPO_UPGRADE_PLAN.md §5,
-risk 5).
+archive. App Store builds are made here too, with the archive steps below
+(founder, 2026-11-02: Xcode 26.3, EAS §1.2 only as the fallback;
+docs/EXPO_UPGRADE_PLAN.md §9, decision 3).
 
 **For App Store Connect** (how 1.0.6 builds 5 and 6 were made), archive Release
 from the same mirror, then check what the bundle carries **before** uploading
@@ -118,7 +120,10 @@ legacy Supabase keys are disabled (docs/MOBILE_AUTH.md §1) — add the key to
 
 ### 1.2 For TestFlight / the App Store (EAS)
 
-`eas build -p ios --profile production` (or `preview` for TestFlight testers).
+`eas build -p ios --profile production`, then `eas submit -p ios` for TestFlight
+and the App Store. `preview` is not TestFlight: it is `distribution: internal`,
+on iOS an ad-hoc build that installs only on devices registered with
+`eas device:create`.
 EAS manages certificates, provisioning profiles and the build number
 (`appVersionSource: remote`). Set these as **EAS environment variables**
 (Expo dashboard → project → Environment variables), not in `eas.json`:
