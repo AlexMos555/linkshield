@@ -310,7 +310,12 @@ cw_build() {   # cw_build <site|rustore|play> <gradle task>...
   # share-intent guards, dark system bars) and android/ is for this store.
   # "PREBUILD CHECK FAILED" = STOP: a plugin found no anchor in this template.
   node scripts/check-prebuild-gradle.mjs --distribution="$EXPO_PUBLIC_DISTRIBUTION" || return 1
-  cp "$KEYS/keystore.properties" "$KEYS/cleanway-release.jks" android/
+  # A key that does not copy must stop the build: an iCloud file that is not
+  # downloaded to this Mac times out ("fcopyfile failed"), and gradle then
+  # signs every artifact with the DEBUG key (2026-11-02, 1.1.0's first try).
+  cp "$KEYS/keystore.properties" "$KEYS/cleanway-release.jks" android/ \
+    && [ -s android/keystore.properties ] && [ -s android/cleanway-release.jks ] \
+    || { echo "STOP: the release key did not copy — download $KEYS in Finder first"; return 1; }
   # The gradle log is the evidence for the PR (a ticked box without it is not):
   # keep it. Before compiling, the store guard prints "Cleanway: building the …"
   # and the share-intent guard 5× "ok:" (under > Task :app:preReleaseBuild).
@@ -319,6 +324,7 @@ cw_build() {   # cw_build <site|rustore|play> <gradle task>...
   (set -o pipefail; cd android && ./gradlew "$@" 2>&1 | tee "$log") || return 1
   grep -q '^Cleanway: building' "$log" && [ "$(grep -c '^ok: ' "$log")" -ge 5 ] \
     || { echo "STOP: a release guard printed nothing ($log)"; return 1; }
+  ! grep -q 'signing with the DEBUG key' "$log" || { echo "STOP: signed with the DEBUG key ($log)"; return 1; }
 }
 APK=android/app/build/outputs/apk/release/app-release.apk
 AAB=android/app/build/outputs/bundle/release/app-release.aab
