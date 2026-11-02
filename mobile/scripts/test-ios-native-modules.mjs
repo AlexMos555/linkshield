@@ -11,7 +11,9 @@
  *
  *  1. modules/cleanway-vpn has no iOS half (no pod, no Swift, no web shim),
  *     and only src/native.android.ts asks for the Kotlin module; iOS and web
- *     bundle src/native.ts, which asks for nothing.
+ *     bundle src/native.ts, which asks for nothing. No doc cites the deleted
+ *     Swift file as the code: only IOS.md's record of the App Review reply
+ *     and MOBILE_VPN.md's history still name it.
  *  2. Every function modules/cleanway-vpn/index.ts exports runs on iOS and
  *     web over that stub without throwing and answers "not on this platform"
  *     — no false "on", no network probe. The app imports the module at launch
@@ -108,6 +110,29 @@ await check("the shield module is Android-only: no pod, no Swift, no web shim", 
   assert.equal(config.apple, undefined);
   assert.ok(!existsSync(join(root, VPN_DIR, "ios")), "modules/cleanway-vpn/ios/ is gone");
   assert.deepEqual(readdirSync(join(root, VPN_DIR, "src")).filter((f) => /\.(web|ios)\.ts$/.test(f)), []);
+});
+
+/**
+ * Docs that may still name the shield module's deleted iOS files, and how
+ * often: IOS.md lists what the 2026-11-02 App Review reply was checked
+ * against, MOBILE_VPN.md tells the module's history. Anywhere else the name
+ * cites code that is gone — the iPhone's DNS code is in modules/cleanway-dns.
+ */
+const OLD_IOS_FILES = /cleanway-vpn\/ios\b[\w./-]*|CleanwayVpnModule\.swift|CleanwayVpn\.podspec/g;
+const HISTORY = { "docs/IOS.md": 1, "mobile/MOBILE_VPN.md": 1 };
+
+await check("no doc cites the shield module's deleted iOS files — only its history names them", () => {
+  const repo = resolve(root, "..");
+  const docs = [
+    ...readdirSync(repo).filter((f) => f.endsWith(".md")),
+    ...readdirSync(root).filter((f) => f.endsWith(".md")).map((f) => `mobile/${f}`),
+    ...readdirSync(join(repo, "docs"), { recursive: true }).map(String).filter((f) => f.endsWith(".md")).map((f) => `docs/${f}`),
+  ];
+  assert.ok(docs.includes("docs/PRIVACY.md") && docs.includes("docs/runbooks/dns-service-split.md"), "scanned the docs");
+  const named = docs
+    .map((f) => [f, (readFileSync(join(repo, f), "utf8").match(OLD_IOS_FILES) ?? []).length])
+    .filter(([, n]) => n > 0);
+  assert.deepEqual(Object.fromEntries(named), HISTORY);
 });
 
 await check("only src/native.android.ts asks for the Kotlin module; iOS and web get src/native.ts", () => {

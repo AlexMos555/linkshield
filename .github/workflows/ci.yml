@@ -344,7 +344,8 @@ jobs:
         # module named after Android's VPN (App Review flagged "VPN", docs/IOS.md
         # §3.6). iOS and web bundle a JS stub, and every export answers "not on
         # this platform" over it without a throw — the app imports it at
-        # launch. DNS protection has its own iOS-only module, CleanwayDns.
+        # launch. DNS protection has its own iOS-only module, CleanwayDns, and
+        # the docs cite it, not the deleted CleanwayVpnModule.swift.
         run: node mobile/scripts/test-ios-native-modules.mjs
 
       - name: No VPN names in the shared JS (iOS bundle) guard

@@ -213,7 +213,7 @@ eCFR от 19.10.2026.
 |---|---|---|---|
 | Экран «Семья» в приложении | Создаёт ключи Curve25519, хранит секретный ключ в Keychain, расшифровывает семейные предупреждения (XSalsa20-Poly1305, `nacl.box.open`) | **Своё** (TweetNaCl в JS) | `mobile/src/lib/family-crypto.ts:22-23`, `:66`, `:158`; `mobile/app/family.tsx:108`, `:133`; пункт в Настройках для обеих платформ: `mobile/app/(tabs)/settings.tsx:352`; зависимости: `mobile/package.json:47-48` |
 | Safari-расширение внутри iPhone-приложения | Фоновый скрипт **шифрует** предупреждения для каждого члена семьи (`encryptForFamily`) | **Своё** (вшитая копия `tweetnacl.min.js`) | Плагин копирует всю папку `src` расширения: `mobile/plugins/withSafariExtension.js:50`; `extension-safari/src/utils/family-fanout.js:27`, `:264`; `extension-safari/src/utils/vendor/tweetnacl.min.js` |
-| HTTPS ко всем серверам, DNS-защита, Keychain, покупки | Обычные защищённые соединения; зашифрованный DNS через системный `NEDNSOverHTTPSSettings` | Системное, из iOS | `mobile/modules/cleanway-vpn/ios/CleanwayVpnModule.swift:117` |
+| HTTPS ко всем серверам, DNS-защита, Keychain, покупки | Обычные защищённые соединения; зашифрованный DNS через системный `NEDNSOverHTTPSSettings` | Системное, из iOS | `mobile/modules/cleanway-dns/ios/CleanwayDnsModule.swift:102` |
 
 Что ещё важно:
 
