@@ -91,7 +91,9 @@ artifact (the phones' kill switch) makes the gateway block nothing too.
 * The per-IP budget lives in process memory, keyed by a keyed BLAKE2b of the
   IP (random key per process), cleared every window. No raw IP, no Redis key.
 * The answer cache is keyed by the question only, in memory, ≤ 1 h + 6 h
-  stale window, gone on restart.
+  stale window, gone on restart. An answer nobody asks for again is swept
+  within a minute of that (`cache_sweeper`, api/routers/doh.py); before
+  2026-11-02 it stayed until replaced or the restart.
 
 **Open item for the founder:** the public privacy policy §11 says names not
 blocked go "to Cloudflare". With the Quad9 failover it should read "to

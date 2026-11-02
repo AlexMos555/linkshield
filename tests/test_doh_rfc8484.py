@@ -226,6 +226,43 @@ def test_an_answer_for_another_question_is_never_stored():
     assert cache.put(q, answer(query("evil.example"))) is None
 
 
+def test_a_sweep_drops_answers_past_the_serve_stale_window_and_keeps_the_rest():
+    """Privacy policy §11: an answer stays for its TTL (at most an hour) and up
+    to 6 more hours as a backup. Without a sweep, one nobody asks again sat
+    in memory until it was replaced or the process restarted."""
+    clock = _Clock()
+    cache = ResponseCache(max_entries=10, max_ttl=3600, stale_for=600, clock=clock)
+    for name, ttl in (("old.example", 60), ("stale.example", 300), ("fresh.example", 3600)):
+        cache.put(query_shape(query(name)), answer(query(name), ttls=(ttl,)))
+    clock.now += 660  # old: 60 + 600 gone; stale: inside its window; fresh: fresh
+    assert cache.sweep() == 1
+    assert len(cache) == 2
+    assert cache.get(query_shape(query("stale.example")), query("stale.example"), allow_stale=True).stale
+    assert cache.get(query_shape(query("fresh.example")), query("fresh.example")) is not None
+
+
+@pytest.mark.asyncio
+async def test_the_gateway_sweeps_its_cache_while_it_runs(monkeypatch):
+    import asyncio
+
+    import api.routers.doh as doh_router
+    clock = _Clock()
+    cache = ResponseCache(max_entries=10, max_ttl=3600, stale_for=600, clock=clock)
+    cache.put(query_shape(query("old.example")), answer(query("old.example"), ttls=(60,)))
+    monkeypatch.setattr(doh_router, "_cache", cache)
+    monkeypatch.setattr(doh_router, "CACHE_SWEEP_EVERY_S", 0.01)
+    clock.now += 660
+    task = asyncio.get_running_loop().create_task(doh_router.cache_sweeper())
+    try:
+        for _ in range(100):
+            if not len(cache):
+                break
+            await asyncio.sleep(0.01)
+    finally:
+        task.cancel()
+    assert len(cache) == 0
+
+
 def test_cache_is_bounded():
     cache = ResponseCache(max_entries=3)
     for i in range(10):

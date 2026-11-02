@@ -366,12 +366,13 @@ def test_get_is_rate_limited_like_post(client, sent, monkeypatch):
 async def test_startup_is_idempotent_and_shutdown_stops_everything(monkeypatch):
     use_redis(monkeypatch, ArtifactRedis(LISTED))
     await doh_router.startup()
-    stats, refresher = doh_router._stats_task, doh_filter.HOLDER._task
-    assert stats is not None and refresher is not None
+    stats, refresher, sweeper = doh_router._stats_task, doh_filter.HOLDER._task, doh_router._sweep_task
+    assert stats is not None and refresher is not None and sweeper is not None
     await doh_router.startup()
     assert doh_router._stats_task is stats and doh_filter.HOLDER._task is refresher
+    assert doh_router._sweep_task is sweeper
     await _until(lambda: doh_filter.HOLDER.current is not None)
     await doh_router.shutdown()
-    assert stats.done() and refresher.done()
-    assert doh_router._stats_task is None and doh_filter.HOLDER._task is None
+    assert stats.done() and refresher.done() and sweeper.done()
+    assert doh_router._stats_task is None and doh_filter.HOLDER._task is None and doh_router._sweep_task is None
     await doh_router.shutdown()  # a second shutdown is a no-op
