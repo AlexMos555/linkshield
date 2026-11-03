@@ -3009,11 +3009,14 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     assert.deepEqual(await run(blockedAt([{ s: "safe_browsing", t: "Google" }], Date.now() - 1000), others), { hidden: true, state: "danger" });
     assert.deepEqual(await run(blockedAt([{ s: "safe_browsing", t: "Google" }], Date.now() - 1000), google), { hidden: false, state: "danger" });
     // Over the block page, the offline scorer's guess (the API did not
-    // answer) is no fresh verdict: "couldn't check", as the page itself says.
+    // answer) is no fresh verdict: "couldn't check", as the page itself says
+    // (and no credit drawn: popup.html starts it hidden, checked below).
     for (const level of ["safe", "caution"]) {
-      assert.deepEqual(await run(blockedAt([{ s: "safe_browsing", t: "Google" }], Date.now() - 1000), { ...safe, level, source: "local" }),
-        { hidden: true, state: "unknown" }, `an offline ${level} over the block page`);
+      assert.equal((await run(blockedAt([{ s: "safe_browsing", t: "Google" }], Date.now() - 1000), { ...safe, level, source: "local" })).state,
+        "unknown", `an offline ${level} over the block page`);
     }
+    // Anywhere else the popup still shows the offline verdict, as before.
+    assert.equal((await run("https://evil.example/", { ...safe, source: "local" })).state, "safe");
 
     const html = readFileSync(join(ROOT, tree, "src/popup/popup.html"), "utf8");
     const box = html.match(/<(p|div)\b[^>]*\bid="google-advisory"[^>]*>[\s\S]*?<\/\1>/);
@@ -3735,6 +3738,8 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     await flush();
     assert.equal(checksSent(page.sent).length, asked + 1, "try again did not ask");
     assert.ok(page.document.getElementById("ls-block-overlay"), "the fresh block was not drawn");
+    // The person asked: the rounds start over.
+    assert.equal(await roundsAfter(1), asked + 2, "after try again the page stopped at the first window's end");
 
     // A window of its own (the server keeps that answer): asked at each end.
     const long = () => ({ results: [{ domain: "evil.example", level: "dangerous", score: 90, source: "api", reasons: [{ ...GOOGLE_REASONS[0], weight: 10 }], advisory_until: clock.t + 600_000 }] });
