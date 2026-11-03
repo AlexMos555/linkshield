@@ -13,7 +13,7 @@
   "mobile/modules/cleanway-vpn/android/src/main/java/ai/cleanway/app/RemoteConfig.kt": "510ad4aa52c3c96db2ab9ef6d65e13d63def9531fcb537307ab2128a7582110e",
   "mobile/modules/cleanway-vpn/android/src/main/assets/message_rules.json": "093da5d5f23b5d88a577753dda406212c7e74de4d14b08d45553eff381200033",
   "mobile/modules/cleanway-vpn/android/src/main/assets/root_zone_tlds.txt": "3fd0e9168afdcde72728d0cac494a88515751497dcc0e2f2e7add747c12dcc92",
-  "mobile/modules/cleanway-vpn/android/src/main/assets/message_model.json": "c8541d5336d37e7e75a481079d1ead5c0db6f9df22a1dea8d23aa51e2c9624b5",
+  "mobile/modules/cleanway-vpn/android/src/main/assets/message_model.json": "0dc77bb0e84778cc09bfe8368177cd63a1e7eff5852e895b8531211e999c79dc",
   "mobile/modules/cleanway-vpn/android/src/main/assets/message_model.bin": "604f3e5e8d4630a73a9ac3eadc9125c34d47f29542fe99a23214c48da3a2ee13",
   "mobile/modules/cleanway-vpn/android/src/test/java/ai/cleanway/app/MessageCorpus.kt": "fd72e32d97ac2910c47bf71a3edc28bd8f79c74fd980a160cbc3cc4167236011",
   "mobile/modules/cleanway-vpn/android/src/test/java/ai/cleanway/app/MessageSchemeCorpus.kt": "ae6b9091e55f8358a4dff1df1c4d8855f22d3aadb83c718682ec4ed482a8a258",

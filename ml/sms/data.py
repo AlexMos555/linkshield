@@ -190,9 +190,22 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def provenance_key(path: Path) -> str:
+    """How message_model.json names a data file: repo-relative, except module files.
+
+    The model also ships in the iPhone app, and App Review's automated check
+    flagged that app as "VPN" (docs/IOS.md §3.6). A repo path would put the
+    Android module's directory name, cleanway-vpn, into the iPhone bundle, so
+    module files are named from the module's src/ ("android/src/test/...").
+    """
+    if path.is_relative_to(MODULE):
+        return 'android/src/' + path.relative_to(MODULE).as_posix()
+    return path.relative_to(ROOT).as_posix()
+
+
 def data_hashes(with_corpora: bool) -> dict[str, str]:
     files = [DATA / f for f in TRAIN_FILES.values()]
     if with_corpora:
         files += [TEST_JAVA / f for f in KOTLIN_CORPORA]
     files += [TEST_RES / f for f in VALIDATION_FILES.values()] + [RULES]
-    return {str(p.relative_to(ROOT)): sha256(p) for p in files}
+    return {provenance_key(p): sha256(p) for p in files}
