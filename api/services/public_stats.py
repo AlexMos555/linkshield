@@ -25,8 +25,12 @@ _ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 LATEST_BENCHMARK = os.path.join(_ROOT, "docs", "benchmarks", "latest.json")
 MODEL_META = os.path.join(_ROOT, "data", "model_meta.json")
 
-# Same gate as the landing's live-recall.ts and the benchmark's quality gate:
-# below this a rate is statistically meaningless and is not published.
+# The size floors of the benchmark's quality gate (landing/lib/benchmark.ts
+# MIN_PHISHING_SAMPLE / MIN_PHISHING_CLASSIFIED): below them a rate is
+# statistically meaningless and is not published. Since 2026-11 the landing
+# quotes another figure (of the live links that got an answer, the share
+# called dangerous; method_version 2 reports only — detectionFigures), while
+# detection_rate here is still recall. TODO(founder): decide whether it follows.
 MIN_BATCH = 100
 MIN_CLASSIFIED = 50
 

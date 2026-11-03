@@ -4,7 +4,7 @@
 [![Security](https://github.com/AlexMos555/linkshield/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/AlexMos555/linkshield/actions/workflows/security.yml)
 [![E2E — Landing](https://github.com/AlexMos555/linkshield/actions/workflows/e2e-landing.yml/badge.svg?branch=main)](https://github.com/AlexMos555/linkshield/actions/workflows/e2e-landing.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22c55e.svg)](LICENSE)
-[![Methodology](https://img.shields.io/badge/methodology-recall%20published%20weekly-22c55e)](https://cleanway.ai/transparency/methodology)
+[![Methodology](https://img.shields.io/badge/methodology-detection%20rate%20published%20weekly-22c55e)](https://cleanway.ai/transparency/methodology)
 
 Privacy-first phishing protection platform. Your browsing data lives only on your device.
 
@@ -18,7 +18,7 @@ Cleanway automatically checks every link you encounter against 16 threat intelli
 
 - **42+ detection signals** across 6 categories
 - **10 active named blocklist feeds** (Google Safe Browsing, URLhaus, PhishStats, ThreatFox, Spamhaus, SURBL, AlienVault OTX, IPQualityScore, MalwareBazaar, Feodo Tracker) + reputation (top-1M popularity: Majestic Million + Chrome UX Report), visual identity (favicon brand hashes, typosquat watchtower), ML model, LLM judge, and heuristics = **16 threat-intelligence signals** total. _(PhishTank integration is present in code but dormant while Cisco keeps new-account registration closed.)_
-- **CatBoost ML model** — phishing recall published weekly at [cleanway.ai/transparency/methodology](https://cleanway.ai/transparency/methodology); reproducible via [`scripts/eval_fresh_urls.py`](./scripts/eval_fresh_urls.py) and [`docs/benchmarks/latest.json`](./docs/benchmarks/latest.json)
+- **CatBoost ML model** — one of the server's signals. What the whole public check catches is measured every week on links reported to PhishTank in the 7 days before the run: of those whose domain still exists and that got an answer, the share called dangerous (with its 95% interval) and the share that got at least a warning, published at [cleanway.ai/transparency/methodology](https://cleanway.ai/transparency/methodology); reproducible via [`scripts/eval_fresh_urls.py`](./scripts/eval_fresh_urls.py) and [`docs/benchmarks/latest.json`](./docs/benchmarks/latest.json)
 - **Privacy Audit** — see what trackers, cookies, and data collection any site uses (A-F grade, on-device)
 - **Password leak warning** — a password typed into any form is checked by k-anonymity (only the first 5 hex chars of its SHA-1 are sent) and flagged if it appears in a known leak. There is no email leak lookup yet, and the extension does not offer one.
 - **Security Score and Weekly Report** — computed on-device from local counters, with no server call and no percentile ranking. _(The recent-threats list and install date they read are not recorded yet, so today both show zeros for blocked sites and active days.)_
