@@ -86,8 +86,12 @@ Apple ускоряет проверку не всегда. Если откажу
 ## 4. PhishTank / Cisco Talos: ключ для коммерческого сервиса
 
 **Когда:** сейчас. Ключ бесплатный, коммерческое использование API PhishTank
-разрешено (FAQ: «Yes, it is OK»). Но регистрация на phishtank.org 03.11.2026
-закрыта («New user registration temporarily disabled»), поэтому только письмом.
+разрешено (FAQ: «Yes, it is OK»). Без ключа базу тоже можно скачивать, только
+с меньшим лимитом («a few downloads per day», developer_info.php), поэтому
+до ответа берём её раз в сутки без ключа. Регистрация на phishtank.org
+03.11.2026 закрыта («New user registration temporarily disabled»), поэтому
+ключ только письмом. В том же письме спросить прямо, можно ли раздавать
+список, собранный из их данных, приложениям и DNS: в FAQ об этом ничего нет.
 Замер 03.11.2026 (смоделировано выгрузкой без ключа): ключ даёт +6 п.п. на
 независимом фишинге из TweetFeed за неделю и почти всё, что раньше давала
 phishing.army ([THIRD_PARTY_FEEDS.md](../THIRD_PARTY_FEEDS.md)).
@@ -105,8 +109,13 @@ phishing.army ([THIRD_PARTY_FEEDS.md](../THIRD_PARTY_FEEDS.md)).
 > and register an application.
 >
 > Could you create an account and an application key for us, or tell us how
-> to get one? We would download the feed once a day, as recommended, and
-> credit PhishTank on our methodology page.
+> to get one? Until then we download the public online-valid file once a day
+> with a descriptive User-Agent, and we will switch to the key as soon as we
+> have it. We credit PhishTank on our methodology page.
+>
+> Please also confirm one point: our apps receive a blocklist built partly
+> from PhishTank data (hashed hostnames), and our DNS service blocks those
+> names for our users. Is that use fine with you?
 >
 > Best regards,
 > Aleksandr Moskotin
