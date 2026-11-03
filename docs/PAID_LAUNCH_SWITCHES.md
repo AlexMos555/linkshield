@@ -1,7 +1,8 @@
 # Включение платных тарифов: переключатели по порядку
 
 **Для кого:** основатель (что нажать и где), Claude (код и проверки).
-**Состояние на 2026-10-24:** ничего из списка не включено, Cleanway бесплатный.
+**Состояние на 2026-11-03:** из списка включён только Google Web Risk (§7, шаги 1–2;
+шаг 3 ждёт суточной проверки), остальное не включено, Cleanway бесплатный.
 Начинать, когда решено брать деньги. Основа списка — анализ цен 2026-10-24: что
 сделать по лицензиям и тарифам сервисов до первого платежа.
 
@@ -29,7 +30,7 @@
 | 4 | Supabase Free → Pro | основатель | 25 |
 | 5 | Resend Free → Pro | основатель | 20 |
 | 6 | Sentry: не трассировать `/dns-query`, потом тариф | Claude, основатель | 0–26 |
-| 7 | Google Web Risk вместо Safe Browsing | основатель, Claude | 0 до 100 тыс. запросов |
+| 7 | Google Web Risk вместо Safe Browsing (в production с 2026-11-03) | основатель, Claude | 0 до 100 тыс. запросов |
 | 8 | AlienVault OTX и PhishStats → `RESTRICTED_CHECKS` | Claude | 0 |
 | 9 | Phishing.Database: #317 и один прогон с `force` | Claude, основатель | 0 |
 | 10 | VirusTotal (и Safe Browsing) из публичного бенчмарка | основатель, Claude | 0 |
@@ -156,58 +157,97 @@ Variables: нет `LICENSED_INTEL=all` и нет `PUBLISH_CONFIRMED_THREATS`.
 
 ## 7. Google Web Risk вместо Safe Browsing
 
+**Состояние на 2026-11-03.** Шаги 1 и 2 сделаны: с 2026-11-03 17:33 UTC production
+спрашивает Web Risk (в Railway `web` задан `WEB_RISK_API_KEY`, в логах есть
+`web_risk_hit`). Шаг 3 ждёт суточной проверки. Шаг 4 сделан в коде (ветка
+`feat/web-risk-advisory`); строки расширения и приложения дойдут до людей только с их
+следующими выпусками, сайта и надстройки Outlook — со следующим деплоем сайта. Тексты
+магазинов основатель меняет в консолях (список в шаге 4).
+
 - **Зачем.** Условия Safe Browsing v4 запрещают коммерческое использование без
   отдельного договора. Web Risk — тот же поиск, но это коммерческий продукт Google
   Cloud ([`THIRD_PARTY_FEEDS.md`](THIRD_PARTY_FEEDS.md) §2).
 - **Где.**
-  1. Google Cloud: проект с привязанной оплатой, на компанию (для российского юрлица
-     Google Cloud может быть недоступен, не проверено) → включить **Web Risk API** →
-     APIs & Services → Credentials → API key. В Restrict key → API restrictions
-     оставить только Web Risk API. Billing → Budgets & alerts → бюджет, например $10.
-  2. Railway → `web` → Variables → `WEB_RISK_API_KEY`. С ним `safe_browsing.get_client()`
-     отдаёт `WebRiskClient` ([`api/services/web_risk.py`](../api/services/web_risk.py))
-     для `/check`, `/public/check`, `/email/analyze` и `confirmed_threats`. Если заданы
-     оба ключа, используется Web Risk.
-  3. Через сутки, если проверка прошла, удалить из `web` и `GOOGLE_SAFE_BROWSING_API_KEY`,
-     и `GOOGLE_SAFE_BROWSING_KEY` (сервер принимает оба имени, [`api/config.py`](../api/config.py)).
-     Тогда сервер не вернётся тихо к Safe Browsing, если ключ Web Risk пропадёт: в
-     staging и production он напишет в лог `neither google_safe_browsing_key nor web_risk_api_key set`.
-  4. Claude: тексты для людей. Правила Web Risk для предупреждений
-     (cloud.google.com/web-risk/docs/user-warnings, прочитано 2026-10-24) строже, чем
-     просто другое название. Того же требуют и условия Safe Browsing, так что пробел
-     есть уже сейчас; закрыть его здесь, до первого платежа. Сначала тест, потом тексты:
-     - **Подпись.** Предупреждение по данным Google несёт строку «Advisory provided by
-       Google» со ссылкой на Web Risk Advisory (cloud.google.com/web-risk/docs/advisory).
-       Только когда среди причин есть сигнал `safe_browsing` (с ключом Web Risk он
-       называется так же): на предупреждениях по другим источникам подписи Google быть
-       не должно. Сейчас её нет нигде в репозитории.
-     - **Осторожные слова.** Не утверждать, что сайт опасен без сомнений: «возможно»,
-       «подозревается», «может быть».
-     - **Узнать больше.** Ссылка: про фишинг — antiphishing.org, про вредоносные
-       программы — Google Search Central (страница о malware).
-     - **Защита не идеальна.** Раз мы говорим, что защищаем от опасных сайтов, до
-       включения защиты человек видит, что возможны ложные срабатывания (безопасный
-       сайт помечен) и пропуски (опасный не помечен). Сейчас это есть только в
-       условиях (`landing.terms.sections[1]`) и в подписях проверки на сайте («совет, не
-       гарантия»); проверить онбординг приложения и расширения.
-     - **Строки, которые показывают попадание в Web Risk** — переписать по правилам выше
-       (сейчас «Google flags this site as dangerous», без оговорок):
-       `extension.reason.flagged_dangerous`, `extension.evidence.flagged_dangerous`
-       («Google Safe Browsing — the list Chrome, Firefox and Safari use… marks this site
-       as unsafe»), `mobile.reason.flagged_dangerous` (её же показывает проверка на
-       сайте: `safe_browsing` → `flagged_dangerous` в
-       [`landing/lib/reason-label.ts`](../landing/lib/reason-label.ts)).
-     - **Где назван «Google Safe Browsing» → «Google Web Risk»:** пункт 5 политики
+  1. ✅ 2026-11-03. Google Cloud: проект с привязанной оплатой, на компанию (для
+     российского юрлица Google Cloud может быть недоступен, не проверено) → включить
+     **Web Risk API** → APIs & Services → Credentials → API key. В Restrict key → API
+     restrictions оставить только Web Risk API. Billing → Budgets & alerts → бюджет,
+     например $10.
+  2. ✅ 2026-11-03 17:33 UTC. Railway → `web` → Variables → `WEB_RISK_API_KEY`. С ним
+     `safe_browsing.get_client()` отдаёт `WebRiskClient`
+     ([`api/services/web_risk.py`](../api/services/web_risk.py)) для `/check`,
+     `/public/check`, `/email/analyze` и `confirmed_threats`. Если заданы оба ключа,
+     используется Web Risk.
+  3. ⏳ Ждёт суточной проверки (не раньше 2026-11-04 17:33 UTC). Если проверка прошла,
+     удалить из `web` и `GOOGLE_SAFE_BROWSING_API_KEY`, и `GOOGLE_SAFE_BROWSING_KEY`
+     (сервер принимает оба имени, [`api/config.py`](../api/config.py)). Тогда сервер не
+     вернётся тихо к Safe Browsing, если ключ Web Risk пропадёт: в staging и production
+     он напишет в лог `neither google_safe_browsing_key nor web_risk_api_key set`.
+  4. ✅ В коде (ветка `feat/web-risk-advisory`). Правила Web Risk для предупреждений
+     (docs.cloud.google.com/web-risk/docs/user-warnings и
+     docs.cloud.google.com/web-risk/docs/advisory, перечитаны 2026-11-03; адреса
+     cloud.google.com/web-risk/… теперь переадресуют туда):
+     - **Подпись.** Предупреждение, среди причин которого есть сигнал `safe_browsing`
+       (с ключом Web Risk он называется так же), несёт строку «Advisory provided by
+       Google» (на языке человека) со ссылкой на
+       https://docs.cloud.google.com/web-risk/docs/advisory. На предупреждениях только по
+       другим источникам подписи Google нет. Где: в расширении — страница блокировки (под
+       кнопками, вне карточек, поэтому видна и в режиме «Ребёнок»), подсказка у значка
+       ссылки (с подписью она кликабельна), проверка из контекстного меню, всплывающее
+       окно и плашка в почте (там сигнал Google — находка `known_dangerous_link`:
+       ссылки письма проверяет только Web Risk); в приложении — экраны результата,
+       «Поделиться» и проверки сообщения; на сайте — проверка `/check`; в надстройке
+       Outlook — панель (по-английски, как вся панель). Один набор слов на 10 языках:
+       `extension.advisory` (сайт читает его как пространство `Advisory`).
+     - **Осторожные слова.** Переписаны: `extension.reason.flagged_dangerous` и
+       `mobile.reason.flagged_dangerous` («Google warns this site may be dangerous»),
+       `extension.evidence.flagged_dangerous` (списки Google с подозреваемыми сайтами,
+       «may try…»), а также найденные сверх списка: заголовок и пояснение страницы
+       блокировки (`block_page.subtitle_scam`, `explanation`, `voice_alert`), то же во
+       всплывающем окне (`popup.status_danger_title`, `status_danger_subtitle`) — их
+       видит человек и на блокировке по Google; строка плашки почты
+       `webmail.finding_url_reputation`; английские тексты сервера (`detail` у
+       `safe_browsing` в [`api/services/scoring.py`](../api/services/scoring.py),
+       сообщение `known_dangerous_link` в
+       [`api/services/email_analyzer.py`](../api/services/email_analyzer.py), его
+       показывает надстройка Outlook).
+     - **Узнать больше.** Под подписью — две ссылки: фишинг → https://www.antiphishing.org/,
+       вредоносные программы → https://developers.google.com/search/docs/advanced/security/malware.
+       Обе сразу: API не передаёт клиентам тип угрозы (фишинг, вредоносная или
+       нежелательная программа), только код `safe_browsing`.
+     - **Защита не идеальна.** Расширение: на странице приветствия (её открывает
+       установка) строка «No protection is perfect: now and then a safe site may be
+       flagged by mistake, and a dangerous one may be missed» (`welcome.limits`), а
+       до установки это видно в описаниях магазинов (см. ниже). Приложение: первый
+       экран онбординга (`mobile.onboarding.s1_desc`) заканчивается той же мыслью —
+       его видят до включения любой защиты. Отдельного дизайна не понадобилось.
+     - **«Google Safe Browsing» → «Google Web Risk»:** пункт 5 политики
        (`landing.privacy_policy.sections[4]`), `landing.privacy.server_note`, FAQ
-       (`landing.faq.items[0]`, `[3]`), согласие webmail в расширении
-       (`extension.webmail.setting_consent`), [`PRIVACY.md`](PRIVACY.md), `THIRD_PARTY_FEEDS.md` §2.
-     - **Тексты магазинов.** [`STORE_SUBMISSION_KIT.md`](STORE_SUBMISSION_KIT.md):
-       описание Google Play EN и RU (§1.2, §1.3), ответ для Data safety (§1.5),
-       описание расширения EN и RU (§2.1, §2.2). [`APP_STORE_LISTING.md`](APP_STORE_LISTING.md):
-       описание App Store EN и RU. Опубликованные описания основатель меняет в консолях.
+       (`landing.faq.items[0]`; вопрос «чем вы отличаетесь от Google Safe Browsing»
+       стал «чем вы отличаетесь от предупреждений в браузере»), согласие webmail
+       (`extension.webmail.setting_consent`), [`PRIVACY.md`](PRIVACY.md),
+       [`THIRD_PARTY_FEEDS.md`](THIRD_PARTY_FEEDS.md) §2 и §5. Неиспользуемая строка
+       бенчмарка `landing.methodology.caveat_gsb` удалена.
+     - **Тексты магазинов** — в документах обновлены; в консолях меняет основатель,
+       вставляя поле целиком из документа:
+       1. Google Play Console → Main store listing → Full description, английский
+          ([`STORE_SUBMISSION_KIT.md`](STORE_SUBMISSION_KIT.md) §1.2) и русский перевод
+          (§1.3): «Google Safe Browsing» → «Google Web Risk» и в «Чего Cleanway не
+          обещает» строка о ложных срабатываниях. Можно в любой момент.
+       2. RuStore → описание: тот же русский текст
+          ([`RUSTORE_SUBMISSION.md`](RUSTORE_SUBMISSION.md) §7.3, проверка сверяет его с
+          Play побуквенно).
+       3. Chrome Web Store, Edge Add-ons, Firefox AMO → подробное описание, английское и
+          русское (`STORE_SUBMISSION_KIT.md` §2.1, §2.2): те же две правки.
+       4. App Store Connect → описание, английское и русское
+          ([`APP_STORE_LISTING.md`](APP_STORE_LISTING.md)): те же две правки. Описание
+          меняется только с новой версией, поэтому — при отправке следующей (1.1.0);
+          1.0.6 на проверке, её не трогать.
+       5. Play Console → Data safety: ответы не меняются (в документе поменялось только
+          название сервиса в пояснении).
 
-     Все 10 языков, затем `python3 scripts/build-i18n.py`. В расширении и приложении
-     строки обновятся с их следующим выпуском, поэтому выпуск — тоже до первого платежа.
+     В расширении и приложении строки обновятся с их следующим выпуском, поэтому выпуск —
+     тоже до первого платежа.
 - **Сколько и кто.** 0 $ до 100 000 запросов в месяц, дальше плата за каждую тысячу
   (cloud.google.com/web-risk/pricing). Запрос уходит только при свежем анализе; ответ
   «угроза» кешируется до `expireTime` (не дольше часа), «чисто» — на 5 минут.
@@ -217,9 +257,17 @@ Variables: нет `LICENSED_INTEL=all` и нет `PUBLISH_CONFIRMED_THREATS`.
   У Safe Browsing API запросов ноль, кроме воскресного бенчмарка (шаг 10). Railway →
   `web` → Logs: нет `web_risk_api_error`, со временем появляются `web_risk_hit`.
   Проверка сайта, приложение и расширение на адресе из Web Risk показывают «Advisory
-  provided by Google» со ссылкой и ссылку «узнать больше»; на сайте, помеченном только
+  provided by Google» со ссылкой и ссылки «узнать больше»; на сайте, помеченном только
   другими списками, подписи Google нет. `git grep -i "safe browsing"` по текстам для
-  людей (`packages/i18n-strings/src`, `docs/PRIVACY.md`, тексты магазинов) пуст.
+  людей (`packages/i18n-strings/src`, `docs/PRIVACY.md` кроме дат «until 2026-11-03»,
+  тексты магазинов) пуст; ключевое слово поиска `safe browsing` в App Store и Edge —
+  общее слово, не название сервиса Google, его можно оставить.
+- **Осталось (не в этом шаге).** Пояснение «Что это за мошенничество?» на странице
+  блокировки (`/api/v1/explain`, [`api/services/scam_explainer.py`](../api/services/scam_explainer.py))
+  относит сигнал `safe_browsing` к краже паролей: на попадании Google по вредоносной
+  программе оно описывает не ту угрозу. И API не передаёт тип угрозы Web Risk — с ним
+  можно было бы показывать одну нужную ссылку «узнать больше» (и третью, про
+  нежелательные программы, google.com/about/company/unwanted-software-policy.html).
 
 ## 8. AlienVault OTX и PhishStats → `RESTRICTED_CHECKS`
 
