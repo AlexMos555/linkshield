@@ -236,10 +236,11 @@ function startMockApi(family) {
           state.limited.add(domain);
           return json(429, { detail: { error: "Too many checks from this app.", retry_after_seconds: 2 } }, { "Retry-After": "2" });
         }
-        // gscam-* is on Google's lists (Web Risk's hit has the safe_browsing code).
+        // gscam-* is on Google's lists (Web Risk's hit has the safe_browsing code);
+        // advisory_ttl: how long Google's answer stays valid, as the API says.
         if (domain.startsWith("gscam-")) {
           return json(200, { domain, score: 98, level: "dangerous",
-            signals: ["Google lists this site as possibly unsafe"], reason_codes: ["safe_browsing"] });
+            signals: ["Google lists this site as possibly unsafe"], reason_codes: ["safe_browsing"], advisory_ttl: 600 });
         }
         const scam = domain.startsWith("scam-");
         return json(200, scam
@@ -876,6 +877,8 @@ async function runTree(tree) {
         "https://docs.cloud.google.com/web-risk/docs/advisory",
         "https://www.antiphishing.org/",
         "https://developers.google.com/search/docs/advanced/security/malware",
+        // The server asks Web Risk about unwanted software too: its own page.
+        "https://www.google.com/about/company/unwanted-software-policy.html",
       ], `advisory links: ${JSON.stringify(links)}`);
       assert.equal(links[0].text, messages.advisory_google.message);
       assert.ok(links.every((a) => a.target === "_blank" && a.rel === "noopener noreferrer"), JSON.stringify(links));
