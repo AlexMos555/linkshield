@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
 import {
   type BenchmarkSnapshot,
   detectionFigures,
-  falsePositiveRateIsPublishable,
+  falseAlarmFigures,
 } from "../lib/benchmark";
 
 import { BILLING_ON, SUPPORT_LIVE } from "./billing-flag";
@@ -79,12 +79,21 @@ test("/ru/transparency shows no hand-written numbers or raw placeholders", async
   for (const text of ["1 842 630", "1,842,630", "0,08", "$PERIOD$", "$DATE$", "$COUNT$", "аналитик"]) {
     await expect(body).not.toContainText(text);
   }
+  // Of the real sites that got an answer: wrongly called dangerous, and
+  // warned at all (lib/benchmark.ts falseAlarmFigures) — from a current-method
+  // report only. Until 2026-11-04 this asked falsePositiveRateIsPublishable
+  // and expected «ошибочно названы опасными» from the committed method-1
+  // report: "0% of 137" with its 63 cautions and dead links left out, the bug.
   const fp = page.getByTestId("transparency-fp");
-  if (falsePositiveRateIsPublishable(BENCHMARK)) {
-    await expect(fp).toContainText("ошибочно названы опасными");
-    await expect(fp).not.toContainText("Пока не измеряли");
+  const falseAlarms = falseAlarmFigures(BENCHMARK);
+  if (falseAlarms) {
+    await expect(fp).toContainText("ошибочно назвал опасными");
+    await expect(fp).toContainText(`Из остальных ${falseAlarms.answered} `);
+    await expect(fp).toContainText("«опасно» или «осторожно»");
+    await expect(fp).not.toContainText("Надёжной цифры пока нет");
   } else {
-    await expect(fp).toContainText("Пока не измеряли");
+    await expect(fp).toContainText("Надёжной цифры пока нет");
+    await expect(fp).not.toContainText("%");
   }
   await expect(fp).not.toContainText("{");
   await expect(page.locator('a[href="/ru/transparency/methodology#data-sources"]')).toBeVisible();
@@ -129,6 +138,8 @@ test("/ru home and /ru/transparency quote the detection figure only from a curre
     await expect(badge).toContainText("назвал опасными");
     await expect(badge).toContainText(`из ${figures.answered} `);
     await expect(badge).toContainText("Хотя бы предупреждение получили");
+    // The site check's figure, not what the phone blocks.
+    await expect(badge).toContainText("Это наша проверка сайтов (cleanway.ai/check)");
     await expect(badge).not.toContainText("{");
   } else {
     await expect(badge).toHaveCount(0);
@@ -161,6 +172,16 @@ test("/ru/transparency/methodology is Russian and shows results only for a big e
     await expect(table).toContainText("Названо опасными");
     await expect(table).toContainText("Хотя бы предупреждение");
     await expect(table).not.toContainText("Доля пойманного");
+    // The real-site table: the same pair, cautions counted, only when /transparency quotes it.
+    const tables = main.locator("table");
+    if (falseAlarmFigures(BENCHMARK)) {
+      await expect(tables).toHaveCount(2);
+      await expect(tables.nth(1)).toContainText("Хотя бы предупреждение");
+      await expect(tables.nth(1)).toContainText("Осторожно");
+      await expect(tables.nth(1)).not.toContainText("Доля ложных тревог");
+    } else {
+      await expect(tables).toHaveCount(1);
+    }
   } else {
     await expect(notPublishable).toBeVisible();
     if ((BENCHMARK.method_version ?? 1) < 2) {

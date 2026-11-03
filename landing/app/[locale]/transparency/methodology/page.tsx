@@ -16,12 +16,16 @@
  * was — and links to every raw weekly result, instead of printing a
  * percentage from 24 links under "Snapshot: $DATE$" (report #12).
  *
- * The phishing table shows, for each service, the same two shares as the
- * home page — called dangerous, and warned at all (dangerous or caution) —
- * over the links whose name still existed and that got an answer, with their
- * 95% intervals and every count behind them. Recall, precision (always 100%
- * on a batch of phishing links only) and F1 are gone from it: recall left
- * every caution, dead link and missing answer out.
+ * Both tables show, for each service, the same two shares as the home page
+ * — called dangerous, and warned at all (dangerous or caution) — over the
+ * rows that were live and got an answer, with their 95% intervals and every
+ * count behind them. Recall, precision (always 100% on a batch of phishing
+ * links only) and F1 are gone from the phishing table: recall left every
+ * caution, dead link and missing answer out. The false-positive rate and its
+ * "No verdict" column are gone from the real-site one for the same reason
+ * (on the tests' fixture, 58 cautions on 196 real sites sat in "No verdict"
+ * under a 0.7% rate). It shows only when /transparency may quote it
+ * (lib/benchmark.ts falseAlarmFigures).
  *
  * It ends with "Data sources" (DataSources.tsx): the credit the open data the
  * product is built from asks for, linked from the app's Settings → About.
@@ -32,10 +36,11 @@ import { routing, type Locale } from "@/i18n/routing";
 import {
   MAX_NO_ANSWER_RATE,
   MIN_PHISHING_CLASSIFIED,
+  MIN_PHISHING_RESOLVING,
   MIN_PHISHING_SAMPLE,
   comparedRows,
   detectionFigures,
-  falsePositiveRateIsPublishable,
+  falseAlarmFigures,
   legitSampleRanking,
   loadLatestBenchmark,
   recallIsPublishable,
@@ -126,7 +131,8 @@ function ShareCell({ rate, interval, locale }: { rate: number | null | undefined
   );
 }
 
-function PhishingTable({ data, t, locale }: { data: BenchmarkSnapshot; t: Translate; locale: string }) {
+/** One batch, every service: both shares over its answered rows, and every count behind them. */
+function SharesTable({ batch, t, locale }: { batch: Record<string, ResolverStats>; t: Translate; locale: string }) {
   return (
     <div style={{ overflowX: "auto", marginBottom: 12 }}>
       <table style={_table}>
@@ -145,7 +151,7 @@ function PhishingTable({ data, t, locale }: { data: BenchmarkSnapshot; t: Transl
           </tr>
         </thead>
         <tbody>
-          {comparedRows(data.phishing).map(([name, m]: [string, ResolverStats]) => (
+          {comparedRows(batch).map(([name, m]: [string, ResolverStats]) => (
             <tr key={name} style={rowStyle(name)}>
               <td style={_td}><strong>{RESOLVER_LABELS[name] || name}</strong></td>
               <ShareCell rate={m.dangerous_rate_answered} interval={m.dangerous_rate_answered_wilson95} locale={locale} />
@@ -156,37 +162,6 @@ function PhishingTable({ data, t, locale }: { data: BenchmarkSnapshot; t: Transl
               <td style={_tdNum}>{m.safe ?? "—"}</td>
               <td style={_tdNum}>{m.not_found ?? "—"}</td>
               <td style={_tdNum}>{m.no_answer ?? "—"}</td>
-              <td style={_tdNum}>{ms(m.latency_p50_ms)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function SafeTable({ data, t, locale }: { data: BenchmarkSnapshot; t: Translate; locale: string }) {
-  return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={_table}>
-        <thead>
-          <tr>
-            <th style={_th}>{t("col_service")}</th>
-            <th style={_thNum}>{t("col_fpr")}</th>
-            <th style={_thNum}>{t("col_fp")}</th>
-            <th style={_thNum}>{t("col_tn")}</th>
-            <th style={_thNum}>{t("col_unknown")}</th>
-            <th style={_thNum}>{t("col_latency")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {comparedRows(data.safe).map(([name, m]: [string, ResolverStats]) => (
-            <tr key={name} style={rowStyle(name)}>
-              <td style={_td}><strong>{RESOLVER_LABELS[name] || name}</strong></td>
-              <td style={_tdNum}>{pct(m.fpr, locale, 2)}</td>
-              <td style={_tdNum}>{m.fp}</td>
-              <td style={_tdNum}>{m.tn}</td>
-              <td style={_tdNum}>{m.unknown}</td>
               <td style={_tdNum}>{ms(m.latency_p50_ms)}</td>
             </tr>
           ))}
@@ -220,6 +195,7 @@ function Results({ data, t, locale }: { data: BenchmarkSnapshot | null; t: Trans
           live: ours?.resolving ?? 0,
           answered: ours?.answered ?? 0,
           min_phishing: MIN_PHISHING_SAMPLE,
+          min_live: MIN_PHISHING_RESOLVING,
           min_classified: MIN_PHISHING_CLASSIFIED,
           min_answered_share: Math.round((1 - MAX_NO_ANSWER_RATE) * 100),
         })}
@@ -237,11 +213,14 @@ function Results({ data, t, locale }: { data: BenchmarkSnapshot | null; t: Trans
         {t("results_snapshot", { date: day(data.ts, locale), phishing: data.n_phishing, legit: data.n_safe })}
       </p>
       <h3 style={_h3}>{t("phishing_table_heading")}</h3>
-      <PhishingTable data={data} t={t} locale={locale} />
+      <SharesTable batch={data.phishing} t={t} locale={locale} />
       <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 24 }}>{t("phishing_table_note")}</p>
       <h3 style={_h3}>{t("safe_table_heading")}</h3>
-      {falsePositiveRateIsPublishable(data) ? (
-        <SafeTable data={data} t={t} locale={locale} />
+      {falseAlarmFigures(data) ? (
+        <>
+          <SharesTable batch={data.safe} t={t} locale={locale} />
+          <p style={{ color: "#94a3b8", fontSize: 13 }}>{t("safe_table_note")}</p>
+        </>
       ) : (
         <p style={{ color: "#fbbf24" }}>{t("fp_not_measured")}</p>
       )}

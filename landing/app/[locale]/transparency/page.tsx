@@ -8,8 +8,13 @@
  * measurement. Now the page reads the committed weekly benchmark
  * (docs/benchmarks/latest.json) and shows a figure only when the report is
  * made by the current method and clears the quality gate in lib/benchmark.ts
- * (detectionFigures); otherwise it says, in plain words, that there is no
- * trustworthy number yet.
+ * (detectionFigures, falseAlarmFigures); otherwise it says, in plain words,
+ * that there is no trustworthy number yet.
+ *
+ * Both figures are the same pair over the answered rows: called dangerous,
+ * and warned at all (a caution included). The false-alarm one used to be the
+ * old fpr of a method-1 report ("0% of 137 legitimate sites" on 2026-11-01),
+ * which left out the other 63 of its 200 real sites, every caution among them.
  */
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
@@ -17,13 +22,14 @@ import { getTranslations } from "next-intl/server";
 import { routing, type Locale } from "@/i18n/routing";
 import {
   MIN_PHISHING_SAMPLE,
+  MIN_SAFE_CLASSIFIED,
   detectionFigures,
-  falsePositiveRateIsPublishable,
+  falseAlarmFigures,
   loadLatestBenchmark,
   type BenchmarkSnapshot,
 } from "@/lib/benchmark";
 import { DATA_SOURCES_ANCHOR } from "@/lib/data-sources";
-import { detectionMessageArgs } from "@/lib/detection-copy";
+import { answeredMessageArgs, detectionMessageArgs } from "@/lib/detection-copy";
 import { localePath } from "@/lib/locale-path";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
@@ -37,17 +43,6 @@ function urlFor(locale: Locale | string): string {
 
 function resolveLocale(locale: string): Locale {
   return (routing.locales as readonly string[]).includes(locale) ? (locale as Locale) : routing.defaultLocale;
-}
-
-function percent(fraction: number, locale: string): string {
-  return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(fraction * 100);
-}
-
-function day(iso: string, locale: string): string {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime())
-    ? iso
-    : new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(date);
 }
 
 export async function generateMetadata({
@@ -93,13 +88,9 @@ function detectionText(t: Translate, snapshot: BenchmarkSnapshot | null, locale:
 }
 
 function falseAlarmText(t: Translate, snapshot: BenchmarkSnapshot | null, locale: string): string {
-  if (!snapshot || !falsePositiveRateIsPublishable(snapshot)) return t("fp_not_yet");
-  const ours = snapshot.safe.cleanway;
-  return t("fp_measured", {
-    date: day(snapshot.ts, locale),
-    fpr: percent(ours.fpr ?? 0, locale),
-    count: ours.tn + ours.fp,
-  });
+  const figures = falseAlarmFigures(snapshot);
+  if (!figures) return t("fp_not_yet", { min: MIN_SAFE_CLASSIFIED });
+  return t("fp_measured", answeredMessageArgs(figures, locale));
 }
 
 const section: React.CSSProperties = { marginBottom: 36 };

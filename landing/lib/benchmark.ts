@@ -38,7 +38,11 @@ export interface ResolverStats {
   dangerous?: number;
   caution?: number;
   safe?: number;
-  /** Rows whose name does not exist (the benchmark's own probe): not found for every resolver, whatever it answered. */
+  /**
+   * Rows that are not live by the benchmark's own probe — the name does not
+   * exist, or (since 2026-11-04) every address it has is non-public (0.0.0.0,
+   * a private range: a takedown): not found for every resolver, whatever it answered.
+   */
   not_found?: number;
   /** Live rows that got no answer: HTTP 429, an error, a timeout. */
   no_answer?: number;
@@ -143,7 +147,10 @@ export const MIN_PHISHING_CLASSIFIED = 50;
  * (eval_fresh_urls._QG_MIN_RESOLVING_PHISHING says why not 100).
  */
 export const MIN_PHISHING_RESOLVING = 50;
-/** Minimum legitimate sites that got a real verdict before a false-positive rate is shown. */
+/**
+ * Minimum legitimate sites that got an answer (dangerous, caution or safe)
+ * before the false-alarm figures are shown (falsePositiveRateIsPublishable).
+ */
 export const MIN_SAFE_CLASSIFIED = 50;
 /**
  * Above this share of live links with no answer at all (HTTP 429, an error, a
@@ -215,26 +222,33 @@ export interface AnsweredShare {
 }
 
 /**
- * The one detection figure the site quotes, from one report's phishing half
- * for Cleanway: of the links in the sample whose name still existed and that
- * got an answer (`answered`), the share Cleanway called dangerous — the
- * headline — and the share it warned about at all (dangerous or caution).
+ * One batch of one report for Cleanway: of the rows in the sample that were
+ * live and got an answer (`answered`), the share Cleanway called dangerous
+ * and the share it warned about at all (dangerous or caution).
  */
-export interface DetectionFigures {
+export interface AnsweredFigures {
   /** When the run ended. */
   ts: string;
-  /** Phishing links in the sample. */
+  /** Rows in the batch's sample. */
   n: number;
-  /** The sample was drawn from links submitted to PhishTank in this many days before the dump's newest one. */
-  days: number;
-  /** Links whose name no longer existed (the benchmark's own DNS probe): not counted. */
+  /** Rows that were not live (the benchmark's own DNS probe: no such name, or only non-public addresses): not counted. */
   notFound: number;
-  /** Live links without an answer (HTTP 429, an error, a timeout): not counted. */
+  /** Live rows without an answer (HTTP 429, an error, a timeout): not counted. */
   noAnswer: number;
   /** n − notFound − noAnswer: what both shares are of. */
   answered: number;
   dangerous: AnsweredShare;
   warned: AnsweredShare;
+}
+
+/**
+ * The one detection figure the site quotes, from one report's phishing half:
+ * the share of the live links that got an answer that Cleanway called
+ * dangerous — the headline — and the share it warned about at all.
+ */
+export interface DetectionFigures extends AnsweredFigures {
+  /** The sample was drawn from links submitted to PhishTank in this many days before the dump's newest one. */
+  days: number;
 }
 
 function isCount(value: unknown): value is number {
@@ -278,15 +292,30 @@ function answeredShare(count: number, of: number, rate: unknown, interval: Wilso
  * links were submitted in the days before the run.
  */
 export function detectionFigures(snapshot: BenchmarkSnapshot | null): DetectionFigures | null {
-  if (!snapshot || (snapshot.method_version ?? 1) < 2 || !recallIsPublishable(snapshot)) return null;
-  const ours = snapshot.phishing.cleanway;
+  if (!snapshot || !isCurrentMethod(snapshot) || !recallIsPublishable(snapshot)) return null;
   const days = snapshot.sampling?.window?.days;
   if (!isCount(days) || days === 0) return null;
+  const figures = answeredFigures(snapshot.ts, snapshot.n_phishing, snapshot.phishing?.[OURS]);
+  return figures ? { ...figures, days } : null;
+}
+
+/** Made by the current method (method_version 2, since 2026-11-03); absent = 1. */
+function isCurrentMethod(snapshot: BenchmarkSnapshot): boolean {
+  return (snapshot.method_version ?? 1) >= 2;
+}
+
+/**
+ * Both shares of one batch, only when the report's counts give them: answered
+ * = n − not found − no answer = dangerous + caution + safe, and each rate is
+ * its count over answered, inside its interval.
+ */
+function answeredFigures(ts: string, batchSize: number, ours: ResolverStats | undefined): AnsweredFigures | null {
+  if (!ours) return null;
   const counts = [ours.n, ours.dangerous, ours.caution, ours.safe, ours.not_found, ours.no_answer, ours.answered];
   if (!counts.every(isCount)) return null;
   const [n, dangerous, caution, safe, notFound, noAnswer, answered] = counts as number[];
   if (
-    n !== snapshot.n_phishing ||
+    n !== batchSize ||
     answered !== n - notFound - noAnswer ||
     answered !== dangerous + caution + safe ||
     answered === 0
@@ -296,23 +325,53 @@ export function detectionFigures(snapshot: BenchmarkSnapshot | null): DetectionF
   const called = answeredShare(dangerous, answered, ours.dangerous_rate_answered, ours.dangerous_rate_answered_wilson95);
   const warned = answeredShare(dangerous + caution, answered, ours.warned_rate_answered, ours.warned_rate_answered_wilson95);
   if (!called || !warned) return null;
-  return { ts: snapshot.ts, n, days, notFound, noAnswer, answered, dangerous: called, warned };
+  return { ts, n, notFound, noAnswer, answered, dangerous: called, warned };
 }
 
 /**
- * True when a false-positive rate from this snapshot would mean something:
- * enough legitimate sites got a verdict AND they were sites our server really
- * analysed. The benchmark's old legitimate sample came from Tranco ranks
- * 100–100,000, and the public check answered every one of those "safe" without
- * looking (is_trusted_top_domain, then on Tranco's top 100k). A rate from that sample is near 0% by
- * construction — the hand-written "0.08%" again, with a real-looking source —
- * while real Russian sites outside the top got "Dangerous" 6 times in 12
- * (report 2026-09-25 #1).
+ * True when a false-alarm figure from this snapshot would mean something: a
+ * report made by the current method, whose legitimate sample is of sites our
+ * server really analysed, with enough of them answered and few left without
+ * an answer.
+ *
+ * The sample: the benchmark's old legitimate sample came from Tranco ranks
+ * 100–100,000, and the public check answered every one of those "safe"
+ * without looking (is_trusted_top_domain, then on Tranco's top 100k). A rate
+ * from that sample is near 0% by construction — the hand-written "0.08%"
+ * again, with a real-looking source — while real Russian sites outside the
+ * top got "Dangerous" 6 times in 12 (report 2026-09-25 #1).
+ *
+ * The method: until 2026-11-04 this read a method 1 report's fpr (dangerous
+ * over dangerous + safe), and /transparency said "0% of 137 legitimate sites
+ * were wrongly flagged" from the 2026-11-01 report — whose other 63 real
+ * sites, the cautions among them, sat in one "unknown" that /methodology
+ * itself calls not comparable. Now only a method 2 report, with the floors
+ * the phishing figure has: at least MIN_SAFE_CLASSIFIED answered (the
+ * shares' denominator) and at most MAX_NO_ANSWER_RATE of the live ones
+ * without an answer (a run that hit our rate limit measured that).
  */
 export function falsePositiveRateIsPublishable(snapshot: BenchmarkSnapshot | null): boolean {
-  if (!snapshot || snapshot.sources?.legit_outside_allowlist !== true) return false;
+  if (!snapshot || !isCurrentMethod(snapshot) || snapshot.sources?.legit_outside_allowlist !== true) return false;
   const ours = snapshot.safe?.[OURS];
-  return typeof ours?.fpr === "number" && classified(ours, "tn", "fp") >= MIN_SAFE_CLASSIFIED;
+  return (
+    isCount(ours?.answered) &&
+    ours.answered >= MIN_SAFE_CLASSIFIED &&
+    isCount(ours.no_answer) &&
+    isCount(ours.resolving) &&
+    noAnswerRate(ours) <= MAX_NO_ANSWER_RATE
+  );
+}
+
+/**
+ * The false-alarm figures /transparency and /methodology quote, or null: of
+ * the real sites in the sample that were live and got an answer, the share
+ * Cleanway called dangerous (a false alarm) and the share it warned about at
+ * all — a caution on a real site is a warning its visitor sees, and the old
+ * fpr left every one out.
+ */
+export function falseAlarmFigures(snapshot: BenchmarkSnapshot | null): AnsweredFigures | null {
+  if (!snapshot || !falsePositiveRateIsPublishable(snapshot)) return null;
+  return answeredFigures(snapshot.ts, snapshot.n_safe, snapshot.safe?.[OURS]);
 }
 
 /**
