@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect, type Page } from "@playwright/test";
 
+import { routeLiveChecks } from "./live-api";
+
 /**
  * Accessibility: axe-core (WCAG 2.0/2.1/2.2 A + AA rules) on the pages people
  * land on. Many of our users are older and use large text, a screen reader or
@@ -9,7 +11,8 @@ import { test, expect, type Page } from "@playwright/test";
  * printed so they stay visible without blocking.
  *
  * /check/<domain> is answered by e2e/mock-api.mjs (see playwright.config.ts),
- * so the verdict pages render without calling the production API.
+ * so the verdict pages render without calling the production API — the live
+ * check a Google verdict gets in the browser too (e2e/live-api.ts).
  */
 
 const PAGES = [
@@ -44,9 +47,12 @@ for (const path of PAGES) {
     // Reduced motion: audit the settled page, not a fade-in mid-flight
     // (and it is how many of our users browse).
     await page.emulateMedia({ reducedMotion: "reduce" });
+    await routeLiveChecks(page);
     const response = await page.goto(path);
     expect(response?.status(), `${path} did not load`).toBe(200);
     await page.waitForLoadState("networkidle");
+    // A Google verdict arrives from the live check: audit it, not the wait.
+    if (path.includes("google-flagged")) await expect(page.getByTestId("google-advisory")).toBeVisible();
 
     const { violations } = await audit(page);
 

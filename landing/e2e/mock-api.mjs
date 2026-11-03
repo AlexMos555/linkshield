@@ -28,6 +28,8 @@ const VERDICTS = {
     reason_codes: ["safe_browsing", "domain_new"],
     confidence: "high",
     confidence_pct: 96,
+    // Seconds Google's answer stays valid (the API's advisory_ttl).
+    advisory_ttl: 600,
   },
 };
 

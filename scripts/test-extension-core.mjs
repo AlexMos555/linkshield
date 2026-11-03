@@ -2912,11 +2912,16 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
 // does not call the page certainly unsafe; a warning built on other sources
 // must not carry Google's name. docs/PAID_LAUNCH_SWITCHES.md §7 step 4.
 
+// The server asks Web Risk about UNWANTED_SOFTWARE too (api/services/
+// web_risk.py), and every warning "must enable the user to learn more" about
+// its threat type: unwanted software has its own page, Google's policy.
 const GOOGLE_LINKS = {
   advisory: "https://docs.cloud.google.com/web-risk/docs/advisory",
   phishing: "https://www.antiphishing.org/",
   malware: "https://developers.google.com/search/docs/advanced/security/malware",
+  unwanted: "https://www.google.com/about/company/unwanted-software-policy.html",
 };
+const LEARN_MORE = [GOOGLE_LINKS.advisory, GOOGLE_LINKS.phishing, GOOGLE_LINKS.malware, GOOGLE_LINKS.unwanted];
 
 function loadReasons(tree) {
   const window = {};
@@ -2944,13 +2949,13 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     }
     const html = labels.googleAdvisoryHtml([{ signal: "domain_new" }, { signal: "safe_browsing" }]);
     const links = anchors(html);
-    assert.deepEqual(links.map((a) => a.href), [GOOGLE_LINKS.advisory, GOOGLE_LINKS.phishing, GOOGLE_LINKS.malware]);
+    assert.deepEqual(links.map((a) => a.href), LEARN_MORE);
     for (const a of links) {
       assert.equal(a.target, "_blank", `${a.href} opens over the warning`);
       assert.equal(a.rel, "noopener noreferrer", `${a.href} rel`);
     }
     // The words come from the catalog, escaped (the fake catalog answers "<key>").
-    for (const key of ["advisory_google", "advisory_learn_more", "advisory_learn_phishing", "advisory_learn_malware"]) {
+    for (const key of ["advisory_google", "advisory_learn_more", "advisory_learn_phishing", "advisory_learn_malware", "advisory_learn_unwanted"]) {
       assert.ok(html.includes(`&lt;${key}&gt;`), `${key} is not on the advisory: ${html}`);
     }
     assert.ok(!/<advisory_/.test(html), "catalog text reached the markup unescaped");
@@ -3001,7 +3006,7 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     const box = html.match(/<(p|div)\b[^>]*\bid="google-advisory"[^>]*>[\s\S]*?<\/\1>/);
     assert.ok(box, "popup.html has no #google-advisory");
     assert.match(box[0], /^<[a-z]+\b[^>]*\shidden[\s>]/, "the popup shows Google's credit before any verdict");
-    assert.deepEqual(anchors(box[0]).map((a) => a.href), [GOOGLE_LINKS.advisory, GOOGLE_LINKS.phishing, GOOGLE_LINKS.malware]);
+    assert.deepEqual(anchors(box[0]).map((a) => a.href), LEARN_MORE);
     assert.ok(anchors(box[0]).every((a) => a.target === "_blank" && a.rel === "noopener noreferrer"), "popup advisory link target/rel");
     const at = (s) => html.indexOf(s);
     assert.ok(at('src="../content/reason-labels.js"') >= 0 && at('src="../content/reason-labels.js"') < at('src="popup.js"'),
@@ -3031,7 +3036,7 @@ await check("Google's verdict is a suspicion, not a certainty, in every locale, 
       }
       assert.match(m.evidence_flagged_dangerous.message, /Google Web Risk/, `${tree}/${locale} evidence_flagged_dangerous`);
       assert.match(m.webmail_setting_consent.message, /Google Web Risk/, `${tree}/${locale} webmail_setting_consent`);
-      for (const key of ["advisory_google", "advisory_learn_more", "advisory_learn_phishing", "advisory_learn_malware", "welcome_limits"]) {
+      for (const key of ["advisory_google", "advisory_learn_more", "advisory_learn_phishing", "advisory_learn_malware", "advisory_learn_unwanted", "welcome_limits"]) {
         assert.ok(m[key] && m[key].message, `${tree}/${locale} lacks ${key}`);
       }
       assert.match(m.advisory_google.message, /Google/, `${tree}/${locale} advisory_google does not name Google`);
@@ -3061,6 +3066,102 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     const popup = readFileSync(join(ROOT, tree, "src/popup/popup.js"), "utf8");
     assert.ok(!/status_danger_title: "This is a scam site"/.test(popup), "popup.js fallback is still a certainty");
   });
+}
+
+// The steps under "How scammers use sites like this" render on every block
+// page, Google's included: possibilities, never "you will be asked".
+await check("the block page's scheme steps are possibilities, in the catalog and in its English fallback", () => {
+  const en = readJson("extension/_locales/en/messages.json");
+  const ru = readJson("extension/_locales/ru/messages.json");
+  for (const n of [1, 2, 3]) {
+    const key = `block_scheme_step${n}`;
+    assert.match(en[key].message, /\b(may|might|could)\b/i, `en ${key} reads as a certainty: ${en[key].message}`);
+    assert.match(ru[key].message, /мож|могут/, `ru ${key} reads as a certainty: ${ru[key].message}`);
+    for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+      const block = readFileSync(join(ROOT, tree, "src/content/block-page.js"), "utf8");
+      const fallback = block.match(new RegExp(`${key}: "([^"]*)"`));
+      assert.ok(fallback, `[${tree}] block-page.js has no fallback for ${key}`);
+      assert.equal(fallback[1], en[key].message, `[${tree}] block-page.js fallback for ${key} differs from the catalog`);
+    }
+  }
+});
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] the settings page's consent text names Google Web Risk, not Safe Browsing`, () => {
+    const html = readFileSync(join(ROOT, tree, "src/options/options.html"), "utf8");
+    assert.ok(!/Safe Browsing/.test(html), "options.html still names Google Safe Browsing");
+    assert.match(html, /data-i18n="webmail_setting_consent"[^>]*>[^<]*Google Web Risk/, "the consent fallback does not name Google Web Risk");
+  });
+
+  // Web Risk's rules: a warning may be shown only while "the cached response
+  // is still valid ... Under no other circumstances". The server says how long
+  // that is (advisory_ttl, api/services/google_advisory.py); the extension's
+  // own cache keeps such a verdict no longer.
+  await check(`[${tree}] a verdict on Google's lists is kept only while Google's answer is valid`, () => withRealClockAndFetch(async () => {
+    const clock = { t: Date.UTC(2026, 10, 4, 12) };
+    const session = memoryStorage();
+    const google = (host, extra) => ({ body: { domain: host, score: 80, level: "dangerous", signals: ["Google"], reason_codes: ["safe_browsing"], ...extra } });
+    const answer = (host) => {
+      if (host === "g.example") return google(host, { advisory_ttl: 120 });
+      // A server from before advisory_ttl: Google's reason, no window — kept nowhere.
+      if (host === "g-unsaid.example") return google(host, {});
+      // Google's reason cut from the shown five: the window still counts.
+      if (host === "g-hidden.example") return { body: { ...google(host, { advisory_ttl: 90 }).body, signals: ["New"], reason_codes: ["domain_new"] } };
+      return verdictFor(host);
+    };
+    const hosts = ["g.example", "g-unsaid.example", "g-hidden.example", "other.example"];
+    const bg = await lookupBackground(tree, { clock, session, answer });
+    await bg.send({ type: "CHECK_DOMAINS", domains: hosts });
+    assert.equal(bg.seen.length, 4);
+    clock.t += 60_000;
+    await bg.send({ type: "CHECK_DOMAINS", domains: hosts });
+    assert.deepEqual(bg.seen.slice(4).map((s) => s.host), ["g-unsaid.example"], "a Google verdict with no window was kept");
+    clock.t += 61_000;
+    await bg.send({ type: "CHECK_DOMAINS", domains: hosts });
+    assert.deepEqual(bg.seen.slice(5).map((s) => s.host).sort(), ["g-hidden.example", "g-unsaid.example", "g.example"],
+      "a Google verdict outlived Google's answer, or another verdict lost its hour");
+    // A restarted worker does not bring one back past its window either.
+    clock.t += 121_000;
+    const restarted = await lookupBackground(tree, { clock, session, answer });
+    await restarted.send({ type: "CHECK_DOMAINS", domains: ["g.example", "other.example"] });
+    assert.deepEqual(restarted.seen.map((s) => s.host), ["g.example"], "storage.session revived an expired Google verdict");
+  }));
+
+  // Family alerts are encrypted to relatives and shown whenever their poll
+  // picks them up, with no "Advisory provided by Google": a block that rests
+  // on Google's lists is the person's own warning, not a relative's message.
+  await check(`[${tree}] a relative never hears of a block that rests on Google's lists`, () => withRealClockAndFetch(async () => {
+    const gv = await import(pathToFileURL(join(ROOT, tree, "src/background/google-verdict.js")).href);
+    assert.equal(gv.restsOnGoogle([{ signal: "phishtank" }, { signal: "safe_browsing" }]), true);
+    for (const reasons of [[{ signal: "phishtank" }], [], null, undefined, [null], [{ detail: "safe_browsing" }]]) {
+      assert.equal(gv.restsOnGoogle(reasons), false, JSON.stringify(reasons));
+    }
+    const hour = 3600_000;
+    assert.equal(gv.apiVerdictTtlMs({ reason_codes: ["safe_browsing"], advisory_ttl: 120 }, hour), 120_000);
+    assert.equal(gv.apiVerdictTtlMs({ reason_codes: ["domain_new"], advisory_ttl: 90.7 }, hour), 90_000);
+    assert.equal(gv.apiVerdictTtlMs({ reason_codes: ["safe_browsing"], advisory_ttl: 9 * hour }, hour), hour, "longer than the cache's own hour");
+    for (const bad of [undefined, null, -5, "120", NaN]) {
+      assert.equal(gv.apiVerdictTtlMs({ reason_codes: ["safe_browsing"], advisory_ttl: bad }, hour), 0, String(bad));
+    }
+    assert.equal(gv.apiVerdictTtlMs({ reason_codes: ["phishtank"], advisory_ttl: null }, hour), hour);
+    assert.equal(gv.apiVerdictTtlMs({}, hour), hour);
+
+    const index = stripComments(readFileSync(join(ROOT, tree, "src/background/index.js"), "utf8"));
+    const report = index.slice(index.indexOf("async function reportBlockToAccount"), index.indexOf("async function checkLinkUrl"));
+    const gate = report.indexOf("restsOnGoogle(verdict.reasons)");
+    assert.ok(gate > 0 && gate < report.indexOf("fanOutAlerts("), "reportBlockToAccount fans out a Google block");
+
+    // The fan-out drops one too, whoever calls it — before it reads anything.
+    const fanout = await import(pathToFileURL(join(ROOT, tree, "src/utils/family-fanout.js")).href);
+    const reads = [];
+    globalThis.chrome = { storage: { local: { get: async (k) => { reads.push(k); return {}; }, set: async () => {} } } };
+    globalThis.fetch = async () => { throw new TypeError("offline"); };
+    const blocked = (signal) => ({ domain: "evil.example", level: "dangerous", source: "api", score: 90, reasons: [{ signal, detail: "x", weight: 10 }] });
+    assert.equal(await fanout.fanOutAlerts("t", [blocked("safe_browsing")]), 0);
+    assert.deepEqual(reads, [], "the fan-out went on with a Google verdict");
+    try { await fanout.fanOutAlerts("t", [blocked("phishtank")]); } catch (e) { /* offline: only the reads matter */ }
+    assert.ok(reads.length > 0, "a verdict on other sources never reached the fan-out (the test proves nothing)");
+  }));
 }
 
 console.log(

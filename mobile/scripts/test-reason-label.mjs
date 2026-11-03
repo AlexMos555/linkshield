@@ -122,12 +122,37 @@ try {
         advisory: "https://docs.cloud.google.com/web-risk/docs/advisory",
         phishing: "https://www.antiphishing.org/",
         malware: "https://developers.google.com/search/docs/advanced/security/malware",
+        // The server asks Web Risk about UNWANTED_SOFTWARE too, and every
+        // warning must let people learn more about its threat type.
+        unwanted: "https://www.google.com/about/company/unwanted-software-policy.html",
       },
+    ],
+    // --- How long a verdict on Google's lists may be kept ---------------------
+    // Web Risk's rules: only while Google's answer is valid. The server says
+    // for how long (advisory_ttl, seconds); a Google verdict without it is
+    // kept nowhere, a longer one never past the cache's own limit.
+    [
+      "a Google verdict is kept only as long as the server says Google's answer lives",
+      () => {
+        const ttl = (reasons, advisory_ttl) => g.advisoryKeepMs({ reasons, ...(advisory_ttl === undefined ? {} : { advisory_ttl }) }, 900_000);
+        const google = [{ code: "safe_browsing", detail: "x" }];
+        const other = [{ code: "phishtank", detail: "x" }];
+        return [ttl(google, 120), ttl(google, 9999), ttl(google, undefined), ttl(google, 0), ttl(other, undefined), ttl(other, 60)];
+      },
+      [120_000, 900_000, 0, 0, 900_000, 60_000],
+    ],
+    [
+      "the message-link cache keeps each answer for advisoryKeepMs, not a flat 15 minutes",
+      () => {
+        const code = readFileSync(resolve(root, "src/services/message-link-check.ts"), "utf8");
+        return [/advisoryKeepMs\(data, CACHE_TTL_MS\)/.test(code), /Date\.now\(\) - cached\.at < CACHE_TTL_MS/.test(code)];
+      },
+      [true, false],
     ],
     [
       "the credit's words exist in every locale, and name Google",
       () => Object.entries(locales).flatMap(([locale, strings]) =>
-        ["extension.advisory.google", "extension.advisory.learn_more", "extension.advisory.learn_phishing", "extension.advisory.learn_malware"]
+        ["extension.advisory.google", "extension.advisory.learn_more", "extension.advisory.learn_phishing", "extension.advisory.learn_malware", "extension.advisory.learn_unwanted"]
           .filter((key) => typeof strings[key] !== "string" || !strings[key])
           .map((key) => `${locale}: ${key}`)
           .concat(/Google/.test(strings["extension.advisory.google"] || "") ? [] : [`${locale}: the credit does not name Google`])),

@@ -146,6 +146,9 @@ def test_a_link_google_flagged_credits_google_in_the_task_pane() -> None:
         "https://docs.cloud.google.com/web-risk/docs/advisory",
         "https://www.antiphishing.org/",
         "https://developers.google.com/search/docs/advanced/security/malware",
+        # The server asks Web Risk about UNWANTED_SOFTWARE too: each threat
+        # type gets its learn-more page.
+        "https://www.google.com/about/company/unwanted-software-policy.html",
     ):
         assert f'href="{url}"' in html, url
     box = re.search(r'<[a-z]+\b[^>]*\bid="google-advisory"[^>]*>', html)
