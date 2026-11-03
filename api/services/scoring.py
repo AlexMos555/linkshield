@@ -1210,8 +1210,22 @@ WEAK_SIGNALS: frozenset[str] = frozenset({
     # where it is registered or hosted
     "risky_tld_medium", "abused_registrar", "risky_registrar", "dynamic_dns_host", "url_shortener",
 })
+# The top of the 'safe' band (a score above it is at least caution).
+SAFE_AT_MOST = 20
 # The top of the caution band (a score above it is 'dangerous').
 DANGEROUS_ABOVE = 50
+
+
+def level_for_score(score: int) -> RiskLevel:
+    """The level of a score: 'safe' up to SAFE_AT_MOST, 'dangerous' above
+    DANGEROUS_ABOVE, caution between. calculate_score's own mapping, and the
+    analyzer's for a score the LLM judge shifted."""
+    if score <= SAFE_AT_MOST:
+        return RiskLevel.safe
+    if score <= DANGEROUS_ABOVE:
+        return RiskLevel.caution
+    return RiskLevel.dangerous
+
 
 # One to five OTX reports whose newest was made this many days ago or earlier
 # (analyzer._otx_reports) are history, not a live campaign, and weak:
@@ -2235,15 +2249,7 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # ── Clamp ──
     score = max(0, min(100, score))
 
-    # ── Determine level ──
-    if score <= 20:
-        level = RiskLevel.safe
-    elif score <= DANGEROUS_ABOVE:
-        level = RiskLevel.caution
-    else:
-        level = RiskLevel.dangerous
-
-    return score, level, reasons
+    return score, level_for_score(score), reasons
 
 
 def calculate_confidence(

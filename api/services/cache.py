@@ -16,7 +16,17 @@ RETIRED_REASONS = frozenset({"ssrf_blocked"})
 
 
 def is_retired(result: DomainResult) -> bool:
-    return any(r.signal in RETIRED_REASONS for r in result.reasons or ())
+    signals = {r.signal for r in result.reasons or ()}
+    if signals & RETIRED_REASONS:
+        return True
+    # A level the analyzer gave an LLM judge's shifted score by its old lines
+    # (30 / 70) that the scorer's (20 / 50) do not: 'safe' at 21-29 (two
+    # phishing hosts on 2026-11-01), caution at 51-69. Fresh analyses map with
+    # the scorer's lines since 2026-11-03; a full verdict is cached for a day.
+    if "llm_judge" in signals:
+        from api.services.scoring import level_for_score
+        return result.level != level_for_score(result.score)
+    return False
 
 
 async def get_redis() -> redis.Redis:

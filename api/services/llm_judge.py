@@ -1,7 +1,7 @@
 """LLM Judge for ambiguous verdicts — Strategy #21.
 
-When the rule-based scorer can't make up its mind — score lands in
-the caution band (~30-70), no blocklist hit, no allowlist short-
+When the rule-based scorer can't make up its mind — level caution
+(a score of 21-50), no blocklist hit, no allowlist short-
 circuit — Claude weighs in with a final verdict. The point isn't
 to replace the heuristic; it's to break ties on the ~5% of domains
 where 1,000-ish features point in different directions.
@@ -91,7 +91,9 @@ LLM_CACHE_TTL_S = 7 * 24 * 3600
 # Score bands. The judge fires ONLY when level == caution: outside
 # this band the rule-based verdict has high-confidence evidence
 # (blocklist hit, known-legit allowlist) and we shouldn't second-
-# guess it.
+# guess it. These two are the caution band from before the scorer
+# moved its lines to 20 / 50 (scoring.level_for_score, which the
+# analyzer maps a shifted score with); only _score_band uses them.
 CAUTION_LOWER = 30
 CAUTION_UPPER = 70
 
@@ -662,12 +664,17 @@ def _shift_for_verdict(verdict: str, score: int) -> int:
     The shift is hard-capped at ±LLM_MAX_SHIFT, so the model can
     move the needle but never overpower hard rule-based evidence.
     """
+    # The analyzer maps the shifted score with the scorer's lines (up to
+    # scoring.SAFE_AT_MOST = 20 'safe', above DANGEROUS_ABOVE = 50
+    # 'dangerous'). These targets are from the old 30-70 band, and that is
+    # now deliberate: "safe" lands at 29 at the lowest, so the judge, which
+    # sees no domain, can never clear a caution to 'safe' (two phishing
+    # hosts were shown 'safe' at 29 on 2026-11-01); "dangerous" adds up to
+    # +20 and counts once the score passes 50.
     if verdict == "dangerous":
-        # Target the lower edge of dangerous (70).
         target = 70
         return max(0, min(target - score, LLM_MAX_SHIFT))
     if verdict == "safe":
-        # Target the upper edge of safe (29).
         target = 29
         return -min(LLM_MAX_SHIFT, score - target) if score > target else 0
     # "caution" — confirm the rule verdict, no shift.

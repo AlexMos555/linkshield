@@ -49,8 +49,8 @@ from api.services.tls_contexts import client_tls_context
 from api.services.public_suffix import CCTLD_OPEN_ZONES
 from api.services.scoring import (
     calculate_score, calculate_confidence, calculate_confidence_pct, is_hosting_platform_site,
-    is_regional_government_domain, is_user_content_service_host, popularity_rank, rank_registrable_domain,
-    _platform_tenant_site,
+    is_regional_government_domain, is_user_content_service_host, level_for_score, popularity_rank,
+    rank_registrable_domain, _platform_tenant_site,
 )
 from api.services.domain_validator import (
     validate_domain,
@@ -262,6 +262,9 @@ async def _judge(
         "domain": domain, "score": score, "verdict": level.value,
         "confidence": confidence.value, "confidence_pct": confidence_pct,
         "checks": measured, "basis": basis, "incomplete": result.checks_incomplete,
+        # The LLM judge's applied shift (None: not applied), so where its
+        # opinions land against the scorer's lines can be counted.
+        "judge_shift": judge_reason.weight if judge_reason is not None else None,
     })
     return result.model_copy(update={"verdict_basis": basis})
 
@@ -638,13 +641,13 @@ async def _llm_judge_within(
         return score, level, None, state != STARTED
     shift = int(judge.get("score_shift", 0))
     if shift != 0:
+        # The scorer's own lines (20 / 50), not the judge's old caution band
+        # of 30-70: with that, a "safe" opinion took a caution of 30-49 to 29
+        # and showed it 'safe' — two phishing hosts on 2026-11-01. The judge
+        # aims its "safe" at 29, so it can no longer clear a caution; its
+        # "dangerous" (+20 at most) counts once past DANGEROUS_ABOVE.
         score = max(0, min(score + shift, 100))
-        if score >= 70:
-            level = RiskLevel.dangerous
-        elif score >= 30:
-            level = RiskLevel.caution
-        else:
-            level = RiskLevel.safe
+        level = level_for_score(score)
     reason = DomainReason(signal="llm_judge", weight=shift, detail=judge["one_line_reason"])
     return score, level, reason, True
 
