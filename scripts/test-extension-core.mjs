@@ -77,7 +77,7 @@ const LOCALES = ["en", "ru", "es", "pt", "fr", "de", "it", "id", "hi", "ar"];
 // webmail banners and the settings page.
 const NEW_KEY_PREFIXES = [
   "badge_", "audit_", "credguard_", "mpg_", "menu_", "command_", "family_notify_", "reason_",
-  "evidence_", "weekly_", "score_", "breach_", "pwned_", "webmail_", "options_", "account_",
+  "evidence_", "weekly_", "score_", "breach_", "pwned_", "webmail_", "options_", "account_", "advisory_",
 ];
 
 // Reason codes whose `detail` is already in the user's language (the
@@ -2899,6 +2899,167 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     for (const real of ["https://lloydsbank.co.uk/", "https://www.commbank.com.au/", "https://upsc.gov.in/"]) {
       assert.equal((await runGuardian(tree, real)).evidence, undefined, `${real} was called a look-alike`);
     }
+  });
+}
+
+// ── Group 15: a warning built on Google's lists credits Google, and only that one ──
+// Production asks Google Web Risk since 2026-11-03 (the API calls its hit
+// `safe_browsing`, the same code Safe Browsing v4 had). Web Risk's rules for
+// warnings (docs.cloud.google.com/web-risk/docs/user-warnings, read
+// 2026-11-03): a warning about a page Google flagged carries "Advisory
+// provided by Google" linked to the Web Risk Advisory, lets people learn more
+// (antiphishing.org for phishing, Google Search Central for malware), and
+// does not call the page certainly unsafe; a warning built on other sources
+// must not carry Google's name. docs/PAID_LAUNCH_SWITCHES.md §7 step 4.
+
+const GOOGLE_LINKS = {
+  advisory: "https://docs.cloud.google.com/web-risk/docs/advisory",
+  phishing: "https://www.antiphishing.org/",
+  malware: "https://developers.google.com/search/docs/advanced/security/malware",
+};
+
+function loadReasons(tree) {
+  const window = {};
+  const ctx = vm.createContext({ window, chrome: { i18n: { getMessage: (key) => `<${key}>` } } });
+  vm.runInContext(readFileSync(join(ROOT, tree, "src/content/reason-labels.js"), "utf8"), ctx);
+  return window.__cleanwayReasons;
+}
+
+/** Every <a …> in a piece of markup: its href, target and rel. */
+function anchors(html) {
+  return [...html.matchAll(/<a\b([^>]*)>/g)].map((m) => ({
+    href: attr(m[0], "href"), target: attr(m[0], "target"), rel: attr(m[0], "rel"),
+  }));
+}
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] a Google reason gets "Advisory provided by Google" and the learn-more links; no other reason does`, () => {
+    const labels = loadReasons(tree);
+    assert.equal(typeof labels.fromGoogle, "function", "reason-labels.js has no fromGoogle()");
+    assert.deepEqual({ ...labels.googleLinks }, GOOGLE_LINKS);
+    assert.equal(labels.fromGoogle([{ signal: "phishtank" }, { signal: "safe_browsing" }]), true);
+    for (const reasons of [[{ signal: "phishtank" }, { signal: "urlhaus" }, { signal: "multi_blocklist" }], [], null, undefined, [null], [{ detail: "Flagged by Google" }]]) {
+      assert.equal(labels.fromGoogle(reasons), false, JSON.stringify(reasons));
+      assert.equal(labels.googleAdvisoryHtml(reasons), "", `advisory drawn for ${JSON.stringify(reasons)}`);
+    }
+    const html = labels.googleAdvisoryHtml([{ signal: "domain_new" }, { signal: "safe_browsing" }]);
+    const links = anchors(html);
+    assert.deepEqual(links.map((a) => a.href), [GOOGLE_LINKS.advisory, GOOGLE_LINKS.phishing, GOOGLE_LINKS.malware]);
+    for (const a of links) {
+      assert.equal(a.target, "_blank", `${a.href} opens over the warning`);
+      assert.equal(a.rel, "noopener noreferrer", `${a.href} rel`);
+    }
+    // The words come from the catalog, escaped (the fake catalog answers "<key>").
+    for (const key of ["advisory_google", "advisory_learn_more", "advisory_learn_phishing", "advisory_learn_malware"]) {
+      assert.ok(html.includes(`&lt;${key}&gt;`), `${key} is not on the advisory: ${html}`);
+    }
+    assert.ok(!/<advisory_/.test(html), "catalog text reached the markup unescaped");
+  });
+
+  await check(`[${tree}] the block page, the link badges and the context-menu check draw Google's advisory`, () => {
+    const block = stripComments(readFileSync(join(ROOT, tree, "src/content/block-page.js"), "utf8"));
+    assert.match(block, /googleAdvisoryHtml\(reasons\)/, "block-page.js does not draw the advisory");
+    // Kids mode hides the evidence cards: the credit lives outside them.
+    const template = block.slice(block.indexOf("overlay.innerHTML = `"));
+    const actionsAt = template.indexOf('class="ls-block-actions"');
+    const advisoryAt = template.indexOf("${advisoryHTML}");
+    assert.ok(actionsAt > 0 && advisoryAt > actionsAt, "the advisory is not drawn below the buttons, outside the evidence");
+    assert.ok(!/ls-google-advisory[^;]*display = "none"/.test(block), "a persona hides Google's advisory");
+    assert.match(block, /\.ls-google-advisory a \{[^}]*color:/, "block page: the advisory links have no colour of their own");
+
+    const content = stripComments(readFileSync(join(ROOT, tree, "src/content/index.js"), "utf8"));
+    const reasonsFn = content.slice(content.indexOf("function _reasonsHtml"), content.indexOf("// 1. SCAN LINKS"));
+    assert.match(reasonsFn, /googleAdvisoryHtml\(result\.reasons/, "badge tooltip / floating check do not draw the advisory");
+    // A tooltip ignores the pointer; one with links must take it, or nobody can click them.
+    assert.match(content, /classList\.add\("ls-tooltip-links"\)/, "a Google tooltip is not made clickable");
+    const css = readFileSync(join(ROOT, tree, "styles/badges.css"), "utf8");
+    assert.match(css, /\.ls-tooltip\.ls-tooltip-links \{[^}]*pointer-events: auto/, "badges.css: the advisory tooltip ignores the pointer");
+    assert.match(css, /\.ls-google-advisory a \{[^}]*color:/, "badges.css: the advisory links have no colour of their own");
+  });
+
+  await check(`[${tree}] the popup credits Google for a Google verdict only, the block page's too`, async () => {
+    const run = async (tabUrl, verdict) => {
+      const { ctx, element } = loadPopupPage(tree, "en", { tabUrl, verdict });
+      for (const file of ["src/utils/blocked-url.js", "src/content/reason-labels.js"]) {
+        vm.runInContext(readFileSync(join(ROOT, tree, file), "utf8"), ctx);
+      }
+      ctx.self.cleanwayBlockedUrl = ctx.cleanwayBlockedUrl || ctx.self.cleanwayBlockedUrl;
+      await ctx.loadPageStatus();
+      return { hidden: element("google-advisory").hidden, state: element("status-card").getAttribute("data-state") };
+    };
+    const google = { domain: "evil.example", level: "dangerous", score: 90, source: "api",
+      reasons: [{ signal: "safe_browsing", detail: "Google", weight: 10 }] };
+    const others = { domain: "evil.example", level: "dangerous", score: 90, source: "api",
+      reasons: [{ signal: "phishtank", detail: "PhishTank", weight: 10 }] };
+    assert.deepEqual(await run("https://evil.example/", google), { hidden: false, state: "danger" });
+    assert.deepEqual(await run("https://evil.example/", others), { hidden: true, state: "danger" });
+    const blockedAt = (reasons) => `chrome-extension://abcdefghijklmnopabcdefghijklmnop/src/blocked/blocked.html?d=evil.example&r=${encodeURIComponent(JSON.stringify(reasons))}`;
+    assert.deepEqual(await run(blockedAt([{ s: "safe_browsing", t: "Google" }]), null), { hidden: false, state: "danger" });
+    assert.deepEqual(await run(blockedAt([{ s: "phishtank", t: "PhishTank" }]), null), { hidden: true, state: "danger" });
+
+    const html = readFileSync(join(ROOT, tree, "src/popup/popup.html"), "utf8");
+    const box = html.match(/<(p|div)\b[^>]*\bid="google-advisory"[^>]*>[\s\S]*?<\/\1>/);
+    assert.ok(box, "popup.html has no #google-advisory");
+    assert.match(box[0], /^<[a-z]+\b[^>]*\shidden[\s>]/, "the popup shows Google's credit before any verdict");
+    assert.deepEqual(anchors(box[0]).map((a) => a.href), [GOOGLE_LINKS.advisory, GOOGLE_LINKS.phishing, GOOGLE_LINKS.malware]);
+    assert.ok(anchors(box[0]).every((a) => a.target === "_blank" && a.rel === "noopener noreferrer"), "popup advisory link target/rel");
+    const at = (s) => html.indexOf(s);
+    assert.ok(at('src="../content/reason-labels.js"') >= 0 && at('src="../content/reason-labels.js"') < at('src="popup.js"'),
+      "popup.html loads reason-labels.js before popup.js");
+  });
+
+  await check(`[${tree}] the webmail banner credits Google for a link Google flagged, with the same links`, () => {
+    const webmail = loadWebmail(tree);
+    assert.equal(typeof webmail.fromGoogle, "function", "webmail.js has no fromGoogle()");
+    // POST /email/analyze checks link domains with Google only (api/routers/email.py).
+    assert.equal(webmail.fromGoogle([{ code: "urgency" }, { code: "known_dangerous_link", category: "url_reputation" }]), true);
+    assert.equal(webmail.fromGoogle([{ code: "reply_to_mismatch" }, { category: "body_pattern" }]), false);
+    assert.equal(webmail.fromGoogle(undefined), false);
+    assert.deepEqual({ ...webmail.googleLinks }, GOOGLE_LINKS);
+    const src = stripComments(readFileSync(join(ROOT, tree, "src/content/webmail.js"), "utf8"));
+    assert.match(src, /verdict\.level !== "safe" && fromGoogle\(findings\)/, "the banner does not credit Google for its link verdict");
+    assert.match(src, /rel = "noopener noreferrer"/, "the banner's Google links lack rel");
+  });
+}
+
+await check("Google's verdict is a suspicion, not a certainty, in every locale, and Safe Browsing is not named", () => {
+  for (const tree of BROWSER_TREES) {
+    for (const locale of LOCALES) {
+      const m = readJson(join(tree, "_locales", locale, "messages.json"));
+      for (const key of ["reason_flagged_dangerous", "evidence_flagged_dangerous", "webmail_setting_consent"]) {
+        assert.ok(!/Safe Browsing/.test(m[key].message), `${tree}/${locale} ${key} still names Safe Browsing`);
+      }
+      assert.match(m.evidence_flagged_dangerous.message, /Google Web Risk/, `${tree}/${locale} evidence_flagged_dangerous`);
+      assert.match(m.webmail_setting_consent.message, /Google Web Risk/, `${tree}/${locale} webmail_setting_consent`);
+      for (const key of ["advisory_google", "advisory_learn_more", "advisory_learn_phishing", "advisory_learn_malware", "welcome_limits"]) {
+        assert.ok(m[key] && m[key].message, `${tree}/${locale} lacks ${key}`);
+      }
+      assert.match(m.advisory_google.message, /Google/, `${tree}/${locale} advisory_google does not name Google`);
+    }
+  }
+  const en = readJson("extension/_locales/en/messages.json");
+  const say = (key) => en[key].message;
+  assert.equal(say("advisory_google"), "Advisory provided by Google");
+  for (const key of ["reason_flagged_dangerous", "evidence_flagged_dangerous", "block_subtitle_scam", "block_explanation",
+    "block_voice_alert", "status_danger_title", "status_danger_subtitle", "webmail_finding_url_reputation"]) {
+    assert.match(say(key), /\b(may|might|suspected|possibly|likely|looks like)\b/i, `en ${key} reads as a certainty: ${say(key)}`);
+  }
+  // Before protection does anything, the person reads that it can be wrong both ways.
+  assert.match(say("welcome_limits"), /safe site/i);
+  assert.match(say("welcome_limits"), /dangerous one/i);
+});
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] the welcome page says protection is not perfect, both ways`, () => {
+    const html = readFileSync(join(ROOT, tree, "src/popup/welcome.html"), "utf8");
+    assert.match(html, /<p\b[^>]*data-i18n="welcome_limits"[^>]*>[^<]*\S[^<]*<\/p>/, "welcome.html has no limits line");
+    const js = readFileSync(join(ROOT, tree, "src/popup/welcome.js"), "utf8");
+    assert.match(js, /welcome_limits: "/, "welcome.js has no English fallback for the limits line");
+    // The block page's English fallback says the same as the catalog.
+    const block = readFileSync(join(ROOT, tree, "src/content/block-page.js"), "utf8");
+    assert.ok(!/block_subtitle_scam: "This is a scam site"/.test(block), "block-page.js fallback is still a certainty");
+    const popup = readFileSync(join(ROOT, tree, "src/popup/popup.js"), "utf8");
+    assert.ok(!/status_danger_title: "This is a scam site"/.test(popup), "popup.js fallback is still a certainty");
   });
 }
 

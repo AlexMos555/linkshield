@@ -50,10 +50,17 @@
  *  21. A free account on /account is offered plans only where /pricing sells
  *      one to its country, and the home page's link to plans promises none
  *      in a country /pricing has none for.
+ *  22. A /check verdict whose reasons include Google's (`safe_browsing`, the
+ *      code a Google Web Risk hit has) shows "Advisory provided by Google"
+ *      linked to the Web Risk Advisory, with the learn-more links — the same
+ *      addresses as the app and the extension — and one built on other
+ *      sources does not; the texts that name the service say Google Web Risk
+ *      (production since 2026-11-03), never Safe Browsing, in every language.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
+import vm from "node:vm";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -102,6 +109,7 @@ import {
 } from "../landing/lib/billing.ts";
 import { paidPlansOffered } from "../landing/lib/paid-plans.ts";
 import { REASON_CODE_TO_KEY, reasonLabelKey, reasonLines } from "../landing/lib/reason-label.ts";
+import { GOOGLE_ADVISORY_LINKS, hasGoogleAdvisory } from "../landing/lib/google-advisory.ts";
 import { safeJsonLd } from "../landing/lib/json-ld.ts";
 import { scrubSitePaths } from "../landing/lib/sentry-scrub.ts";
 import { switchLocaleHref } from "../landing/lib/switch-locale.ts";
@@ -1159,6 +1167,63 @@ console.log("\ndata sources (the credit CC BY asks for)");
     assert.match(report, /#\$\{DATA_SOURCES_ANCHOR\}/);
   });
 }
+
+console.log("Google's credit on a Google verdict (Web Risk's rules for warnings)");
+const EXPECTED_GOOGLE_LINKS = {
+  advisory: "https://docs.cloud.google.com/web-risk/docs/advisory",
+  phishing: "https://www.antiphishing.org/",
+  malware: "https://developers.google.com/search/docs/advanced/security/malware",
+};
+check("a verdict with Google's reason code gets the credit; one built on other sources does not", () => {
+  assert.equal(hasGoogleAdvisory(["domain_new", "safe_browsing"]), true);
+  assert.equal(hasGoogleAdvisory(["phishtank", "multi_blocklist", "urlhaus"]), false);
+  assert.equal(hasGoogleAdvisory([]), false);
+  assert.equal(hasGoogleAdvisory(undefined), false);
+  assert.equal(hasGoogleAdvisory(["toString"]), false);
+});
+check("the site, the app and the extension link the same three pages", () => {
+  assert.deepEqual({ ...GOOGLE_ADVISORY_LINKS }, EXPECTED_GOOGLE_LINKS);
+  const mobile = fs.readFileSync(path.join(ROOT, "mobile", "src", "utils", "google-advisory.ts"), "utf-8");
+  for (const url of Object.values(EXPECTED_GOOGLE_LINKS)) assert.ok(mobile.includes(`"${url}"`), `the app lacks ${url}`);
+  const window = {};
+  vm.runInContext(
+    fs.readFileSync(path.join(ROOT, "packages", "extension-core", "src", "content", "reason-labels.js"), "utf-8"),
+    vm.createContext({ window, chrome: { i18n: { getMessage: () => "" } } }),
+  );
+  assert.deepEqual({ ...window.__cleanwayReasons.googleLinks }, EXPECTED_GOOGLE_LINKS);
+});
+check("the /check page draws the credit from its reason codes, with the links", () => {
+  const page = fs.readFileSync(path.join(ROOT, "landing", "app", "[locale]", "check", "[domain]", "page.tsx"), "utf-8");
+  assert.match(page, /hasGoogleAdvisory\(result\.reason_codes\)/);
+  for (const key of ["advisory", "phishing", "malware"]) assert.match(page, new RegExp(`GOOGLE_ADVISORY_LINKS\\.${key}`));
+  assert.match(page, /data-testid="google-advisory"/);
+});
+check("the credit's words reach the site in every language", () => {
+  for (const locale of LOCALES) {
+    const messages = JSON.parse(fs.readFileSync(path.join(ROOT, "landing", "messages", `${locale}.json`), "utf-8"));
+    const advisory = messages.Advisory || {};
+    for (const key of ["google", "learn_more", "learn_phishing", "learn_malware"]) {
+      assert.equal(typeof advisory[key], "string", `${locale}: Advisory.${key} missing`);
+      assert.ok(advisory[key].trim(), `${locale}: Advisory.${key} empty`);
+    }
+    assert.match(advisory.google, /Google/, `${locale}: the credit does not name Google`);
+  }
+});
+check("the policy, the privacy note and the FAQ name Google Web Risk, never Safe Browsing", () => {
+  for (const locale of LOCALES) {
+    const landing = landingSource(locale);
+    const texts = [
+      ["privacy_policy §5", JSON.stringify(landing.privacy_policy.sections[4])],
+      ["privacy.server_note", landing.privacy.server_note],
+      ["faq", JSON.stringify(landing.faq.items)],
+    ];
+    for (const [where, text] of texts) {
+      assert.doesNotMatch(text, /Safe Browsing/, `${locale} ${where} still names Safe Browsing`);
+    }
+    assert.match(texts[0][1], /Google Web Risk/, `${locale}: the policy does not name Google Web Risk`);
+    assert.match(texts[1][1], /Google Web Risk/, `${locale}: the privacy note does not name Google Web Risk`);
+  }
+});
 
 if (failures > 0) {
   console.log(`\n${failures} check(s) failed`);

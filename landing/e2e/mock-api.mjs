@@ -18,6 +18,17 @@ const VERDICTS = {
     confidence: "high",
     confidence_pct: 94,
   },
+  // Google Web Risk lists it (the API's code for a Google hit is safe_browsing):
+  // the page must credit Google (e2e/google-advisory.spec.ts).
+  "google-flagged.example": {
+    level: "dangerous",
+    score: 95,
+    verdict: "Dangerous",
+    signals: ["Google lists this site as possibly unsafe", "Domain registered recently"],
+    reason_codes: ["safe_browsing", "domain_new"],
+    confidence: "high",
+    confidence_pct: 96,
+  },
 };
 
 const SAFE = {

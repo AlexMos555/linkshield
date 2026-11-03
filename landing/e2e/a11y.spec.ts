@@ -19,6 +19,8 @@ const PAGES = [
   "/check/example.com",
   "/check/bank-verify-login.example",
   "/ru/check/bank-verify-login.example",
+  // Google's credit and learn-more links under the reasons (google-advisory.spec.ts).
+  "/ru/check/google-flagged.example",
   "/pricing",
   "/privacy-policy",
   "/signup",

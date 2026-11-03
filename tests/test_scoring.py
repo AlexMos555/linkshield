@@ -35,6 +35,21 @@ def test_safe_browsing_instant_block():
     print(f"  Safe Browsing hit → instant block: score={score}")
 
 
+def test_google_hit_is_worded_as_a_suspicion_and_names_no_retired_product():
+    # Production asks Google Web Risk since 2026-11-03 (the hit keeps the
+    # safe_browsing code). Its rules for warnings: never call a page certainly
+    # unsafe (docs.cloud.google.com/web-risk/docs/user-warnings). The detail is
+    # the English fallback a client shows for a code it cannot map, and what
+    # the public API's `signals` carries.
+    import re
+
+    _, _, reasons = calculate_score({"domain": "evil.com", "safe_browsing_hit": True})
+    [google] = [r for r in reasons if r.signal == "safe_browsing"]
+    assert "Google" in google.detail
+    assert "Safe Browsing" not in google.detail
+    assert re.search(r"\b(possibly|suspected|may)\b", google.detail, re.I), google.detail
+
+
 def test_phishtank_instant_block():
     signals = {"domain": "phish.com", "phishtank_hit": True}
     score, level, _ = calculate_score(signals)
