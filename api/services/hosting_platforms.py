@@ -27,6 +27,13 @@ Two shapes, two sets, and two exception lists:
 And OPERATOR_SUFFIXES, the opposite of a shared platform: suffixes where
 every name is the operator's own (googleapis.com).
 
+TENANT_SUFFIXES_NOT_IN_MODEL are tenant suffixes found after the served ML
+model was trained (mybluehost.me, zapier.app, edgeone.dev …). TENANT_SUFFIXES
+is the model's tenant feature (ml_features.shared_tenant), so these stay out
+of it, and out of tenant_suffix_of() and is_shared_platform_site(), until a
+retrain moves them there; the scorer's allowlist and rank rules add them
+(scoring._ALLOWLIST_TENANT_ZONES).
+
 This module only answers "is this a shared platform?". What to do about it is
 the caller's job (scoring.is_trusted_top_domain, the analyzer's informational
 reason).
@@ -108,6 +115,20 @@ def _load_operator_zones(path: str = _DATA_PATH) -> frozenset[str]:
 
 
 OPERATOR_ZONES = _load_operator_zones()
+
+
+def _load_tenant_suffixes_not_in_model(path: str = _DATA_PATH) -> frozenset[str]:
+    """The 'tenant_suffixes_not_in_model' groups (TENANT_SUFFIXES_NOT_IN_MODEL
+    in the module docstring)."""
+    try:
+        with open(path, "r") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return frozenset()
+    return _flatten(data.get("tenant_suffixes_not_in_model", {}))
+
+
+TENANT_SUFFIXES_NOT_IN_MODEL = _load_tenant_suffixes_not_in_model()
 
 # Suffixes where EVERY label belongs to the platform operator — there are no
 # tenants under them, only the operator's own infrastructure. The blocklist's

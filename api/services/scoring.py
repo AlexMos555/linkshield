@@ -35,6 +35,7 @@ from api.services.hosting_platforms import dynamic_dns_suffix_of as _dynamic_dns
 from api.services.hosting_platforms import is_shared_platform_site, tenant_suffix_of
 from api.services.hosting_platforms import USER_CONTENT_HOSTS, is_user_content_service
 from api.services.hosting_platforms import OPERATOR_SUFFIXES, is_operator_zone_name
+from api.services.hosting_platforms import TENANT_SUFFIXES_NOT_IN_MODEL
 from api.services import dead_top_names as _dead
 from api.services import public_suffix as _public_suffix
 from api.services.public_suffix import CCTLD_OPEN_ZONES, ascii_name, heuristic_registrable_domain
@@ -351,12 +352,20 @@ def top_domain_key(domain: str) -> Optional[str]:
 # so every zone the publisher lists tenants under must be refused here
 # (tests/test_allowlist_blocklist_zones.py). It has no tenants today (a
 # random label is NXDOMAIN, the site redirects to Hostinger, 2026-10-27).
+#
+# And data/hosting_platforms.json 'tenant_suffixes_not_in_model', the same
+# kind of zone kept out of the model's tenant list until a retrain: on
+# 2026-11-03 zrg.okx.mybluehost.me, a PhishTank phish, was "safe 0" from the
+# allowlist on the live /public/check (mybluehost.me, Bluehost's temporary
+# domains, is #11,072), and under 63 more site and shop builders, form and
+# landing-page builders, free hosts and blog hosts the allowlist trusted any
+# random subdomain (jimdo.com, tistory.com, wufoo.com, cafe24.com …).
 _ALLOWLIST_TENANT_ZONES: frozenset[str] = frozenset({
     "sakura.ne.jp", "dothome.co.kr", "isweb.co.kr",
     "lojaintegrada.com.br", "lojavirtualnuvem.com.br", "shop2000.com.tw",
     "webeden.co.uk", "woobi.co.kr", "hostgator.com.br", "myzen.co.uk",
     "000webhost.com",
-})
+}) | TENANT_SUFFIXES_NOT_IN_MODEL
 
 # Hosts under a newly reached compound-suffix entry that many people publish
 # to by path: ISP personal pages (/~user/). Both were in the Phishing.Database
@@ -1127,9 +1136,11 @@ def _has_fake_tld_in_subdomain(domain: str, legacy: bool = False) -> bool:
 # PSL-derived ones included (ondigitalocean.app, altervista.org, hf.space),
 # but not the operators' own suffixes (fonts.googleapis.com is Google's) nor
 # a zone with a restricted label (gov.scot: its names are the Scottish
-# Government's agencies, not anyone's pick).
+# Government's agencies, not anyone's pick). The allowlist-only zones count
+# too (sakura.ne.jp, mybluehost.me, zapier.app …): a zone whose tenants the
+# allowlist refuses is not one whose rank vouches for them (2026-11-03).
 _RANK_TENANT_SUFFIXES: frozenset[str] = frozenset(
-    z for z in _SCORER_SHARED_SUFFIXES - OPERATOR_SUFFIXES
+    z for z in (_SCORER_SHARED_SUFFIXES | _ALLOWLIST_TENANT_ZONES) - OPERATOR_SUFFIXES
     if not _RESTRICTED_ZONE_LABELS.intersection(z.split("."))
 )
 
