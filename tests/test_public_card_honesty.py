@@ -134,8 +134,8 @@ def test_response_makes_no_unverifiable_claim_and_links_a_live_install():
 
 # ── /stats notes follow the measured values ──
 
-def _report(fp, tn, fpr, n_safe):
-    return {"n_safe": n_safe, "safe": {"cleanway": {"fp": fp, "tn": tn, "fpr": fpr}}}
+def _report(fp, tn, fpr, n_safe, method_version=2):
+    return {"method_version": method_version, "n_safe": n_safe, "safe": {"cleanway": {"fp": fp, "tn": tn, "fpr": fpr}}}
 
 
 def test_false_positive_note_says_unmeasured_only_while_it_is():

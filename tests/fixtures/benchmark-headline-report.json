@@ -1,0 +1,303 @@
+{
+  "_about": "A method_version 2 report, trimmed to what the site reads (no raw rows). Every resolver's summary is benchmark_method.summarize over the outcome counts in `_outcomes`, plus a latency; tests/test_benchmark_headline_fixture.py rebuilds it from those counts, holds its window and existence counts to the ones the script writes and runs the script's gate on it; scripts/test-landing-honesty.mjs reads the site's headline and false-alarm figures from it.",
+  "_outcomes": {
+    "phishing": {
+      "cleanway": {
+        "dangerous": 86,
+        "caution": 24,
+        "safe": 10,
+        "not_found": 76,
+        "no_answer": 4
+      },
+      "phishtank": {
+        "dangerous": 21,
+        "caution": 0,
+        "safe": 0,
+        "not_found": 76,
+        "no_answer": 103
+      },
+      "cloudflare_families": {
+        "dangerous": 95,
+        "caution": 0,
+        "safe": 27,
+        "not_found": 76,
+        "no_answer": 2
+      }
+    },
+    "safe": {
+      "cleanway": {
+        "dangerous": 1,
+        "caution": 58,
+        "safe": 137,
+        "not_found": 4,
+        "no_answer": 0
+      },
+      "phishtank": {
+        "dangerous": 0,
+        "caution": 0,
+        "safe": 0,
+        "not_found": 4,
+        "no_answer": 196
+      },
+      "cloudflare_families": {
+        "dangerous": 0,
+        "caution": 0,
+        "safe": 196,
+        "not_found": 4,
+        "no_answer": 0
+      }
+    }
+  },
+  "ts": "2026-11-08T15:41:07Z",
+  "method_version": 2,
+  "n_phishing": 200,
+  "n_safe": 200,
+  "sources": {
+    "legit_outside_allowlist": true,
+    "legit": "data/benchmark_legit_ru.txt: 200 of 249 real Russian sites outside the allowlist's top 100,000 (Majestic Million + Chrome UX Report; regional …)"
+  },
+  "sampling": {
+    "seed": 42,
+    "max_per_site": 2,
+    "pool_rows": 678,
+    "pool_hosts": 586,
+    "pool_sites": 544,
+    "n": 200,
+    "sites": 191,
+    "window": {
+      "days": 7,
+      "start": "2026-11-01T14:08:00+00:00",
+      "end": "2026-11-08T14:08:00+00:00",
+      "undated_rows": 0,
+      "future_rows": 0,
+      "clock": "2026-11-08T15:17:00+00:00"
+    },
+    "dump_rows": 50575,
+    "site_rule": "registrable domain by api/services/public_suffix.py",
+    "dump_sha256": null,
+    "submitted": {
+      "oldest": "2026-11-01T15:27:00+00:00",
+      "median": "2026-11-04T20:10:00+00:00",
+      "newest": "2026-11-08T13:37:00+00:00"
+    }
+  },
+  "existence": {
+    "phishing": {
+      "resolves": 124,
+      "nxdomain": 70,
+      "non_public": 6,
+      "unknown": 0
+    },
+    "safe": {
+      "resolves": 196,
+      "nxdomain": 4,
+      "non_public": 0,
+      "unknown": 0
+    }
+  },
+  "phishing": {
+    "cleanway": {
+      "tp": 86,
+      "fp": 0,
+      "tn": 0,
+      "fn": 10,
+      "unknown": 104,
+      "recall": 0.8958333333333334,
+      "fpr": null,
+      "precision": 1.0,
+      "f1": 0.945054945054945,
+      "n": 200,
+      "safe": 10,
+      "caution": 24,
+      "dangerous": 86,
+      "not_found": 76,
+      "no_answer": 4,
+      "resolving": 124,
+      "answered": 120,
+      "dangerous_rate_answered": 0.7166666666666667,
+      "warned_rate_answered": 0.9166666666666666,
+      "recall_wilson95": [
+        0.8188,
+        0.9424
+      ],
+      "fpr_wilson95": null,
+      "dangerous_rate_answered_wilson95": [
+        0.6303,
+        0.7896
+      ],
+      "warned_rate_answered_wilson95": [
+        0.8534,
+        0.9541
+      ],
+      "latency_p50_ms": 412.0
+    },
+    "phishtank": {
+      "tp": 21,
+      "fp": 0,
+      "tn": 0,
+      "fn": 0,
+      "unknown": 179,
+      "recall": 1.0,
+      "fpr": null,
+      "precision": 1.0,
+      "f1": 1.0,
+      "n": 200,
+      "safe": 0,
+      "caution": 0,
+      "dangerous": 21,
+      "not_found": 76,
+      "no_answer": 103,
+      "resolving": 124,
+      "answered": 21,
+      "dangerous_rate_answered": 1.0,
+      "warned_rate_answered": 1.0,
+      "recall_wilson95": [
+        0.8454,
+        1.0
+      ],
+      "fpr_wilson95": null,
+      "dangerous_rate_answered_wilson95": [
+        0.8454,
+        1.0
+      ],
+      "warned_rate_answered_wilson95": [
+        0.8454,
+        1.0
+      ],
+      "latency_p50_ms": 15.2
+    },
+    "cloudflare_families": {
+      "tp": 95,
+      "fp": 0,
+      "tn": 0,
+      "fn": 27,
+      "unknown": 78,
+      "recall": 0.7786885245901639,
+      "fpr": null,
+      "precision": 1.0,
+      "f1": 0.8755760368663594,
+      "n": 200,
+      "safe": 27,
+      "caution": 0,
+      "dangerous": 95,
+      "not_found": 76,
+      "no_answer": 2,
+      "resolving": 124,
+      "answered": 122,
+      "dangerous_rate_answered": 0.7786885245901639,
+      "warned_rate_answered": 0.7786885245901639,
+      "recall_wilson95": [
+        0.6972,
+        0.8432
+      ],
+      "fpr_wilson95": null,
+      "dangerous_rate_answered_wilson95": [
+        0.6972,
+        0.8432
+      ],
+      "warned_rate_answered_wilson95": [
+        0.6972,
+        0.8432
+      ],
+      "latency_p50_ms": 23.1
+    }
+  },
+  "safe": {
+    "cleanway": {
+      "tp": 0,
+      "fp": 1,
+      "tn": 137,
+      "fn": 0,
+      "unknown": 62,
+      "recall": null,
+      "fpr": 0.007246376811594203,
+      "precision": 0.0,
+      "f1": null,
+      "n": 200,
+      "safe": 137,
+      "caution": 58,
+      "dangerous": 1,
+      "not_found": 4,
+      "no_answer": 0,
+      "resolving": 196,
+      "answered": 196,
+      "dangerous_rate_answered": 0.00510204081632653,
+      "warned_rate_answered": 0.3010204081632653,
+      "recall_wilson95": null,
+      "fpr_wilson95": [
+        0.0013,
+        0.0399
+      ],
+      "dangerous_rate_answered_wilson95": [
+        0.0009,
+        0.0283
+      ],
+      "warned_rate_answered_wilson95": [
+        0.2411,
+        0.3686
+      ],
+      "latency_p50_ms": 412.0
+    },
+    "phishtank": {
+      "tp": 0,
+      "fp": 0,
+      "tn": 0,
+      "fn": 0,
+      "unknown": 200,
+      "recall": null,
+      "fpr": null,
+      "precision": null,
+      "f1": null,
+      "n": 200,
+      "safe": 0,
+      "caution": 0,
+      "dangerous": 0,
+      "not_found": 4,
+      "no_answer": 196,
+      "resolving": 196,
+      "answered": 0,
+      "dangerous_rate_answered": null,
+      "warned_rate_answered": null,
+      "recall_wilson95": null,
+      "fpr_wilson95": null,
+      "dangerous_rate_answered_wilson95": null,
+      "warned_rate_answered_wilson95": null,
+      "latency_p50_ms": 15.2
+    },
+    "cloudflare_families": {
+      "tp": 0,
+      "fp": 0,
+      "tn": 196,
+      "fn": 0,
+      "unknown": 4,
+      "recall": null,
+      "fpr": 0.0,
+      "precision": null,
+      "f1": null,
+      "n": 200,
+      "safe": 196,
+      "caution": 0,
+      "dangerous": 0,
+      "not_found": 4,
+      "no_answer": 0,
+      "resolving": 196,
+      "answered": 196,
+      "dangerous_rate_answered": 0.0,
+      "warned_rate_answered": 0.0,
+      "recall_wilson95": null,
+      "fpr_wilson95": [
+        0.0,
+        0.0192
+      ],
+      "dangerous_rate_answered_wilson95": [
+        0.0,
+        0.0192
+      ],
+      "warned_rate_answered_wilson95": [
+        0.0,
+        0.0192
+      ],
+      "latency_p50_ms": 23.1
+    }
+  }
+}

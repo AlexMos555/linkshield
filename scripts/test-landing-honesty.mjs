@@ -50,6 +50,22 @@
  *  21. A free account on /account is offered plans only where /pricing sells
  *      one to its country, and the home page's link to plans promises none
  *      in a country /pricing has none for.
+ *  22. The detection figure the site quotes (home badge, /transparency,
+ *      /methodology) is the share of the live fresh phishing links that got
+ *      an answer and that Cleanway called dangerous, with its interval, next
+ *      to the share that got at least a warning — from a method_version 2
+ *      report only — never recall (tp / (tp + fn)), which leaves cautions,
+ *      dead links and no answer out. Its copy has the same ICU arguments in
+ *      every language and says the sample size and the date.
+ *  23. The false-alarm figure (/transparency, the methodology page's real-site
+ *      table) is the same pair over the real sites that got an answer —
+ *      called dangerous, and warned at all (a caution included) — from a
+ *      method_version 2 report only; never "0% of 137" from the old method,
+ *      which left out the 63 of 200 real sites that got a caution or no
+ *      verdict. The copy describes what the weekly run really does: "not
+ *      found" holds the names that point nowhere a visitor can reach, the
+ *      regression rule is the Wilson-interval one, at the cron's time, and
+ *      the home badge says it is the site check, not what the phone blocks.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -63,12 +79,15 @@ import {
   MIN_PHISHING_SAMPLE,
   RETIRED_RESOLVERS,
   comparedRows,
+  detectionFigures,
+  falseAlarmFigures,
   falsePositiveRateIsPublishable,
   legitSampleRanking,
   recallIsPublishable,
   MIN_SAFE_CLASSIFIED,
   MAX_NO_ANSWER_RATE,
 } from "../landing/lib/benchmark.ts";
+import { answeredMessageArgs, detectionMessageArgs } from "../landing/lib/detection-copy.ts";
 import { apkReleaseFrom } from "../landing/lib/apk-release.ts";
 import {
   DATA_SOURCES_ANCHOR,
@@ -219,15 +238,330 @@ check(`method 2: fewer than ${MIN_PHISHING_RESOLVING} live links → hidden`, ()
   assert.equal(recallIsPublishable({ ...snapshot(), phishing: { cleanway: dead } }), false);
 });
 
-console.log("falsePositiveRateIsPublishable");
+console.log("detectionFigures (the headline: of the live links that got an answer, the share called dangerous)");
+// A method_version 2 report trimmed to what the site reads; every summary in
+// it is benchmark_method.summarize (tests/test_benchmark_headline_fixture.py).
+// 200 links: 76 dead, 4 without an answer, so 120 answered — 86 dangerous,
+// 24 caution, 10 safe. Recall (86 / 96 = 89.6%) leaves out the 24 cautions;
+// the headline (86 / 120 = 71.7%) does not.
+const HEADLINE_REPORT = JSON.parse(
+  fs.readFileSync(path.join(ROOT, "tests", "fixtures", "benchmark-headline-report.json"), "utf-8"),
+);
+function headlineReport(edit = () => {}) {
+  const report = structuredClone(HEADLINE_REPORT);
+  edit(report, report.phishing.cleanway);
+  return report;
+}
+check("the headline is the answered-dangerous rate, not recall", () => {
+  const ours = HEADLINE_REPORT.phishing.cleanway;
+  const figures = detectionFigures(HEADLINE_REPORT);
+  assert.ok(figures, "a method-2 report that clears the gate has a headline");
+  assert.equal(figures.dangerous.rate, ours.dangerous_rate_answered);
+  assert.notEqual(Math.round(figures.dangerous.rate * 1000), Math.round(ours.recall * 1000));
+  assert.deepEqual([figures.dangerous.low, figures.dangerous.high], ours.dangerous_rate_answered_wilson95);
+  assert.equal(figures.dangerous.count, 86);
+  // The second line: dangerous or caution, over the same answered links.
+  assert.equal(figures.warned.rate, ours.warned_rate_answered);
+  assert.deepEqual([figures.warned.low, figures.warned.high], ours.warned_rate_answered_wilson95);
+  assert.equal(figures.warned.count, 86 + 24);
+  // The sample, the links left out and why, the window and the date.
+  assert.deepEqual(
+    { answered: figures.answered, n: figures.n, notFound: figures.notFound, noAnswer: figures.noAnswer, days: figures.days, ts: figures.ts },
+    { answered: 120, n: 200, notFound: 76, noAnswer: 4, days: 7, ts: "2026-11-08T15:41:07Z" },
+  );
+});
+check("the visible numbers: whole percents, the share from its counts, the interval from the report", () => {
+  assert.deepEqual(detectionMessageArgs(detectionFigures(HEADLINE_REPORT), "en"), {
+    date: "November 8, 2026",
+    dangerous: "72", low: "63", high: "79",
+    warned: "92", warned_low: "85", warned_high: "95",
+    answered: 120, n: 200, days: 7, not_found: 76, no_answer: 4,
+  });
+  assert.equal(detectionMessageArgs(detectionFigures(HEADLINE_REPORT), "ru").date, "8 ноября 2026 г.");
+  // 145 of 200 is 72.5%: rounded from the counts it is 73, not the 72 the float 0.725 * 100 gives.
+  const half = headlineReport((report, ours) => {
+    Object.assign(ours, { dangerous: 145, caution: 0, safe: 55, not_found: 0, no_answer: 0, resolving: 200, answered: 200,
+      tp: 145, fn: 55, unknown: 0, recall: 145 / 200, dangerous_rate_answered: 145 / 200, warned_rate_answered: 145 / 200,
+      dangerous_rate_answered_wilson95: [0.6593, 0.7822], warned_rate_answered_wilson95: [0.6593, 0.7822] });
+  });
+  const args = detectionMessageArgs(detectionFigures(half), "en");
+  assert.deepEqual([args.dangerous, args.low, args.high], ["73", "66", "78"]);
+});
+check("a method-1 report gets no headline, however healthy: its counts cannot tell a caution, a dead link and no answer apart", () => {
+  // The 2026-11-01 report's shape: 145 dangerous, 11 safe, 44 "unknown" (28 caution + 16 not found + 0 no answer).
+  const old = snapshot({ phishing: { tp: 145, fn: 11, unknown: 44, recall: 145 / 156 } });
+  assert.equal(recallIsPublishable(old), true, "the gate alone would let it through");
+  assert.equal(detectionFigures(old), null);
+  // A report without method_version is method 1, whatever fields it carries.
+  assert.equal(detectionFigures(headlineReport((report) => { delete report.method_version; })), null);
+  assert.equal(detectionFigures(headlineReport((report) => { report.method_version = 1; })), null);
+  assert.equal(detectionFigures(null), null);
+});
+check("committed latest.json: a headline only from a method-2 report that clears the gate", () => {
+  const committed = JSON.parse(fs.readFileSync(LATEST, "utf-8"));
+  const figures = detectionFigures(committed);
+  if ((committed.method_version ?? 1) < 2 || !recallIsPublishable(committed)) {
+    assert.equal(figures, null);
+  } else {
+    assert.ok(figures, "a published method-2 report has a headline");
+    assert.equal(figures.dangerous.rate, committed.phishing.cleanway.dangerous_rate_answered);
+    assert.equal(figures.warned.rate, committed.phishing.cleanway.warned_rate_answered);
+  }
+});
+check("a method-2 report the gate holds back gets no headline", () => {
+  assert.equal(detectionFigures(headlineReport((report) => { report.n_phishing = 60; })), null);
+  // 45 of 124 live links without an answer (36% > 30%): the run measured our rate limit.
+  const limited = headlineReport((report, ours) => {
+    Object.assign(ours, { dangerous: 50, caution: 19, safe: 10, no_answer: 45, answered: 79, tp: 50, fn: 10, unknown: 140,
+      recall: 50 / 60, dangerous_rate_answered: 50 / 79, warned_rate_answered: 69 / 79 });
+  });
+  assert.equal(recallIsPublishable(limited), false);
+  assert.equal(detectionFigures(limited), null);
+});
+check("without a window of days the links are not known to be fresh: no headline", () => {
+  assert.equal(detectionFigures(headlineReport((report) => { delete report.sampling; })), null);
+  assert.equal(detectionFigures(headlineReport((report) => { delete report.sampling.window; })), null);
+  // --window-days 0: a draw over the whole dump, links of any age.
+  assert.equal(detectionFigures(headlineReport((report) => {
+    report.sampling.window = { days: 0, start: null, end: null, undated_rows: 0 };
+  })), null);
+});
+check("counts that do not add up, a share they do not give, or an interval that misses it: no headline", () => {
+  const broken = [
+    (r, o) => { o.answered = 124; },                        // no_answer counted in
+    (r, o) => { o.caution = 25; },                          // dangerous + caution + safe ≠ answered
+    (r, o) => { o.n = 199; },                               // not the sample
+    (r, o) => { o.dangerous_rate_answered = o.recall; },    // the old figure under the new name
+    (r, o) => { o.warned_rate_answered = 0.95; },
+    (r, o) => { o.dangerous_rate_answered_wilson95 = [0.75, 0.79]; },  // misses 71.7%
+    (r, o) => { o.dangerous_rate_answered_wilson95 = null; },
+    (r, o) => { delete o.warned_rate_answered_wilson95; },
+    (r, o) => { delete o.no_answer; },
+    (r, o) => { o.not_found = 75.5; o.no_answer = 4.5; },  // adds up, but not a count of links
+  ];
+  for (const edit of broken) {
+    assert.equal(detectionFigures(headlineReport(edit)), null, edit.toString());
+  }
+});
+
+console.log("detection copy (the badge, /transparency and /methodology, all 10 languages)");
+const DETECTION_COPY = {
+  hero: ["badge", "badge_warned"],
+  transparency: ["recall_measured", "recall_not_yet", "fp_measured", "fp_not_yet"],
+  methodology: [
+    "why_p2", "cadence_p1", "dataset_phishing_desc", "verdict_mapping_p1", "mapping_cleanway", "mapping_cloudflare",
+    "caveat_nxdomain", "caveat_phishtank", "results_not_publishable", "results_old_method", "phishing_table_note",
+    "safe_table_note", "col_dangerous_share", "col_warned_share", "col_answered", "col_dangerous", "col_caution",
+    "col_safe", "col_not_found", "col_no_answer",
+  ],
+};
+// The old phishing table's columns: recall, precision (always 100% on a batch
+// of phishing links only), F1, caught / missed; and the old real-site table's:
+// the false-positive rate, false alarms, correct and "no verdict", which hid
+// every caution on a real site.
+const RETIRED_COLUMNS = ["col_recall", "col_precision", "col_f1", "col_tp", "col_fn", "col_fpr", "col_fp", "col_tn", "col_unknown"];
+/**
+ * The argument names of an ICU message: `{date}`, `{days, plural, …}`. Unlike
+ * icuArgs it reads the braces' nesting, so a plural branch's text
+ * (`one {el día anterior}`, `one {day}`) is never taken for an argument: one
+ * language starts a branch with a word where another starts it with `#`.
+ */
+function icuArgNames(text) {
+  const names = [];
+  const inside = ["text"]; // what the innermost open brace holds: an argument, or text (a branch)
+  for (let i = 0; i < text.length; i += 1) {
+    if (text[i] === "{") {
+      if (inside.at(-1) === "text") {
+        const name = /^\{\s*([a-z][a-z0-9_]*)/.exec(text.slice(i));
+        assert.ok(name, `not an argument at ${i}: ${text.slice(i, i + 20)}`);
+        names.push(name[1]);
+        inside.push("argument");
+      } else {
+        inside.push("text");
+      }
+    } else if (text[i] === "}") {
+      inside.pop();
+    }
+  }
+  assert.equal(inside.length, 1, `unbalanced braces: ${text}`);
+  return names.sort();
+}
+check("every detection string exists in every language, with English's ICU arguments", () => {
+  const en = landingSource("en");
+  for (const locale of LOCALES) {
+    const source = landingSource(locale);
+    for (const [ns, keys] of Object.entries(DETECTION_COPY)) {
+      for (const key of keys) {
+        const text = source[ns]?.[key];
+        assert.ok(typeof text === "string" && text.trim().length > 0, `${locale}: landing.${ns}.${key} missing`);
+        assert.deepEqual(icuArgNames(text), icuArgNames(en[ns][key]), `${locale}: landing.${ns}.${key} ICU arguments differ`);
+      }
+    }
+    for (const key of RETIRED_COLUMNS) assert.ok(!(key in source.methodology), `${locale}: methodology.${key} left over`);
+  }
+});
+check("the badge says the date, the share, its interval and the sample; its second line the warned share and the window", () => {
+  const en = landingSource("en");
+  assert.deepEqual(icuArgNames(en.hero.badge), ["answered", "dangerous", "date", "high", "low"]);
+  assert.deepEqual(icuArgNames(en.hero.badge_warned), ["days", "warned"]);
+  assert.deepEqual(icuArgNames(en.transparency.recall_measured),
+    ["answered", "dangerous", "date", "days", "high", "low", "n", "no_answer", "not_found", "warned", "warned_high", "warned_low"]);
+  // Every argument the badge and the report use is one the page passes.
+  const given = Object.keys(detectionMessageArgs(detectionFigures(HEADLINE_REPORT), "en"));
+  for (const text of [en.hero.badge, en.hero.badge_warned, en.transparency.recall_measured]) {
+    for (const arg of icuArgNames(text)) assert.ok(given.includes(arg), `{${arg}} is not passed`);
+  }
+});
+check("no landing string quotes recall any more ({recall}), in any language", () => {
+  for (const locale of LOCALES) {
+    for (const [key, text] of stringLeaves(landingSource(locale))) {
+      assert.doesNotMatch(text, /\{recall\b/, `${locale}: landing.${key}`);
+    }
+  }
+});
+check("the home badge, /transparency and /methodology read the headline, not recall", () => {
+  const app = path.join(ROOT, "landing", "app", "[locale]");
+  const read = (...parts) => fs.readFileSync(path.join(app, ...parts), "utf-8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+  const home = read("page.tsx");
+  assert.match(home, /loadLiveDetection\(\)/);
+  assert.match(home, /hero\("badge", detectionArgs\)/);
+  assert.match(home, /hero\("badge_warned", detectionArgs\)/);
+  assert.doesNotMatch(home, /liveRecall|recall/);
+  const transparency = read("transparency", "page.tsx");
+  assert.match(transparency, /detectionFigures\(snapshot\)/);
+  assert.match(transparency, /t\("recall_measured", detectionMessageArgs\(/);
+  assert.doesNotMatch(transparency, /ours\.recall|recall:/);
+  const methodology = read("transparency", "methodology", "page.tsx");
+  assert.match(methodology, /detectionFigures\(data\)/);
+  assert.match(methodology, /dangerous_rate_answered/);
+  assert.match(methodology, /warned_rate_answered/);
+  assert.doesNotMatch(methodology, /m\.(recall|precision|f1)\b/);
+  for (const key of RETIRED_COLUMNS) assert.doesNotMatch(methodology, new RegExp(`"${key}"`));
+  assert.ok(!fs.existsSync(path.join(ROOT, "landing", "lib", "live-recall.ts")), "live-recall.ts is gone");
+});
+check("the home badge says it is our site check, not what the phone blocks, in every language", () => {
+  // The hero under it says the Android app blocks scam sites in every app;
+  // the figure is the public site check's (methodology.caveat_endpoint).
+  for (const locale of LOCALES) {
+    assert.match(landingSource(locale).hero.badge_warned, /cleanway\.ai\/check/, `${locale}: hero.badge_warned`);
+  }
+  const en = landingSource("en");
+  assert.match(en.hero.badge_warned, /This is our site check \(cleanway\.ai\/check\): the phone blocks straight away only the sites on its list\./);
+  assert.match(en.transparency.recall_measured, /not what the phone blocks/);
+});
+check("\"not found\" is what the run counts as not found: a missing domain or one pointing nowhere a visitor can reach", () => {
+  // Since 2026-11-04 (scripts/benchmark_method.py NOT_LIVE, no_public_address)
+  // a name with no public address in A and AAAA together — none at all, or
+  // only 0.0.0.0 and private ranges (a takedown) — is not found for every
+  // service, as a missing one; the probe asks AAAA whenever no A address is public.
+  for (const locale of LOCALES) {
+    const source = landingSource(locale);
+    for (const [ns, key] of [["hero", "badge_warned"], ["transparency", "recall_measured"],
+      ["methodology", "verdict_mapping_p1"], ["methodology", "caveat_nxdomain"]]) {
+      assert.match(source[ns][key], /0\.0\.0\.0/, `${locale}: ${ns}.${key}`);
+    }
+    assert.match(source.methodology.caveat_nxdomain, /AAAA/, `${locale}: methodology.caveat_nxdomain`);
+  }
+  const en = landingSource("en");
+  for (const text of [en.hero.badge_warned, en.transparency.recall_measured, en.transparency.fp_measured]) {
+    assert.match(text, /no longer existed or pointed nowhere a visitor can reach/);
+  }
+  assert.doesNotMatch(en.methodology.verdict_mapping_p1, /one DNS query/);
+  assert.doesNotMatch(en.methodology.caveat_nxdomain, /one DNS query/);
+  assert.match(en.methodology.caveat_nxdomain,
+    /an A query, and an AAAA query too when no A address is public \(no A record at all included\)/);
+  assert.match(en.methodology.caveat_nxdomain,
+    /no public address in A and AAAA together — none at all, or only non-public ones/);
+  // The probe the copy describes: AAAA asked when the A answer has no public address.
+  const probe = fs.readFileSync(path.join(ROOT, "scripts", "eval_fresh_urls.py"), "utf-8");
+  assert.match(probe, /if benchmark_method\.no_public_address\(addresses\):[^\n]*\n\s*status6, more, failed6 = await _unfiltered_query\(client, d, "AAAA"\)/);
+  const method = fs.readFileSync(path.join(ROOT, "scripts", "benchmark_method.py"), "utf-8");
+  assert.match(method, /return NON_PUBLIC if no_public_address\(addresses\) else RESOLVES/);
+});
+check("the regression rule the methodology page states is the workflow's: Wilson intervals, at the cron's time", () => {
+  const workflow = fs.readFileSync(path.join(ROOT, ".github", "workflows", "weekly-benchmark.yml"), "utf-8");
+  const cron = /cron:\s*'(\d+) (\d+) \* \* 0'/.exec(workflow);
+  assert.ok(cron, "the benchmark is scheduled on Sundays");
+  const [minute, hour] = [cron[1].padStart(2, "0"), cron[2].padStart(2, "0")];
+  // A week is flagged when its whole 95% interval lies below the previous one's.
+  assert.match(workflow, /if today_ci\[1\] < prior_ci\[0\]:/);
+  for (const locale of LOCALES) {
+    const text = landingSource(locale).methodology.cadence_p1;
+    assert.match(text, new RegExp(`${hour}[:.]${minute}`), `${locale}: the cron's time`);
+    assert.match(text, /95/, `${locale}: the 95% interval`);
+    assert.doesNotMatch(text, /(?<![\d.,:])5(?!\d)/, `${locale}: the old "5 points" rule`);
+  }
+  const en = landingSource("en").methodology.cadence_p1;
+  assert.match(en, new RegExp(`every Sunday at ${hour}:${minute} UTC`));
+  assert.match(en, /if this week's whole 95% confidence interval for that share lies below the previous test's/);
+});
+check("Russian: the window reads \"in the last N days before\", and the old counter is not called \"no answer\"", () => {
+  const ru = landingSource("ru");
+  for (const text of [ru.hero.badge_warned, ru.transparency.recall_measured, ru.methodology.why_p2,
+    ru.methodology.dataset_phishing_desc]) {
+    assert.match(text, /за последни/);
+    assert.doesNotMatch(text, /за 7 дней до|\} до замера/);
+  }
+  // The table's «Нет ответа» means no response only; the old merged counter is «без вердикта».
+  assert.doesNotMatch(ru.methodology.results_old_method, /счётчик «без ответа»/);
+  assert.match(ru.methodology.results_old_method, /«без вердикта»/);
+});
+check("results_not_publishable names every floor the gate applies", () => {
+  for (const locale of LOCALES) {
+    assert.ok(icuArgNames(landingSource(locale).methodology.results_not_publishable).includes("min_live"), locale);
+  }
+  const code = fs.readFileSync(path.join(ROOT, "landing", "app", "[locale]", "transparency", "methodology", "page.tsx"), "utf-8");
+  assert.match(code, /min_live: MIN_PHISHING_RESOLVING/);
+});
+
+console.log("falsePositiveRateIsPublishable / falseAlarmFigures (real sites: called dangerous, and warned at all)");
+// The fixture's real sites: 200, 4 not found, 196 answered — 1 dangerous,
+// 58 caution, 137 safe. The old fpr (1 / 138) leaves the 58 cautions out.
+function headlineSafe(edit) {
+  return headlineReport((report) => edit(report, report.safe.cleanway));
+}
 check("never measured (all unknown) → hidden", () => {
   assert.equal(falsePositiveRateIsPublishable(snapshot({ safe: { unknown: 60, fpr: null } })), false);
 });
 check("too few answered → hidden", () => {
   assert.equal(falsePositiveRateIsPublishable(snapshot({ safe: { tn: 10, fp: 0, unknown: 40, fpr: 0 } })), false);
+  // method 2: 49 real sites answered.
+  assert.equal(falsePositiveRateIsPublishable(headlineSafe((r, o) => {
+    Object.assign(o, { answered: 49, resolving: 49, no_answer: 0, not_found: 151 });
+  })), false);
 });
-check("enough answered → publishable, even at 0%", () => {
-  assert.equal(falsePositiveRateIsPublishable(snapshot({ safe: { tn: 120, fp: 0, unknown: 5, fpr: 0 } })), true);
+// Until 2026-11-04 this check passed a method-1 snapshot ({ tn: 120, fp: 0,
+// unknown: 5 }) and expected "publishable": that is the bug — the committed
+// 2026-11-01 report showed "0% of 137" while its 63 cautions and dead links
+// sat in "unknown". It now needs a method-2 report, and a method-1 one is hidden.
+check("enough real sites answered in a method-2 report → publishable, even at 0% dangerous", () => {
+  assert.equal(falsePositiveRateIsPublishable(HEADLINE_REPORT), true);
+  const none = headlineSafe((r, o) => {
+    Object.assign(o, { dangerous: 0, safe: 138, fp: 0, tn: 138, fpr: 0, precision: null,
+      dangerous_rate_answered: 0, dangerous_rate_answered_wilson95: [0.0, 0.0192],
+      warned_rate_answered: 58 / 196, warned_rate_answered_wilson95: [0.2364, 0.3632],
+      fpr_wilson95: [0.0, 0.0271] });
+  });
+  assert.equal(falsePositiveRateIsPublishable(none), true);
+  assert.equal(falseAlarmFigures(none).dangerous.count, 0);
+});
+check("a method-1 report → hidden, however large: its \"unknown\" hid every caution on a real site", () => {
+  // The 2026-11-01 report's real sites: 137 safe, 0 dangerous, 63 caution or no verdict.
+  const old = snapshot({ safe: { tn: 137, fp: 0, unknown: 63, fpr: 0 } });
+  assert.equal(falsePositiveRateIsPublishable(old), false);
+  assert.equal(falseAlarmFigures(old), null);
+  assert.equal(falseAlarmFigures(headlineReport((report) => { delete report.method_version; })), null);
+  assert.equal(falseAlarmFigures(headlineReport((report) => { report.method_version = 1; })), null);
+  assert.equal(falseAlarmFigures(null), null);
+});
+check("method 2: more than 30% of the live real sites without an answer → hidden", () => {
+  // 70 of 196 rate-limited: the run measured our rate limit, not our false alarms.
+  const limited = headlineSafe((r, o) => {
+    Object.assign(o, { safe: 67, tn: 67, no_answer: 70, answered: 126, unknown: 132, fpr: 1 / 68,
+      dangerous_rate_answered: 1 / 126, warned_rate_answered: 59 / 126 });
+  });
+  assert.equal(falsePositiveRateIsPublishable(limited), false);
+  assert.equal(falseAlarmFigures(limited), null);
 });
 check("legit sample our server auto-trusts (the top 100k) → hidden, however large", () => {
   const allowlisted = { safe: { tn: 120, fp: 0, unknown: 5, fpr: 0 }, legitOutsideAllowlist: false };
@@ -235,19 +569,91 @@ check("legit sample our server auto-trusts (the top 100k) → hidden, however la
   const unstated = snapshot({ safe: { tn: 120, fp: 0, unknown: 5, fpr: 0 } });
   delete unstated.sources;
   assert.equal(falsePositiveRateIsPublishable(unstated), false);
+  assert.equal(falseAlarmFigures(headlineReport((report) => { report.sources.legit_outside_allowlist = false; })), null);
+  assert.equal(falseAlarmFigures(headlineReport((report) => { delete report.sources; })), null);
 });
-check("committed latest.json: false-positive rate is shown only by its own numbers", () => {
+check("the false-alarm figures: of the real sites that got an answer, called dangerous and warned at all", () => {
+  const ours = HEADLINE_REPORT.safe.cleanway;
+  const figures = falseAlarmFigures(HEADLINE_REPORT);
+  assert.ok(figures, "a method-2 report with enough answered real sites has them");
+  assert.deepEqual(
+    { answered: figures.answered, n: figures.n, notFound: figures.notFound, noAnswer: figures.noAnswer, ts: figures.ts },
+    { answered: 196, n: 200, notFound: 4, noAnswer: 0, ts: "2026-11-08T15:41:07Z" },
+  );
+  assert.equal(figures.dangerous.rate, ours.dangerous_rate_answered);
+  assert.equal(figures.dangerous.count, 1);
+  assert.deepEqual([figures.dangerous.low, figures.dangerous.high], ours.dangerous_rate_answered_wilson95);
+  assert.equal(figures.warned.rate, ours.warned_rate_answered);
+  assert.equal(figures.warned.count, 1 + 58);
+  assert.deepEqual([figures.warned.low, figures.warned.high], ours.warned_rate_answered_wilson95);
+  // Not the old fpr, which left the 58 cautions out (1 / 138).
+  assert.notEqual(figures.dangerous.rate, ours.fpr);
+  assert.deepEqual(answeredMessageArgs(figures, "en"), {
+    date: "November 8, 2026",
+    dangerous: "1", low: "0", high: "3",
+    warned: "30", warned_low: "24", warned_high: "37",
+    answered: 196, n: 200, not_found: 4, no_answer: 0,
+  });
+});
+check("real-site counts that do not add up, or a share they do not give → hidden", () => {
+  const broken = [
+    (r, o) => { o.answered = 200; },                         // not found counted in
+    (r, o) => { o.caution = 57; },                           // dangerous + caution + safe ≠ answered
+    (r, o) => { o.n = 199; },                                // not the sample
+    (r, o) => { o.dangerous_rate_answered = o.fpr; },        // the old figure under the new name
+    (r, o) => { o.warned_rate_answered_wilson95 = null; },
+    (r, o) => { o.dangerous_rate_answered_wilson95 = [0.01, 0.03]; },  // misses 0.5%
+  ];
+  for (const edit of broken) {
+    assert.equal(falseAlarmFigures(headlineSafe(edit)), null, edit.toString());
+  }
+});
+// Until 2026-11-04 the expected value here left method_version out, so it
+// expected the committed method-1 report's "0% of 137" to be shown: the bug.
+check("committed latest.json: false-alarm figures only from a method-2 report that clears the gate", () => {
   const committed = JSON.parse(fs.readFileSync(LATEST, "utf-8"));
   const ours = committed.safe?.cleanway ?? {};
   const expected =
+    (committed.method_version ?? 1) >= 2 &&
     committed.sources?.legit_outside_allowlist === true &&
-    typeof ours.fpr === "number" &&
-    (ours.tn ?? 0) + (ours.fp ?? 0) >= MIN_SAFE_CLASSIFIED;
+    Number.isInteger(ours.answered) && ours.answered >= MIN_SAFE_CLASSIFIED &&
+    typeof ours.no_answer === "number" && typeof ours.resolving === "number" &&
+    ours.resolving > 0 && ours.no_answer / ours.resolving <= MAX_NO_ANSWER_RATE;
   assert.equal(falsePositiveRateIsPublishable(committed), expected);
-  if (expected) {
-    // A shown rate rests on a stated, allowlist-free sample.
+  const figures = falseAlarmFigures(committed);
+  if (!expected) {
+    assert.equal(figures, null);
+  } else {
+    // A shown figure rests on a stated, allowlist-free sample.
     assert.equal(typeof committed.sources.legit, "string");
+    assert.ok(figures, "a published method-2 report has them");
+    assert.equal(figures.dangerous.rate, ours.dangerous_rate_answered);
+    assert.equal(figures.warned.rate, ours.warned_rate_answered);
   }
+});
+check("the false-alarm sentence says the sample, what was left out, and both shares with intervals", () => {
+  const en = landingSource("en");
+  assert.deepEqual(icuArgNames(en.transparency.fp_measured),
+    ["answered", "dangerous", "date", "high", "low", "n", "no_answer", "not_found", "warned", "warned_high", "warned_low"]);
+  assert.deepEqual(icuArgNames(en.transparency.fp_not_yet), ["min"]);
+  const given = Object.keys(answeredMessageArgs(falseAlarmFigures(HEADLINE_REPORT), "en"));
+  for (const arg of icuArgNames(en.transparency.fp_measured)) assert.ok(given.includes(arg), `{${arg}} is not passed`);
+  for (const locale of LOCALES) {
+    assert.doesNotMatch(landingSource(locale).transparency.fp_measured, /\{(fpr|count)\b/, locale);
+  }
+});
+check("/transparency and the methodology page read the false-alarm figures, not the old fpr", () => {
+  const app = path.join(ROOT, "landing", "app", "[locale]");
+  const read = (...parts) => fs.readFileSync(path.join(app, ...parts), "utf-8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+  const transparency = read("transparency", "page.tsx");
+  assert.match(transparency, /falseAlarmFigures\(snapshot\)/);
+  assert.match(transparency, /t\("fp_measured", answeredMessageArgs\(/);
+  assert.match(transparency, /t\("fp_not_yet", \{ min: MIN_SAFE_CLASSIFIED \}\)/);
+  assert.doesNotMatch(transparency, /\.fpr\b|fpr:/);
+  const methodology = read("transparency", "methodology", "page.tsx");
+  assert.match(methodology, /falseAlarmFigures\(data\)/);
+  assert.match(methodology, /t\("safe_table_note"\)/);
+  assert.doesNotMatch(methodology, /m\.(fpr|fp|tn|unknown)\b/);
 });
 
 console.log("legitSampleRanking (the list the real-site sample was taken outside of)");

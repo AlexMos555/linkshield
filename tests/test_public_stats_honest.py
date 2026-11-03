@@ -35,12 +35,15 @@ def stats(monkeypatch, fake_redis):
     return lambda: TestClient(app).get("/api/v1/public/stats").json()
 
 
-def _report(n_phishing=24, n_safe=50, tp=8, fn=5, fp=0, tn=0, fpr=None, recall=0.615):
-    return {
+def _report(n_phishing=24, n_safe=50, tp=8, fn=5, fp=0, tn=0, fpr=None, recall=0.615, method_version=2):
+    report = {
         "ts": "2026-06-30T13:12:11Z", "n_phishing": n_phishing, "n_safe": n_safe,
         "phishing": {"cleanway": {"tp": tp, "fn": fn, "recall": recall}},
         "safe": {"cleanway": {"fp": fp, "tn": tn, "fpr": fpr}},
     }
+    if method_version is not None:
+        report["method_version"] = method_version
+    return report
 
 
 def test_keys_are_kept_and_nothing_is_hand_written(stats):
@@ -77,7 +80,8 @@ def test_committed_false_positive_rate_follows_its_own_numbers(stats):
     measured = ours.get("fpr")
     published = stats()["false_positive_rate"]
     if (
-        measured is None
+        (report.get("method_version") or 1) < 2
+        or measured is None
         or (report.get("n_safe") or 0) < public_stats.MIN_BATCH
         or classified < public_stats.MIN_CLASSIFIED
     ):
@@ -87,6 +91,51 @@ def test_committed_false_positive_rate_follows_its_own_numbers(stats):
         # A published rate must rest on sites the analyzer really judged, not on
         # the popularity allowlist's automatic "safe".
         assert (report.get("sources") or {}).get("legit_outside_allowlist") is True
+
+
+def test_committed_detection_rate_follows_its_own_numbers(stats):
+    """The same for detection_rate: from a current-method report that clears
+    the size gate only, and then exactly its recall in percent."""
+    report = _committed_benchmark()
+    ours = (report.get("phishing") or {}).get("cleanway") or {}
+    classified = (ours.get("tp") or 0) + (ours.get("fn") or 0)
+    published = stats()["detection_rate"]
+    if (
+        (report.get("method_version") or 1) < 2
+        or ours.get("recall") is None
+        or (report.get("n_phishing") or 0) < public_stats.MIN_BATCH
+        or classified < public_stats.MIN_CLASSIFIED
+    ):
+        assert published is None
+    else:
+        assert published == round(ours["recall"] * 100, 1)
+
+
+@pytest.mark.parametrize("method_version", [None, 1])
+def test_an_old_method_report_publishes_no_rate_however_large(method_version):
+    """Every report before 2026-11-03 (no method_version: method 1). The
+    2026-11-01 one gave recall 92.9% and "0% of 137" while cleanway.ai said
+    there was no trustworthy number yet: its "unknown" mixes cautions, dead
+    links and no answer, and the site quotes none of its numbers
+    (landing/lib/benchmark.ts detectionFigures, falsePositiveRateIsPublishable)."""
+    report = _report(n_phishing=200, tp=145, fn=11, recall=145 / 156, n_safe=200, fp=0, tn=137, fpr=0.0,
+                     method_version=method_version)
+    assert public_stats.measured_detection_rate(report) is None
+    assert public_stats.measured_false_positive_rate(report) is None
+    notes = public_stats.notes_for(report)
+    for key in ("detection_rate", "false_positive_rate"):
+        assert "old method" in notes[key], key
+        assert "not been measured" not in notes[key], key
+
+
+def test_the_notes_say_which_rates_these_are():
+    """Both rates leave cautions out, and neither is the figure cleanway.ai
+    quotes: a reader of the endpoint is told so."""
+    for key in ("detection_rate", "false_positive_rate"):
+        note = public_stats.NOTES[key]
+        assert "method_version 2" in note, key
+        assert "caution" in note, key
+    assert "cleanway.ai" in public_stats.NOTES["detection_rate"]
 
 
 def test_small_samples_are_not_published():
