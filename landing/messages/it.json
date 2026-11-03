@@ -684,6 +684,7 @@
     "verdict_caution": "{domain} ha alcuni segnali sospetti. Fai attenzione.",
     "verdict_dangerous": "{domain} mostra forti segnali di essere un sito di phishing o truffa. Non inserire dati personali.",
     "check_failed": "Al momento non siamo riusciti a controllare {domain}. Riprova tra qualche minuto.",
+    "checking": "Stiamo controllando {domain}…",
     "signals_heading": "Perché",
     "low_confidence": "È un controllo rapido con dati limitati.",
     "cta_title": "Proteggi tutte le app del tuo telefono",
@@ -831,7 +832,7 @@
     "meta_description": "Cosa riceve Cleanway, cosa resta sul tuo telefono o nel tuo browser, chi altro vede cosa e per quanto tempo viene conservato tutto.",
     "back": "Torna a Cleanway",
     "title": "Informativa sulla privacy",
-    "updated": "Ultimo aggiornamento: 22 ottobre 2026",
+    "updated": "Ultimo aggiornamento: 4 novembre 2026",
     "intro": "Questa informativa spiega in parole semplici quali dati tratta Cleanway, perché e chi altro li vede. Descrive il servizio così come funziona oggi. Se qualcosa qui non corrisponde a ciò che Cleanway fa davvero, è un errore e vogliamo saperlo.",
     "contact_live": "Domande e richieste sui tuoi dati:",
     "contact_not_live": "La nostra casella di assistenza è temporaneamente fuori servizio, quindi al momento non possiamo ricevere email. L'indirizzo ricomparirà qui appena funzionerà.",
@@ -1350,6 +1351,7 @@
     "google": "Avviso fornito da Google",
     "learn_more": "Scopri di più:",
     "learn_phishing": "phishing",
-    "learn_malware": "malware"
+    "learn_malware": "malware",
+    "learn_unwanted": "software indesiderato"
   }
 }

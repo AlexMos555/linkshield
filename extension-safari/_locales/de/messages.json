@@ -384,13 +384,13 @@
     "message": "So nutzen Betrüger solche Seiten:"
   },
   "block_scheme_step1": {
-    "message": "Sie werden nach Ihrem Passwort oder Bankdaten gefragt"
+    "message": "Eine solche Seite kann nach Ihrem Passwort oder Ihren Bankdaten fragen"
   },
   "block_scheme_step2": {
-    "message": "Der Betrüger stiehlt alles, was Sie eingeben"
+    "message": "Ein Betrüger könnte alles stehlen, was Sie eingeben"
   },
   "block_scheme_step3": {
-    "message": "Er plündert Ihr Konto oder stiehlt Ihre Identität"
+    "message": "Er könnte Ihr Konto plündern oder Ihre Identität stehlen"
   },
   "block_back_button": {
     "message": "Zurück zur Sicherheit"
@@ -421,7 +421,7 @@
     "message": "Warum wir diese Seite blockiert haben"
   },
   "block_explainer_heading": {
-    "message": "Was für ein Betrug ist das?"
+    "message": "Was für ein Betrug könnte das sein?"
   },
   "block_evidence_other_title": {
     "message": "Ein Warnzeichen"
@@ -982,6 +982,9 @@
   },
   "advisory_learn_malware": {
     "message": "Schadsoftware"
+  },
+  "advisory_learn_unwanted": {
+    "message": "unerwünschte Software"
   },
   "weekly_title": {
     "message": "Meine Woche"

@@ -392,13 +392,13 @@
         "text": "Como golpistas usam sites assim:"
       },
       "scheme_step1": {
-        "text": "Vão pedir sua senha ou dados do banco"
+        "text": "Um site assim pode pedir sua senha ou dados do banco"
       },
       "scheme_step2": {
-        "text": "O golpista rouba tudo que você digitar"
+        "text": "Um golpista poderia roubar tudo o que você digitar"
       },
       "scheme_step3": {
-        "text": "Esvaziam sua conta ou roubam sua identidade"
+        "text": "Poderiam esvaziar sua conta ou roubar sua identidade"
       },
       "back_button": {
         "text": "Voltar para um lugar seguro"
@@ -429,7 +429,7 @@
         "text": "Por que bloqueamos este site"
       },
       "explainer_heading": {
-        "text": "Que tipo de golpe é este?"
+        "text": "Que tipo de golpe pode ser este?"
       },
       "evidence_other_title": {
         "text": "Um sinal de alerta"
@@ -1012,6 +1012,9 @@
       },
       "learn_malware": {
         "text": "malware"
+      },
+      "learn_unwanted": {
+        "text": "software indesejado"
       }
     },
     "weekly": {
@@ -2252,6 +2255,7 @@
       "verdict_caution": "{domain} tem alguns sinais suspeitos. Tenha cuidado.",
       "verdict_dangerous": "{domain} mostra sinais fortes de ser um site de phishing ou de golpe. Não digite dados pessoais.",
       "check_failed": "Não conseguimos verificar {domain} agora. Tente de novo em alguns minutos.",
+      "checking": "Verificando {domain}…",
       "signals_heading": "Por quê",
       "low_confidence": "Esta é uma verificação rápida, com dados limitados.",
       "cta_title": "Proteja todos os apps do seu celular",
@@ -2399,7 +2403,7 @@
       "meta_description": "O que o Cleanway recebe, o que fica no seu celular ou no seu navegador, quem mais vê o quê e por quanto tempo tudo é guardado.",
       "back": "Voltar para o Cleanway",
       "title": "Política de privacidade",
-      "updated": "Última atualização: 22 de outubro de 2026",
+      "updated": "Última atualização: 4 de novembro de 2026",
       "intro": "Esta política explica em palavras simples quais dados o Cleanway trata, por quê e quem mais os vê. Ela descreve o serviço como funciona hoje. Se algo aqui não bater com o que o Cleanway realmente faz, é um erro e queremos saber.",
       "contact_live": "Dúvidas e pedidos sobre os seus dados:",
       "contact_not_live": "Nossa caixa de suporte está temporariamente fora do ar, então no momento não conseguimos receber e-mails. O endereço vai voltar a aparecer nesta seção assim que funcionar.",

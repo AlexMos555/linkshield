@@ -392,13 +392,13 @@
         "text": "Come i truffatori usano questi siti:"
       },
       "scheme_step1": {
-        "text": "Ti chiederanno la password o i dati bancari"
+        "text": "Un sito così può chiederti la password o i dati bancari"
       },
       "scheme_step2": {
-        "text": "Il truffatore ruba tutto ciò che scrivi"
+        "text": "Un truffatore potrebbe rubare tutto ciò che scrivi"
       },
       "scheme_step3": {
-        "text": "Svuotano il tuo conto o rubano la tua identità"
+        "text": "Potrebbero svuotarti il conto o rubarti l'identità"
       },
       "back_button": {
         "text": "Torna al sicuro"
@@ -429,7 +429,7 @@
         "text": "Perché abbiamo bloccato questo sito"
       },
       "explainer_heading": {
-        "text": "Che tipo di truffa è questa?"
+        "text": "Che tipo di truffa potrebbe essere?"
       },
       "evidence_other_title": {
         "text": "Un segnale di allarme"
@@ -1012,6 +1012,9 @@
       },
       "learn_malware": {
         "text": "malware"
+      },
+      "learn_unwanted": {
+        "text": "software indesiderato"
       }
     },
     "weekly": {
@@ -2252,6 +2255,7 @@
       "verdict_caution": "{domain} ha alcuni segnali sospetti. Fai attenzione.",
       "verdict_dangerous": "{domain} mostra forti segnali di essere un sito di phishing o truffa. Non inserire dati personali.",
       "check_failed": "Al momento non siamo riusciti a controllare {domain}. Riprova tra qualche minuto.",
+      "checking": "Stiamo controllando {domain}…",
       "signals_heading": "Perché",
       "low_confidence": "È un controllo rapido con dati limitati.",
       "cta_title": "Proteggi tutte le app del tuo telefono",
@@ -2399,7 +2403,7 @@
       "meta_description": "Cosa riceve Cleanway, cosa resta sul tuo telefono o nel tuo browser, chi altro vede cosa e per quanto tempo viene conservato tutto.",
       "back": "Torna a Cleanway",
       "title": "Informativa sulla privacy",
-      "updated": "Ultimo aggiornamento: 22 ottobre 2026",
+      "updated": "Ultimo aggiornamento: 4 novembre 2026",
       "intro": "Questa informativa spiega in parole semplici quali dati tratta Cleanway, perché e chi altro li vede. Descrive il servizio così come funziona oggi. Se qualcosa qui non corrisponde a ciò che Cleanway fa davvero, è un errore e vogliamo saperlo.",
       "contact_live": "Domande e richieste sui tuoi dati:",
       "contact_not_live": "La nostra casella di assistenza è temporaneamente fuori servizio, quindi al momento non possiamo ricevere email. L'indirizzo ricomparirà qui appena funzionerà.",

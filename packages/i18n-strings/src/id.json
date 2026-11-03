@@ -392,13 +392,13 @@
         "text": "Bagaimana penipu menggunakan situs seperti ini:"
       },
       "scheme_step1": {
-        "text": "Anda akan diminta password atau data bank"
+        "text": "Situs seperti ini bisa meminta password atau data bank Anda"
       },
       "scheme_step2": {
-        "text": "Penipu mencuri semua yang Anda ketik"
+        "text": "Penipu bisa mencuri semua yang Anda ketik"
       },
       "scheme_step3": {
-        "text": "Mereka menguras rekening atau mencuri identitas Anda"
+        "text": "Mereka bisa menguras rekening atau mencuri identitas Anda"
       },
       "back_button": {
         "text": "Kembali ke tempat aman"
@@ -429,7 +429,7 @@
         "text": "Mengapa kami memblokir situs ini"
       },
       "explainer_heading": {
-        "text": "Penipuan jenis apa ini?"
+        "text": "Kemungkinan ini penipuan jenis apa?"
       },
       "evidence_other_title": {
         "text": "Tanda bahaya"
@@ -1012,6 +1012,9 @@
       },
       "learn_malware": {
         "text": "malware"
+      },
+      "learn_unwanted": {
+        "text": "perangkat lunak yang tidak diinginkan"
       }
     },
     "weekly": {
@@ -2252,6 +2255,7 @@
       "verdict_caution": "{domain} memiliki beberapa tanda mencurigakan. Berhati-hatilah.",
       "verdict_dangerous": "{domain} menunjukkan tanda kuat sebagai situs phishing atau penipuan. Jangan masukkan data pribadi.",
       "check_failed": "Kami belum bisa memeriksa {domain} saat ini. Coba lagi beberapa menit lagi.",
+      "checking": "Sedang memeriksa {domain}…",
       "signals_heading": "Alasannya",
       "low_confidence": "Ini pemeriksaan cepat dengan data terbatas.",
       "cta_title": "Lindungi semua aplikasi di ponsel Anda",
@@ -2399,7 +2403,7 @@
       "meta_description": "Apa yang diterima Cleanway, apa yang tetap di ponsel atau browser Anda, siapa lagi yang melihat apa, dan berapa lama semuanya disimpan.",
       "back": "Kembali ke Cleanway",
       "title": "Kebijakan privasi",
-      "updated": "Terakhir diperbarui: 22 Oktober 2026",
+      "updated": "Terakhir diperbarui: 4 November 2026",
       "intro": "Kebijakan ini menjelaskan dengan kata-kata sederhana data apa yang ditangani Cleanway, mengapa, dan siapa lagi yang melihatnya. Isinya menggambarkan layanan seperti yang berjalan saat ini. Jika ada yang tidak sesuai dengan apa yang sebenarnya dilakukan Cleanway, itu adalah kesalahan dan kami ingin mengetahuinya.",
       "contact_live": "Pertanyaan dan permintaan tentang data Anda:",
       "contact_not_live": "Kotak surat dukungan kami untuk sementara tidak berfungsi, jadi saat ini kami tidak bisa menerima email. Alamatnya akan muncul lagi di bagian ini begitu berfungsi.",

@@ -216,6 +216,7 @@
     advisory: "https://docs.cloud.google.com/web-risk/docs/advisory",
     phishing: "https://www.antiphishing.org/",
     malware: "https://developers.google.com/search/docs/advanced/security/malware",
+    unwanted: "https://www.google.com/about/company/unwanted-software-policy.html",
   });
 
   function fromGoogle(findings) {
@@ -244,6 +245,8 @@
     line.appendChild(googleLink(GOOGLE_LINKS.phishing, t("advisory_learn_phishing")));
     line.appendChild(document.createTextNode(" \u00B7 "));
     line.appendChild(googleLink(GOOGLE_LINKS.malware, t("advisory_learn_malware")));
+    line.appendChild(document.createTextNode(" \u00B7 "));
+    line.appendChild(googleLink(GOOGLE_LINKS.unwanted, t("advisory_learn_unwanted")));
     return line;
   }
 

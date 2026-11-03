@@ -384,13 +384,13 @@
     "message": "Cómo usan estos sitios los estafadores:"
   },
   "block_scheme_step1": {
-    "message": "Te pedirán tu contraseña o datos bancarios"
+    "message": "Un sitio así puede pedirte tu contraseña o datos bancarios"
   },
   "block_scheme_step2": {
-    "message": "El estafador roba todo lo que escribas"
+    "message": "Un estafador podría robar todo lo que escribas"
   },
   "block_scheme_step3": {
-    "message": "Vacían tu cuenta o suplantan tu identidad"
+    "message": "Podrían vaciar tu cuenta o suplantar tu identidad"
   },
   "block_back_button": {
     "message": "Volver a un lugar seguro"
@@ -421,7 +421,7 @@
     "message": "Por qué bloqueamos este sitio"
   },
   "block_explainer_heading": {
-    "message": "¿Qué tipo de estafa es esta?"
+    "message": "¿Qué tipo de estafa podría ser?"
   },
   "block_evidence_other_title": {
     "message": "Una señal de alerta"
@@ -982,6 +982,9 @@
   },
   "advisory_learn_malware": {
     "message": "malware"
+  },
+  "advisory_learn_unwanted": {
+    "message": "software no deseado"
   },
   "weekly_title": {
     "message": "Mi semana"

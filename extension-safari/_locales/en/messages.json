@@ -386,13 +386,13 @@
     "message": "How scammers use sites like this:"
   },
   "block_scheme_step1": {
-    "message": "You will be asked for your password or bank details"
+    "message": "A site like this may ask for your password or bank details"
   },
   "block_scheme_step2": {
-    "message": "The scammer steals what you type"
+    "message": "A scammer could steal whatever you type"
   },
   "block_scheme_step3": {
-    "message": "They drain your account or steal your identity"
+    "message": "They could empty your account or steal your identity"
   },
   "block_back_button": {
     "message": "Go back to safety"
@@ -423,7 +423,7 @@
     "message": "Why we blocked this site"
   },
   "block_explainer_heading": {
-    "message": "What kind of scam is this?"
+    "message": "What kind of scam could this be?"
   },
   "block_evidence_other_title": {
     "message": "A warning sign"
@@ -984,6 +984,9 @@
   },
   "advisory_learn_malware": {
     "message": "malware"
+  },
+  "advisory_learn_unwanted": {
+    "message": "unwanted software"
   },
   "weekly_title": {
     "message": "My week"

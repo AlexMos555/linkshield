@@ -384,13 +384,13 @@
     "message": "Comment les escrocs utilisent ces sites :"
   },
   "block_scheme_step1": {
-    "message": "On vous demandera votre mot de passe ou vos coordonnées bancaires"
+    "message": "Un site comme celui-ci peut vous demander votre mot de passe ou vos coordonnées bancaires"
   },
   "block_scheme_step2": {
-    "message": "L'escroc vole tout ce que vous tapez"
+    "message": "Un escroc pourrait voler tout ce que vous tapez"
   },
   "block_scheme_step3": {
-    "message": "Il vide votre compte ou usurpe votre identité"
+    "message": "Il pourrait vider votre compte ou usurper votre identité"
   },
   "block_back_button": {
     "message": "Revenir en sécurité"
@@ -421,7 +421,7 @@
     "message": "Pourquoi nous avons bloqué ce site"
   },
   "block_explainer_heading": {
-    "message": "De quel type d'arnaque s'agit-il ?"
+    "message": "De quel type d'arnaque pourrait-il s'agir ?"
   },
   "block_evidence_other_title": {
     "message": "Un signal d'alerte"
@@ -982,6 +982,9 @@
   },
   "advisory_learn_malware": {
     "message": "logiciels malveillants"
+  },
+  "advisory_learn_unwanted": {
+    "message": "logiciels indésirables"
   },
   "weekly_title": {
     "message": "Ma semaine"

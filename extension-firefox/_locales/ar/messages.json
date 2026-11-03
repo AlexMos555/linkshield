@@ -384,13 +384,13 @@
     "message": "كيف يستغل المحتالون مثل هذه المواقع:"
   },
   "block_scheme_step1": {
-    "message": "سيُطلب منك كلمة المرور أو بيانات البنك"
+    "message": "قد يطلب منك موقع كهذا كلمة المرور أو بيانات البنك"
   },
   "block_scheme_step2": {
-    "message": "يسرق المحتال كل ما تكتبه"
+    "message": "قد يسرق المحتال كل ما تكتبه"
   },
   "block_scheme_step3": {
-    "message": "يفرغون حسابك أو ينتحلون هويتك"
+    "message": "قد يفرغون حسابك أو ينتحلون هويتك"
   },
   "block_back_button": {
     "message": "العودة إلى الأمان"
@@ -421,7 +421,7 @@
     "message": "لماذا حظرنا هذا الموقع"
   },
   "block_explainer_heading": {
-    "message": "ما نوع هذا الاحتيال؟"
+    "message": "ما نوع الاحتيال الذي قد يكون هذا؟"
   },
   "block_evidence_other_title": {
     "message": "علامة تحذير"
@@ -982,6 +982,9 @@
   },
   "advisory_learn_malware": {
     "message": "البرامج الضارة"
+  },
+  "advisory_learn_unwanted": {
+    "message": "البرامج غير المرغوب فيها"
   },
   "weekly_title": {
     "message": "أسبوعي"

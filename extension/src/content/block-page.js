@@ -32,9 +32,9 @@ const BLOCK_EN = {
   block_explanation: "$DOMAIN$ may be pretending to be someone else to steal your information.",
   block_brand_impersonation: "This site pretends to be $BRAND$",
   block_scheme_heading: "How scammers use sites like this:",
-  block_scheme_step1: "You will be asked for your password or bank details",
-  block_scheme_step2: "The scammer steals what you type",
-  block_scheme_step3: "They drain your account or steal your identity",
+  block_scheme_step1: "A site like this may ask for your password or bank details",
+  block_scheme_step2: "A scammer could steal whatever you type",
+  block_scheme_step3: "They could empty your account or steal your identity",
   block_back_button: "Go back to safety",
   block_proceed_button: "I understand the risk — open anyway",
   block_proceed_countdown: "Wait $N$ seconds…",
@@ -43,7 +43,7 @@ const BLOCK_EN = {
   // Strategy Top-20 #4 — Annotated Evidence cards
   block_evidence_heading: "Why we blocked this site",
   // Strategy Top-20 #15 — Cultural scam explainer heading
-  block_explainer_heading: "What kind of scam is this?",
+  block_explainer_heading: "What kind of scam could this be?",
   block_evidence_other_title: "A warning sign",
   block_evidence_other_body: "Our checks found something unusual about this site.",
   confidence_chip: "Confidence: $PCT$%",

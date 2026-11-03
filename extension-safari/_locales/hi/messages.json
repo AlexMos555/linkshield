@@ -384,13 +384,13 @@
     "message": "ठग ऐसी साइटों का उपयोग कैसे करते हैं:"
   },
   "block_scheme_step1": {
-    "message": "आपसे पासवर्ड या बैंक जानकारी माँगी जाएगी"
+    "message": "ऐसी साइट आपसे पासवर्ड या बैंक जानकारी माँग सकती है"
   },
   "block_scheme_step2": {
-    "message": "ठग आपकी लिखी हर चीज़ चुरा लेगा"
+    "message": "ठग आपकी लिखी हर चीज़ चुरा सकता है"
   },
   "block_scheme_step3": {
-    "message": "वे आपका खाता ख़ाली कर देंगे या पहचान चुरा लेंगे"
+    "message": "वे आपका खाता ख़ाली कर सकते हैं या पहचान चुरा सकते हैं"
   },
   "block_back_button": {
     "message": "सुरक्षा की ओर वापस जाएँ"
@@ -421,7 +421,7 @@
     "message": "हमने इस साइट को क्यों ब्लॉक किया"
   },
   "block_explainer_heading": {
-    "message": "यह किस तरह की धोखाधड़ी है?"
+    "message": "यह किस तरह की धोखाधड़ी हो सकती है?"
   },
   "block_evidence_other_title": {
     "message": "खतरे का एक संकेत"
@@ -982,6 +982,9 @@
   },
   "advisory_learn_malware": {
     "message": "मैलवेयर"
+  },
+  "advisory_learn_unwanted": {
+    "message": "अवांछित सॉफ़्टवेयर"
   },
   "weekly_title": {
     "message": "मेरा हफ़्ता"

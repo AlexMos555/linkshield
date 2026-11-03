@@ -384,13 +384,13 @@
     "message": "Como golpistas usam sites assim:"
   },
   "block_scheme_step1": {
-    "message": "Vão pedir sua senha ou dados do banco"
+    "message": "Um site assim pode pedir sua senha ou dados do banco"
   },
   "block_scheme_step2": {
-    "message": "O golpista rouba tudo que você digitar"
+    "message": "Um golpista poderia roubar tudo o que você digitar"
   },
   "block_scheme_step3": {
-    "message": "Esvaziam sua conta ou roubam sua identidade"
+    "message": "Poderiam esvaziar sua conta ou roubar sua identidade"
   },
   "block_back_button": {
     "message": "Voltar para um lugar seguro"
@@ -421,7 +421,7 @@
     "message": "Por que bloqueamos este site"
   },
   "block_explainer_heading": {
-    "message": "Que tipo de golpe é este?"
+    "message": "Que tipo de golpe pode ser este?"
   },
   "block_evidence_other_title": {
     "message": "Um sinal de alerta"
@@ -982,6 +982,9 @@
   },
   "advisory_learn_malware": {
     "message": "malware"
+  },
+  "advisory_learn_unwanted": {
+    "message": "software indesejado"
   },
   "weekly_title": {
     "message": "Minha semana"

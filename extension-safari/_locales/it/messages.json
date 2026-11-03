@@ -384,13 +384,13 @@
     "message": "Come i truffatori usano questi siti:"
   },
   "block_scheme_step1": {
-    "message": "Ti chiederanno la password o i dati bancari"
+    "message": "Un sito così può chiederti la password o i dati bancari"
   },
   "block_scheme_step2": {
-    "message": "Il truffatore ruba tutto ciò che scrivi"
+    "message": "Un truffatore potrebbe rubare tutto ciò che scrivi"
   },
   "block_scheme_step3": {
-    "message": "Svuotano il tuo conto o rubano la tua identità"
+    "message": "Potrebbero svuotarti il conto o rubarti l'identità"
   },
   "block_back_button": {
     "message": "Torna al sicuro"
@@ -421,7 +421,7 @@
     "message": "Perché abbiamo bloccato questo sito"
   },
   "block_explainer_heading": {
-    "message": "Che tipo di truffa è questa?"
+    "message": "Che tipo di truffa potrebbe essere?"
   },
   "block_evidence_other_title": {
     "message": "Un segnale di allarme"
@@ -982,6 +982,9 @@
   },
   "advisory_learn_malware": {
     "message": "malware"
+  },
+  "advisory_learn_unwanted": {
+    "message": "software indesiderato"
   },
   "weekly_title": {
     "message": "La mia settimana"

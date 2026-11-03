@@ -384,13 +384,13 @@
     "message": "Bagaimana penipu menggunakan situs seperti ini:"
   },
   "block_scheme_step1": {
-    "message": "Anda akan diminta password atau data bank"
+    "message": "Situs seperti ini bisa meminta password atau data bank Anda"
   },
   "block_scheme_step2": {
-    "message": "Penipu mencuri semua yang Anda ketik"
+    "message": "Penipu bisa mencuri semua yang Anda ketik"
   },
   "block_scheme_step3": {
-    "message": "Mereka menguras rekening atau mencuri identitas Anda"
+    "message": "Mereka bisa menguras rekening atau mencuri identitas Anda"
   },
   "block_back_button": {
     "message": "Kembali ke tempat aman"
@@ -421,7 +421,7 @@
     "message": "Mengapa kami memblokir situs ini"
   },
   "block_explainer_heading": {
-    "message": "Penipuan jenis apa ini?"
+    "message": "Kemungkinan ini penipuan jenis apa?"
   },
   "block_evidence_other_title": {
     "message": "Tanda bahaya"
@@ -982,6 +982,9 @@
   },
   "advisory_learn_malware": {
     "message": "malware"
+  },
+  "advisory_learn_unwanted": {
+    "message": "perangkat lunak yang tidak diinginkan"
   },
   "weekly_title": {
     "message": "Minggu saya"

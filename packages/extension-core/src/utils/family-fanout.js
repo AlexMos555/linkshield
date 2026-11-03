@@ -25,6 +25,7 @@
 
 import { listMembers, listMyFamilies, submitAlerts } from "./family-api.js";
 import { encryptForFamily, getOrCreateKeypair } from "./family-crypto.js";
+import { restsOnGoogle } from "../background/google-verdict.js";
 
 const CACHE_KEY = "family_cache";
 const DEDUP_KEY = "family_alerts_dedup";
@@ -209,9 +210,10 @@ export async function markSentForDomain(domain) {
 
 /**
  * Encrypt + submit alerts for blocks the API confirmed. Anything else — an
- * offline guess (source "local"), a caution, a platform verdict — is dropped
- * here as well as by the caller: a relative is told "a scam site was
- * blocked" only when that is what happened.
+ * offline guess (source "local"), a caution, a platform verdict, a block
+ * resting on Google's lists — is dropped here as well as by the caller: a
+ * relative is told "a scam site was blocked" only when that is what
+ * happened, and never with Google's verdict (background/google-verdict.js).
  *
  * @param {string} token — Supabase access token. No-op on null.
  * @param {Array<{ domain: string, score?: number, level?: string,
@@ -229,6 +231,8 @@ export async function fanOutAlerts(token, blockedResults) {
   const fresh = [];
   for (const r of blockedResults) {
     if (!r || r.level !== "dangerous" || r.source !== "api" || !r.domain) continue;
+    // Google's verdict stays the person's own warning (google-verdict.js).
+    if (restsOnGoogle(r.reasons)) continue;
     // eslint-disable-next-line no-await-in-loop
     const recent = await recentlySentForDomain(r.domain);
     if (recent) continue;

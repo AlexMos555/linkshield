@@ -5,7 +5,7 @@ import { GOOGLE_ADVISORY_LINKS } from "../../utils/google-advisory";
 
 /**
  * "Advisory provided by Google", linked to the Web Risk Advisory, and the
- * learn-more links — under a verdict one of whose reasons is Google's
+ * learn-more links (phishing, malware, unwanted software) — under a verdict one of whose reasons is Google's
  * (src/utils/google-advisory.ts hasGoogleAdvisory). Web Risk's rules for
  * warnings ask for both; a verdict on other sources shows none of it.
  * The words are the extension's (extension.advisory), the same on every
@@ -27,6 +27,10 @@ export function GoogleAdvisory() {
         <Text style={s.more} accessibilityElementsHidden importantForAccessibility="no">·</Text>
         <Pressable onPress={open(GOOGLE_ADVISORY_LINKS.malware)} style={s.target} accessibilityRole="link">
           <Text style={s.link}>{t("extension.advisory.learn_malware")}</Text>
+        </Pressable>
+        <Text style={s.more} accessibilityElementsHidden importantForAccessibility="no">·</Text>
+        <Pressable onPress={open(GOOGLE_ADVISORY_LINKS.unwanted)} style={s.target} accessibilityRole="link">
+          <Text style={s.link}>{t("extension.advisory.learn_unwanted")}</Text>
         </Pressable>
       </View>
     </View>

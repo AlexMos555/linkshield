@@ -270,6 +270,9 @@ class SafeBrowsingClient:
     ``httpx.AsyncClient`` so callers can safely await concurrently.
     """
 
+    # Where its answers are cached (threat_seconds_left reads them back).
+    cache_prefix = CACHE_PREFIX
+
     def __init__(
         self,
         api_key: str = "",
@@ -480,6 +483,37 @@ def reset_client() -> None:
     """Test helper — forces the next `get_client()` call to rebuild."""
     global _singleton
     _singleton = None
+
+
+async def threat_seconds_left(domain: str) -> int:
+    """How much longer Google's answer that `domain` is a threat may be
+    relied on: the life left in the active backend's cached answer, which is
+    never cached past Google's own limit (Web Risk: until its expireTime, at
+    most an hour — web_risk.positive_ttl; v4: its cacheDuration). 0 when the
+    cached answer is not a threat, has expired, or cannot be read.
+
+    Web Risk's rules for warnings allow one only while "the cached response
+    is still valid" (api/services/google_advisory.py): every cache that keeps
+    a verdict resting on Google keeps it no longer than this. One second is
+    kept back, for Redis rounding a TTL to the second.
+    """
+    client = get_client()
+    key = f"{getattr(client, 'cache_prefix', CACHE_PREFIX)}{domain}"
+    try:
+        r = await get_redis()
+        raw = await r.get(key)
+        ttl = int(await r.ttl(key)) if raw else -2
+    except Exception as e:  # Redis unreachable: nothing can vouch for it
+        logger.debug("gsb_ttl_read_failed", extra={"error": str(e), "domain": domain})
+        return 0
+    if not raw or ttl <= 0:  # -2 gone, -1 kept with no expiry (never written so)
+        return 0
+    try:
+        if CheckResult.from_dict(json.loads(raw)).status != CheckStatus.threat:
+            return 0
+    except (ValueError, KeyError, TypeError):
+        return 0
+    return max(0, ttl - 1)
 
 
 # Backwards-compatible boolean API for existing analyzer.py / circuit breaker.

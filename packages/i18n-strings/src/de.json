@@ -392,13 +392,13 @@
         "text": "So nutzen Betrüger solche Seiten:"
       },
       "scheme_step1": {
-        "text": "Sie werden nach Ihrem Passwort oder Bankdaten gefragt"
+        "text": "Eine solche Seite kann nach Ihrem Passwort oder Ihren Bankdaten fragen"
       },
       "scheme_step2": {
-        "text": "Der Betrüger stiehlt alles, was Sie eingeben"
+        "text": "Ein Betrüger könnte alles stehlen, was Sie eingeben"
       },
       "scheme_step3": {
-        "text": "Er plündert Ihr Konto oder stiehlt Ihre Identität"
+        "text": "Er könnte Ihr Konto plündern oder Ihre Identität stehlen"
       },
       "back_button": {
         "text": "Zurück zur Sicherheit"
@@ -429,7 +429,7 @@
         "text": "Warum wir diese Seite blockiert haben"
       },
       "explainer_heading": {
-        "text": "Was für ein Betrug ist das?"
+        "text": "Was für ein Betrug könnte das sein?"
       },
       "evidence_other_title": {
         "text": "Ein Warnzeichen"
@@ -1012,6 +1012,9 @@
       },
       "learn_malware": {
         "text": "Schadsoftware"
+      },
+      "learn_unwanted": {
+        "text": "unerwünschte Software"
       }
     },
     "weekly": {
@@ -2252,6 +2255,7 @@
       "verdict_caution": "{domain} zeigt einige verdächtige Anzeichen. Sei vorsichtig.",
       "verdict_dangerous": "{domain} zeigt starke Anzeichen einer Phishing- oder Betrugsseite. Gib dort keine persönlichen Daten ein.",
       "check_failed": "Wir konnten {domain} gerade nicht prüfen. Versuche es in ein paar Minuten noch einmal.",
+      "checking": "Wir prüfen {domain} gerade…",
       "signals_heading": "Warum",
       "low_confidence": "Das ist eine schnelle Prüfung mit begrenzten Daten.",
       "cta_title": "Schütze jede App auf deinem Handy",
@@ -2399,7 +2403,7 @@
       "meta_description": "Was Cleanway erhält, was auf deinem Handy oder in deinem Browser bleibt, wer sonst was sieht und wie lange alles gespeichert wird.",
       "back": "Zurück zu Cleanway",
       "title": "Datenschutzerklärung",
-      "updated": "Zuletzt aktualisiert: 22. Oktober 2026",
+      "updated": "Zuletzt aktualisiert: 4. November 2026",
       "intro": "Diese Erklärung beschreibt in einfachen Worten, welche Daten Cleanway verarbeitet, warum und wer sie sonst noch sieht. Sie beschreibt den Dienst so, wie er heute funktioniert. Wenn hier etwas nicht zu dem passt, was Cleanway tatsächlich tut, ist das ein Fehler, und wir möchten davon erfahren.",
       "contact_live": "Fragen und Anfragen zu deinen Daten:",
       "contact_not_live": "Unser Support-Postfach funktioniert vorübergehend nicht, daher können wir gerade keine E-Mails empfangen. Die Adresse erscheint hier wieder, sobald es funktioniert.",

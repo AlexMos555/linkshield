@@ -684,6 +684,7 @@
     "verdict_caution": "{domain} memiliki beberapa tanda mencurigakan. Berhati-hatilah.",
     "verdict_dangerous": "{domain} menunjukkan tanda kuat sebagai situs phishing atau penipuan. Jangan masukkan data pribadi.",
     "check_failed": "Kami belum bisa memeriksa {domain} saat ini. Coba lagi beberapa menit lagi.",
+    "checking": "Sedang memeriksa {domain}…",
     "signals_heading": "Alasannya",
     "low_confidence": "Ini pemeriksaan cepat dengan data terbatas.",
     "cta_title": "Lindungi semua aplikasi di ponsel Anda",
@@ -831,7 +832,7 @@
     "meta_description": "Apa yang diterima Cleanway, apa yang tetap di ponsel atau browser Anda, siapa lagi yang melihat apa, dan berapa lama semuanya disimpan.",
     "back": "Kembali ke Cleanway",
     "title": "Kebijakan privasi",
-    "updated": "Terakhir diperbarui: 22 Oktober 2026",
+    "updated": "Terakhir diperbarui: 4 November 2026",
     "intro": "Kebijakan ini menjelaskan dengan kata-kata sederhana data apa yang ditangani Cleanway, mengapa, dan siapa lagi yang melihatnya. Isinya menggambarkan layanan seperti yang berjalan saat ini. Jika ada yang tidak sesuai dengan apa yang sebenarnya dilakukan Cleanway, itu adalah kesalahan dan kami ingin mengetahuinya.",
     "contact_live": "Pertanyaan dan permintaan tentang data Anda:",
     "contact_not_live": "Kotak surat dukungan kami untuk sementara tidak berfungsi, jadi saat ini kami tidak bisa menerima email. Alamatnya akan muncul lagi di bagian ini begitu berfungsi.",
@@ -1350,6 +1351,7 @@
     "google": "Peringatan disediakan oleh Google",
     "learn_more": "Pelajari lebih lanjut:",
     "learn_phishing": "phishing",
-    "learn_malware": "malware"
+    "learn_malware": "malware",
+    "learn_unwanted": "perangkat lunak yang tidak diinginkan"
   }
 }

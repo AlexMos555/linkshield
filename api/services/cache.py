@@ -28,13 +28,17 @@ async def get_redis() -> redis.Redis:
 
 
 async def get_cached_result(domain: str) -> Optional[DomainResult]:
-    """Get cached domain check result."""
+    """Get cached domain check result. One resting on Google whose answer is
+    gone is a miss (api/services/google_advisory.py)."""
+    from api.services import google_advisory
     try:
         r = await get_redis()
         data = await r.get(f"check:{domain}")
         if data:
             result = DomainResult(**json.loads(data))
             if is_retired(result):
+                return None
+            if await google_advisory.seconds_left(result) == 0:
                 return None
             result.cached = True
             return result
@@ -44,7 +48,10 @@ async def get_cached_result(domain: str) -> Optional[DomainResult]:
 
 
 async def cache_result(result: DomainResult) -> None:
-    """Cache domain check result with appropriate TTL."""
+    """Cache domain check result with appropriate TTL — for a verdict resting
+    on Google, never past Google's answer (Web Risk's rules for warnings,
+    api/services/google_advisory.py); not at all once that is gone."""
+    from api.services import google_advisory
     settings = get_settings()
 
     if result.level == "safe":
@@ -55,6 +62,9 @@ async def cache_result(result: DomainResult) -> None:
         ttl = settings.cache_ttl_dangerous
 
     try:
+        ttl = google_advisory.capped(ttl, await google_advisory.seconds_left(result))
+        if ttl <= 0:
+            return
         r = await get_redis()
         data = result.model_dump_json()
         await r.setex(f"check:{result.domain}", ttl, data)

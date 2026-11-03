@@ -189,15 +189,18 @@
   // the code). Web Risk's rules for warnings (docs.cloud.google.com/web-risk/
   // docs/user-warnings, read 2026-11-03): a warning about a page Google
   // flagged carries "Advisory provided by Google" linked to the Web Risk
-  // Advisory and lets people learn more (antiphishing.org for phishing,
-  // Google Search Central for malware); a warning built on other sources
-  // must not carry Google's name. The app (mobile/src/utils/google-advisory.ts)
-  // and the site (landing/lib/google-advisory.ts) link the same pages.
+  // Advisory and lets people learn more about its threat type (antiphishing.org
+  // for phishing, Google Search Central for malware, Google's policy for
+  // unwanted software — the server asks about all three); a warning built on
+  // other sources must not carry Google's name. The app (mobile/src/utils/
+  // google-advisory.ts) and the site (landing/lib/google-advisory.ts) link
+  // the same pages.
   var GOOGLE_SIGNAL = "safe_browsing";
   var GOOGLE_LINKS = Object.freeze({
     advisory: "https://docs.cloud.google.com/web-risk/docs/advisory",
     phishing: "https://www.antiphishing.org/",
     malware: "https://developers.google.com/search/docs/advanced/security/malware",
+    unwanted: "https://www.google.com/about/company/unwanted-software-policy.html",
   });
 
   /**
@@ -244,10 +247,12 @@
     var more = message("advisory_learn_more", "Learn more:");
     var phishing = message("advisory_learn_phishing", "phishing");
     var malware = message("advisory_learn_malware", "malware");
+    var unwanted = message("advisory_learn_unwanted", "unwanted software");
     return '<div class="ls-google-advisory">' +
       '<div class="ls-google-advisory-credit">' + link(GOOGLE_LINKS.advisory, credit) + "</div>" +
       '<div class="ls-google-advisory-more">' + escapeHtml(more) + " " +
-      link(GOOGLE_LINKS.phishing, phishing) + " · " + link(GOOGLE_LINKS.malware, malware) + "</div>" +
+      link(GOOGLE_LINKS.phishing, phishing) + " · " + link(GOOGLE_LINKS.malware, malware) + " · " +
+      link(GOOGLE_LINKS.unwanted, unwanted) + "</div>" +
       "</div>";
   }
 

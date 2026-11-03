@@ -58,6 +58,7 @@ var FALLBACK_EN = {
   advisory_learn_more: "Learn more:",
   advisory_learn_phishing: "phishing",
   advisory_learn_malware: "malware",
+  advisory_learn_unwanted: "unwanted software",
   time_just_now: "just now",
   time_minutes: "$1 min",
   time_hours: "$1 h",
