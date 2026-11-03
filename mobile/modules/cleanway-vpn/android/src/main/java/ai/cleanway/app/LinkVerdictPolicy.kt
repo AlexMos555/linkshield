@@ -36,7 +36,9 @@ enum class LinkAction {
  *    model being sure, or (newer servers) the server having opened and
  *    judged the site itself. Also on "caution" when the model is sure: a
  *    caution at 50 with the model at 100% (seen 2026-09-25 on a live
- *    wallet-drainer page) used to pass in silence.
+ *    wallet-drainer page) used to pass in silence. And on any caution or
+ *    dangerous verdict about a bare IP address ([isAnAddress]): the model is
+ *    not asked about addresses any more.
  *  - BLOCK — the site stops resolving on this phone — ONLY when the verdict
  *    rests on threat intel: a curated list saw this site doing harm.
  *
@@ -85,15 +87,31 @@ object LinkVerdictPolicy {
     const val NOT_FOUND_CODE = "domain_not_found"
     private val ML_DETAIL = Regex("""ML model:\s*(\d{1,3})% phishing probability""")
 
+    /** The server's code for "the link's host is an IP address, not a name". */
+    const val IP_CODE = "ip_based"
+
     fun decide(answer: LinkAnswer): LinkAction = when {
         doesNotExist(answer) -> LinkAction.NONE
         answer.level == "dangerous" && restsOnIntel(answer) -> LinkAction.WARN_AND_BLOCK
-        answer.level == "dangerous" && (judgedTheSite(answer) || mlIsSure(answer)) -> LinkAction.WARN
-        answer.level == "caution" && mlIsSure(answer) -> LinkAction.WARN
+        answer.level == "dangerous" && (judgedTheSite(answer) || mlIsSure(answer) || isAnAddress(answer)) -> LinkAction.WARN
+        answer.level == "caution" && (mlIsSure(answer) || isAnAddress(answer)) -> LinkAction.WARN
         else -> LinkAction.NONE
     }
 
     fun doesNotExist(answer: LinkAnswer): Boolean = answer.exists == false || NOT_FOUND_CODE in answer.reasonCodes
+
+    /**
+     * The tapped link's host is a public IP address (private ones get a 400
+     * and no answer). Since #398 the server never asks the ML model about an
+     * address, so "the model is sure" no longer stands in for it: before, every
+     * address came back "dangerous" with ml_high_risk (8.8.8.8 and GitHub too)
+     * and popped up; now a caution on one would pass in silence — the Mozi
+     * botnet's http://<ip>:<port>/i links from SMS included. A link to a bare
+     * address is rare from a real sender, so it is told about: quietly for a
+     * caution (BlockNotifier.severityOf), out loud for a "dangerous" that, on
+     * an address, now always rests on evidence (IPQS, a brand's favicon).
+     */
+    fun isAnAddress(answer: LinkAnswer): Boolean = IP_CODE in answer.reasonCodes
 
     fun restsOnIntel(answer: LinkAnswer): Boolean {
         if (answer.verdictBasis.isNotEmpty()) return answer.verdictBasis.any { basis(it) in INTEL_BASES }

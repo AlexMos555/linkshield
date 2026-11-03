@@ -82,7 +82,7 @@ class LinkVerdictPolicyTest {
     }
 
     @Test
-    fun `caution warns only when the ML model is sure it is phishing`() {
+    fun `a name's caution warns only when the ML model is sure it is phishing`() {
         assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(answer("caution", listOf("ml_high_risk"))))
         // Older answer without the code: the plain-language line carries the number.
         assertEquals(
@@ -93,6 +93,30 @@ class LinkVerdictPolicyTest {
         assertEquals(LinkAction.NONE, LinkVerdictPolicy.decide(answer("caution", listOf("no_https"))))
         // A caution never blocks, whatever feed it names.
         assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(answer("caution", listOf("ml_high_risk", "phishtank"))))
+    }
+
+    @Test
+    fun `a bare IP address warns, never blocks, without the ML model`() {
+        // Answers of the public check for 64.6.64.6 and 9.9.9.11 after #398:
+        // the server no longer asks the model about an address, so its
+        // caution carries no ml_high_risk. A link to http://<ip>:<port>/i in
+        // an SMS (the Mozi botnet) must still be told about.
+        val unreachable = answer("caution", listOf("ip_based", "unreachable_from_scanner"), basis = listOf("unreachable"))
+        val opened = answer("caution", listOf("ip_based", "missing_headers"), basis = listOf("heuristics"))
+        assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(unreachable))
+        assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(opened))
+        // 'dangerous' on an address now rests on evidence (IPQS here): it warns
+        // even when the scanner could not open the address.
+        val ipqs = answer("dangerous", listOf("ip_based", "ipqs_phishing", "unreachable_from_scanner"), basis = listOf("unreachable"))
+        assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(ipqs))
+        // Only a feed listing blocks, for an address as for a name.
+        assertEquals(
+            LinkAction.WARN_AND_BLOCK,
+            LinkVerdictPolicy.decide(answer("dangerous", listOf("ip_based", "safe_browsing"), basis = listOf("threat_intel"))),
+        )
+        // A name's caution without the model stays silent (as above).
+        assertEquals(LinkAction.NONE, LinkVerdictPolicy.decide(answer("caution", listOf("no_https", "unreachable_from_scanner"), basis = listOf("unreachable"))))
+        assertEquals(LinkAction.NONE, LinkVerdictPolicy.decide(answer("safe", listOf("ip_based"))))
     }
 
     @Test
