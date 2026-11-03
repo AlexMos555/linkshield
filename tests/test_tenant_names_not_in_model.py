@@ -190,6 +190,8 @@ def _when(request, when):
     ("publicsectorcapabilitiesindex", "zapier.app", "publicsectorcapabilitiesindex"),
     # a customer's word of the same length, no digits
     ("competitionscandicflowxyz", "zapier.app", "competitionscandicflowxyz"),
+    # many hyphens: read in one pass (no backtracking regex, CodeQL py/polynomial-redos)
+    ("a-" * 30 + "x", "zapier.app", "a-" * 30 + "x"), ("a-" * 28 + "abc123", "zapier.app", "a-" * 27 + "a"),
     # only on zapier.app
     ("zapbot-3afcd4", "edgeone.dev", "zapbot-3afcd4"),
     ("polite-tulumba-704e1b", "netlify.app", "polite-tulumba-704e1b"),

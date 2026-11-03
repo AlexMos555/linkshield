@@ -292,8 +292,8 @@ _TENANT_LABEL_SUFFIXES: frozenset[str] = HOSTING_PLATFORMS | TENANT_SUFFIXES_NOT
 # cuid (c and 24 base-36 characters: cmp8f64bv001l4v51du7zjkae, 'ACSI Quote
 # Request'). For the day the retrain moves zapier.app into tenant_suffixes
 # and the rules start reading its tenants.
-_GENERATED_SLUG = re.compile(r"(.+)-[0-9a-f]{6}")
 _ZAPIER_ID = re.compile(r"c[a-z0-9]{24}")
+_HEX_DIGITS = frozenset("0123456789abcdef")
 _ZAPIER_DEFAULT_NAMES: frozenset[str] = frozenset({
     "form-interface", "new-form-project", "new-interface", "new-client-intake", "untitled-form",
     "application-form", "lead-capture", "lead-capture-form", "get-in-touch", "request-portal",
@@ -314,10 +314,12 @@ def _without_generated_slug(label: str, suffix: str) -> str:
         return label
     if _ZAPIER_ID.fullmatch(label) and sum(ch.isdigit() for ch in label) >= 3:
         return ""
-    generated = _GENERATED_SLUG.fullmatch(label)
-    if not generated:
+    # String operations, not a regex: '(.+)-[0-9a-f]{6}' backtracks
+    # polynomially on a label of many hyphens (CodeQL py/polynomial-redos).
+    name, hyphen, tail = label.rpartition("-")
+    if not (name and hyphen and len(tail) == 6 and _HEX_DIGITS.issuperset(tail)):
         return label
-    return "" if generated.group(1) in _ZAPIER_DEFAULT_NAMES else generated.group(1)
+    return "" if name in _ZAPIER_DEFAULT_NAMES else name
 
 
 def _tenant_label(domain: str) -> Optional[str]:
