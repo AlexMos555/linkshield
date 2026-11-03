@@ -1239,6 +1239,40 @@ def level_for_score(score: int) -> RiskLevel:
 _OTX_STALE_DAYS = 90
 
 
+def otx_reports_are_history(signals: Mapping) -> bool:
+    """More than five OTX reports about a HOSTNAME — a name below a
+    registrable domain, a hosting customer's site above all
+    (analyzer._otx_indicator) — whose newest was made _OTX_STALE_DAYS
+    or more ago: not counted at all.
+
+    A tenant never carries a rank of its own (scripts/build_top_domains.py
+    drops tenants) and the platform's is not its (_platform_tenant_site), so
+    the popularity waiver that keeps old victim and sandbox mentions off a
+    popular registrable domain can never keep them off a popular tenant.
+    Keyless, 2026-11-03: mozilla.github.io (pdf.js) had 22 distinct reports,
+    the newest 423 days old, googleprojectzero.blogspot.com 27 (265 days),
+    google.github.io 16 (131 days) — malware-sandbox and IOC dumps that list
+    every host a sample touched — and as "Flagged in N reports" (+60) they
+    made the first two 'dangerous' (caution 30 and 45 before). Of 60
+    phishing customers' sites sampled from the weekly benchmarks, OTX had
+    reports for 56: one to five for 55, nine for the sixth (dangerous 71
+    without them).
+
+    One to five old reports stay what they are for any name: a weak signal.
+    A list kept up to date for years is dated by when it was made: CERT
+    Polska's "CERT.PL list of malicious domains" (made 2023-10-29, modified
+    daily) was, on the day the benchmark listed them, the only report about
+    8 of 30 sampled phishing subdomains (allegrolokalnie.*). An unknown age
+    counts, as for any report."""
+    newest = signals.get("alienvault_newest_report_days")
+    if signals.get("alienvault_indicator") != "hostname" or not isinstance(newest, int) \
+            or isinstance(newest, bool) or newest < _OTX_STALE_DAYS:
+        return False
+    pulses = signals.get("alienvault_pulse_count", 0) or 0
+    distinct = signals.get("alienvault_distinct_pulses")
+    return (pulses if distinct is None else min(distinct, pulses)) > 5
+
+
 def _certificate_is_a_renewal(signals: dict) -> bool:
     """Something shows the name is older than its fresh certificate:
 
@@ -1473,8 +1507,11 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     #
     # A customer's site on a hosting platform is judged by its own name, not
     # the platform's (_platform_tenant_site): OTX is asked about the full
-    # host, so its pulses are about the tenant, and workers.dev or at.ua being
-    # popular vouches for none of their customers (audit 2026-10-25).
+    # host, as the hostname indicator it files a tenant under
+    # (analyzer._otx_indicator — until 2026-11-03 it was asked for a
+    # domain of that name and answered 0 for every tenant), so its pulses
+    # are about the tenant, and workers.dev or at.ua being popular vouches
+    # for none of their customers (audit 2026-10-25).
     #
     # The tiers count DISTINCT reports (analyzer._otx_reports): a
     # cloned pulse is the same report again. tztu.ru's 44 pulses were one
@@ -1485,11 +1522,13 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     #
     # One to five reports that are all _OTX_STALE_DAYS or more old are weak
     # (WEAK_SIGNALS): they still score, but alone with other weak signals
-    # they make a caution, not a 'dangerous'.
+    # they make a caution, not a 'dangerous'. About a hostname (a name below
+    # a registrable domain) more than five old reports do not count at all
+    # (otx_reports_are_history).
     alienvault_pulses = signals.get("alienvault_pulse_count", 0) or 0
     _distinct = signals.get("alienvault_distinct_pulses")
     otx_reports = alienvault_pulses if _distinct is None else min(_distinct, alienvault_pulses)
-    if otx_reports > 0:
+    if otx_reports > 0 and not otx_reports_are_history(signals):
         # The registrable domain whose popularity counts
         # (rank_registrable_domain), with the Russian zones: until 2026-10-28
         # this read the compound-ccTLD heuristic, whose key for any x.spb.ru

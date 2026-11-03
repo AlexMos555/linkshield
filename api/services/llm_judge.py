@@ -63,6 +63,8 @@ import logging
 import os
 from typing import Optional
 
+from api.services.scoring import otx_reports_are_history
+
 logger = logging.getLogger(__name__)
 
 # Configuration — these knobs matter for cost AND safety.
@@ -165,6 +167,11 @@ def _extract_judge_features(signals: dict, score: int) -> dict:
             # Lists of primitives only — drop nested objects.
             out[k] = [x for x in v if isinstance(x, (str, int, float, bool))]
         # Everything else (dicts, custom objects) is silently dropped.
+    # Old OTX reports about a hostname are not evidence the scorer counts
+    # (scoring.otx_reports_are_history); the judge is told there are none,
+    # as its prompt reads any pulse as "dangerous".
+    if "alienvault_pulse_count" in out and otx_reports_are_history(signals or {}):
+        out["alienvault_pulse_count"] = 0
     out["heuristic_score"] = max(0, min(int(score), 100))
     return out
 
