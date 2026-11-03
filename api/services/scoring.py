@@ -1435,7 +1435,19 @@ def otx_reports_are_history(signals: Mapping) -> bool:
     Polska's "CERT.PL list of malicious domains" (made 2023-10-29, modified
     daily) was, on the day the benchmark listed them, the only report about
     8 of 30 sampled phishing subdomains (allegrolokalnie.*). An unknown age
-    counts, as for any report."""
+    counts, as for any report.
+
+    The step at five is intentional: five old reports about a hostname
+    score a weak +30, six score nothing, so the sixth takes the five's
+    weight away. The two counts are different evidence. One to five is how
+    phishing customers' sites look in OTX (55 of the 56 above) and what a
+    long-lived list like CERT.PL's gives, so those stay. More than five old
+    ones is the sandbox / IOC-dump pattern of a well-known host. Keeping
+    them as a weak +30 would not help: weak signals are capped at caution
+    only when nothing strong is present, and mozilla.github.io also draws
+    typosquatting (+25, strong), so it would still be 'dangerous'.
+    tests/test_otx_hostname_indicator.py checks the edges: 5 / 6 reports,
+    89 / 90 days, clones and an unknown age."""
     newest = signals.get("alienvault_newest_report_days")
     if signals.get("alienvault_indicator") != "hostname" or not isinstance(newest, int) \
             or isinstance(newest, bool) or newest < _OTX_STALE_DAYS:
