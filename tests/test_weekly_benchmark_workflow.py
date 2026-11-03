@@ -29,8 +29,11 @@ def _regression_script() -> str:
     return textwrap.dedent(body.group(1))
 
 
-def _fresh(recall: float) -> dict:
-    return {"phishing": {"cleanway": {"recall": recall}}, "safe": {"cleanway": {}}}
+def _fresh(recall: float, method_version: int | None = None) -> dict:
+    report = {"phishing": {"cleanway": {"recall": recall}}, "safe": {"cleanway": {}}}
+    if method_version is not None:
+        report["method_version"] = method_version
+    return report
 
 
 def _run(tmp_path: Path, reports: dict[str, dict]) -> tuple[subprocess.CompletedProcess, str]:
@@ -77,6 +80,35 @@ def test_the_first_fresh_run_has_nothing_to_compare(tmp_path):
     })
     assert proc.returncode == 0, proc.stderr
     assert output.strip() == "regression=false"
+
+
+def test_runs_counted_by_different_methods_are_not_compared(tmp_path):
+    """method_version 2 (2026-11-03, scripts/benchmark_method.py) draws a
+    different sample and counts dead names for no one: a drop between a
+    method 1 run and a method 2 run is the method, not Cleanway. The step
+    opened a "recall regression" PR on it (or hid a real drop)."""
+    proc, output = _run(tmp_path, {
+        "2026-11-01-fresh-urls.json": _fresh(0.93),                    # no method_version: 1
+        "2026-11-08-fresh-urls.json": _fresh(0.70, method_version=2),
+    })
+    assert proc.returncode == 0, proc.stderr
+    assert output.strip() == "regression=false"
+    assert "method_version" in proc.stdout and "not comparable" in proc.stdout
+
+
+def test_two_runs_of_the_same_method_are_compared(tmp_path):
+    proc, output = _run(tmp_path, {
+        "2026-11-01-fresh-urls.json": _fresh(0.93),
+        "2026-11-08-fresh-urls.json": _fresh(0.90, method_version=2),
+        "2026-11-15-fresh-urls.json": _fresh(0.80, method_version=2),
+    })
+    assert proc.returncode == 0, proc.stderr
+    assert output.strip() == "regression=true"
+    proc, output = _run(tmp_path / "v1", {
+        "2026-10-25-fresh-urls.json": _fresh(0.98, method_version=1),
+        "2026-11-01-fresh-urls.json": _fresh(0.80),                    # absent = 1
+    })
+    assert output.strip() == "regression=true"
 
 
 def test_the_weekly_run_asks_neither_virustotal_nor_safe_browsing():

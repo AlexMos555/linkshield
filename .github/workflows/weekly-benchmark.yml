@@ -109,8 +109,9 @@ jobs:
       - name: Check the legitimate sample
         # Every listed site still resolves and none is auto-trusted. A red
         # step here is a to-do (prune the list), not a reason to skip the
-        # week: a lapsed site scores `not_found`, which counts as no answer,
-        # and an auto-trusted one is dropped by the run itself.
+        # week: a lapsed site is 'not found' for every resolver and left out
+        # of the rates (scripts/benchmark_method.py), and an auto-trusted one
+        # is dropped by the run itself.
         continue-on-error: true
         run: python scripts/eval_fresh_urls.py --verify-legit-sample
 
@@ -184,6 +185,18 @@ jobs:
               today = json.load(f)
           with open(files[-2]) as f:
               prior = json.load(f)
+          # Two runs counted by different rules are not comparable: since
+          # 2026-11-03 (method_version 2, scripts/benchmark_method.py) the
+          # sample and the count changed, and a drop across that line is the
+          # method, not Cleanway. A report without the key is method 1.
+          today_method = today.get('method_version', 1)
+          prior_method = prior.get('method_version', 1)
+          if today_method != prior_method:
+              print(f"::notice::Regression check skipped: {files[-1]} is method_version {today_method}, "
+                    f"{files[-2]} is method_version {prior_method}; their recalls are counted "
+                    "differently and are not comparable.")
+              print("regression=false", file=open(os.environ['GITHUB_OUTPUT'], 'a'))
+              sys.exit(0)
           today_recall = today['phishing'].get('cleanway', {}).get('recall')
           prior_recall = prior['phishing'].get('cleanway', {}).get('recall')
           regressed = False
