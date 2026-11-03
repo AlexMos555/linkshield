@@ -436,6 +436,39 @@
       },
       "evidence_other_body": {
         "text": "Наши проверки нашли у этого сайта кое-что необычное."
+      },
+      "rechecking": {
+        "text": "Проверяем $DOMAIN$ ещё раз…",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_title": {
+        "text": "Проверено ещё раз"
+      },
+      "recheck_clear": {
+        "text": "Сейчас $DOMAIN$ не отмечен как опасный. Прежнее предупреждение устарело.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_failed": {
+        "text": "Cleanway не удалось проверить $DOMAIN$ ещё раз. Прежнее предупреждение устарело.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_open": {
+        "text": "Открыть сайт"
+      },
+      "recheck_back": {
+        "text": "Назад"
       }
     },
     "welcome": {

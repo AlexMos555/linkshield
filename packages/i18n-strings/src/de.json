@@ -436,6 +436,39 @@
       },
       "evidence_other_body": {
         "text": "Unsere Prüfungen haben etwas Ungewöhnliches an dieser Seite gefunden."
+      },
+      "rechecking": {
+        "text": "$DOMAIN$ wird erneut geprüft…",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_title": {
+        "text": "Erneut geprüft"
+      },
+      "recheck_clear": {
+        "text": "$DOMAIN$ ist derzeit nicht als gefährlich markiert. Die frühere Warnung ist abgelaufen.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_failed": {
+        "text": "Cleanway konnte $DOMAIN$ gerade nicht erneut prüfen. Die frühere Warnung ist abgelaufen.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_open": {
+        "text": "Website öffnen"
+      },
+      "recheck_back": {
+        "text": "Zurück"
       }
     },
     "welcome": {

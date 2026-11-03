@@ -223,9 +223,13 @@ async def public_check(domain: str, request: Request):
     if cached:
         left = await google_advisory.seconds_left(cached)
         # A copy that outlived Google's answer (Redis lost the shorter key)
-        # is never served: the site is checked again below.
+        # is never served: the site is checked again below. Nor one whose
+        # answer ran out during the competitor lookup (up to 3 s): a window
+        # of 0 on a cached copy is Google's verdict after Google's answer.
         if left is None or left > 0:
-            return await _build_response(cached, modern)
+            response = await _build_response(cached, modern)
+            if left is None or response["advisory_ttl"] != 0:
+                return response
 
     # 6) Cap the expensive fan-out, then run it once per domain. A worker
     #    already running its whole fresh-analysis budget answers 503 at once,

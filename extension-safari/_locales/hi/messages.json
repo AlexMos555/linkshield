@@ -429,6 +429,39 @@
   "block_evidence_other_body": {
     "message": "हमारी जाँच में इस साइट पर कुछ असामान्य मिला।"
   },
+  "block_rechecking": {
+    "message": "$DOMAIN$ को फिर से जाँचा जा रहा है…",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_recheck_title": {
+    "message": "फिर से जाँचा गया"
+  },
+  "block_recheck_clear": {
+    "message": "$DOMAIN$ अभी ख़तरनाक के रूप में चिह्नित नहीं है। पिछली चेतावनी की अवधि समाप्त हो गई है।",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_recheck_failed": {
+    "message": "Cleanway अभी $DOMAIN$ को फिर से नहीं जाँच सका। पिछली चेतावनी की अवधि समाप्त हो गई है।",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_recheck_open": {
+    "message": "साइट खोलें"
+  },
+  "block_recheck_back": {
+    "message": "वापस जाएँ"
+  },
   "welcome_hero_title": {
     "message": "अब आप सुरक्षित हैं"
   },

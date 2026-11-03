@@ -429,6 +429,39 @@
   "block_evidence_other_body": {
     "message": "Nos vérifications ont trouvé quelque chose d'inhabituel sur ce site."
   },
+  "block_rechecking": {
+    "message": "Nouvelle vérification de $DOMAIN$…",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_recheck_title": {
+    "message": "Vérifié à nouveau"
+  },
+  "block_recheck_clear": {
+    "message": "$DOMAIN$ n'est pas signalé comme dangereux pour le moment. L'avertissement précédent a expiré.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_recheck_failed": {
+    "message": "Cleanway n'a pas pu vérifier à nouveau $DOMAIN$ pour le moment. L'avertissement précédent a expiré.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_recheck_open": {
+    "message": "Ouvrir le site"
+  },
+  "block_recheck_back": {
+    "message": "Revenir en arrière"
+  },
   "welcome_hero_title": {
     "message": "Vous êtes protégé maintenant"
   },

@@ -436,6 +436,39 @@
       },
       "evidence_other_body": {
         "text": "I nostri controlli hanno trovato qualcosa di insolito in questo sito."
+      },
+      "rechecking": {
+        "text": "Nuovo controllo di $DOMAIN$…",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_title": {
+        "text": "Controllato di nuovo"
+      },
+      "recheck_clear": {
+        "text": "Al momento $DOMAIN$ non è segnalato come pericoloso. L'avviso precedente è scaduto.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_failed": {
+        "text": "Cleanway non è riuscito a controllare di nuovo $DOMAIN$ in questo momento. L'avviso precedente è scaduto.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_open": {
+        "text": "Apri il sito"
+      },
+      "recheck_back": {
+        "text": "Torna indietro"
       }
     },
     "welcome": {

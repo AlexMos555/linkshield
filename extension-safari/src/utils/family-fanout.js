@@ -25,7 +25,7 @@
 
 import { listMembers, listMyFamilies, submitAlerts } from "./family-api.js";
 import { encryptForFamily, getOrCreateKeypair } from "./family-crypto.js";
-import { restsOnGoogle } from "../background/google-verdict.js";
+import { hasGoogleWindow, restsOnGoogle } from "../background/google-verdict.js";
 
 const CACHE_KEY = "family_cache";
 const DEDUP_KEY = "family_alerts_dedup";
@@ -231,8 +231,9 @@ export async function fanOutAlerts(token, blockedResults) {
   const fresh = [];
   for (const r of blockedResults) {
     if (!r || r.level !== "dangerous" || r.source !== "api" || !r.domain) continue;
-    // Google's verdict stays the person's own warning (google-verdict.js).
-    if (restsOnGoogle(r.reasons)) continue;
+    // Google's verdict stays the person's own warning (google-verdict.js),
+    // whether its shown reasons or only its window say it is Google's.
+    if (restsOnGoogle(r.reasons) || hasGoogleWindow(r)) continue;
     // eslint-disable-next-line no-await-in-loop
     const recent = await recentlySentForDomain(r.domain);
     if (recent) continue;

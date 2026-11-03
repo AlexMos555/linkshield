@@ -44,7 +44,7 @@ import { createSafariSeen, isWebPageSender } from "./safari-native.js"; // Safar
 import { createToolbarBadge } from "./toolbar-badge.js"; // the per-tab count on the toolbar icon
 import { isKnownSafeHost, isUserContentHost } from "./trusted-hosts.js";
 import { createVerdictCache, sessionArea, VERDICT_TTL_MS } from "./verdict-cache.js";
-import { apiVerdictTtlMs, restsOnGoogle } from "./google-verdict.js"; // Web Risk's rules: kept only while Google's answer is valid
+import { advisoryUntil, apiVerdictTtlMs, hasGoogleWindow, restsOnGoogle } from "./google-verdict.js"; // Web Risk's rules: kept and shown only while Google's answer is valid
 import { handleWebmailAnalyze, installWebmailScanner } from "./webmail-scanner.js"; // opt-in only: injects content/webmail.js while Settings has it on
 
 const HISTORY_PRUNE_ALARM = "cleanway_history_prune";
@@ -217,8 +217,13 @@ async function handleCheck(domains, { page = false, tabId = null, doc = null } =
       const data = answer.data;
       const r = { domain: data.domain || d, score: data.score, level: data.level, reasons: apiReasons(data), source: "api" };
       _log("API:", d, "score=" + r.score, r.level);
-      // One resting on Google's lists: no longer than Google's answer lives.
-      verdicts.setVerdict(d, r, apiVerdictTtlMs(data, VERDICT_TTL_MS));
+      // One resting on Google's lists: kept no longer than Google's answer
+      // lives, and handed out with the end of that window (advisory_until):
+      // the link badges and the block page take the warning down then.
+      const ttl = apiVerdictTtlMs(data, VERDICT_TTL_MS);
+      const until = advisoryUntil(data, ttl, Date.now());
+      if (until !== null) r.advisory_until = until;
+      verdicts.setVerdict(d, r, ttl);
       results[i] = r;
       return;
     }
@@ -313,14 +318,18 @@ function promoteCredentialGuard(tabId) {
 // as "a scam site was blocked". Nor does a block resting on Google's lists:
 // a family alert carries no "Advisory provided by Google" and is shown
 // whenever the relative's poll picks it up, past the time Google's answer
-// is valid (background/google-verdict.js). Anonymous users send nothing.
+// is valid (background/google-verdict.js) — whether its shown reasons say
+// so or only its window does. Anonymous users send nothing.
+//
+// The counter reads the cache, so a Google block whose answer came with no
+// window (advisory_ttl 0, kept by no cache) is not counted for the account.
 async function reportBlockToAccount(host) {
   const verdict = getCached(host);
   if (!verdict || verdict.source !== "api" || verdict.level !== "dangerous") return;
   const token = await self.cleanwayTokens.readAccessToken(chrome);
   if (!token) return;
   await incrementThreatCounter(token, 1);
-  if (restsOnGoogle(verdict.reasons)) return;
+  if (restsOnGoogle(verdict.reasons) || hasGoogleWindow(verdict)) return;
   try {
     // Encrypted on this device to each relative's key; the server stays blind.
     await fanOutAlerts(token, [verdict]);

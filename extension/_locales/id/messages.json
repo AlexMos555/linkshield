@@ -429,6 +429,39 @@
   "block_evidence_other_body": {
     "message": "Pemeriksaan kami menemukan hal tidak biasa pada situs ini."
   },
+  "block_rechecking": {
+    "message": "Memeriksa ulang $DOMAIN$…",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_recheck_title": {
+    "message": "Sudah diperiksa ulang"
+  },
+  "block_recheck_clear": {
+    "message": "Saat ini $DOMAIN$ tidak ditandai berbahaya. Peringatan sebelumnya sudah kedaluwarsa.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_recheck_failed": {
+    "message": "Cleanway tidak dapat memeriksa ulang $DOMAIN$ saat ini. Peringatan sebelumnya sudah kedaluwarsa.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_recheck_open": {
+    "message": "Buka situs"
+  },
+  "block_recheck_back": {
+    "message": "Kembali"
+  },
   "welcome_hero_title": {
     "message": "Anda sekarang terlindungi"
   },

@@ -40,6 +40,10 @@ interface LiveCheckResultProps {
 
 // setTimeout's ceiling; advisory_ttl is at most an hour anyway.
 const MAX_TIMER_MS = 2_147_483_647;
+// advisory_ttl 0: Google's answer was valid when the API replied, for how
+// long nobody could read. Shown this long, then asked again — the extension
+// does the same (packages/extension-core/src/background/google-verdict.js).
+const ZERO_WINDOW_MS = 30_000;
 // A site's first check runs the server's whole analysis (up to ~11 s in the
 // field); past this the card says the check failed instead of waiting forever.
 const FETCH_TIMEOUT_MS = 20_000;
@@ -81,11 +85,11 @@ export default function LiveCheckResult({
       if (!alive) return;
       setResult(answer);
       const left = answer.advisory_ttl;
-      if (typeof left === "number" && left > 0) {
+      if (typeof left === "number" && left >= 0) {
         timer = setTimeout(() => {
           setResult(null);
           void load();
-        }, Math.min(left * 1000, MAX_TIMER_MS));
+        }, Math.min(left > 0 ? left * 1000 : ZERO_WINDOW_MS, MAX_TIMER_MS));
       }
     };
     void load();

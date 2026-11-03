@@ -436,6 +436,39 @@
       },
       "evidence_other_body": {
         "text": "हमारी जाँच में इस साइट पर कुछ असामान्य मिला।"
+      },
+      "rechecking": {
+        "text": "$DOMAIN$ को फिर से जाँचा जा रहा है…",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_title": {
+        "text": "फिर से जाँचा गया"
+      },
+      "recheck_clear": {
+        "text": "$DOMAIN$ अभी ख़तरनाक के रूप में चिह्नित नहीं है। पिछली चेतावनी की अवधि समाप्त हो गई है।",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_failed": {
+        "text": "Cleanway अभी $DOMAIN$ को फिर से नहीं जाँच सका। पिछली चेतावनी की अवधि समाप्त हो गई है।",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_open": {
+        "text": "साइट खोलें"
+      },
+      "recheck_back": {
+        "text": "वापस जाएँ"
       }
     },
     "welcome": {

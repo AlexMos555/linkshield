@@ -270,41 +270,52 @@ async function loadPageStatus() {
   // The tab is on our block page: the site behind it is a scam. Without
   // this the extension page fell into "not a web page" below and the popup
   // said "This page is safe" over the STOP screen.
+  var domain = "";
   var blockedHref = blockedPageUrl(tab);
   if (blockedHref) {
     var shown = self.cleanwayBlockedUrl.parse(blockedHref);
-    if (shown.domain) _shownVerdict = { domain: shown.domain, level: "dangerous" };
-    setStatus("danger", t("status_danger_title"),
-      shown.domain ? t("status_danger_subtitle", [shown.domain]) : "");
-    showGoogleAdvisory(shown.reasons);
-    if (typeof shown.confidence_pct === "number") {
-      var blockedChip = $("confidence-chip");
-      if (blockedChip) {
-        blockedChip.textContent = t("confidence_chip", [String(shown.confidence_pct)]);
-        blockedChip.hidden = false;
+    // A verdict resting on Google whose window is over (or was never given):
+    // Web Risk allows its warning only while Google's answer is valid, so it
+    // is not drawn from the address — the site is checked again below, as
+    // the block page itself does (blocked/blocked.js).
+    if (shown.domain && self.cleanwayBlockedUrl.needsRecheck(shown, Date.now())) {
+      domain = shown.domain;
+    } else {
+      if (shown.domain) _shownVerdict = { domain: shown.domain, level: "dangerous" };
+      setStatus("danger", t("status_danger_title"),
+        shown.domain ? t("status_danger_subtitle", [shown.domain]) : "");
+      showGoogleAdvisory(shown.reasons);
+      if (typeof shown.confidence_pct === "number") {
+        var blockedChip = $("confidence-chip");
+        if (blockedChip) {
+          blockedChip.textContent = t("confidence_chip", [String(shown.confidence_pct)]);
+          blockedChip.hidden = false;
+        }
       }
+      return;
     }
-    return;
   }
 
-  if (!tab || !tab.url) {
-    setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
-    return;
-  }
+  if (!domain) {
+    if (!tab || !tab.url) {
+      setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
+      return;
+    }
 
-  var url;
-  try { url = new URL(tab.url); } catch (e) {
-    setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
-    return;
-  }
+    var url;
+    try { url = new URL(tab.url); } catch (e) {
+      setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
+      return;
+    }
 
-  // chrome:// and about: aren't checkable
-  if (!/^https?:$/.test(url.protocol)) {
-    setStatus("safe", t("status_safe_title"), "");
-    return;
-  }
+    // chrome:// and about: aren't checkable
+    if (!/^https?:$/.test(url.protocol)) {
+      setStatus("safe", t("status_safe_title"), "");
+      return;
+    }
 
-  var domain = url.hostname;
+    domain = url.hostname;
+  }
 
   try {
     // page: this is the tab's own page — if it is a scam, its block page

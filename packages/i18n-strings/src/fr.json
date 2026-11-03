@@ -436,6 +436,39 @@
       },
       "evidence_other_body": {
         "text": "Nos vérifications ont trouvé quelque chose d'inhabituel sur ce site."
+      },
+      "rechecking": {
+        "text": "Nouvelle vérification de $DOMAIN$…",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_title": {
+        "text": "Vérifié à nouveau"
+      },
+      "recheck_clear": {
+        "text": "$DOMAIN$ n'est pas signalé comme dangereux pour le moment. L'avertissement précédent a expiré.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_failed": {
+        "text": "Cleanway n'a pas pu vérifier à nouveau $DOMAIN$ pour le moment. L'avertissement précédent a expiré.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_open": {
+        "text": "Ouvrir le site"
+      },
+      "recheck_back": {
+        "text": "Revenir en arrière"
       }
     },
     "welcome": {

@@ -244,6 +244,64 @@ var BADGE_STYLES = {
   user_content: { cls: "ls-neutral", glyph: "i", aria: "badge_aria_user_content", color: "#94a3b8" },
 };
 
+// ── Badges on Google's verdict ──
+// Web Risk allows a warning only while Google's answer is valid ("Under no
+// other circumstances"). A tooltip shows whenever the pointer reaches its
+// badge — on a webmail or a feed tab, hours after the check — so a badge
+// whose verdict rests on Google's lists goes when Google's answer does: at
+// result.advisory_until (the background sets it, google-verdict.js), or 30 s
+// after drawing for a Google verdict without one (the background's
+// ZERO_WINDOW_SHOW_MS). The link loses SCANNED_ATTR and is checked again.
+// Hidden tabs throttle timers, so coming back to the tab and the pointer
+// reaching a badge sweep too.
+var ZERO_WINDOW_SHOW_MS = 30000;
+var RECHECK_AFTER_MS = 1000;
+var _expiring = []; // [{link, badge, until}]
+var _expiryTimer = null;
+var _recheckTimer = null;
+
+function _advisoryUntil(result) {
+  if (typeof result.advisory_until === "number" && isFinite(result.advisory_until)) return result.advisory_until;
+  return _fromGoogle(result) ? Date.now() + ZERO_WINDOW_SHOW_MS : null;
+}
+
+function _recheckSoon() {
+  if (_recheckTimer) return;
+  _recheckTimer = setTimeout(function() {
+    _recheckTimer = null;
+    scanPage();
+  }, RECHECK_AFTER_MS);
+}
+
+function _armExpiry() {
+  if (_expiryTimer) clearTimeout(_expiryTimer);
+  _expiryTimer = null;
+  if (!_expiring.length) return;
+  var next = _expiring.reduce(function(min, e) { return Math.min(min, e.until); }, Infinity);
+  _expiryTimer = setTimeout(_expireBadges, Math.max(0, next - Date.now()));
+}
+
+function _expireBadges() {
+  var t = Date.now();
+  var gone = false;
+  _expiring = _expiring.filter(function(e) {
+    if (!e.badge.isConnected) return false; // the page took it away
+    if (e.until > t) return true;
+    e.badge.remove();
+    e.link.removeAttribute(SCANNED_ATTR);
+    gone = true;
+    return false;
+  });
+  _armExpiry();
+  if (gone) _recheckSoon();
+}
+
+try {
+  document.addEventListener("visibilitychange", function() {
+    if (!document.hidden) _expireBadges();
+  });
+} catch (e) { /* no document events: the timer still runs */ }
+
 function addBadge(linkEl, result) {
   // Already-badged check needs to look at the SIBLING after the link,
   // not inside it (we no longer inject as a child — see comment below).
@@ -252,6 +310,13 @@ function addBadge(linkEl, result) {
   // A level we have no badge for is skipped, never painted red by default.
   var style = BADGE_STYLES[result.level];
   if (!style) return;
+  // Google's answer is no longer valid (a cached copy with moments left):
+  // no warning from it — the link is checked again in a moment.
+  var until = _advisoryUntil(result);
+  if (until !== null && until <= Date.now()) {
+    _recheckSoon();
+    return;
+  }
   linkEl.setAttribute(SCANNED_ATTR, "true");
 
   _log("Adding badge:", result.domain, "score=" + result.score, "level=" + result.level);
@@ -298,6 +363,14 @@ function addBadge(linkEl, result) {
   // insertAdjacentElement('afterend') puts the badge OUTSIDE the
   // link entirely. Site layout untouched, click target unaffected.
   linkEl.insertAdjacentElement("afterend", badge);
+  if (until !== null) {
+    _expiring.push({ link: linkEl, badge: badge, until: until });
+    // Before the tooltip paints: an expired one never shows.
+    badge.addEventListener("mouseenter", function() {
+      if (Date.now() >= until) _expireBadges();
+    });
+    _armExpiry();
+  }
   _log("Badge added:", result.domain, result.level, result.score);
 }
 
