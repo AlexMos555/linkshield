@@ -63,6 +63,13 @@ export interface BenchmarkWindow {
   end: string | null;
   /** Rows without a readable submission time, never in the window. */
   undated_rows: number;
+  /**
+   * Rows dated after the run's clock, never in the window: no row can have
+   * been submitted after the download. Absent in reports before 2026-11-04.
+   */
+  future_rows?: number;
+  /** The run's clock that capped the window; null for the whole dump. */
+  clock?: string | null;
 }
 
 /** How the phishing sample was drawn (method_version 2). */
@@ -87,6 +94,12 @@ export interface BenchmarkSampling {
 export interface ExistenceCounts {
   resolves: number;
   nxdomain: number;
+  /**
+   * Answered, but every address is non-public (0.0.0.0, a private range: a
+   * takedown). Not found for every resolver, as nxdomain. Absent in reports
+   * before 2026-11-04.
+   */
+  non_public?: number;
   unknown: number;
 }
 

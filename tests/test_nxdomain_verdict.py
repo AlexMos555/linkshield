@@ -261,6 +261,69 @@ def test_benchmark_existence_probe_asks_nothing_for_an_ip_address():
     client.get.assert_not_awaited()
 
 
+def _probe(*responses):
+    ev = _eval_module()
+    client = _client_answering(*responses)
+    return asyncio.run(ev.probe_existence(client, "http://phish.top/login")), client
+
+
+def _row(out):
+    return _eval_module().benchmark_method.row_existence(out.exists, [], addresses=out.addresses)
+
+
+def test_benchmark_existence_probe_records_the_addresses():
+    """A row was live on any NOERROR. The probe now keeps the A data (raw.existence),
+    and asks AAAA too when every A address is non-public, so a name that
+    leads nowhere a user can reach is told apart (benchmark_method.only_non_public)."""
+    out, client = _probe(_doh_response(0, [{"type": 5, "data": "edge.cdn.example."},
+                                           {"type": 1, "data": "1.2.3.4"}]))
+    assert (out.exists, out.detail, out.addresses) == (True, "noerror", ["1.2.3.4"])
+    assert client.get.await_count == 1          # a public address: no second question
+    assert _row(out) == "resolves"
+
+    out, client = _probe(_doh_response(0))     # NOERROR without an A record: live, as before
+    assert (out.exists, out.addresses) == (True, [])
+    assert client.get.await_count == 1 and _row(out) == "resolves"
+
+    out, _ = _probe(_doh_response(3))
+    assert (out.exists, out.addresses) == (False, None)
+
+
+def test_benchmark_existence_probe_tells_a_takedown_from_a_live_name():
+    # etransfer-accept.ddns.net on 2026-11-03: A 0.0.0.0, no AAAA.
+    out, client = _probe(_doh_response(0, [{"type": 1, "data": "0.0.0.0"}]), _doh_response(0))
+    assert (out.exists, out.detail, out.addresses) == (True, "noerror", ["0.0.0.0"])
+    assert [c.kwargs["params"] for c in client.get.await_args_list] == [
+        {"name": "phish.top", "type": "A"}, {"name": "phish.top", "type": "AAAA"}]
+    assert _row(out) == "non_public"
+
+    # A private A record, but a public AAAA one: reachable over IPv6.
+    out, _ = _probe(_doh_response(0, [{"type": 1, "data": "10.0.0.7"}]),
+                    _doh_response(0, [{"type": 28, "data": "2606:4700::1"}]))
+    assert out.addresses == ["10.0.0.7", "2606:4700::1"] and _row(out) == "resolves"
+
+    out, _ = _probe(_doh_response(0, [{"type": 1, "data": "127.0.0.1"}]),
+                    _doh_response(0, [{"type": 28, "data": "::1"}]))
+    assert out.addresses == ["127.0.0.1", "::1"] and _row(out) == "non_public"
+
+
+def test_benchmark_existence_probe_cannot_tell_when_the_aaaa_question_fails():
+    """Then the resolvers' answers decide, as for any question the probe could not settle."""
+    out, _ = _probe(_doh_response(0, [{"type": 1, "data": "0.0.0.0"}]), _failed_doh())
+    assert out.exists is None and out.addresses == ["0.0.0.0"]
+    assert out.detail == "noerror aaaa=http=503"
+    out, _ = _probe(_doh_response(0, [{"type": 1, "data": "0.0.0.0"}]), _doh_response(2))
+    assert out.exists is None and out.detail == "noerror aaaa=status=2"
+
+
+def test_benchmark_existence_probe_records_an_ip_address_as_its_own_address():
+    ev = _eval_module()
+    out = asyncio.run(ev.probe_existence(_client_answering(), "http://221.14.192.60/login"))
+    assert out.addresses == ["221.14.192.60"] and _row(out) == "resolves"
+    out = asyncio.run(ev.probe_existence(_client_answering(), "http://192.168.1.1/login"))
+    assert (out.exists, out.addresses) == (True, ["192.168.1.1"]) and _row(out) == "non_public"
+
+
 def test_benchmark_counts_a_dead_name_for_no_one_even_from_the_blocklist():
     """Cleanway's blocklist answers before any existence check (public_check
     step 3) and Families sinkholes a listed name that no longer exists."""

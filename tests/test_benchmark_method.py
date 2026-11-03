@@ -20,7 +20,9 @@ chance grew with its row count (qrco.de, docs.google.com: in every sample).
 from __future__ import annotations
 
 import importlib
+import logging
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -97,7 +99,8 @@ def test_the_pool_is_the_window_before_the_dumps_newest_row():
     pool, window = method.recent_window(submitted, days=7)
     assert pool == [0, 1, 2]                     # the start itself is in, a second older is out
     assert window == {"days": 7, "start": "2026-10-27T14:00:00+00:00",
-                      "end": "2026-11-03T14:00:00+00:00", "undated_rows": 0}
+                      "end": "2026-11-03T14:00:00+00:00", "undated_rows": 0,
+                      "future_rows": 0, "clock": None}
 
 
 def test_the_window_skips_undated_rows_and_reads_a_time_without_zone_as_utc():
@@ -111,11 +114,55 @@ def test_the_window_skips_undated_rows_and_reads_a_time_without_zone_as_utc():
 def test_no_window_means_the_whole_dump_and_no_dates_mean_no_pool():
     method = _method()
     pool, window = method.recent_window(_times([0, 9000]), days=0)
-    assert pool == [0, 1] and window == {"days": 0, "start": None, "end": None, "undated_rows": 0}
+    assert pool == [0, 1] and window == {"days": 0, "start": None, "end": None, "undated_rows": 0,
+                                         "future_rows": 0, "clock": None}
     # A dump without a single readable time cannot say what is fresh: no sample,
     # and the run stops, rather than drawing stale links unnoticed.
     pool, window = method.recent_window(["", "x"], days=7)
     assert pool == [] and (window["start"], window["end"], window["undated_rows"]) == (None, None, 2)
+
+
+CLOCK = datetime(2026, 11, 3, 15, 0, tzinfo=timezone.utc)
+
+
+def test_a_row_dated_after_the_runs_clock_does_not_move_the_window(caplog):
+    """The window ended at the newest row, so one row dated in the future moved
+    it there: recent_window([... 2026-11-03, 2026-11-02, 2099-01-01], 7) gave a
+    pool of that one row, the run failed as n_phishing_below_min and the site
+    quietly stayed on the old report (review of #395). No row can have been
+    submitted after the dump was downloaded: such a row is left out, counted
+    and logged, and the window ends at the newest row at or before the clock."""
+    method = _method()
+    submitted = ["2026-11-03T14:00:00+00:00", "2026-11-02T00:00:00+00:00", "2099-01-01T00:00:00+00:00"]
+    with caplog.at_level(logging.WARNING, logger="eval_fresh_urls.method"):
+        pool, window = method.recent_window(submitted, 7, now=CLOCK)
+    assert pool == [0, 1]
+    assert window == {"days": 7, "start": "2026-10-27T14:00:00+00:00", "end": "2026-11-03T14:00:00+00:00",
+                      "undated_rows": 0, "future_rows": 1, "clock": "2026-11-03T15:00:00+00:00"}
+    assert "1 row" in caplog.text and "2099-01-01T00:00:00+00:00" in caplog.text
+    assert "2026-11-03T15:00:00+00:00" in caplog.text
+
+
+def test_a_row_at_the_clock_is_in_and_a_clock_without_zone_is_utc():
+    method = _method()
+    pool, window = method.recent_window(["2026-11-03T15:00:00+00:00", "2026-11-03T15:00:01+00:00"], 7,
+                                        now=datetime(2026, 11, 3, 15, 0))
+    assert pool == [0]
+    assert (window["end"], window["future_rows"], window["clock"]) == (
+        "2026-11-03T15:00:00+00:00", 1, "2026-11-03T15:00:00+00:00")
+
+
+def test_a_dump_dated_wholly_after_the_clock_gives_no_pool():
+    """Rather than draw links whose age nothing can vouch for."""
+    pool, window = _method().recent_window(["2099-01-01T00:00:00+00:00"] * 3, 7, now=CLOCK)
+    assert pool == [] and (window["start"], window["end"], window["future_rows"]) == (None, None, 3)
+
+
+def test_the_whole_dump_takes_no_clock():
+    """--window-days 0 claims no age: a row dated in the future moves nothing."""
+    pool, window = _method().recent_window(["2099-01-01T00:00:00+00:00", "2026-11-01T00:00:00+00:00"], 0,
+                                           now=CLOCK)
+    assert pool == [0, 1] and (window["future_rows"], window["clock"]) == (0, None)
 
 
 def test_the_sample_is_a_fixed_seed_draw_from_the_window_not_its_top():
@@ -190,6 +237,48 @@ def test_an_unparsable_row_is_skipped():
 ])
 def test_row_existence(probe, others, expected):
     assert _method().row_existence(probe, others) == expected
+
+
+@pytest.mark.parametrize("addresses, expected", [
+    (["0.0.0.0"], True),                         # a takedown, or a sinkhole
+    (["0.0.0.0", "::"], True),
+    (["10.1.2.3", "172.16.0.9", "192.168.0.1", "127.0.0.1", "169.254.169.254", "100.64.0.1"], True),
+    (["fd00::1", "fe80::1", "::1", "::ffff:10.0.0.1"], True),
+    (["0.0.0.0", "93.184.216.34"], False),       # one public address: a user can reach it
+    (["2606:4700::6810:84e5"], False),
+    (["8.8.8.8"], False),
+    ([], False),                                 # NOERROR without an address: nothing says it is down
+    (None, False),
+    (["0.0.0.0", "not-an-address"], False),      # what cannot be read proves nothing
+])
+def test_only_non_public_addresses(addresses, expected):
+    """By the server's own rule (api/services/domain_validator.is_public_address,
+    what its SSRF guard lets it connect to)."""
+    assert _method().only_non_public(addresses) is expected
+
+
+def test_a_name_whose_every_address_is_non_public_is_not_live():
+    """Of the 124 live seed-42 names on 2026-11-03, etransfer-accept.ddns.net
+    resolved only to 0.0.0.0, a typical takedown. It counted as live: Families'
+    0.0.0.0 there was a Cloudflare catch, and Cleanway's not-found answer (its
+    SSRF guard) a caution (review of #395)."""
+    method = _method()
+    assert method.row_existence(True, [], addresses=["0.0.0.0"]) == "non_public"
+    assert method.row_existence(True, [True], addresses=["10.0.0.1", "::1"]) == "non_public"
+    assert method.row_existence(True, [], addresses=["0.0.0.0", "8.8.8.8"]) == "resolves"
+    assert method.row_existence(True, [], addresses=[]) == "resolves"
+    assert method.row_existence(False, [], addresses=["0.0.0.0"]) == "nxdomain"
+    # The probe could not tell (its AAAA question failed): the resolvers decide, as before.
+    assert method.row_existence(None, [True], addresses=["0.0.0.0"]) == "resolves"
+    assert method.existence_counts(["resolves", "non_public", "nxdomain", "non_public"]) == {
+        "resolves": 1, "nxdomain": 1, "non_public": 2, "unknown": 0}
+
+
+@pytest.mark.parametrize("verdict, level", [
+    ("dangerous", None), ("dangerous", "dangerous"), ("unknown", "caution"), ("safe", "safe"), ("unknown", None),
+])
+def test_a_name_nobody_can_reach_counts_for_no_one(verdict, level):
+    assert _method().outcome(verdict, level, "non_public") == "not_found"
 
 
 @pytest.mark.parametrize("verdict, level, existence, expected", [

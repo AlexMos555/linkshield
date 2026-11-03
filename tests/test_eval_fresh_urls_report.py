@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import importlib
 import json
+import logging
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import httpx
@@ -31,6 +33,8 @@ def _answer(name: str, verdict: str, **fields):
 
 
 NOW = "2026-11-03T14:00:00+00:00"
+# The run's clock in these runs: an hour after the dump's rows.
+CLOCK = "2026-11-03T15:00:00+00:00"
 
 
 async def _run_main(eval_module, monkeypatch, tmp_path, pool, adapters, *flags,
@@ -42,6 +46,7 @@ async def _run_main(eval_module, monkeypatch, tmp_path, pool, adapters, *flags,
         return eval_module.PhishtankDump(pool, **{"submitted": [NOW] * len(pool), **(dump or {})})
 
     monkeypatch.setattr(eval_module, "fetch_phishtank_dump", fake_feed)
+    monkeypatch.setattr(eval_module, "_run_clock", lambda: datetime.fromisoformat(CLOCK))
     monkeypatch.setattr(eval_module, "VT_KEY", None)
     for name in list(eval_module.ADAPTERS):
         monkeypatch.setitem(eval_module.ADAPTERS, name, adapters.get(name) or _answer(name, "safe"))
@@ -158,7 +163,7 @@ async def test_a_name_that_resolves_nowhere_counts_for_no_resolver(tmp_path, mon
         assert (stats["answered"], stats["dangerous_rate_answered"]) == (1, 1.0), name
         assert report["raw"]["phishing"][name][dead]["verdict"] == "dangerous", name  # the raw answer
         assert report["raw"]["phishing"][name][dead]["outcome"] == "not_found", name
-    assert report["existence"]["phishing"] == {"resolves": 1, "nxdomain": 1, "unknown": 0}
+    assert report["existence"]["phishing"] == {"resolves": 1, "nxdomain": 1, "non_public": 0, "unknown": 0}
     # The legitimate sample is counted by the same rule, the breakdown included.
     assert report["safe"]["cleanway"]["not_found"] == 1 and report["safe"]["cleanway"]["tn"] == 1
     assert report["cleanway_on_legit"]["overall"]["not_found"] == 1
@@ -215,7 +220,8 @@ async def test_the_phishing_sample_is_a_fixed_seed_draw_capped_per_site(tmp_path
     assert (sampling["pool_rows"], sampling["pool_sites"], sampling["max_per_site"]) == (35, 6, 2)
     assert sampling["dump_rows"] == 35
     assert sampling["window"] == {"days": 7, "start": "2026-10-27T00:00:00+00:00",
-                                  "end": "2026-11-03T00:00:00+00:00", "undated_rows": 0}
+                                  "end": "2026-11-03T00:00:00+00:00", "undated_rows": 0,
+                                  "future_rows": 0, "clock": CLOCK}
     assert sampling["dump_sha256"] == "feed-sha"
     assert sampling["submitted"]["oldest"] <= sampling["submitted"]["median"] <= sampling["submitted"]["newest"]
     assert "registrable domain" in sampling["site_rule"]
@@ -283,7 +289,8 @@ async def test_the_sample_is_drawn_from_the_last_week_of_the_dump_and_says_so(tm
     # --window-days 0: the whole dump, and the report claims nothing fresh.
     report, md = await _run_main(eval_module, monkeypatch, tmp_path, fresh + stale, {}, "--window-days", "0",
                                  sample=10, dump=dump)
-    assert report["sampling"]["window"] == {"days": 0, "start": None, "end": None, "undated_rows": 0}
+    assert report["sampling"]["window"] == {"days": 0, "start": None, "end": None, "undated_rows": 0,
+                                            "future_rows": 0, "clock": None}
     assert report["sampling"]["pool_rows"] == 36
     assert "fresh PhishTank" not in md and "any age" in md and "of all its rows" in report["sources"]["phishing"]
 
@@ -348,3 +355,98 @@ async def test_the_probe_decides_whether_a_name_exists(tmp_path, monkeypatch):
     assert ours[rows["cached"]]["outcome"] == "not_found"
     assert report["phishing"]["cloudflare_families"]["tp"] == 1      # the guarded row, live
     assert "only when the probe cannot tell" in md and "blocked network" in md
+
+
+@pytest.mark.asyncio
+async def test_a_row_dated_in_the_future_leaves_the_week_as_it_is(tmp_path, monkeypatch, caplog):
+    """One row dated 2099 made the window 2098-12-25 – 2099-01-01, a pool of
+    one row: the run failed as n_phishing_below_min and the site stayed on the
+    old report without a word (review of #395). The window ends at the run's
+    clock; the report and the log say which rows were left out."""
+    eval_module = _load_eval_module()
+    fresh = [f"https://new{i}.example/" for i in range(4)]
+    dump = {"submitted": [NOW] * 4 + ["2099-01-01T00:00:00+00:00"]}
+    with caplog.at_level(logging.WARNING):
+        report, md = await _run_main(eval_module, monkeypatch, tmp_path, [*fresh, "https://future.example/"],
+                                     {}, sample=10, dump=dump)
+    assert sorted(report["raw"]["phishing_urls"]) == sorted(fresh)
+    window = report["sampling"]["window"]
+    assert (window["end"], window["future_rows"], window["clock"]) == (NOW, 1, CLOCK)
+    assert "2099-01-01T00:00:00+00:00" in caplog.text
+    assert "1 row dated after the run's clock" in md
+
+
+@pytest.mark.asyncio
+async def test_a_name_that_leads_only_to_non_public_addresses_is_not_live(tmp_path, monkeypatch):
+    """etransfer-accept.ddns.net resolved only to 0.0.0.0 on 2026-11-03 (a
+    takedown): Families' 0.0.0.0 there counted as a Cloudflare catch and
+    Cleanway's not-found answer (its SSRF guard) as a caution. A row whose
+    every address is non-public is not found for every resolver now, and
+    raw.existence keeps the addresses."""
+    eval_module = _load_eval_module()
+    pool = ["https://takedown.example/", "https://live.example/"]
+
+    def existence(url):
+        addresses = ["0.0.0.0"] if "takedown" in url else ["93.184.216.34"]
+        return eval_module.Verdict("existence", "unknown", detail="noerror", exists=True, addresses=addresses)
+
+    def cleanway(url):
+        if "takedown" in url:
+            return eval_module.Verdict("cleanway", "unknown", detail="not_found", level="caution",
+                                       verdict_basis="not_found", exists=False)
+        return eval_module.Verdict("cleanway", "dangerous", level="dangerous", exists=True)
+
+    adapters = {
+        "existence": _by_url(existence),
+        "cleanway": _by_url(cleanway),
+        "cloudflare_families": _by_url(lambda url: eval_module.Verdict(
+            "cloudflare_families", "dangerous" if url in pool else "safe",
+            detail="status=0 ip_block=True" if url in pool else "resolved")),
+    }
+    report, md = await _run_main(eval_module, monkeypatch, tmp_path, pool, adapters)
+    row = report["raw"]["phishing_urls"].index("https://takedown.example/")
+    probe = report["raw"]["existence"]["phishing"][row]
+    assert (probe["status"], probe["decided_by"], probe["addresses"]) == ("non_public", "probe", ["0.0.0.0"])
+    assert report["raw"]["existence"]["phishing"][1 - row]["addresses"] == ["93.184.216.34"]
+    for name in ("cleanway", "cloudflare_families"):
+        assert report["raw"]["phishing"][name][row]["outcome"] == "not_found", name
+        assert "addresses" not in report["raw"]["phishing"][name][row], name  # the probe's alone
+    assert (report["phishing"]["cloudflare_families"]["tp"], report["phishing"]["cleanway"]["caution"]) == (1, 0)
+    assert report["existence"]["phishing"] == {"resolves": 1, "nxdomain": 0, "non_public": 1, "unknown": 0}
+    assert "non-public" in md and "non-public" in report["sources"]["existence"]
+
+
+@pytest.mark.asyncio
+async def test_the_gate_log_says_how_many_cleanway_answers_were_degraded(tmp_path, monkeypatch, caplog):
+    """The gate counts only rows with no answer, so a week where Cleanway
+    answered "caution" because its checks were cut off (expired keys, open
+    circuit breakers) or the site did not answer passes it unseen. The gate
+    is unchanged; its log line says how many answers were like that."""
+    eval_module = _load_eval_module()
+    pool = ["https://cut.example/", "https://down.example/", "https://fine.example/", "https://quiet.example/"]
+
+    def cleanway(url):
+        if "cut" in url:
+            return eval_module.Verdict("cleanway", "unknown", detail="caution", level="caution",
+                                       verdict_basis="ml_and_heuristics", checks_incomplete=["rdap", "ssl"])
+        if "down" in url:
+            return eval_module.Verdict("cleanway", "unknown", detail="caution", level="caution",
+                                       verdict_basis="unreachable", checks_incomplete=[])
+        if "quiet" in url:
+            return eval_module.Verdict("cleanway", "unknown", detail="rate_limited")  # no answer
+        if url in pool:
+            return eval_module.Verdict("cleanway", "dangerous", level="dangerous", verdict_basis="threat_intel")
+        return eval_module.Verdict("cleanway", "safe", level="safe", verdict_basis="ml_and_heuristics",
+                                   checks_incomplete=["ssl"])
+
+    with caplog.at_level(logging.INFO, logger="eval_fresh_urls"):
+        report, _md = await _run_main(eval_module, monkeypatch, tmp_path, pool,
+                                      {"cleanway": _by_url(cleanway)}, sample=4)
+    lines = [r.getMessage() for r in caplog.records if "degraded" in r.getMessage()]
+    assert lines == [
+        "cleanway answers degraded (not gated): phishing 3 answers — checks_incomplete 1 (33.3%), "
+        "verdict_basis unreachable 1 (33.3%); legit 4 answers — checks_incomplete 4 (100.0%), "
+        "verdict_basis unreachable 0 (0.0%)"
+    ]
+    # The gate decides as before: this run is too small to publish.
+    assert not (tmp_path / "latest.json").exists()

@@ -70,6 +70,7 @@ import uuid
 from collections import deque
 from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass, replace
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import AsyncIterator, Awaitable, Callable, Optional
 from urllib.parse import urlparse
@@ -552,6 +553,10 @@ class Verdict:
     # the answer says nothing about it. The existence probe's decides the row;
     # the resolvers' only when it could not tell (benchmark_method.row_existence).
     exists: Optional[bool] = None
+    # The A (and AAAA) addresses the existence probe got: a name whose every
+    # address is non-public is not live (benchmark_method.only_non_public).
+    # Only the probe's rows carry them (raw.existence).
+    addresses: Optional[list[str]] = None
 
 
 def _str_list(value: object) -> Optional[list[str]]:
@@ -827,24 +832,38 @@ async def check_phishtank(client: httpx.AsyncClient, url: str) -> Verdict:
 CLOUDFLARE_UNFILTERED_DOH = "https://cloudflare-dns.com/dns-query"
 
 
+async def _unfiltered_query(
+    client: httpx.AsyncClient, d: str, rtype: str = "A",
+) -> tuple[Optional[object], list[str], Optional[str]]:
+    """One question to Cloudflare's UNFILTERED resolver: (the DNS status, the
+    A/AAAA addresses in the answer, why there is no answer — None when it
+    came: an HTTP error, a timeout). CNAME records are not addresses."""
+    try:
+        r = await client.get(
+            CLOUDFLARE_UNFILTERED_DOH,
+            params={"name": d, "type": rtype},
+            headers={"Accept": "application/dns-json"},
+            timeout=8.0,
+        )
+        if r.status_code != 200:
+            return None, [], f"http={r.status_code}"
+        data = r.json()
+    except Exception as exc:
+        return None, [], f"err:{type(exc).__name__}"
+    addresses = [str(a.get("data") or "").strip() for a in data.get("Answer") or []
+                 if isinstance(a, dict) and a.get("type") in (1, 28)]
+    return data.get("Status"), addresses, None
+
+
 async def _unfiltered_lookup(client: httpx.AsyncClient, d: str) -> tuple[Optional[bool], str]:
     """(does the name exist, why we say so) by Cloudflare's UNFILTERED
     resolver: True on NOERROR (with an answer or without one: the name is
     there), False on NXDOMAIN, None when it could not tell — SERVFAIL, an
     HTTP error, a timeout. Until 2026-11-03 Families' control query read any
     answer but NXDOMAIN, SERVFAIL included, as "the name exists"."""
-    try:
-        r = await client.get(
-            CLOUDFLARE_UNFILTERED_DOH,
-            params={"name": d, "type": "A"},
-            headers={"Accept": "application/dns-json"},
-            timeout=8.0,
-        )
-        if r.status_code != 200:
-            return None, f"http={r.status_code}"
-        status = r.json().get("Status")
-    except Exception as exc:
-        return None, f"err:{type(exc).__name__}"
+    status, _addresses, failed = await _unfiltered_query(client, d)
+    if failed:
+        return None, failed
     if status == 0:
         return True, "noerror"
     if status == 3:
@@ -858,19 +877,37 @@ EXISTENCE_PROBE = "existence"
 async def probe_existence(client: httpx.AsyncClient, url: str) -> Verdict:
     """The benchmark's own existence witness, asked once for every URL at the
     start of the run, whatever the resolvers answered: Cloudflare's unfiltered
-    resolver (_unfiltered_lookup). An IP address exists without DNS. Not a
-    resolver: its Verdict is always 'unknown', its answer is `exists`. It
-    decides the row; the resolvers' own answers only when it is None
+    resolver (_unfiltered_query), an A question, and an AAAA one too when
+    every A address is non-public. An IP address exists without DNS and is
+    its own address. Not a resolver: its Verdict is always 'unknown', its
+    answer is `exists` and `addresses`. It decides the row — not live when
+    every address is non-public, a takedown — and the resolvers' own answers
+    only when `exists` is None, the AAAA question failing included
     (benchmark_method.row_existence)."""
     d = domain_of(url)
     if not d:
         return Verdict(EXISTENCE_PROBE, "unknown", detail="bad_domain")
     if is_ip_address(d):
-        return Verdict(EXISTENCE_PROBE, "unknown", detail="ip_literal", exists=True)
+        return Verdict(EXISTENCE_PROBE, "unknown", detail="ip_literal", exists=True, addresses=[d.strip("[]")])
     t0 = time.monotonic()
-    exists, detail = await _unfiltered_lookup(client, d)
-    return Verdict(EXISTENCE_PROBE, "unknown", latency_ms=(time.monotonic() - t0) * 1000,
-                   detail=detail, exists=exists)
+
+    def done(detail: str, exists: Optional[bool], addresses: Optional[list[str]]) -> Verdict:
+        return Verdict(EXISTENCE_PROBE, "unknown", latency_ms=(time.monotonic() - t0) * 1000,
+                       detail=detail, exists=exists, addresses=addresses)
+
+    status, addresses, failed = await _unfiltered_query(client, d, "A")
+    if failed:
+        return done(failed, None, None)
+    if status == 3:
+        return done("nxdomain", False, None)
+    if status != 0:
+        return done(f"status={status}", None, None)
+    if benchmark_method.only_non_public(addresses):
+        status6, more, failed6 = await _unfiltered_query(client, d, "AAAA")
+        if failed6 or status6 != 0:
+            return done(f"noerror aaaa={failed6 or f'status={status6}'}", None, addresses)
+        addresses = addresses + more
+    return done("noerror", True, addresses)
 
 
 async def check_cloudflare_families(client: httpx.AsyncClient, url: str) -> Verdict:
@@ -1071,6 +1108,12 @@ def _utc_now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+def _run_clock() -> datetime:
+    """The run's clock when the dump has arrived: no row of it can be newer
+    (benchmark_method.recent_window)."""
+    return datetime.now(timezone.utc)
+
+
 def outcomes_of(verdicts: list[Verdict], existence: Optional[list[str]] = None) -> list[str]:
     """How each answer is counted (benchmark_method.outcome). `existence` is
     the row's fact, one per verdict; without it, each answer's own `exists`."""
@@ -1081,7 +1124,8 @@ def outcomes_of(verdicts: list[Verdict], existence: Optional[list[str]] = None) 
 
 def existence_of_rows(probe: list[Verdict], results: dict[str, list[Verdict]]) -> list[str]:
     """Each row's existence: the probe's answer, the resolvers' when it had none."""
-    return [benchmark_method.row_existence(p.exists, [rows[i].exists for rows in results.values()])
+    return [benchmark_method.row_existence(p.exists, [rows[i].exists for rows in results.values()],
+                                           addresses=p.addresses)
             for i, p in enumerate(probe)]
 
 
@@ -1093,6 +1137,7 @@ def _raw_rows(resolver: str, verdicts: list[Verdict], outcomes: list[str]) -> li
     rows = []
     for v, outcome in zip(verdicts, outcomes, strict=True):
         row = asdict(v)
+        row.pop("addresses")  # the existence probe's alone (_probe_rows)
         if not resolver.startswith("cleanway"):
             for key in _CLEANWAY_FIELDS:
                 row.pop(key)
@@ -1109,8 +1154,8 @@ def _probe_rows(probe: list[Verdict], existence: list[str]) -> list[dict]:
             return "probe"
         return "resolvers" if status != benchmark_method.UNKNOWN else None
 
-    return [{"exists": p.exists, "detail": p.detail, "latency_ms": p.latency_ms, "status": status,
-             "decided_by": decided_by(p, status)}
+    return [{"exists": p.exists, "addresses": p.addresses, "detail": p.detail, "latency_ms": p.latency_ms,
+             "status": status, "decided_by": decided_by(p, status)}
             for p, status in zip(probe, existence, strict=True)]
 
 
@@ -1256,6 +1301,30 @@ def render_md(report: dict) -> str:
 # ─────────────────────────────────────────────────────────────────
 # Observability + quality gate
 # ─────────────────────────────────────────────────────────────────
+
+def degraded_answers(verdicts: list[Verdict]) -> dict:
+    """Of Cleanway's answers (the rows where it gave a level), how many rest
+    on checks its time budget cut off (`checks_incomplete`) and how many on a
+    site it could not reach (`verdict_basis` 'unreachable'). The gate counts
+    only rows with no answer, so a week of cautions from expired keys or open
+    circuit breakers passes it; the gate's log line shows these instead."""
+    answers = [v for v in verdicts if v.level]
+    return {
+        "answers": len(answers),
+        "checks_incomplete": sum(1 for v in answers if v.checks_incomplete),
+        "unreachable": sum(1 for v in answers if v.verdict_basis == "unreachable"),
+    }
+
+
+def degraded_note(counts: dict) -> str:
+    n = counts["answers"]
+
+    def share(k: int) -> str:
+        return f"{k} ({k / n:.1%})" if n else f"{k} (—)"
+
+    return (f"{n} answers — checks_incomplete {share(counts['checks_incomplete'])}, "
+            f"verdict_basis unreachable {share(counts['unreachable'])}")
+
 
 def _log_unknown_rate(resolver: str, batch: str, verdicts: list[Verdict]) -> None:
     """Emit a one-line summary of classified vs unknown for a batch.
@@ -1542,10 +1611,13 @@ async def main() -> int:
         dump = PhishtankDump([])
     site_of, site_rule = benchmark_method.site_rule()
     pool, window = benchmark_method.recent_window(
-        dump.submitted if dump.submitted is not None else [None] * len(dump.urls), args.window_days)
+        dump.submitted if dump.submitted is not None else [None] * len(dump.urls), args.window_days,
+        now=_run_clock())
     if dump.urls and not pool:
-        log.error("PhishTank: no row of %d has a readable submission_time, so none is known to be "
-                  "from the last %d days — no phishing sample", len(dump.urls), args.window_days)
+        log.error("PhishTank: no row of %d has a readable submission_time at or before the run's clock "
+                  "(%d undated, %d dated after it), so none is known to be from the last %d days — "
+                  "no phishing sample", len(dump.urls), window["undated_rows"], window["future_rows"],
+                  args.window_days)
     picked, sampling = benchmark_method.sample_phishing(
         dump.urls, args.sample, seed=args.seed, host_of=domain_of, site_of=site_of, pool=pool)
     phishing_urls = [dump.urls[i] for i in picked]
@@ -1645,8 +1717,10 @@ async def main() -> int:
             # True (landing/lib/benchmark.ts falsePositiveRateIsPublishable).
             **legit_sources,
             "existence": ("one question per URL to Cloudflare's unfiltered resolver "
-                          f"({CLOUDFLARE_UNFILTERED_DOH}, A record) at the start of the run: an NXDOMAIN "
-                          "there is 'not found' for every resolver, an answer there a live row. Only "
+                          f"({CLOUDFLARE_UNFILTERED_DOH}, A record; AAAA too when every A address is "
+                          "non-public) at the start of the run: an NXDOMAIN there is 'not found' for "
+                          "every resolver, and so is an answer whose every address is non-public "
+                          "(0.0.0.0, a private range: a takedown); any other answer is a live row. Only "
                           "when it cannot tell (SERVFAIL, a timeout) do the resolvers' own answers "
                           "decide (Families' control query, Cleanway's `exists`)."),
             "cleanway_api": CLEANWAY_API,
@@ -1738,6 +1812,12 @@ async def main() -> int:
             f"QUALITY_GATE=fail gate={gate.failed_gate} "
             f"detail={gate.detail} json={json_out.name}"
         )
+    # Beside the gate's decision, not part of it: how many of Cleanway's
+    # answers rest on cut-off checks or an unreachable site, so a degraded
+    # week that passes the gate is still seen (degraded_answers).
+    log.info("cleanway answers degraded (not gated): %s",
+             "; ".join(f"{label} {degraded_note(degraded_answers(results[batch]['cleanway']))}"
+                       for label, batch in (("phishing", "phishing"), ("legit", "safe"))))
 
     # ── Console summary ──────────────────────────────────────────
     print()

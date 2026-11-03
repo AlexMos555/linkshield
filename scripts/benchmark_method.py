@@ -17,7 +17,10 @@ Until then (method_version 1, every report before 2026-11-03):
 Now:
   WINDOW   the pool is the dump's rows submitted in the WINDOW_DAYS before its
            newest row (recent_window). The dump is newest-first and goes back
-           to 2012: a draw over all of it measures links years old.
+           to 2012: a draw over all of it measures links years old. A row
+           dated after the run's clock is left out, counted and logged: no row
+           can have been submitted after the download, and as the newest it
+           would move the window past every real row.
   SAMPLE   a fixed-seed draw over the pool's SITES (sample_phishing): the sites
            in a random order, from each up to MAX_PER_SITE of its hosts, each
            host once (Cleanway checks a domain, not a URL), at its first row in
@@ -29,15 +32,21 @@ Now:
            one attacker.
   EXISTS   one fact per row, the same for every resolver (row_existence). The
            benchmark's own probe decides: one A query per URL to Cloudflare's
-           unfiltered resolver at the start of the run. Only when it cannot
-           tell (SERVFAIL, a timeout, an HTTP error) do the resolvers' answers
-           decide: any resolved name "resolves", else an NXDOMAIN from
-           Families' control query or Cleanway's `exists: false` "nxdomain".
-           Cleanway's `exists: false` is weaker evidence: its SSRF guard gives
-           the same answer for a name that resolves into a blocked or private
-           network, and its answers may come from its public cache.
-  OUTCOME  per resolver and row (outcome): not_found for an "nxdomain" row,
-           whatever the resolver said; its raw answer stays in the JSON.
+           unfiltered resolver at the start of the run, and an AAAA query
+           when every A address is non-public. NXDOMAIN: "nxdomain". An answer
+           whose every address is non-public by the server's own rule
+           (only_non_public: 0.0.0.0, a private range — a takedown or a
+           sinkhole, nothing a user can reach): "non_public". Any other answer
+           (an answer without an address included): "resolves". Only when the
+           probe cannot tell (SERVFAIL, a timeout, an HTTP error) do the
+           resolvers' answers decide: any resolved name "resolves", else an
+           NXDOMAIN from Families' control query or Cleanway's `exists: false`
+           "nxdomain". Cleanway's `exists: false` is weaker evidence: its SSRF
+           guard gives the same answer for a name that resolves into a blocked
+           or private network, and its answers may come from its public cache.
+  OUTCOME  per resolver and row (outcome): not_found for an "nxdomain" or a
+           "non_public" row, whatever the resolver said; its raw answer stays
+           in the JSON.
            Otherwise dangerous or safe as answered, caution for Cleanway's
            middle band (its not-found answer on a row the probe resolved
            included: a user sees a caution), and no_answer for the rest
@@ -55,6 +64,7 @@ when it is called, as benchmark_legit.allowlist_rule does.
 """
 from __future__ import annotations
 
+import ipaddress
 import logging
 import math
 import random
@@ -78,8 +88,10 @@ MAX_PER_SITE = 2
 # On the 2026-11-03 dump that is 678 rows on 544 sites, enough for 200.
 WINDOW_DAYS = 7
 
-RESOLVES, NXDOMAIN, UNKNOWN = "resolves", "nxdomain", "unknown"
-EXISTENCE = (RESOLVES, NXDOMAIN, UNKNOWN)
+RESOLVES, NXDOMAIN, NON_PUBLIC, UNKNOWN = "resolves", "nxdomain", "non_public", "unknown"
+EXISTENCE = (RESOLVES, NXDOMAIN, NON_PUBLIC, UNKNOWN)
+# Existence facts whose row nobody can reach: not found for every resolver.
+NOT_LIVE = (NXDOMAIN, NON_PUBLIC)
 
 # z for a two-sided 95% interval.
 _Z95 = 1.959963984540054
@@ -122,22 +134,39 @@ def _parse_time(value: Optional[str]) -> Optional[datetime]:
     return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
 
 
-def recent_window(submitted: Optional[list[Optional[str]]], days: int) -> tuple[list[int], dict]:
+def recent_window(
+    submitted: Optional[list[Optional[str]]], days: int, now: Optional[datetime] = None,
+) -> tuple[list[int], dict]:
     """(indices of the rows submitted in the `days` before the newest row, the
-    window). A row without a readable time is never in it. days = 0: every
-    row, no window. No readable time at all: no row — the run then stops
-    rather than draw links of unknown age."""
+    window). A row without a readable time is never in it, nor one dated
+    after `now`, the run's clock (a time without a zone is UTC): no row can
+    have been submitted after the download, and as the newest it would move
+    the window past every real row (one dated 2099 left a pool of one). Those
+    are counted (`future_rows`) and logged, and `clock` says which clock.
+    days = 0: every row, no window, no clock. No usable time at all: no row —
+    the run then stops rather than draw links of unknown age."""
     times = [_parse_time(t) for t in submitted or []]
-    window = {"days": days, "start": None, "end": None, "undated_rows": sum(1 for t in times if t is None)}
+    window = {"days": days, "start": None, "end": None, "undated_rows": sum(1 for t in times if t is None),
+              "future_rows": 0, "clock": None}
     if days <= 0:
         return list(range(len(times))), {**window, "undated_rows": 0}
-    dated = [t for t in times if t is not None]
+    if now is not None:
+        now = now if now.tzinfo else now.replace(tzinfo=timezone.utc)
+        future = [i for i, t in enumerate(times) if t is not None and t > now]
+        window.update(future_rows=len(future), clock=now.isoformat())
+        if future:
+            shown = ", ".join(f"row {i} at {submitted[i]}" for i in future[:5])
+            log.warning("PhishTank: %d row%s dated after the run's clock %s, left out of the window "
+                        "(no row can have been submitted after the download): %s%s",
+                        len(future), "" if len(future) == 1 else "s", now.isoformat(), shown,
+                        " …" if len(future) > 5 else "")
+    dated = [t for t in times if t is not None and (now is None or t <= now)]
     if not dated:
         return [], window
     end = max(dated)
     start = end - timedelta(days=days)
     window.update(start=start.isoformat(), end=end.isoformat())
-    return [i for i, t in enumerate(times) if t is not None and t >= start], window
+    return [i for i, t in enumerate(times) if t is not None and start <= t <= end], window
 
 
 def sample_phishing(
@@ -200,12 +229,50 @@ def submitted_span(times: Iterable[Optional[str]]) -> Optional[dict]:
 
 # ── One existence fact per row ──
 
-def row_existence(probe: Optional[bool], others: Iterable[Optional[bool]] = ()) -> str:
+def _public_address_rule() -> Callable[[ipaddress.IPv4Address | ipaddress.IPv6Address], bool]:
+    """The server's own rule, api/services/domain_validator.is_public_address:
+    the addresses its SSRF guard lets it connect to. That module needs only
+    the standard library, so the bare weekly runner imports it too."""
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from api.services.domain_validator import is_public_address
+
+    return is_public_address
+
+
+def only_non_public(addresses: Optional[Iterable[str]]) -> bool:
+    """True when the name has an address and none is public (_public_address_rule):
+    0.0.0.0, a private, loopback or link-local range, an IPv6 form of one — a
+    takedown or a sinkhole, nothing a user's browser can reach. No address at
+    all is not enough (the name may only carry other records), and a string
+    that is not an address proves nothing."""
+    listed = [a.strip().strip("[]") for a in addresses or []]
+    if not listed:
+        return False
+    is_public = _public_address_rule()
+    for text in listed:
+        try:
+            address = ipaddress.ip_address(text)
+        except ValueError:
+            return False
+        if is_public(address):
+            return False
+    return True
+
+
+def row_existence(
+    probe: Optional[bool], others: Iterable[Optional[bool]] = (), addresses: Optional[Iterable[str]] = None,
+) -> str:
     """The row's existence. `probe` (the benchmark's own lookup) decides when
-    it can tell; else the resolvers' answers (`others`): 'resolves' when any
-    resolved the name, 'nxdomain' when one found it missing, else 'unknown'."""
+    it can tell, with the `addresses` it got: 'non_public' when every one is
+    non-public (only_non_public), else 'resolves'; 'nxdomain' when it found
+    the name missing. Else the resolvers' answers (`others`): 'resolves' when
+    any resolved the name, 'nxdomain' when one found it missing, else
+    'unknown'."""
     if probe is not None:
-        return RESOLVES if probe else NXDOMAIN
+        if not probe:
+            return NXDOMAIN
+        return NON_PUBLIC if only_non_public(addresses) else RESOLVES
     seen = {a for a in others if a is not None}
     if True in seen:
         return RESOLVES
@@ -223,7 +290,7 @@ def outcome(verdict: str, level: Optional[str], existence: str) -> str:
     """One bucket of benchmark_legit.OUTCOMES for one resolver's answer on one
     row. `level` is the resolver's own band (Cleanway's level), if it has
     one."""
-    if existence == NXDOMAIN:
+    if existence in NOT_LIVE:
         return "not_found"
     if verdict in ("dangerous", "safe"):
         return verdict
@@ -298,9 +365,9 @@ def render_outcomes_md(report: dict) -> list[str]:
         "## Every answer, by kind",
         "",
         "One row per URL, counted the same way for every resolver: a name that "
-        "does not exist is 'not found' for all of them (see Methodology). "
-        "'answered' = n − not found − no answer: the rows whose name exists and "
-        "that got an answer. 'warned' = dangerous or caution (only Cleanway has a "
+        "does not exist, or leads only to non-public addresses, is 'not found' for "
+        "all of them (see Methodology). 'answered' = n − not found − no answer: the "
+        "live rows that got an answer. 'warned' = dangerous or caution (only Cleanway has a "
         "caution band). Both rates are over the answered rows, so a resolver that "
         "was rate-limited is not shown as missing links it never judged. On the "
         "legit batch, 'dangerous / answered' is how often a real site was called "
@@ -339,6 +406,11 @@ def methodology_md(report: dict) -> list[str]:
     span = sampling.get("submitted")
     submitted = (f" They were submitted to PhishTank {span['oldest'][:10]} – {span['newest'][:10]} "
                  f"(median {span['median'][:10]})." if span else "")
+    future = window.get("future_rows") or 0
+    if future:
+        submitted += (f" {future} row{'' if future == 1 else 's'} dated after the run's clock "
+                      f"({_minute(window['clock'])} UTC) {'was' if future == 1 else 'were'} left out: "
+                      "no row can have been submitted after the download.")
     return [
         f"- The phishing sample is a random sample (seed={sampling['seed']}) of {pool} "
         f"({sampling['pool_sites']} sites): the sites in a random order, from each up to "
@@ -346,9 +418,12 @@ def methodology_md(report: dict) -> list[str]:
         f"however many rows it has. A site is the {sampling['site_rule']}. {sampling['n']} rows from "
         f"{sampling['sites']} sites.{submitted}",
         "- Whether a name exists is the benchmark's own probe: one A query per URL to Cloudflare's "
-        "unfiltered resolver, at the start of the run. NXDOMAIN there makes the row 'not found' for every "
-        "resolver, whatever it answered (Cleanway's blocklist, Cloudflare's 0.0.0.0 and PhishTank's listing "
-        "included); an answer there makes it a live row. The resolvers' own answers decide only when the "
+        "unfiltered resolver, at the start of the run, and an AAAA query when every A address is "
+        "non-public. NXDOMAIN there makes the row 'not found' for every resolver, whatever it answered "
+        "(Cleanway's blocklist, Cloudflare's 0.0.0.0 and PhishTank's listing included), and so does an "
+        "answer whose every address is non-public by the server's own rule (0.0.0.0, a private range: a "
+        "takedown, nothing a user can reach); any other answer makes it a live row. The resolvers' own "
+        "answers decide only when the "
         "probe cannot tell (SERVFAIL, a timeout, an HTTP error): a name any of them resolved is live, else "
         "an NXDOMAIN from Families' control query or Cleanway's `exists: false` makes it not found. "
         "Cleanway's `exists: false` is the weaker witness: its SSRF guard gives the same answer for a name "
