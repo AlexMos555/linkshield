@@ -19,8 +19,8 @@
  *     Filtering);
  *   • home and the update check really use those switches (a source check);
  *   • the plugin: target, bundle id, app group, EAS appExtensions entry,
- *     entitlements limited to the app group, the shared Android assets, and
- *     a native module pod not above iOS 15.1.
+ *     entitlements limited to the app group, the shared Android assets (whose
+ *     text never says VPN), and a native module pod not above iOS 15.1.
  */
 import assert from "node:assert/strict";
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
@@ -186,6 +186,19 @@ check("the target compiles the engine and the entry point, and bundles the share
     assert.ok(existsSync(join(MOBILE, "modules/cleanway-vpn/android/src/main/assets", a)), a);
   }
   assert.ok(files.resources.includes("PrivacyInfo.xcprivacy"));
+});
+
+check("the shared text assets an iPhone build bundles never say VPN", () => {
+  // App Review's automated check flagged the iPhone app as "VPN" (docs/IOS.md
+  // §3.6). These files live in the Android module named cleanway-vpn, so a
+  // repo path written into one (message_model.json's data_sha256 did) would
+  // ship that name; ml/sms/data.py provenance_key keeps it out. The .bin is
+  // weights: random bytes, not text.
+  for (const a of plugin.ASSETS.filter((f) => !f.endsWith(".bin"))) {
+    const text = readFileSync(join(MOBILE, "modules/cleanway-vpn/android/src/main/assets", a), "utf8");
+    const hit = /.{0,30}vpn.{0,30}/i.exec(text);
+    assert.equal(hit, null, `${a}: ${hit?.[0]}`);
+  }
 });
 
 check("the module's pod is not above the app's iOS deployment target (15.1)", () => {
