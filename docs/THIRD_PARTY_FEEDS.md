@@ -123,7 +123,7 @@ PhishTank can be ingested and the public number stays measurable.
 | Source | Endpoint | Terms (date read) | Switch |
 |---|---|---|---|
 | **Google Safe Browsing v4** | `safebrowsing.googleapis.com/v4/threatMatches:find` | developers.google.com/safe-browsing/terms: "Unless you have a separate agreement … you may not use the Safe Browsing API for commercial purposes" (read 2026-09-29). v4 support ends 2027-03-31 (*likely*) | Replaced by Web Risk when `WEB_RISK_API_KEY` is set — in production since 2026-11-03 17:33 UTC. Its keys (`GOOGLE_SAFE_BROWSING_API_KEY`, `GOOGLE_SAFE_BROWSING_KEY`) stay in Railway `web` until the 24-hour check, then go (`PAID_LAUNCH_SWITCHES.md` §7 step 3); until then a lost Web Risk key would fall back to it silently |
-| **Google Web Risk** Lookup API | `webrisk.googleapis.com/v1/uris:search` | Google Cloud terms; billed per lookup after 100,000 a month (cloud.google.com/web-risk/pricing, read 2026-09-29). Results may not be passed on to third parties — `PUBLISH_CONFIRMED_THREATS` stays off. Needs a Google Cloud project with billing, which may not be open to a Russian legal entity (*uncertain*) | **On in production since 2026-11-03 17:33 UTC** (`WEB_RISK_API_KEY` in Railway `web`; the logs show `web_risk_hit`; `api/services/web_risk.py`); threat types MALWARE, SOCIAL_ENGINEERING, UNWANTED_SOFTWARE; answers cached until Google's `expireTime`. Its rules for warnings (docs.cloud.google.com/web-risk/docs/user-warnings, read 2026-11-03): "Advisory provided by Google" with a link, learn-more links, no certainty — §5 |
+| **Google Web Risk** Lookup API | `webrisk.googleapis.com/v1/uris:search` | Google Cloud terms; billed per lookup after 100,000 a month (cloud.google.com/web-risk/pricing, read 2026-09-29). Results may not be passed on to third parties — `PUBLISH_CONFIRMED_THREATS` stays off. Needs a Google Cloud project with billing, which may not be open to a Russian legal entity (*uncertain*) | **On in production since 2026-11-03 17:33 UTC** (`WEB_RISK_API_KEY` in Railway `web`; the logs show `web_risk_hit`; `api/services/web_risk.py`); threat types MALWARE, SOCIAL_ENGINEERING, UNWANTED_SOFTWARE; answers cached until Google's `expireTime`. Its rules for warnings (docs.cloud.google.com/web-risk/docs/user-warnings, read 2026-11-04): "Advisory provided by Google" with a link, a learn-more link per threat type, no certainty, shown only while Google's answer is valid — §5 |
 | **PhishTank** checkurl | `checkurl.phishtank.com/checkurl/` | FAQ: commercial use OK; key needed for rate limits (read 2026-09-29) | Always on (answers nothing for fresh URLs without a key) |
 | **URLhaus** host API | `urlhaus-api.abuse.ch/v1/host/` | abuse.ch ToU 2025-11-04 (non-commercial). **401 Unauthorized without a personal `Auth-Key` header since 2026-10-21** (probed that day) | **Off by default** (`LICENSED_INTEL=licensed`). The open question of 2026-09-21 is resolved: same terms as ThreatFox, so it goes with them. Until the fix a 401 read as "not listed" on every check; a non-2xx answer now raises (a failed, unmeasured check) |
 | **ThreatFox** | `threatfox-api.abuse.ch/api/v1/` | abuse.ch ToU 2025-11-04 (non-commercial, no derivative works). 401 without a key since 2026-10-21 | **Off by default** (`LICENSED_INTEL=licensed`); a 401 raises |
@@ -797,14 +797,21 @@ the CrUX month and the row counts each served model learned from.
 
 **Google Web Risk** (since 2026-11-03; the API's reason code for its hit is
 `safe_browsing`, as for Safe Browsing v4 before). Its rules for warnings
-(docs.cloud.google.com/web-risk/docs/user-warnings, read 2026-11-03) ask that
+(docs.cloud.google.com/web-risk/docs/user-warnings, read 2026-11-04) ask that
 a warning about a page Google flagged carries the line "Advisory provided by
 Google", linked to the Web Risk Advisory
 (https://docs.cloud.google.com/web-risk/docs/advisory), lets the reader learn
-more (https://www.antiphishing.org/ for phishing; Google Search Central,
+more about each threat type the server asks about
+(https://www.antiphishing.org/ for phishing; Google Search Central,
 https://developers.google.com/search/docs/advanced/security/malware, for
-malware), and does not call the page certainly unsafe; and that a warning
-built on other data does not carry Google's name. Where it shows, translated
+malware; https://www.google.com/about/company/unwanted-software-policy.html
+for unwanted software), and does not call the page certainly unsafe; that a
+warning built on other data does not carry Google's name; and that a warning
+is shown only while Google's cached answer is valid. So a verdict resting on
+Google is kept by no cache past that answer (`api/services/google_advisory.py`:
+the public and signed-in check caches; the public answer's `advisory_ttl` caps
+the extension's and the app's; the /check page fetches such a verdict live in
+the browser), and is not sent to family members. Where it shows, translated
 in all ten languages (`extension.advisory`): the extension's block page, link
 badge tooltips, context-menu check, popup and webmail banner
 (`content/reason-labels.js`); the app's result, share and message-check
@@ -816,5 +823,6 @@ their next releases; the site and the add-in with the next deploy. Pinned by
 `scripts/test-extension-core.mjs` (group 15), `scripts/test-extension-sw.mjs`,
 `mobile/scripts/test-reason-label.mjs`, `mobile/scripts/test-message-verdict.mjs`,
 `scripts/test-landing-honesty.mjs`, `landing/e2e/google-advisory.spec.ts` and
-`tests/test_outlook_addin.py`. Google's verdicts are not passed on to anyone
+`tests/test_outlook_addin.py`, the time limit by `tests/test_google_advisory_window.py`
+and the same scripts. Google's verdicts are not passed on to anyone
 else: `PUBLISH_CONFIRMED_THREATS` stays off (§1).
