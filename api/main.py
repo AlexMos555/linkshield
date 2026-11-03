@@ -124,6 +124,9 @@ async def lifespan(app: FastAPI):
     # The allowlist age gate's worker writes to Redis: stopped before it closes.
     from api.services import allowlist_age
     await allowlist_age.stop()
+    # So do the LLM judge's live calls, which end in the background.
+    from api.services import llm_judge
+    await llm_judge.stop()
     await close_redis()
     # The billing role's database pool (None on the api role — nothing to close).
     from api.billing.deps import close_context as close_billing_context

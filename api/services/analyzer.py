@@ -23,7 +23,10 @@ consulted: they leave the plan and the total, so an analysis is 13 checks of
 13, not 13 of 19. LICENSED_INTEL=all consults all 19.
 
 A check still running at the deadline is cancelled and named in
-`checks_incomplete`; the LLM judge only gets whatever budget is left. Every
+`checks_incomplete`. The LLM judge is never waited for: only its cached
+opinion counts, and a live call it needs runs on in the background for the
+next check (named `llm_judge` in `checks_incomplete` meanwhile). Its
+opinion moves the score inside caution only, never the level. Every
 check waits for the worker's outbound gate first (load_shedding.OUTBOUND), so
 the source calls open at once stay bounded however many analyses run.
 
@@ -40,15 +43,15 @@ from typing import Any, Optional
 import httpx
 
 from api.config import get_settings
-from api.services import allowlist_age, licensed_intel, load_shedding, paid_budget, rdap, security_alerts
+from api.services import allowlist_age, licensed_intel, load_shedding, paid_budget, rdap, scoring, security_alerts
 from api.services import verdict_basis as vb
 from api.services.analysis_budget import MIN_STEP_S, Deadline, run_within_budget
 from api.services.tls_contexts import client_tls_context
 from api.services.public_suffix import CCTLD_OPEN_ZONES
 from api.services.scoring import (
     calculate_score, calculate_confidence, calculate_confidence_pct, is_hosting_platform_site,
-    is_regional_government_domain, is_user_content_service_host, popularity_rank, rank_registrable_domain,
-    _platform_tenant_site,
+    is_regional_government_domain, is_user_content_service_host, level_for_score, popularity_rank,
+    rank_registrable_domain, _platform_tenant_site,
 )
 from api.services.domain_validator import (
     validate_domain,
@@ -177,8 +180,8 @@ async def _judge(
     outcomes: dict, unfinished: list[str], deadline: Deadline,
     allowlist_withheld: bool = False,
 ) -> DomainResult:
-    """Score the gathered evidence, let the LLM judge use what budget is left,
-    and assemble the result."""
+    """Score the gathered evidence, apply the LLM judge's cached opinion (or
+    start its live call for the next check), and assemble the result."""
     total = TOTAL_CHECKS - len(_not_consulted(domain))
     # The argument only when it says something: wrappers of the old
     # signature (tests/test_licensed_intel.py) see the call they always did.
@@ -234,7 +237,13 @@ async def _judge(
         reasons.append(judge_reason)
     if not judge_finished:
         unfinished = unfinished + ["llm_judge"]
-    reasons.extend(_informational_reasons(domain, outcomes, signals, unfinished, vouched))
+    # The person is told only of checks the verdict lacks. The judge is not
+    # one: it is never waited for, and its opinion moves the score inside
+    # caution, never the level — "did not finish in time" would be untrue.
+    # It stays in `checks_incomplete`, which keeps the answer in the public
+    # cache for an hour, not a day, so the next check can apply the opinion.
+    cut_off = [name for name in unfinished if name != "llm_judge"]
+    reasons.extend(_informational_reasons(domain, outcomes, signals, cut_off, vouched))
 
     _log_features(domain, signals, score)
     # With PUBLISH_CONFIRMED_THREATS on (off by default — a licence
@@ -260,6 +269,9 @@ async def _judge(
         "domain": domain, "score": score, "verdict": level.value,
         "confidence": confidence.value, "confidence_pct": confidence_pct,
         "checks": measured, "basis": basis, "incomplete": result.checks_incomplete,
+        # The LLM judge's applied shift (None: not applied), so where its
+        # opinions land against the scorer's lines can be counted.
+        "judge_shift": judge_reason.weight if judge_reason is not None else None,
     })
     return result.model_copy(update={"verdict_basis": basis})
 
@@ -605,21 +617,27 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
 async def _llm_judge_within(
     signals: dict, score: int, level: RiskLevel, deadline: Deadline,
 ) -> tuple[int, RiskLevel, Optional[DomainReason], bool]:
-    """Strategy #21 — the LLM judge for caution-band verdicts, inside the budget.
+    """Strategy #21 — the LLM judge for caution-band verdicts, never waited for.
 
     When the rule-based scorer landed in the caution band (no blocklist hit,
     no allowlist short-circuit), Claude weighs in on a domain-FREE feature
-    vector and proposes a signed score shift capped at ±20. Returns
-    (score, level, reason or None, finished). `finished` is False when the
-    judge was still running at the deadline — the verdict then stands
-    without it, and says so. The live call itself is not lost: it finishes
-    in the background and fills the judge's cache (llm_judge._live_opinion),
-    so the next domain with the same pattern gets the answer in time.
+    vector and proposes a signed score shift capped at ±20. A positive one
+    stops at scoring.DANGEROUS_ABOVE, so the judge alone never makes a
+    caution 'dangerous'. Returns (score, level, reason or None, finished).
+
+    Only an opinion already cached for this pattern is applied. Otherwise
+    the live call is started (llm_judge.opinion_now) and the scorer's
+    verdict goes out at once with `finished` False — the call ends in the
+    background and caches its answer for the next check. Waiting for it
+    held 60 of 63 caution answers past 3 s (2026-11-01), where the browser
+    extension (Safari's on the iPhone too) gives up. The cache lookup itself
+    stays inside the budget; a judge that is not asked (no key, the day's
+    budget spent) is finished.
     """
     try:
-        from api.services.llm_judge import judge_ambiguous_verdict
-        judge = await asyncio.wait_for(
-            judge_ambiguous_verdict(signals, score, level.value),
+        from api.services.llm_judge import STARTED, opinion_now
+        state, judge = await asyncio.wait_for(
+            opinion_now(signals, score, level.value),
             timeout=max(MIN_STEP_S, deadline.remaining()),
         )
     except asyncio.TimeoutError:
@@ -629,18 +647,34 @@ async def _llm_judge_within(
         logger.debug("LLM judge wrapper failed", exc_info=True)
         return score, level, None, True
     if judge is None:
-        return score, level, None, True
+        return score, level, None, state != STARTED
     shift = int(judge.get("score_shift", 0))
-    if shift != 0:
-        score = max(0, min(score + shift, 100))
-        if score >= 70:
-            level = RiskLevel.dangerous
-        elif score >= 30:
-            level = RiskLevel.caution
-        else:
-            level = RiskLevel.safe
-    reason = DomainReason(signal="llm_judge", weight=shift, detail=judge["one_line_reason"])
-    return score, level, reason, True
+    if shift > 0:
+        # Never past the top of caution: on its own the judge, which sees no
+        # domain and whose opinion is cached per feature pattern, never makes
+        # a caution 'dangerous'. The extension blocks the page on any API
+        # 'dangerous' (extension/src/content/index.js) and tells the family;
+        # Android warns. Without the cap a cached "dangerous" took real sites
+        # there: syktyvkar-sovet.ru 39 -> 59 on weak signals alone (which the
+        # scorer itself stops at caution), ognimos.ru 38 -> 58, simaz-bus.ru
+        # 40 -> 60 (2026-11-03).
+        judged = max(score, min(score + shift, scoring.DANGEROUS_ABOVE))
+        if judged - score < shift:
+            logger.info("llm_judge_capped", extra={
+                "domain": signals.get("domain"), "score": score, "judge_shift": shift,
+            })
+    else:
+        judged = max(0, score + shift)
+    if judged != score:
+        # The scorer's own lines (20 / 50), not the judge's old caution band
+        # of 30-70: with that, a "safe" opinion took a caution of 30-49 to 29
+        # and showed it 'safe' — two phishing hosts on 2026-11-01. The judge
+        # aims its "safe" at 29, so it can no longer clear a caution either:
+        # its opinion moves the score inside caution, never the level.
+        level = level_for_score(judged)
+    # The shift applied, so the reasons add up to the score.
+    reason = DomainReason(signal="llm_judge", weight=judged - score, detail=judge["one_line_reason"])
+    return judged, level, reason, True
 
 
 # Second-level labels of registries only a government can register in, under

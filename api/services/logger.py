@@ -46,6 +46,8 @@ ALLOWED_EXTRAS = frozenset({
     "rank", "age_days", "gated_score", "gated_verdict",
     # allowlist_age_gate_shadow: the allowlist entry whose registration is young
     "entry",
+    # analysis_complete: the LLM judge's applied score shift (a number)
+    "judge_shift",
     # startup
     "environment", "strict_config", "has_supabase", "has_stripe",
     "has_revenuecat", "has_sentry", "supabase_server_key_kind", "role",
