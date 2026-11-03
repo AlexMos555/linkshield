@@ -420,7 +420,10 @@ flags "caution" — they were exempt only because Tranco listed them.
 how each service answered, and on cleanway.ai/transparency/methodology (since
 2026-11, method_version 2 reports only) each service's share of the live
 links that got an answer it called dangerous, and the share it warned about
-at all, with their 95% intervals. What it
+at all, with their 95% intervals — and the same pair on the real sites, the
+false alarms. A link is live when its domain exists and points to a public
+address: a name whose every address is non-public (0.0.0.0, a private range)
+is "not found", as a missing one. What it
 compares, under which terms (read 2026-10-24):
 
 | Service | Terms | In the published run |
