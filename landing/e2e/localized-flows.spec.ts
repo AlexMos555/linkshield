@@ -153,12 +153,28 @@ test.describe("on an Android phone", () => {
   });
 });
 
+test.describe("on an iPhone", () => {
+  test.use({ userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1" });
+
+  test("/ru/family/join on an iPhone: App Store, then the app's own menu — no 'coming soon'", async ({ page }) => {
+    await page.goto("/ru/family/join#code=ABCD1234&pin=4821");
+    const steps = page.getByTestId("family-join-steps-ios");
+    await expect(steps.getByRole("link")).toHaveAttribute("href", "https://apps.apple.com/app/id6821030874");
+    await expect(steps).toContainText("App Store");
+    await expect(steps).toContainText("Настройки → Семейный центр");
+    await expect(steps).not.toContainText("скоро");
+  });
+});
+
 test("/ru/success shows what installs today, in Russian, and no dead anchor", async ({ page }) => {
   await page.goto("/ru/success");
   await expect(page.getByTestId("success-android")).toHaveAttribute("href", "/ru/android");
   await expect(page.getByTestId("success-dns")).toHaveAttribute("href", "/ru/dns");
   await expect(page.getByTestId("success-status")).toContainText("Скоро");
+  // The iPhone app is live: its pill is a link to the App Store, and the text says so.
+  await expect(page.getByTestId("success-status").locator('a[href="https://apps.apple.com/app/id6821030874"]')).toHaveCount(1);
   const main = page.locator("main");
+  await expect(main).toContainText("Приложение для iPhone уже в App Store");
   await expect(main).not.toContainText("in store review");
   await expect(main).not.toContainText("Settings → Family Hub");
   await expect(page.locator('a[href*="#install"]')).toHaveCount(0);

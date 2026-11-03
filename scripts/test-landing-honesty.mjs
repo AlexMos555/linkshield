@@ -960,7 +960,7 @@ console.log("\npages reached from a shared link or a checkout (/ref, /family/joi
     Ref: ["meta_title", "meta_description", "heading", "body", "code_label", "code_note"],
     FamilyJoin: [
       "meta_title", "meta_description", "incomplete_title", "incomplete_body", "back_home", "title", "intro",
-      "code_label", "pin_label", "how_title", "ios_soon", "android_step1", "android_link", "app_step2",
+      "code_label", "pin_label", "how_title", "ios_step1", "ios_link", "android_step1", "android_link", "app_step2",
       "app_step3", "desktop_soon", "desktop_phone", "copy_link", "copied", "privacy_note",
     ],
     Success: ["step1_title", "step1_body", "step1_cta", "step2_title", "step2_body", "step2_cta", "step3_title", "step3_body"],
