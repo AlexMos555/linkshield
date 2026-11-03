@@ -159,8 +159,8 @@ Variables: нет `LICENSED_INTEL=all` и нет `PUBLISH_CONFIRMED_THREATS`.
 
 **Состояние на 2026-11-03.** Шаги 1 и 2 сделаны: с 2026-11-03 17:33 UTC production
 спрашивает Web Risk (в Railway `web` задан `WEB_RISK_API_KEY`, в логах есть
-`web_risk_hit`). Шаг 3 ждёт суточной проверки. Шаг 4 сделан в коде (ветка
-`feat/web-risk-advisory`); строки расширения и приложения дойдут до людей только с их
+`web_risk_hit`). Шаг 3 ждёт суточной проверки. Шаг 4 сделан в коде (#403);
+строки расширения и приложения дойдут до людей только с их
 следующими выпусками, сайта и надстройки Outlook — со следующим деплоем сайта. Тексты
 магазинов основатель меняет в консолях (список в шаге 4).
 
@@ -183,7 +183,7 @@ Variables: нет `LICENSED_INTEL=all` и нет `PUBLISH_CONFIRMED_THREATS`.
      (сервер принимает оба имени, [`api/config.py`](../api/config.py)). Тогда сервер не
      вернётся тихо к Safe Browsing, если ключ Web Risk пропадёт: в staging и production
      он напишет в лог `neither google_safe_browsing_key nor web_risk_api_key set`.
-  4. ✅ В коде (ветка `feat/web-risk-advisory`). Правила Web Risk для предупреждений
+  4. ✅ В коде (#403). Правила Web Risk для предупреждений
      (docs.cloud.google.com/web-risk/docs/user-warnings и
      docs.cloud.google.com/web-risk/docs/advisory, перечитаны 2026-11-03; адреса
      cloud.google.com/web-risk/… теперь переадресуют туда):
