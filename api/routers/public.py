@@ -62,7 +62,8 @@ _INFLIGHT: dict[str, asyncio.Future] = {}
 # v7 (2026-10-05): 14 global brands added (allegro, olx, xfinity, att, mbway
 # …): allegrolokalnie.<random>.cfd, mbway.online cached as 'safe' under v6,
 # and olx.ua, att.net listed as the brands' own.
-_PUBLIC_CACHE_PREFIX = "public_check:v7:"
+# v8 (2026-11-03): bare IP hosts (8.8.8.8, GitHub's 140.82.112.4) cached as 'dangerous 85-100' under v7 (#398).
+_PUBLIC_CACHE_PREFIX = "public_check:v8:"
 _PUBLIC_CACHE_TTL_SECONDS = 24 * 60 * 60
 # A name that does not exist can be registered at any moment, and a verdict
 # the scanner could not complete may be better next time — neither is kept

@@ -8,9 +8,19 @@ excessive_subdomains ("2 levels above 112.4": the dots of an address,
 
 An IP literal is still a real warning sign, so it stays a caution with
 that honest reason. 'dangerous' needs evidence about the address: a list
-or reputation hit (Safe Browsing, the feeds, IPQS, OTX) or what the page
-showed (a brand's favicon). Private and reserved ranges keep their SSRF
-answer.
+or reputation hit or what the page showed (a brand's favicon). Private and
+reserved ranges keep their SSRF answer.
+
+Two kinds of test below. calculate_score() tests pin the scorer's rules for
+every signal it knows. The analyze_domain() tests pin what production can
+actually see about an address today: with LICENSED_INTEL=licensed (the
+default since 2026-10-21) URLhaus, ThreatFox, Feodo, MalwareBazaar, SURBL
+and Spamhaus are not asked, OTX is never asked about an IP (_NOT_FOR_IPS),
+and the routers hand the analyzer the host only (the public check passes
+raw_url = the host, /check passes none), so a port, '@' or '//' in a URL
+never reaches the scorer. What is left for an address: Safe Browsing / Web
+Risk, PhishTank (the exact root URL), PhishStats, IPQS (with a key, within
+its daily budget) and a brand's favicon.
 """
 from __future__ import annotations
 
@@ -86,7 +96,10 @@ def test_what_the_probes_see_on_an_address_stays_a_caution(probes):
 
 def test_a_port_on_an_address_stays_a_caution():
     """URLhaus's Mozi URLs: http://<ip>:<high port>/i — the shape of a
-    botnet node, and of a camera or a Plex server."""
+    botnet node, and of a camera or a Plex server.
+
+    Scorer semantics, not the production path: the routers pass the host
+    only, so production never sees this port."""
     score, level, reasons = calculate_score(
         _ip_signals("103.249.199.5", raw_url="http://103.249.199.5:35908/i", no_https=True))
     assert {"ip_based", "non_standard_port", "no_https"} <= _codes(reasons)
@@ -96,24 +109,33 @@ def test_a_port_on_an_address_stays_a_caution():
 # ── Evidence still makes it dangerous ──
 
 @pytest.mark.parametrize("evidence, code", [
+    # Asked about an address in production today:
     ({"safe_browsing_hit": True, "blocklist_hits": 1}, "safe_browsing"),
+    ({"phishtank_hit": True, "blocklist_hits": 1}, "phishtank"),
     ({"phishstats_hit": True, "blocklist_hits": 1}, "phishstats"),
-    ({"urlhaus_hit": True, "blocklist_hits": 1}, "urlhaus"),
-    ({"feodo_hit": True, "blocklist_hits": 1}, "feodo"),
     ({"ipqs_phishing": True}, "ipqs_phishing"),
     ({"ipqs_risk_score": 90}, "ipqs_high_risk"),
-    ({"alienvault_pulse_count": 3, "alienvault_distinct_pulses": 3}, "alienvault_otx"),
     ({"favicon_cloned": True, "favicon_brand": "PayPal", "favicon_detail": "PayPal's favicon"},
      "favicon_brand_clone"),
+    # Scorer semantics only: URLhaus and Feodo are asked only with
+    # LICENSED_INTEL=all, OTX is never asked about an IP.
+    ({"urlhaus_hit": True, "blocklist_hits": 1}, "urlhaus"),
+    ({"feodo_hit": True, "blocklist_hits": 1}, "feodo"),
+    ({"alienvault_pulse_count": 3, "alienvault_distinct_pulses": 3}, "alienvault_otx"),
 ])
 def test_an_address_with_evidence_stays_dangerous(evidence, code):
+    """The scorer's rule: any of these makes an address 'dangerous'. Which
+    of them production can see is pinned through the analyzer below."""
     score, level, reasons = calculate_score(_ip_signals("103.249.199.5", **evidence))
     assert code in _codes(reasons)
     assert level == RiskLevel.dangerous, (score, [(r.signal, r.weight) for r in reasons])
 
 
 def test_an_address_trick_in_the_url_is_still_evidence():
-    """paypal.com@<ip>: the browser opens the address, the reader sees PayPal."""
+    """paypal.com@<ip>: the browser opens the address, the reader sees PayPal.
+
+    Scorer semantics, not the production path: the routers pass the host
+    only, so production never sees the '@'."""
     _, level, reasons = calculate_score(
         _ip_signals("103.249.199.5", raw_url="http://paypal.com@103.249.199.5/login"))
     assert "at_symbol" in _codes(reasons)
@@ -173,6 +195,45 @@ def test_the_analyzer_keeps_a_listed_address_dangerous(offline_analyzer, monkeyp
     assert result.verdict_basis == "threat_intel"
 
 
+@pytest.fixture
+def licensed(monkeypatch):
+    """Today's production setting (the default since 2026-10-21)."""
+    from api import config
+    monkeypatch.setattr(config.get_settings(), "licensed_intel", "licensed", raising=False)
+
+
+@pytest.mark.parametrize("hits, code", [
+    ({"phishtank": True}, "phishtank"),
+    ({"phishstats": True}, "phishstats"),
+    ({"ipqs": {"hit": True, "phishing": True, "risk_score": 90}}, "ipqs_phishing"),
+    ({"favicon": {"cloned": True, "brand": "PayPal", "weight": 35, "detail": "PayPal's favicon"}},
+     "favicon_brand_clone"),
+])
+def test_what_production_still_asks_about_an_address_makes_it_dangerous(
+        offline_analyzer, licensed, hits, code):
+    offline_analyzer(exists=None, site="reachable", hits=hits)
+    result = asyncio.run(analyze_domain("103.249.199.5", budget_s=5.0))
+    assert code in _codes(result.reasons)
+    assert result.level == RiskLevel.dangerous, [(r.signal, r.weight) for r in result.reasons]
+
+
+def test_with_todays_config_a_feed_listed_address_is_a_caution(offline_analyzer, licensed):
+    """The trade-off of this fix, as it stands: a Feodo or ThreatFox C2
+    address, a URLhaus Mozi node or one with OTX pulses is not asked about
+    under LICENSED_INTEL=licensed (OTX: never for an IP), so without a
+    Safe Browsing, PhishTank, PhishStats, IPQS or favicon hit it is a
+    caution, not 'dangerous'."""
+    offline_analyzer(exists=None, site="reachable", hits={
+        "urlhaus": True, "threatfox": True, "feodo": True, "malware_bazaar": True,
+        "surbl": True, "spamhaus": True,
+        "alienvault": {"hit": True, "pulse_count": 5, "distinct_pulses": 5, "newest_report_days": 1},
+    })
+    result = asyncio.run(analyze_domain("103.249.199.5", budget_s=5.0))
+    assert result.level == RiskLevel.caution, [(r.signal, r.weight) for r in result.reasons]
+    assert not _codes(result.reasons) & {
+        "urlhaus", "threatfox", "feodo", "malware_bazaar", "surbl", "spamhaus", "alienvault_otx"}
+
+
 # ── Private and reserved ranges: the SSRF answer, as before ──
 
 @pytest.mark.parametrize("host", [
@@ -193,3 +254,22 @@ def test_the_public_check_refuses_a_private_address(redis_down):
 
     response = TestClient(app).get("/api/v1/public/check/192.168.1.1")
     assert response.status_code == 400
+
+
+# ── Verdicts cached before this fix ──
+
+def test_a_dangerous_address_cached_before_the_fix_is_not_served(fake_redis):
+    """The public check caches a verdict for 24 h. Before this fix 8.8.8.8
+    sat there as 'dangerous 85' (and the extension showed its block page on
+    it); a new cache namespace retires those answers at deploy."""
+    from api.models.schemas import DomainReason, DomainResult
+    from api.routers import public as public_router
+
+    old = DomainResult(
+        domain="8.8.8.8", score=85, level=RiskLevel.dangerous, exists=True,
+        verdict_basis="ml_and_heuristics",
+        reasons=[DomainReason(signal=s, detail=s, weight=w)
+                 for s, w in (("ip_based", 35), ("excessive_subdomains", 15), ("ml_high_risk", 35))],
+    ).model_dump_json()
+    asyncio.run(fake_redis.set("public_check:v7:8.8.8.8", old))
+    assert asyncio.run(public_router._get_public_cache("8.8.8.8")) is None
