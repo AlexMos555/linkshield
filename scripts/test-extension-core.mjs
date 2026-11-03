@@ -2998,9 +2998,16 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
       reasons: [{ signal: "phishtank", detail: "PhishTank", weight: 10 }] };
     assert.deepEqual(await run("https://evil.example/", google), { hidden: false, state: "danger" });
     assert.deepEqual(await run("https://evil.example/", others), { hidden: true, state: "danger" });
-    const blockedAt = (reasons) => `chrome-extension://abcdefghijklmnopabcdefghijklmnop/src/blocked/blocked.html?d=evil.example&r=${encodeURIComponent(JSON.stringify(reasons))}`;
-    assert.deepEqual(await run(blockedAt([{ s: "safe_browsing", t: "Google" }]), null), { hidden: false, state: "danger" });
+    const safe = { domain: "evil.example", level: "safe", score: 2, source: "api", reasons: [] };
+    const blockedAt = (reasons, x) => `chrome-extension://abcdefghijklmnopabcdefghijklmnop/src/blocked/blocked.html?d=evil.example&r=${encodeURIComponent(JSON.stringify(reasons))}${x ? `&x=${x}` : ""}`;
+    // Inside Google's window (the address's x) the block page's own verdict is shown, Google's credit with it.
+    assert.deepEqual(await run(blockedAt([{ s: "safe_browsing", t: "Google" }], Date.now() + 600_000), null), { hidden: false, state: "danger" });
     assert.deepEqual(await run(blockedAt([{ s: "phishtank", t: "PhishTank" }]), null), { hidden: true, state: "danger" });
+    // Past it, or with no window at all, the popup asks again and shows that
+    // answer: never Google's old credit from the address (group 16).
+    assert.deepEqual(await run(blockedAt([{ s: "safe_browsing", t: "Google" }]), safe), { hidden: true, state: "safe" });
+    assert.deepEqual(await run(blockedAt([{ s: "safe_browsing", t: "Google" }], Date.now() - 1000), others), { hidden: true, state: "danger" });
+    assert.deepEqual(await run(blockedAt([{ s: "safe_browsing", t: "Google" }], Date.now() - 1000), google), { hidden: false, state: "danger" });
 
     const html = readFileSync(join(ROOT, tree, "src/popup/popup.html"), "utf8");
     const box = html.match(/<(p|div)\b[^>]*\bid="google-advisory"[^>]*>[\s\S]*?<\/\1>/);
@@ -3163,6 +3170,472 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     assert.ok(reads.length > 0, "a verdict on other sources never reached the fan-out (the test proves nothing)");
   }));
 }
+
+// ── Group 16: a Google warning leaves the screen when Google's answer does ──
+// Web Risk allows a warning only while "the cached response is still valid at
+// the time a warning is shown. Under no other circumstances" (docs.cloud.
+// google.com/web-risk/docs/user-warnings, read 2026-11-04). Two extension
+// surfaces kept one on screen past that:
+//   - the block page drew its verdict from its own address, with no time in
+//     it: a restored tab, Forward after "Go back to safety" or the browser
+//     history drew "Advisory provided by Google" again days later;
+//   - a link badge built its tooltip once, and it appeared whenever the
+//     pointer reached the badge — hours later on a tab left open.
+// Now the background hands a Google verdict out with the end of its window
+// (`advisory_until`, epoch ms; a fresh answer the server gave no window is
+// shown at most 30 s), the block page's address carries it (`x`), and both
+// surfaces take the warning down at that time and check the site again.
+
+const ZERO_WINDOW_MS = 30_000;
+const GOOGLE_REASONS = [{ signal: "safe_browsing", detail: "Google lists this site as possibly unsafe" }];
+const OTHER_REASONS = [{ signal: "phishtank", detail: "PhishTank" }];
+
+/** A small DOM node: attributes, children, a sibling chain, listeners. */
+class FakeNode {
+  constructor(tag) {
+    this.tagName = String(tag).toUpperCase();
+    this.attrs = {};
+    this.children = [];
+    this.parent = null;
+    this.next = null;
+    this.prev = null;
+    this.connected = true;
+    this.listeners = {};
+    this.style = {};
+    this.className = "";
+    this.textContent = "";
+    this.innerHTML = "";
+    this.id = "";
+    this.hidden = false;
+    this.disabled = false;
+    this.dir = "";
+    const node = this;
+    this.classList = {
+      add: (c) => { node.className = `${node.className} ${c}`.trim(); },
+      contains: (c) => node.className.split(/\s+/).includes(c),
+    };
+  }
+  setAttribute(k, v) { this.attrs[k] = String(v); }
+  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
+  hasAttribute(k) { return k in this.attrs; }
+  removeAttribute(k) { delete this.attrs[k]; }
+  appendChild(c) { this.children.push(c); c.parent = this; c.connected = true; return c; }
+  addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); }
+  fire(type) { for (const fn of this.listeners[type] || []) fn({ type, preventDefault() {} }); }
+  get nextElementSibling() { return this.next; }
+  get isConnected() { return this.connected; }
+  insertAdjacentElement(where, el) {
+    assert.equal(where, "afterend");
+    el.prev = this;
+    el.next = this.next;
+    this.next = el;
+    el.connected = true;
+    return el;
+  }
+  remove() {
+    this.connected = false;
+    if (this.prev && this.prev.next === this) this.prev.next = this.next;
+    if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this);
+  }
+  /** This node and everything under it, depth first. */
+  all() { return [this, ...this.children.flatMap((c) => c.all())]; }
+  text() { return this.all().map((n) => n.textContent).join(" "); }
+}
+
+/** setTimeout / clearTimeout on a fake clock; runDue() runs what is due. */
+function fakeTimers(clock) {
+  const timers = [];
+  let nextId = 1;
+  return {
+    timers,
+    setTimeout: (fn, ms = 0) => {
+      const id = nextId++;
+      timers.push({ id, fn, at: clock.t + Math.max(0, Number(ms) || 0) });
+      return id;
+    },
+    clearTimeout: (id) => {
+      const i = timers.findIndex((x) => x.id === id);
+      if (i >= 0) timers.splice(i, 1);
+    },
+    async runDue() {
+      for (;;) {
+        const due = timers.filter((x) => x.at <= clock.t).sort((a, b) => a.at - b.at)[0];
+        if (!due) break;
+        timers.splice(timers.indexOf(due), 1);
+        await due.fn();
+        await new Promise((r) => setImmediate(r));
+      }
+      for (let i = 0; i < 5; i++) await new Promise((r) => setImmediate(r));
+    },
+  };
+}
+
+const flush = async () => { for (let i = 0; i < 5; i++) await new Promise((r) => setImmediate(r)); };
+
+/** content/index.js (after reason-labels.js) on a fake page reader.example. */
+function loadContentPage(tree, { clock, answer }) {
+  const time = fakeTimers(clock);
+  const sent = [];
+  const links = [];
+  const docListeners = {};
+  const body = new FakeNode("body");
+  const sb = {
+    Date: { now: () => clock.t },
+    setTimeout: time.setTimeout,
+    clearTimeout: time.clearTimeout,
+    URL,
+    crypto: globalThis.crypto,
+    performance: { timeOrigin: 1 },
+    location: { hostname: "reader.example" },
+    chrome: {
+      i18n: { getMessage: (k) => `<${k}>`, getUILanguage: () => "en" },
+      storage: { local: { get: (keys, cb) => { if (cb) cb({}); return Promise.resolve({}); } } },
+      runtime: {
+        onMessage: { addListener() {} },
+        sendMessage: async (msg) => { sent.push(JSON.parse(JSON.stringify(msg))); return answer(msg); },
+      },
+    },
+    MutationObserver: class { observe() {} },
+    localScore: (d) => ({ domain: d, score: 0, level: "safe", reasons: [], source: "local" }),
+    document: {
+      body,
+      head: new FakeNode("head"),
+      hidden: false,
+      createElement: (tag) => new FakeNode(tag),
+      querySelectorAll: (sel) => (String(sel).startsWith("a[href]") ? links.filter((l) => !l.hasAttribute("data-ls-scanned")) : []),
+      getElementById: () => null,
+      addEventListener: (type, fn) => (docListeners[type] ||= []).push(fn),
+    },
+    addEventListener() {},
+  };
+  sb.window = sb;
+  sb.self = sb;
+  sb.top = sb;
+  const ctx = vm.createContext(sb);
+  vm.runInContext(readFileSync(join(ROOT, tree, "src/content/reason-labels.js"), "utf8"), ctx);
+  vm.runInContext(readFileSync(join(ROOT, tree, "src/content/index.js"), "utf8"), ctx);
+  const link = (host) => {
+    const a = new FakeNode("a");
+    a.href = `https://${host}/offer`;
+    links.push(a);
+    return a;
+  };
+  const badgeOf = (a) => (a.next && a.next.classList.contains("ls-badge") ? a.next : null);
+  const fireDoc = (type) => { for (const fn of docListeners[type] || []) fn({ type }); };
+  return { ctx, time, sent, link, badgeOf, fireDoc, document: sb.document };
+}
+
+/** blocked.html's scripts (blocked-url.js, then blocked.js) at `search`. */
+function loadBlockedPage(tree, { clock, search, answer }) {
+  const time = fakeTimers(clock);
+  const sent = [];
+  const drawn = [];
+  const replaced = [];
+  const opened = [];
+  const listeners = {};
+  const body = new FakeNode("body");
+  const sb = {
+    Date: { now: () => clock.t },
+    setTimeout: time.setTimeout,
+    clearTimeout: time.clearTimeout,
+    URL,
+    URLSearchParams,
+    location: { search, replace: (u) => opened.push(u), assign: (u) => opened.push(u) },
+    chrome: {
+      i18n: {
+        getMessage: (k, subs) => (k === "@@bidi_dir" ? "ltr" : `<${k}${subs && [].concat(subs).length ? `:${[].concat(subs).join(",")}` : ""}>`),
+        getUILanguage: () => "en",
+      },
+      runtime: {
+        getURL: (p) => EXT + (p || ""),
+        sendMessage: (msg) => { sent.push(JSON.parse(JSON.stringify(msg))); return Promise.resolve(answer(msg)); },
+      },
+    },
+    document: {
+      title: "",
+      hidden: false,
+      documentElement: { lang: "", style: {} },
+      body,
+      createElement: (tag) => new FakeNode(tag),
+      getElementById: (id) => body.all().find((n) => n.id === id) || null,
+      addEventListener: (type, fn) => (listeners[type] ||= []).push(fn),
+    },
+    addEventListener: (type, fn) => (listeners[type] ||= []).push(fn),
+    __cleanwayShowBlockPage: (verdict) => {
+      drawn.push(JSON.parse(JSON.stringify(verdict)));
+      const overlay = new FakeNode("div");
+      overlay.id = "ls-block-overlay";
+      overlay.textContent = verdict.reasons.some((r) => r.signal === "safe_browsing") ? "<advisory_google>" : "";
+      body.appendChild(overlay);
+    },
+  };
+  sb.history = {
+    length: 3,
+    go() {},
+    replaceState: (state, title, url) => {
+      replaced.push(url);
+      sb.location.search = String(url).slice(String(url).indexOf("?"));
+    },
+  };
+  sb.window = sb;
+  sb.self = sb;
+  const ctx = vm.createContext(sb);
+  vm.runInContext(readFileSync(join(ROOT, tree, "src/utils/blocked-url.js"), "utf8"), ctx);
+  vm.runInContext(readFileSync(join(ROOT, tree, "src/blocked/blocked.js"), "utf8"), ctx);
+  const fire = (type, ev = {}) => { for (const fn of listeners[type] || []) fn({ type, ...ev }); };
+  const buttons = () => body.all().filter((n) => n.tagName === "BUTTON");
+  return { time, sent, drawn, replaced, opened, body, fire, buttons, document: sb.document };
+}
+
+const blockedSearch = (B, verdict, pageUrl = "https://evil.example/login") => {
+  const url = B.build(EXT, verdict, pageUrl);
+  return url.slice(url.indexOf("?"));
+};
+const checksSent = (sent) => sent.filter((m) => m.type === "CHECK_DOMAINS");
+
+for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
+  await check(`[${tree}] the block page's address carries Google's window, and a past one means "check again"`, () => {
+    const B = loadBlockedUrl(tree);
+    const until = Date.UTC(2026, 10, 4, 12, 10);
+    const url = B.build(EXT, { domain: "evil.example", reasons: GOOGLE_REASONS, advisory_until: until + 0.7 }, "https://evil.example/");
+    assert.ok(url.includes(`&x=${until}`), url);
+    const back = B.parse(url);
+    assert.equal(back.advisory_until, until);
+    // No window given: no x. Junk x: none read.
+    assert.ok(!/[?&]x=/.test(B.build(EXT, { domain: "evil.example", reasons: OTHER_REASONS }, "https://evil.example/")));
+    for (const junk of ["", "abc", "-5", "1e3", "12.5", "99999999999999999999", "0"]) {
+      assert.equal(B.parse(`?d=evil.example&x=${encodeURIComponent(junk)}`).advisory_until, null, junk);
+    }
+    assert.equal(B.parse("?d=evil.example").advisory_until, null);
+
+    assert.equal(typeof B.needsRecheck, "function", "blocked-url.js has no needsRecheck()");
+    const shown = (reasons, x) => ({ domain: "evil.example", reasons, advisory_until: x });
+    assert.equal(B.needsRecheck(shown(GOOGLE_REASONS, null), until), true, "Google's verdict with no window is drawn from the address");
+    assert.equal(B.needsRecheck(shown(GOOGLE_REASONS, until), until), true, "Google's window ends at x");
+    assert.equal(B.needsRecheck(shown(GOOGLE_REASONS, until), until - 1), false);
+    // A window with Google's reason cut from the shown eight still counts.
+    assert.equal(B.needsRecheck(shown(OTHER_REASONS, until - 5), until), true);
+    assert.equal(B.needsRecheck(shown(OTHER_REASONS, null), until), false, "a verdict on other sources has no window");
+    assert.equal(B.needsRecheck(shown([], null), until), false);
+  });
+
+  await check(`[${tree}] the tab goes to the block page with the end of Google's window in its address`, () => withRealClockAndFetch(async () => {
+    const now = Date.UTC(2026, 10, 4, 12);
+    Date.now = () => now;
+    globalThis.self = globalThis;
+    const { createBlockRedirect } = await blockRedirectModule(tree);
+    const B = loadBlockedUrl(tree);
+    const top = { tab: { id: 7 }, frameId: 0, url: "https://evil.example/login" };
+    const google = (until) => ({ domain: "evil.example", level: "dangerous", reasons: GOOGLE_REASONS, advisory_until: until });
+    const go = async (cached, reported) => {
+      const { api, log } = fakeBlockApi();
+      const handle = createBlockRedirect({ api, getCached: () => cached, onShown: async () => {}, onProceeded: () => {} });
+      await new Promise((resolve) => handle({ type: "BLOCK_PAGE", domain: "evil.example", result: reported }, top, resolve));
+      return B.parse(log.updates[0].url);
+    };
+    assert.equal((await go(google(now + 120_000), google(now + 1))).advisory_until, now + 120_000, "the cached verdict's window");
+    // A verdict kept by no cache (a window of 0): the page check's own answer.
+    assert.equal((await go(null, google(now + ZERO_WINDOW_MS))).advisory_until, now + ZERO_WINDOW_MS);
+    // Never more than an hour ahead, whoever says so.
+    assert.equal((await go(null, google(now + 9 * 3600_000))).advisory_until, now + 3600_000);
+    assert.equal((await go({ ...google(undefined), reasons: OTHER_REASONS }, null)).advisory_until, null, "a window for another source's verdict");
+  }));
+
+  await check(`[${tree}] the background hands out a Google verdict with the end of its window`, () => withRealClockAndFetch(async () => {
+    const clock = { t: Date.UTC(2026, 10, 4, 12) };
+    const google = (host, extra) => ({ body: { domain: host, score: 80, level: "dangerous", signals: ["Google"], reason_codes: ["safe_browsing"], ...extra } });
+    const answer = (host) => {
+      if (host === "g.example") return google(host, { advisory_ttl: 120 });
+      if (host === "g-zero.example") return google(host, { advisory_ttl: 0 });
+      if (host === "g-unsaid.example") return google(host, {});
+      if (host === "g-hidden.example") return { body: { ...google(host, { advisory_ttl: 90 }).body, signals: ["New"], reason_codes: ["domain_new"] } };
+      return verdictFor(host);
+    };
+    const hosts = ["g.example", "g-zero.example", "g-unsaid.example", "g-hidden.example", "scam-other.example"];
+    const bg = await lookupBackground(tree, { clock, answer });
+    const t0 = clock.t;
+    const first = (await bg.send({ type: "CHECK_DOMAINS", domains: hosts })).results;
+    assert.deepEqual(first.map((r) => r.advisory_until),
+      [t0 + 120_000, t0 + ZERO_WINDOW_MS, t0 + ZERO_WINDOW_MS, t0 + 90_000, undefined]);
+    assert.ok(!("advisory_until" in first[4]), "a verdict on other sources got a window");
+    // From the cache: the same end, not a new one.
+    clock.t += 60_000;
+    const again = (await bg.send({ type: "CHECK_DOMAINS", domains: hosts })).results;
+    assert.equal(again[0].advisory_until, t0 + 120_000, "a cached Google verdict's window moved");
+    assert.equal(again[1].advisory_until, clock.t + ZERO_WINDOW_MS, "a zero-window answer is asked again, with its own 30 s");
+  }));
+
+  await check(`[${tree}] a block page whose Google window is gone draws nothing from its address and checks again`, async () => {
+    const B = loadBlockedUrl(tree);
+    const clock = { t: Date.UTC(2026, 10, 6, 9) };
+    const stale = { domain: "evil.example", reasons: GOOGLE_REASONS, advisory_until: clock.t - 60_000 };
+    const cases = [
+      ["a past window", blockedSearch(B, stale)],
+      ["no window", blockedSearch(B, { ...stale, advisory_until: undefined })],
+    ];
+    for (const [why, search] of cases) {
+      const page = loadBlockedPage(tree, { clock, search, answer: () => ({ results: [{ domain: "evil.example", level: "safe", score: 3, source: "api", reasons: [] }] }) });
+      assert.deepEqual(page.drawn, [], `${why}: drew the verdict from the address`);
+      assert.deepEqual(checksSent(page.sent).map((m) => [m.domains, m.page]), [[["evil.example"], true]], `${why}: did not ask again`);
+      await flush();
+      assert.deepEqual(page.drawn, [], `${why}: drew a block over a site not flagged now`);
+      const text = page.body.text();
+      assert.ok(!/advisory_google/.test(text), `${why}: Google credited on the neutral page`);
+      assert.match(text, /<block_recheck_clear:evil\.example>/, `${why}: ${text}`);
+      // The open button goes straight to the address that was blocked.
+      const open = page.buttons().find((b) => /block_recheck_open/.test(b.textContent));
+      assert.ok(open, `${why}: no open button`);
+      open.fire("click");
+      assert.deepEqual(page.opened, ["https://evil.example/login"]);
+    }
+
+    // No answer at all: says so, and still draws nothing from the address.
+    const silent = loadBlockedPage(tree, { clock, search: cases[0][1], answer: () => undefined });
+    await flush();
+    assert.deepEqual(silent.drawn, []);
+    assert.match(silent.body.text(), /<block_recheck_failed:evil\.example>/);
+
+    // Still on Google's lists: the fresh answer is drawn, and the address
+    // gets its window, so a reload, the popup and "open anyway" read it.
+    const until = clock.t + 600_000;
+    const fresh = { domain: "evil.example", level: "dangerous", score: 90, source: "api", reasons: [{ ...GOOGLE_REASONS[0], weight: 10 }], advisory_until: until };
+    const flagged = loadBlockedPage(tree, { clock, search: cases[1][1], answer: () => ({ results: [fresh] }) });
+    await flush();
+    assert.equal(flagged.drawn.length, 1);
+    assert.deepEqual(flagged.drawn[0].reasons.map((r) => r.signal), ["safe_browsing"]);
+    assert.equal(flagged.replaced.length, 1, "the address keeps the old verdict");
+    assert.equal(B.parse(flagged.replaced[0]).advisory_until, until);
+    assert.equal(B.parse(flagged.replaced[0]).url, "https://evil.example/login");
+  });
+
+  await check(`[${tree}] a block page drawn inside Google's window takes the warning down when it ends`, async () => {
+    const B = loadBlockedUrl(tree);
+    const clock = { t: Date.UTC(2026, 10, 4, 12) };
+    const until = clock.t + 120_000;
+    let level = "dangerous";
+    const answer = () => ({ results: [{ domain: "evil.example", level, score: 90, source: "api", reasons: [{ ...GOOGLE_REASONS[0], weight: 10 }], advisory_until: clock.t + 120_000 }] });
+    const page = loadBlockedPage(tree, { clock, search: blockedSearch(B, { domain: "evil.example", reasons: GOOGLE_REASONS, advisory_until: until }), answer });
+    assert.equal(page.drawn.length, 1, "a valid window: drawn from the address");
+    assert.deepEqual(checksSent(page.sent), [], "asked again inside the window");
+    clock.t = until - 1;
+    await page.time.runDue();
+    assert.deepEqual(checksSent(page.sent), [], "asked before the window ended");
+    // The tab was hidden and its timers throttled: shown again past the end.
+    clock.t = until + 5_000;
+    level = "safe";
+    page.document.hidden = false;
+    page.fire("visibilitychange");
+    assert.equal(page.document.getElementById("ls-block-overlay"), null, "the expired warning stays on screen while asking");
+    await flush();
+    assert.equal(checksSent(page.sent).length, 1);
+    assert.equal(page.drawn.length, 1, "redrawn for a site not flagged now");
+    assert.match(page.body.text(), /<block_recheck_clear:evil\.example>/);
+    await page.time.runDue();
+    assert.equal(checksSent(page.sent).length, 1, "the timer asked a second time");
+
+    // Restored from the back/forward cache (Forward after "Go back to safety").
+    clock.t = Date.UTC(2026, 10, 4, 12);
+    const restored = loadBlockedPage(tree, { clock, search: blockedSearch(B, { domain: "evil.example", reasons: GOOGLE_REASONS, advisory_until: clock.t + 60_000 }), answer });
+    clock.t += 3 * 86_400_000;
+    restored.fire("pageshow", { persisted: true });
+    await flush();
+    assert.equal(checksSent(restored.sent).length, 1, "a page restored days later did not ask again");
+
+    // A verdict on other sources has no window: drawn, never asked again.
+    const other = loadBlockedPage(tree, { clock, search: blockedSearch(B, { domain: "evil.example", reasons: OTHER_REASONS }), answer });
+    assert.equal(other.drawn.length, 1);
+    clock.t += 86_400_000;
+    other.fire("visibilitychange");
+    await other.time.runDue();
+    assert.deepEqual(checksSent(other.sent), []);
+  });
+
+  await check(`[${tree}] a link badge on Google's verdict goes when Google's answer does, and the link is checked again`, async () => {
+    const clock = { t: Date.UTC(2026, 10, 4, 12) };
+    const windows = { "g.example": 60_000, "g-past.example": -1 };
+    const answer = (msg) => ({
+      results: msg.domains.map((d) => {
+        if (d === "reader.example") return { domain: d, level: "safe", score: 1, source: "api", reasons: [] };
+        if (d === "o.example") return { domain: d, level: "dangerous", score: 90, source: "api", reasons: [{ ...OTHER_REASONS[0], weight: 10 }] };
+        const google = { domain: d, level: "dangerous", score: 90, source: "api", reasons: [{ ...GOOGLE_REASONS[0], weight: 10 }] };
+        return d in windows ? { ...google, advisory_until: clock.t + windows[d] } : google;
+      }),
+    });
+    const page = loadContentPage(tree, { clock, answer });
+    const g = page.link("g.example");
+    const o = page.link("o.example");
+    const unsaid = page.link("g-unsaid.example"); // Google's reason, no window: 30 s
+    const past = page.link("g-past.example");
+    clock.t += 500;
+    await page.time.runDue();
+    const scanned = clock.t;
+    assert.ok(page.badgeOf(g) && page.badgeOf(o) && page.badgeOf(unsaid), "badges were not drawn");
+    assert.equal(page.badgeOf(past), null, "a badge drawn from an answer already past its window");
+    assert.ok(!past.hasAttribute("data-ls-scanned"));
+    assert.ok(page.badgeOf(g).all().some((n) => n.classList.contains("ls-tooltip-links")), "no Google tooltip (the test proves nothing)");
+
+    clock.t = scanned + ZERO_WINDOW_MS;
+    await page.time.runDue();
+    assert.equal(page.badgeOf(unsaid), null, "a Google badge with no window outlived 30 s");
+    assert.ok(page.badgeOf(g), "g.example's badge went before its window ended");
+
+    const asked = page.sent.length;
+    clock.t = scanned + 60_000;
+    await page.time.runDue();
+    clock.t += 2_000;
+    await page.time.runDue();
+    const rechecked = page.sent.slice(asked).filter((m) => m.type === "CHECK_DOMAINS").flatMap((m) => m.domains);
+    assert.ok(rechecked.includes("g.example"), `g.example was not checked again: ${JSON.stringify(rechecked)}`);
+    const renewed = page.badgeOf(g);
+    assert.ok(renewed, "the fresh answer drew no badge");
+    assert.ok(page.badgeOf(o), "a badge on other sources was taken down");
+
+    // A hidden tab's timers are throttled: the pointer reaching the badge past
+    // its end takes it down before the tooltip can show.
+    clock.t += 60_000;
+    renewed.fire("mouseenter");
+    assert.equal(page.badgeOf(g), null, "the tooltip of an expired Google badge could still show");
+    assert.ok(!g.hasAttribute("data-ls-scanned"), "the link will not be checked again");
+
+    // Coming back to the tab sweeps the rest.
+    clock.t += 5 * 3600_000;
+    page.fireDoc("visibilitychange");
+    assert.ok(page.badgeOf(o), "a badge on other sources has a window now");
+  });
+
+  await check(`[${tree}] a relative never hears of a block with Google's window, whatever its shown reasons`, async () => {
+    const gv = await import(pathToFileURL(join(ROOT, tree, "src/background/google-verdict.js")).href);
+    assert.equal(typeof gv.hasGoogleWindow, "function", "google-verdict.js has no hasGoogleWindow()");
+    assert.equal(gv.hasGoogleWindow({ reasons: OTHER_REASONS, advisory_until: 1 }), true);
+    for (const v of [{ reasons: OTHER_REASONS }, null, undefined, { advisory_until: "1" }, { advisory_until: NaN }]) {
+      assert.equal(gv.hasGoogleWindow(v), false, JSON.stringify(v));
+    }
+    const index = stripComments(readFileSync(join(ROOT, tree, "src/background/index.js"), "utf8"));
+    const report = index.slice(index.indexOf("async function reportBlockToAccount"), index.indexOf("async function checkLinkUrl"));
+    const gate = report.indexOf("hasGoogleWindow(verdict)");
+    assert.ok(gate > 0 && gate < report.indexOf("fanOutAlerts("), "reportBlockToAccount fans out a block with Google's window");
+    const fanout = stripComments(readFileSync(join(ROOT, tree, "src/utils/family-fanout.js"), "utf8"));
+    assert.match(fanout, /restsOnGoogle\(r\.reasons\) \|\| hasGoogleWindow\(r\)/, "fanOutAlerts drops only a Google reason it can see");
+  });
+}
+
+await check("the block page's re-check words exist in every locale and are translated", () => {
+  const keys = ["block_rechecking", "block_recheck_title", "block_recheck_clear", "block_recheck_failed", "block_recheck_open", "block_recheck_back"];
+  for (const tree of BROWSER_TREES) {
+    const en = readJson(join(tree, "_locales", "en", "messages.json"));
+    for (const locale of LOCALES) {
+      const m = readJson(join(tree, "_locales", locale, "messages.json"));
+      for (const key of keys) {
+        assert.ok(m[key] && m[key].message, `${tree}/${locale} lacks ${key}`);
+        if (locale !== "en") assert.notEqual(m[key].message, en[key].message, `${tree}/${locale} ${key} is English`);
+      }
+      for (const key of ["block_rechecking", "block_recheck_clear", "block_recheck_failed"]) {
+        assert.match(m[key].message, /\$DOMAIN\$/, `${tree}/${locale} ${key} does not name the site`);
+        assert.ok(!/Google/.test(m[key].message), `${tree}/${locale} ${key} names Google on a page with no Google warning`);
+      }
+    }
+  }
+});
 
 console.log(
   failed === 0

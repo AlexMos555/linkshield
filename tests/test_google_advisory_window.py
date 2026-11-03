@@ -258,6 +258,27 @@ def test_cached_google_verdict_without_googles_answer_is_a_miss(redis, web_risk,
     assert body["reason_codes"] == ["phishstats"]
 
 
+def test_cached_google_verdict_whose_answer_ends_during_the_reply_is_checked_again(redis, web_risk, monkeypatch):
+    """Google's answer had a second left at the cache hit and ran out during
+    the competitor lookup (up to 3 s): the copy is not served with a window
+    of 0, Google's verdict after Google's answer — the site is checked again."""
+    redis.kv["wr:flagged.example"] = _threat("flagged.example")
+    redis.ttls["wr:flagged.example"] = 2
+    redis.kv[public_router._PUBLIC_CACHE_PREFIX + "flagged.example"] = _google_result().model_dump_json()
+    redis.ttls[public_router._PUBLIC_CACHE_PREFIX + "flagged.example"] = 1
+
+    async def _slow_lookup(*a, **k):
+        redis.kv.pop("wr:flagged.example", None)  # Google's answer expires meanwhile
+        return []
+
+    monkeypatch.setattr("api.services.competitor_verdicts.gather_competitor_verdicts", _slow_lookup)
+    calls = _analyzer_returns(monkeypatch, _other_result())
+    body = TestClient(app).get("/api/v1/public/check/flagged.example").json()
+    assert calls == ["flagged.example"]
+    assert body["reason_codes"] == ["phishstats"]
+    assert body["advisory_ttl"] is None
+
+
 # ── The signed-in check's cache ──────────────────────────────────────
 
 

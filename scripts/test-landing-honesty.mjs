@@ -1224,6 +1224,10 @@ check("a Google verdict is never served from the cached /check page, its JSON-LD
   assert.match(live, /cache: "no-store"/, "the live check may be answered from a cache");
   assert.match(live, /credentials: "omit"/, "the live check sends cookies to the API");
   assert.match(live, /advisory_ttl/, "the live check ignores how long Google's answer stays valid");
+  // advisory_ttl 0: valid when the API replied, for how long nobody could
+  // read. Shown for 30 s and asked again, like the extension — not left up.
+  assert.match(live, /const ZERO_WINDOW_MS = 30_000;/, "no short window for an advisory_ttl of 0");
+  assert.match(live, /left > 0 \? left \* 1000 : ZERO_WINDOW_MS/, "a Google verdict with advisory_ttl 0 stays on the page for good");
   for (const image of ["opengraph-image.tsx", "twitter-image.tsx"]) {
     const src = checkSource(CHECK_PAGE, image);
     if (!/fetch\(/.test(src)) continue; // re-exports the other one
