@@ -882,7 +882,17 @@ def _has_hex_encoding(url_or_domain: str) -> bool:
 
 
 def _has_non_standard_port(url_or_domain: str) -> bool:
-    """Non-standard port number in URL."""
+    """Non-standard port number in URL.
+
+    The groups of an IPv6 address are not ports: 2001:4860:4860::8888 was
+    read as port 4860. Its port can only follow the brackets
+    ([2001:db8::1]:8443)."""
+    scheme, sep, rest = url_or_domain.partition("://")
+    authority, slash, path = (rest if sep else scheme).partition("/")
+    userinfo, at, host = authority.rpartition("@")
+    if host.count(":") > 1:
+        _, bracket, port = host.rpartition("]")
+        url_or_domain = userinfo + at + (port if bracket else "") + slash + path
     match = re.search(r":(\d+)", url_or_domain)
     if match:
         port = int(match.group(1))
@@ -1212,6 +1222,19 @@ WEAK_SIGNALS: frozenset[str] = frozenset({
 })
 # The top of the 'safe' band (a score above it is at least caution).
 SAFE_AT_MOST = 20
+# On an IP literal these are weak too: they say what an address is, not what
+# is served there. The address itself is a real warning sign (a caution, with
+# its reason), but every bare IP was 'dangerous' on 2026-11-03 — 8.8.8.8 and
+# 1.1.1.1 at 100, GitHub's 140.82.112.4 at 85. Public CAs issue almost no
+# certificates for an address, so plain HTTP or a certificate of its own
+# (self-signed, expired) is how routers, NAS boxes and cameras answer, and a
+# port is how a service on an address is reached (Plex on 32400, a camera on
+# 8000). 'dangerous' on an address needs evidence: a list or reputation hit
+# (Safe Browsing, the feeds, IPQS, OTX), a brand's favicon on the page, or an
+# address trick in the URL (@, //, %xx, a token).
+WEAK_ON_AN_ADDRESS: frozenset[str] = frozenset({
+    "ip_based", "no_https", "invalid_certificate", "non_standard_port",
+})
 # The top of the caution band (a score above it is 'dangerous').
 DANGEROUS_ABOVE = 50
 
@@ -1366,6 +1389,11 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # Each heuristic below states which form it takes and why.
     ascii_domain = domain
     unicode_domain = _decode_idn(domain)
+    # An IP literal has no name: no subdomains, nothing for the model to read
+    # (3.11, 3.34), and only evidence makes it 'dangerous' (WEAK_ON_AN_ADDRESS).
+    # The address says so itself when a caller has no is_ip_based flag
+    # (analyzer.rule_only_result).
+    ip_host = bool(signals.get("is_ip_based")) or is_ip_literal(ascii_domain)
 
     # Name under judgement: the decoded label left of the last two labels.
     # Still the last two, not registrable_domain(): the name-shape rules below
@@ -1668,7 +1696,7 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
             ))
 
     # ── 3.3 IP-based URL ──
-    if signals.get("is_ip_based"):
+    if ip_host:
         score += 35
         reasons.append(DomainReason(
             signal="ip_based", weight=35,
@@ -1813,7 +1841,9 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # and kvs.gov.spb.ru have ONE subdomain level each, a.b.evil.com has two
     # — and so does vk.com.msk.ru, whose registered name 'com' reads as a TLD.
     # Either form works — decoding never adds or removes a label separator.
-    sub_levels = _apparent_subdomain_levels(ascii_domain)
+    # Not on an IP literal: the dots of 140.82.112.4 are not "2 levels above
+    # 112.4" (the helper keeps that reading for the extension's parity table).
+    sub_levels = 0 if ip_host else _apparent_subdomain_levels(ascii_domain)
     if sub_levels >= 2:
         below = ascii_domain.lower().strip(".").split(".", sub_levels)[-1]
         score += 15
@@ -2236,7 +2266,15 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         # url_shortener rule above already says so. The feeds are full of
         # shortened lures, so the model scores the shortener itself as phishing;
         # letting it add weight would mark every bit.ly link "caution".
-        ml_result = None if _is_url_shortener(ascii_domain) else ml_predict(ascii_domain)
+        # Nor on an IP literal: the 27 features are read off a name (entropy,
+        # n-grams, vowels, TLD, the top lists), and an address has none, so
+        # what is left is digits and dots. The served model's training set
+        # had 490 phishing IPs from the feeds (data/model_meta.json), and its
+        # benign class comes from ranked lists of names (data/top_100k.json
+        # holds no address), so every address reads as phishing: 97% on
+        # 8.8.8.8 and 1.1.1.1, 99% on GitHub's 140.82.112.4 (2026-11-03).
+        # Its "safe" would mean as little, so it is not asked at all.
+        ml_result = None if (_is_url_shortener(ascii_domain) or ip_host) else ml_predict(ascii_domain)
         if ml_result:
             ml_prob = ml_result["phishing_probability"]
             ml_confidence = ml_result["confidence"]
@@ -2278,9 +2316,11 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # Every reason stays in the list, so the person sees what was found; only
     # the verdict stops at the top of the caution band. Not on a hosting
     # customer's site that names a brand (_tenant_brand_word): there a pile
-    # of weak signals is how fresh phishing looks.
+    # of weak signals is how fresh phishing looks. On an IP literal the
+    # address and its probes are weak as well (WEAK_ON_AN_ADDRESS).
+    weak = WEAK_SIGNALS | WEAK_ON_AN_ADDRESS if ip_host else WEAK_SIGNALS
     if score > DANGEROUS_ABOVE and not any(
-        r.weight > 0 and r.signal not in WEAK_SIGNALS and not any(r is w for w in weak_here)
+        r.weight > 0 and r.signal not in weak and not any(r is w for w in weak_here)
         for r in reasons
     ) and not _tenant_brand_word(ascii_domain):
         score = DANGEROUS_ABOVE
