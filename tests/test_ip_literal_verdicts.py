@@ -234,6 +234,41 @@ def test_with_todays_config_a_feed_listed_address_is_a_caution(offline_analyzer,
         "urlhaus", "threatfox", "feodo", "malware_bazaar", "surbl", "spamhaus", "alienvault_otx"}
 
 
+# ── The LLM judge on an address (#399, merged 2026-11-04) ──
+
+@pytest.mark.parametrize("site, opinion, expected", [
+    ("unreachable", "dangerous", 50),  # 35 + 20, stopped at the top of caution
+    ("unreachable", "safe", 29),       # main's 30/70 lines called this 'safe'
+    ("reachable", "dangerous", 50),    # 50 (ip_based + redirect, capped) + 0
+    ("reachable", "safe", 30),
+])
+def test_the_llm_judge_moves_an_address_only_inside_caution(
+        offline_analyzer, licensed, monkeypatch, site, opinion, expected):
+    """Every public address is a caution now, so every one reaches the LLM
+    judge, and its cache key is the feature pattern, not the host: one
+    opinion about 'ip_based, unreachable' is applied to every such address.
+    On the analyzer's old 30/70 lines a cached 'dangerous' took an address at
+    50 to 70 ('dangerous', the extension's block page) and a 'safe' took one
+    at 35 to 29 ('safe', green on an unreachable Mozi node). #399 keeps the
+    shift inside caution: this pins it for addresses."""
+    from api.services import llm_judge
+
+    async def _cached(signals, score, level):
+        return llm_judge.CACHED, {
+            "verdict": opinion, "confidence": 0.9, "one_line_reason": "stub opinion",
+            "score_shift": llm_judge._shift_for_verdict(opinion, score), "source": "cache",
+        }
+
+    offline_analyzer(exists=None, site=site)
+    if site == "reachable":
+        _reachable_with_redirect(monkeypatch)
+    monkeypatch.setattr(llm_judge, "opinion_now", _cached)
+    result = asyncio.run(analyze_domain("103.249.199.5", budget_s=5.0))
+    assert "llm_judge" in _codes(result.reasons)
+    assert (result.score, result.level) == (expected, RiskLevel.caution), [
+        (r.signal, r.weight) for r in result.reasons]
+
+
 # ── Private and reserved ranges: the SSRF answer, as before ──
 
 @pytest.mark.parametrize("host", [

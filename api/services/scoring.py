@@ -1225,13 +1225,18 @@ SAFE_AT_MOST = 20
 # On an IP literal these are weak too: they say what an address is, not what
 # is served there. The address itself is a real warning sign (a caution, with
 # its reason), but every bare IP was 'dangerous' on 2026-11-03 — 8.8.8.8 and
-# 1.1.1.1 at 100, GitHub's 140.82.112.4 at 85. Public CAs issue almost no
-# certificates for an address, so plain HTTP or a certificate of its own
-# (self-signed, expired) is how routers, NAS boxes and cameras answer, and a
-# port is how a service on an address is reached (Plex on 32400, a camera on
-# 8000). 'dangerous' on an address needs evidence: a list or reputation hit
-# (Safe Browsing, the feeds, IPQS, OTX), a brand's favicon on the page, or an
-# address trick in the URL (@, //, %xx, a token).
+# 1.1.1.1 at 100, GitHub's 140.82.112.4 at 85. An address can have a valid
+# certificate (Let's Encrypt issues short-lived ones for addresses, DigiCert
+# and Sectigo sell them), but most public ones have none: plain HTTP or a
+# certificate of its own (self-signed, expired) is how routers, NAS boxes
+# and cameras answer, and a port is how a service on an address is reached
+# (Plex on 32400, a camera on 8000). 'dangerous' on an address needs
+# evidence. This scorer counts any it knows: a list or reputation hit (Safe
+# Browsing, PhishTank, PhishStats, the abuse.ch feeds, IPQS, OTX), a brand's
+# favicon on the page, an address trick in the URL (@, //, %xx, a token).
+# In production only Safe Browsing, PhishTank, PhishStats, IPQS and the
+# favicon reach it for an address today; tests/test_ip_literal_verdicts.py
+# (its docstring) says why the rest do not.
 WEAK_ON_AN_ADDRESS: frozenset[str] = frozenset({
     "ip_based", "no_https", "invalid_certificate", "non_standard_port",
 })
