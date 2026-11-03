@@ -50,8 +50,8 @@ from api.services.tls_contexts import client_tls_context
 from api.services.public_suffix import CCTLD_OPEN_ZONES
 from api.services.scoring import (
     calculate_score, calculate_confidence, calculate_confidence_pct, is_hosting_platform_site,
-    is_regional_government_domain, is_user_content_service_host, level_for_score, popularity_rank,
-    rank_registrable_domain, _platform_tenant_site,
+    is_regional_government_domain, is_user_content_service_host, level_for_score, otx_reports_are_history,
+    popularity_rank, rank_registrable_domain, registrable_domain, _platform_tenant_site,
 )
 from api.services.domain_validator import (
     validate_domain,
@@ -536,7 +536,14 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
     # is not a blocklist hit: counted as one it would also stop the LLM judge
     # (llm_judge gate 2) from looking at the caution it causes. A hosting
     # platform's rank is not its tenant's: a pulse about x.workers.dev counts.
-    otx_counts = bool(alienvault_data.get("hit")) and not _popularity_rank(tranco_result, domain)
+    # Old reports about a hostname count nowhere (otx_reports_are_history).
+    otx_indicator = _otx_indicator(domain)[0] if alienvault_data else None
+    otx_summary = {"alienvault_indicator": otx_indicator,
+                   "alienvault_pulse_count": alienvault_data.get("pulse_count", 0),
+                   "alienvault_distinct_pulses": alienvault_data.get("distinct_pulses"),
+                   "alienvault_newest_report_days": alienvault_data.get("newest_report_days")}
+    otx_counts = (bool(alienvault_data.get("hit")) and not _popularity_rank(tranco_result, domain)
+                  and not otx_reports_are_history(otx_summary))
 
     return {
         "domain": domain,
@@ -556,6 +563,9 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
         # and how many days ago the newest was made (_otx_reports).
         "alienvault_distinct_pulses": alienvault_data.get("distinct_pulses"),
         "alienvault_newest_report_days": alienvault_data.get("newest_report_days"),
+        # The indicator type OTX was asked for: "domain" or "hostname"
+        # (_otx_indicator); None when OTX did not answer.
+        "alienvault_indicator": otx_indicator,
         "ipqs_risk_score": ipqs_data.get("risk_score", 0),
         "ipqs_phishing": ipqs_data.get("phishing", False),
         "malware_bazaar_hit": _value(outcomes, "malware_bazaar", False),
@@ -1052,6 +1062,9 @@ async def check_alienvault_otx(domain: str) -> dict:
     how many of those pulses are distinct reports and how many days ago the
     newest of them was made (_otx_reports).
 
+    The name is looked up as the indicator OTX files it under
+    (_otx_indicator): one request per check.
+
     Without a key OTX allows 100 lookups an hour per IP, then answers 429
     (measured 2026-10-26); the free account key (OTX_API_KEY, sent as
     X-OTX-API-KEY) lifts that. A non-2xx answer raises — a failed, unmeasured
@@ -1061,9 +1074,10 @@ async def check_alienvault_otx(domain: str) -> dict:
     key = get_settings().otx_api_key
     if key:
         headers["X-OTX-API-KEY"] = key
+    kind, indicator = _otx_indicator(domain)
     async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.get(
-            f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/general",
+            f"https://otx.alienvault.com/api/v1/indicators/{kind}/{indicator}/general",
             headers=headers,
         )
         resp.raise_for_status()
@@ -1079,6 +1093,40 @@ async def check_alienvault_otx(domain: str) -> dict:
             "reputation": reputation,
             "hit": pulse_count > 0,
         }
+
+
+def _otx_indicator(domain: str) -> tuple[str, str]:
+    """What OTX is asked about `domain`: ('domain', name) for a registrable
+    domain (example.com, example.co.uk, edgeone.dev, gov.spb.ru) and for
+    www. in front of one (www.example.com → example.com), ('hostname', name)
+    for any other name below one (x.workers.dev, login.example.co.uk,
+    kvs.gov.spb.ru) — the two indicator types OTX keeps a name's pulses
+    under.
+
+    Until 2026-11-03 every name was asked of /indicators/domain/ as it was,
+    and for a name below a registrable domain OTX answers there that it has
+    no such domain (count 0, an empty base_indicator), so OTX was blind for
+    every subdomain and every hosting-platform tenant: keyless, the hostname
+    endpoint gave mailbox-dpr3yixp1qk1.edgeone.dev 5 pulses,
+    tf-app.vercel.app 5 and fb-profile.github.io 5, the domain endpoint 0
+    for each. Each name is asked about as itself: the platform's own pulses
+    (edgeone.dev: 3, one an article about device-code phishing) are not its
+    tenants', nor theirs the platform's.
+
+    www. is the domain's own site, and OTX files reports about it under the
+    domain: of 12 benchmark phishing www. hosts, 11 of their domains had
+    reports and 3 of the www. names had them as hostnames (2026-11-03). Of
+    30 other names below a registered domain (not a platform's), the
+    hostname had reports for 26 and the registrable domain for 10; the
+    registrable had some where the hostname had none only for three www. in
+    front of a subdomain (www.allegrolokalnie.pl-oferta84bd74bx4f.click).
+    So no name is asked about twice, which would double the keyless budget
+    (100 lookups an hour)."""
+    host = (domain or "").lower().strip(".")
+    registrable = registrable_domain(host)
+    if registrable == host or host == "www." + registrable:
+        return "domain", registrable
+    return "hostname", host
 
 
 def _otx_reports(pulses: Any, count: int, today: Optional[date] = None) -> tuple[int, Optional[int]]:
