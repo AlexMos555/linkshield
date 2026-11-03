@@ -49,9 +49,9 @@ from api.services.analysis_budget import MIN_STEP_S, Deadline, run_within_budget
 from api.services.tls_contexts import client_tls_context
 from api.services.public_suffix import CCTLD_OPEN_ZONES
 from api.services.scoring import (
-    calculate_score, calculate_confidence, calculate_confidence_pct, is_hosting_platform_site,
-    is_regional_government_domain, is_user_content_service_host, level_for_score, otx_reports_are_history,
-    popularity_rank, rank_registrable_domain, registrable_domain, _platform_tenant_site,
+    calculate_score, calculate_confidence, calculate_confidence_pct, is_evidence_only_tenant,
+    is_hosting_platform_site, is_regional_government_domain, is_user_content_service_host, level_for_score,
+    otx_reports_are_history, popularity_rank, rank_registrable_domain, registrable_domain, _platform_tenant_site,
 )
 from api.services.domain_validator import (
     validate_domain,
@@ -220,8 +220,12 @@ async def _judge(
     # benefit of the doubt: no listing is not evidence of safety for a fresh,
     # geo-fenced Госуслуги look-alike — the ML model and the brand list both
     # miss those. Caution, never 'safe' (and 'unreachable' never blocks).
+    # Not under an evidence-only zone (scoring.EVIDENCE_ONLY_TENANT_ZONES):
+    # there no probe judges the site, an unreachable one included, and
+    # neither does the LLM judge below, whose features are the probes'.
+    evidence_only = is_evidence_only_tenant(domain)
     vouched = True
-    if signals["site_reachable"] is False:
+    if signals["site_reachable"] is False and not evidence_only:
         vouched = await _name_is_vouched_for(domain, signals, deadline)
         if not vouched and level == RiskLevel.safe:
             score = max(score, vb.CANNOT_VOUCH_SCORE)
@@ -232,11 +236,12 @@ async def _judge(
     if (measured < total and score < 20) or signals["site_reachable"] is False:
         confidence = _at_most(confidence, ConfidenceLevel.medium)
 
-    score, level, judge_reason, judge_finished = await _llm_judge_within(signals, score, level, deadline)
-    if judge_reason is not None:
-        reasons.append(judge_reason)
-    if not judge_finished:
-        unfinished = unfinished + ["llm_judge"]
+    if not evidence_only:
+        score, level, judge_reason, judge_finished = await _llm_judge_within(signals, score, level, deadline)
+        if judge_reason is not None:
+            reasons.append(judge_reason)
+        if not judge_finished:
+            unfinished = unfinished + ["llm_judge"]
     # The person is told only of checks the verdict lacks. The judge is not
     # one: it is never waited for, and its opinion moves the score inside
     # caution, never the level — "did not finish in time" would be untrue.
@@ -264,7 +269,8 @@ async def _judge(
         exists=exists,
         checks_incomplete=sorted(set(unfinished)),
     )
-    basis = vb.derive_verdict_basis(result, ml_consulted=_ml_available())
+    # The model judges nothing under an evidence-only zone (scoring._evidence_only_verdict).
+    basis = vb.derive_verdict_basis(result, ml_consulted=_ml_available() and not evidence_only)
     logger.info("analysis_complete", extra={
         "domain": domain, "score": score, "verdict": level.value,
         "confidence": confidence.value, "confidence_pct": confidence_pct,
@@ -781,7 +787,7 @@ def _informational_reasons(
             ),
             known_site=vouched,
         ))
-    if is_hosting_platform_site(domain):
+    if is_hosting_platform_site(domain) or is_evidence_only_tenant(domain):
         out.append(vb.user_content_reason())
     if unfinished:
         out.append(vb.checks_incomplete_reason(unfinished))

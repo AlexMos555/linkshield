@@ -1,7 +1,7 @@
 """Shared platforms found after the served model was trained: a tenant never
 inherits its platform's popularity rank (or, for a top-100k platform, its
-allowlist trust), the name rules judge the customer's own name, and the
-model's verdict on the tenant is weak until a retrain teaches it the zone.
+allowlist trust). The name rules and the model there:
+tests/test_tenant_names_not_in_model.py.
 
 zapier.app (Zapier Interfaces) and edgeone.dev (Tencent EdgeOne Pages)
 carried PhishTank phishing in the weekly benchmarks of 2026-06-17 to
@@ -37,9 +37,10 @@ NOT_IN_MODEL = sorted(hp.TENANT_SUFFIXES_NOT_IN_MODEL)
 # top-100k zones it started from: out of the allowlist, about half of
 # Bluehost's real temporary addresses (mybluehost.me) went to caution, 16 of
 # 41 ActiveCampaign pages (ac-page.com) and all 20 Locaweb sites measured
-# (hospedagemdesites.ws).
+# (hospedagemdesites.ws). mybluehost.me came back as an evidence-only zone
+# (tests/test_evidence_only_tenants.py); the other two are read as before
+# (tests/test_tenant_names_not_in_model.py LEFT_OUT).
 MEASURED = frozenset({"zapier.app", "edgeone.dev"})
-LEFT_OUT = ("mybluehost.me", "ac-page.com", "hospedagemdesites.ws")
 
 # The allowlist-only zones of 2026-10-27 (sakura.ne.jp, hostgator.com.br …):
 # their rank rule stays as it was until it is measured on their operators'
@@ -55,13 +56,6 @@ SEEN_PHISHING = [
     "bigbuxshop-dpsbmzniwema.edgeone.dev",
 ]
 
-# The name-shape rules (scoring 3.13-3.32).
-LEXICAL = {
-    "high_entropy", "medium_entropy", "high_digit_ratio", "long_domain_name",
-    "unnatural_ngram", "suspicious_ngram", "abnormal_vowel_ratio", "consonant_cluster",
-}
-NAME_JUDGED = LEXICAL | {"suspicious_keyword"}
-
 # Hygiene a real site often shows: no security headers, a renewed
 # certificate, two hops.
 WEAK = dict(missing_security_headers=["csp", "hsts", "xfo"], cert_age_days=2, redirect_count=2)
@@ -73,11 +67,6 @@ def _signals(domain: str, **extra) -> dict:
 
 def _otx(reasons) -> int:
     return sum(r.weight for r in reasons if r.signal.startswith("alienvault_otx"))
-
-
-def _by_name(host: str):
-    score, level, reasons = scoring.calculate_score({"domain": host, "raw_url": host})
-    return score, level.value, {r.signal for r in reasons if r.weight > 0}
 
 
 # ── The list ──
@@ -186,114 +175,6 @@ def test_an_operators_own_host_keeps_its_platforms_rank(host, rank):
     score, level, reasons = scoring.calculate_score(_signals(host, tranco_registrable_rank=rank, **WEAK))
     assert "new_certificate" not in {r.signal for r in reasons}
     assert (score, level.value) == (20, "safe")
-
-
-# ── The name rules judge the customer's name ──
-
-@pytest.mark.parametrize("suffix", NOT_IN_MODEL)
-def test_the_customers_label_is_the_name_judged(suffix):
-    assert scoring._tenant_label(f"my-bakery.{suffix}") == "my-bakery"
-    assert scoring._tenant_label(f"shop.my-bakery.{suffix}") == "my-bakery"
-    assert scoring._tenant_label(f"paypal-login.{suffix}") == "paypal-login"
-    assert scoring._tenant_label(suffix) is None
-    assert scoring._tenant_label(f"www.{suffix}") is None
-
-
-@pytest.mark.parametrize("label", ["my-bakery", "shop.my-bakery"])
-@pytest.mark.parametrize("suffix", NOT_IN_MODEL)
-def test_a_plain_site_name_on_a_listed_platform_stays_safe_by_name(suffix, label):
-    """A real customer's site is judged by its own name: nothing comes from
-    the platform's name, nor from the level every tenant has by construction
-    (shop.my-bakery is one level above the site my-bakery.<zone>, not two;
-    with the first draft's 66 zones a plain name drew points from the
-    platform's on 14 of them: 'mybluehost', 'clickfunnels', 'formstack')."""
-    score, level, signals = _by_name(f"{label}.{suffix}")
-    assert level == "safe", (suffix, label, score, signals)
-    assert not signals & (LEXICAL | {"excessive_subdomains", "excessive_special_chars"}), (suffix, signals)
-    if label == "my-bakery":
-        assert "many_special_chars" not in signals, (suffix, signals)
-
-
-@pytest.mark.parametrize("suffix", NOT_IN_MODEL)
-def test_a_lure_name_is_judged_on_the_customers_label(suffix):
-    """paypal-login.<zone> reads 'paypal-login', as on the curated platforms
-    (netlify.app): until now it read 'zapier' and 'edgeone'."""
-    host = f"paypal-login.{suffix}"
-    reference = _by_name("paypal-login.netlify.app")[2] & NAME_JUDGED
-    assert "suspicious_keyword" in reference
-    assert _by_name(host)[2] & NAME_JUDGED == reference, suffix
-
-
-@pytest.mark.parametrize("host,signal", [
-    # two levels above the customer's own site are still two
-    ("a.b.my-bakery.zapier.app", "excessive_subdomains"),
-    ("a.b.my-bakery.edgeone.dev", "excessive_subdomains"),
-    # and the customer's own hyphens still count
-    ("secure-verify-account-login.zapier.app", "excessive_special_chars"),
-])
-def test_the_customers_own_shape_still_counts(host, signal):
-    assert signal in _by_name(host)[2]
-
-
-@pytest.mark.parametrize("host,site", [
-    ("shop.my-bakery.zapier.app", "my-bakery.zapier.app"),
-    ("my-bakery.edgeone.dev", "my-bakery.edgeone.dev"),
-    ("my-bakery.netlify.app", None), ("www.zapier.app", None), ("zapier.app", None),
-    # left out after the measured pass: read as before
-    *((f"shop.my-bakery.{zone}", None) for zone in LEFT_OUT),
-])
-def test_the_site_the_shape_rules_count_from(host, site):
-    assert scoring._not_in_model_tenant_site(host) == site
-
-
-@pytest.mark.parametrize("zone", LEFT_OUT)
-def test_the_left_out_zones_are_named_as_before(zone):
-    assert scoring._tenant_label(f"my-bakery.{zone}") is None
-    assert scoring._platform_tenant_site(f"my-bakery.{zone}") is None
-
-
-@pytest.mark.parametrize("host", ["shop.my-bakery.netlify.app", "a.b.duckdns.org"])
-def test_the_curated_platforms_are_read_as_before(host):
-    """Out of scope here: on the curated lists the address-shape rules still
-    count from the platform (a measured pass of its own)."""
-    assert "excessive_subdomains" in _by_name(host)[2]
-
-
-# ── The model's verdict on these tenants is weak until the retrain ──
-
-@pytest.fixture
-def model_says_phishing(monkeypatch):
-    from api.services import ml_scorer
-
-    monkeypatch.setattr(ml_scorer, "ml_predict", lambda domain: {"phishing_probability": 0.95, "confidence": 0.9})
-
-
-def test_the_models_verdict_alone_with_weak_signals_is_a_caution(model_says_phishing):
-    """The served model never saw these zones as shared (is_hosting_subdomain
-    0): measured 2026-11-03 it put 2 of 22 real Zapier interfaces and 8 of
-    18 real EdgeOne sites at 'dangerous' with nothing but weak signals
-    beside it (new-form-project-bc6d19, claude-agent-starter-python). That
-    is a caution."""
-    host = "new-form-project-bc6d19.zapier.app"
-    score, level, reasons = scoring.calculate_score(_signals(host, **WEAK))
-    assert "ml_high_risk" in {r.signal for r in reasons}
-    assert (score, level.value) == (scoring.DANGEROUS_ABOVE, "caution")
-
-
-@pytest.mark.parametrize("host,extra", [
-    # OTX reports, now that the platform's rank waives none
-    ("divace-coinsquare.zapier.app", {"alienvault_pulse_count": 3}),
-    # a brand in the customer's own name (_tenant_brand_word)
-    ("ledger-start-ldgrlive.zapier.app", {}),
-])
-def test_a_strong_signal_still_makes_a_tenant_dangerous(model_says_phishing, host, extra):
-    _, level, _ = scoring.calculate_score(_signals(host, **WEAK, **extra))
-    assert level.value == "dangerous"
-
-
-def test_on_the_curated_platforms_the_model_counts_as_before(model_says_phishing):
-    _, level, _ = scoring.calculate_score(_signals("new-form-project-bc6d19.netlify.app", **WEAK))
-    assert level.value == "dangerous"
 
 
 # ── The model reads none of it ──
