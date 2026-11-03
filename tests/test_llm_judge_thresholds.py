@@ -9,8 +9,12 @@ hosts ended exactly so: divace-coinsquare.zapier.app and
 4ff9b103.jiebanyou.net, 'safe' at 29.
 
 With the scorer's lines the judge, whose "safe" aims at 29, can no longer
-clear a caution to 'safe'; its "dangerous" (+20 at most) makes a caution of
-31-50 'dangerous', as a model's opinion may (scoring.WEAK_SIGNALS).
+clear a caution to 'safe'. Its "dangerous" (+20 at most) stops at the top of
+caution (scoring.DANGEROUS_ABOVE): on its own the judge never makes a caution
+'dangerous'. Mapped with the scorer's lines alone it did, for any caution of
+31-50 — real sites among them (the reviewer's cases below) — and the browser
+extension blocks the page on any 'dangerous' from the API
+(extension/src/content/index.js) and tells the family; Android warns.
 """
 from __future__ import annotations
 
@@ -40,9 +44,9 @@ def _cached_opinion(monkeypatch, verdict: str = "safe", shift=None):
     monkeypatch.setattr(llm_judge, "opinion_now", _now)
 
 
-def _judged(score: int) -> tuple[int, RiskLevel]:
-    new_score, level, _, finished = asyncio.run(
-        analyzer._llm_judge_within({"blocklist_hits": 0}, score, RiskLevel.caution, Deadline(1.0)))
+def _judged(score: int, signals=None) -> tuple[int, RiskLevel]:
+    new_score, level, _, finished = asyncio.run(analyzer._llm_judge_within(
+        signals or {"blocklist_hits": 0}, score, RiskLevel.caution, Deadline(1.0)))
     assert finished
     return new_score, level
 
@@ -67,16 +71,19 @@ def test_calculate_score_uses_the_same_mapping(domain):
 # ── The judge's shift, mapped ──
 
 @pytest.mark.parametrize("score, shift, expected", [
-    (49, -20, RiskLevel.caution),  # 29: what the two phishing hosts were shown as 'safe'
-    (41, -20, RiskLevel.caution),  # 21
-    (40, -20, RiskLevel.safe),     # 20: the scorer's 'safe'
-    (30, 20, RiskLevel.caution),   # 50: the top of caution
-    (31, 20, RiskLevel.dangerous),  # 51: above it
-    (50, 20, RiskLevel.dangerous),  # 70
+    (49, -20, (29, RiskLevel.caution)),  # what the two phishing hosts were shown as 'safe'
+    (41, -20, (21, RiskLevel.caution)),
+    (40, -20, (20, RiskLevel.safe)),     # the scorer's 'safe'
+    (30, 20, (50, RiskLevel.caution)),   # the top of caution
+    (35, 10, (45, RiskLevel.caution)),
+    # These two were (51, 'dangerous') and (70, 'dangerous') here: they held
+    # the judge's lift past the scorer's line in place, which is the bug.
+    (31, 20, (50, RiskLevel.caution)),
+    (50, 20, (50, RiskLevel.caution)),
 ])
 def test_a_shifted_score_is_mapped_with_the_scorers_lines(monkeypatch, score, shift, expected):
     _cached_opinion(monkeypatch, shift=shift)
-    assert _judged(score) == (score + shift, expected)
+    assert _judged(score) == expected
 
 
 @pytest.mark.parametrize("score", CAUTION_SCORES)
@@ -88,18 +95,102 @@ def test_a_judges_safe_never_clears_a_caution(monkeypatch, score):
 
 
 @pytest.mark.parametrize("score", CAUTION_SCORES)
-def test_a_judges_dangerous_counts_once_past_the_scorers_line(monkeypatch, score):
+def test_a_judges_dangerous_never_makes_a_caution_dangerous(monkeypatch, score):
+    """Replaces test_a_judges_dangerous_counts_once_past_the_scorers_line,
+    which held 'dangerous' for any caution of 31-50 in place. The judge's
+    "dangerous" still raises the score — up to the top of caution."""
     _cached_opinion(monkeypatch, "dangerous")
     new_score, level = _judged(score)
-    assert level == (RiskLevel.dangerous if new_score > DANGEROUS_ABOVE else RiskLevel.caution)
+    assert new_score == min(score + llm_judge._shift_for_verdict("dangerous", score), DANGEROUS_ABOVE)
+    assert score <= new_score <= DANGEROUS_ABOVE
+    assert level == RiskLevel.caution
 
 
 def test_the_lines_are_the_scorers_not_a_copy(monkeypatch):
-    """Moving the scorer's line moves the analyzer's with it."""
+    """Moving the scorer's lines moves the analyzer's with them. (The first
+    check here was 'dangerous' at 55 — the bug — and is now the cap.)"""
     _cached_opinion(monkeypatch, shift=20)
-    assert _judged(35)[1] == RiskLevel.dangerous  # 55
+    assert _judged(35) == (DANGEROUS_ABOVE, RiskLevel.caution)
     monkeypatch.setattr(scoring, "DANGEROUS_ABOVE", 60)
-    assert _judged(35)[1] == RiskLevel.caution
+    assert _judged(35) == (55, RiskLevel.caution)
+    _cached_opinion(monkeypatch, shift=-20)
+    assert _judged(40) == (20, RiskLevel.safe)
+    monkeypatch.setattr(scoring, "SAFE_AT_MOST", 15)
+    assert _judged(40) == (20, RiskLevel.caution)
+
+
+# ── The reviewer's cases (2026-11-03) ──
+
+_HEADERS = ["strict-transport-security", "content-security-policy", "x-frame-options"]
+
+
+def _ml(probability):
+    return lambda domain: {"phishing_probability": probability, "prediction": "benign",
+                           "confidence": 0.9, "backend": "onnx"}
+
+
+# Real sites from data/benchmark_legit_ru.txt that the 2026-10-18..11-01
+# benchmarks answered caution, with what the analyzer saw on them and the ML
+# model's reading pinned (a weekly retrain moves it). With a cached
+# "dangerous" from the judge they went 'dangerous' (+20) — a full-page block
+# in the extension.
+REAL_SITES = [
+    # missing_headers 15, no_mx_record 8, unnatural_ngram 10, consonant_cluster
+    # 6: weak signals only, which the scorer itself stops at caution.
+    pytest.param("syktyvkar-sovet.ru", {"missing_security_headers": _HEADERS, "dns_has_mx": False},
+                 0.37, 39, id="syktyvkar-sovet.ru"),
+    # no_https 40, no_mx_record 8, the ML model's "safe" -10
+    pytest.param("ognimos.ru", {"no_https": True, "dns_has_mx": False}, 0.04, 38, id="ognimos.ru"),
+    # no_https 40, unnatural_ngram 10, the ML model's "safe" -10
+    pytest.param("simaz-bus.ru", {"no_https": True}, 0.02, 40, id="simaz-bus.ru"),
+]
+
+
+def _scored(monkeypatch, domain, observed, ml_probability):
+    monkeypatch.setattr("api.services.ml_scorer.ml_predict", _ml(ml_probability))
+    signals = {"domain": domain, "raw_url": domain, "site_reachable": True, "checks_succeeded": 17,
+               "total_checks": 19, "blocklist_hits": 0, **observed}
+    score, level, _ = scoring.calculate_score(signals)
+    return signals, score, level
+
+
+@pytest.mark.parametrize("domain, observed, ml_probability, reviewers_score", REAL_SITES)
+def test_a_real_sites_caution_stays_caution_on_a_judges_dangerous(monkeypatch, domain, observed, ml_probability,
+                                                                   reviewers_score):
+    signals, score, level = _scored(monkeypatch, domain, observed, ml_probability)
+    assert (score, level) == (reviewers_score, RiskLevel.caution)
+    assert score + llm_judge.LLM_MAX_SHIFT > DANGEROUS_ABOVE  # past the line without the cap
+    _cached_opinion(monkeypatch, "dangerous")
+    assert _judged(score, signals) == (DANGEROUS_ABOVE, RiskLevel.caution)
+
+
+@pytest.mark.parametrize("domain, observed, ml_probability, reviewers_score", REAL_SITES)
+def test_a_judges_safe_still_lowers_a_real_sites_score(monkeypatch, domain, observed, ml_probability,
+                                                       reviewers_score):
+    """The cap is on the way up only: a "safe" lowers the score as before, and
+    the level comes from the scorer's 'safe' line (20), which the judge's
+    target (29) stays above."""
+    signals, score, _ = _scored(monkeypatch, domain, observed, ml_probability)
+    _cached_opinion(monkeypatch, "safe")
+    assert _judged(score, signals) == (29, RiskLevel.caution)
+
+
+def test_a_bare_ip_at_the_top_of_caution_stays_caution(monkeypatch):
+    """A bare IP whose signals are all weak on an address stops at caution 50
+    (fix/ip-literal-not-dangerous-by-shape, #398): a cached "dangerous" took
+    every such address to 70, 'dangerous'."""
+    _cached_opinion(monkeypatch, "dangerous")
+    signals = {"domain": "203.0.113.7", "raw_url": "203.0.113.7", "is_ip_based": True, "blocklist_hits": 0}
+    assert _judged(DANGEROUS_ABOVE, signals) == (DANGEROUS_ABOVE, RiskLevel.caution)
+
+
+def test_a_held_back_dangerous_is_logged(monkeypatch, caplog):
+    """How often the cap holds a judge's "dangerous" back can be counted."""
+    _cached_opinion(monkeypatch, "dangerous")
+    with caplog.at_level(logging.INFO, logger="cleanway.analyzer"):
+        _judged(39, {"domain": "syktyvkar-sovet.ru", "blocklist_hits": 0})
+    record = next(r for r in caplog.records if r.getMessage() == "llm_judge_capped")
+    assert (record.domain, record.score, record.judge_shift) == ("syktyvkar-sovet.ru", 39, 20)
 
 
 # ── Whole analyses ──
@@ -121,6 +212,15 @@ def test_a_caution_the_judge_calls_safe_stays_caution(offline_analyzer, monkeypa
     assert result.score == 29
     assert result.level == RiskLevel.caution
     assert next(r for r in result.reasons if r.signal == "llm_judge").weight < 0
+
+
+def test_a_caution_the_judge_calls_dangerous_stays_caution(offline_analyzer, monkeypatch):
+    _young_shop(offline_analyzer, monkeypatch)
+    _cached_opinion(monkeypatch, "dangerous")
+    result = asyncio.run(analyzer.analyze_domain("obscure-shop.ru", budget_s=3.0))
+    assert (result.score, result.level) == (DANGEROUS_ABOVE, RiskLevel.caution)
+    # The reason carries the shift applied (40 to 50), not the +20 proposed.
+    assert next(r for r in result.reasons if r.signal == "llm_judge").weight == DANGEROUS_ABOVE - 40
 
 
 def test_the_applied_shift_is_logged(offline_analyzer, monkeypatch, caplog):
@@ -146,16 +246,20 @@ def _cached(level: str, score: int, *signals: str) -> DomainResult:
 @pytest.mark.parametrize("cached", [
     _cached("safe", 29, "domain_new", "llm_judge"),         # the 2026-11-01 answers
     _cached("caution", 60, "typosquatting", "llm_judge"),   # 'dangerous' by the scorer's lines
+    _cached("dangerous", 70, "domain_new", "llm_judge"),    # a caution of 50 the judge took past the line
 ])
 def test_a_judged_answer_the_scorers_lines_disagree_with_is_not_served_from_cache(cached):
     """The public cache keeps a full verdict for a day: without this, a
     phishing host shown 'safe' at 29 stayed 'safe' for up to a day after
-    the deploy."""
+    the deploy — and a caution the judge alone made 'dangerous' (a full-page
+    block in the extension) stayed blocked."""
     assert is_retired(cached)
 
 
 @pytest.mark.parametrize("cached", [
     _cached("caution", 29, "domain_new", "llm_judge"),  # mapped with the scorer's lines
+    _cached("caution", 50, "domain_new", "llm_judge"),  # a "dangerous" held at the top of caution
+    _cached("dangerous", 90, "phishtank"),              # no judge: the scorer's own 'dangerous'
     _cached("safe", 0, "known_legitimate"),
     _cached("caution", 0, "invalid"),                   # no judge: a level set on purpose
     _cached("caution", 25, "site_unreachable"),

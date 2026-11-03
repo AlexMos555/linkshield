@@ -254,8 +254,10 @@ class Settings(BaseSettings):
     # site probes). Checks still running at the deadline are cut off and named
     # in the verdict's `checks_incomplete`. The LLM judge is never waited for:
     # only its cached opinion counts (api/services/llm_judge.opinion_now). The
-    # extension and the iPhone wait 3 s, the Android app 12 s, so the verdict
-    # must be back well inside that.
+    # browser extension waits 3 s (LOOKUP_TIMEOUT_MS in background/
+    # public-check.js; Safari's on the iPhone is the same code), the app 12 s.
+    # This budget equals the extension's wait, so an answer whose checks run
+    # to the deadline can still miss it, once the transfer is counted.
     analysis_budget_seconds: float = 3.0
 
     # Load shedding (api/services/load_shedding.py, docs/runbooks/capacity.md).

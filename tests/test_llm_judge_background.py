@@ -4,8 +4,8 @@ Measured 2026-11-01/03: the judge almost never finished inside the fresh-check
 budget (34 of 40 re-checks came back with checks_incomplete [llm_judge]), yet
 every caution answer waited for it until the ~3 s budget ran out — 60 of 63
 caution answers took over 3 s (p50 3224 ms, against 2170 ms for 'safe'). The
-browser extension and the iPhone give a lookup 3 s, so they timed out on
-exactly the sites people are unsure about.
+browser extension (Safari's on the iPhone too) gives a lookup 3 s, so it
+timed out on exactly the sites people are unsure about.
 
 Now the analysis applies the judge's opinion only when it is already cached.
 Otherwise it answers with the scorer's verdict at once, says `llm_judge` is
@@ -132,6 +132,40 @@ def test_the_background_answer_serves_the_next_check(slow_claude, caution_case):
     assert slow_claude["calls"] == 1
 
 
+def test_the_person_is_not_told_the_judge_did_not_finish(slow_claude, caution_case):
+    """`llm_judge` stays in checks_incomplete (the machine-readable list, which
+    also keeps the answer in the public cache for an hour, not a day), but no
+    reason says a check "did not finish in time": the judge was not waited
+    for, and its opinion moves the score only inside caution
+    (tests/test_llm_judge_thresholds.py), so the level rests on every check."""
+    async def _run():
+        result = await analyzer.analyze_domain(DOMAIN, budget_s=3.0)
+        await llm_judge.stop()
+        return result
+
+    result = asyncio.run(_run())
+    assert result.checks_incomplete == ["llm_judge"]
+    assert "checks_incomplete" not in {r.signal for r in result.reasons}
+
+
+def test_a_check_really_cut_off_is_still_named_beside_the_judge(slow_claude, offline_analyzer, monkeypatch):
+    import api.services.ml_scorer as ml_scorer
+
+    offline_analyzer(site="reachable", values={"whois": {"age_days": 400}}, delays={"phishstats": 10})
+    monkeypatch.setattr(ml_scorer, "ml_predict", lambda domain: None)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
+
+    async def _run():
+        result = await analyzer.analyze_domain(DOMAIN, budget_s=1.0)
+        await llm_judge.stop()
+        return result
+
+    result = asyncio.run(_run())
+    assert result.checks_incomplete == ["llm_judge", "phishstats"]
+    reason = next(r for r in result.reasons if r.signal == "checks_incomplete")
+    assert reason.detail.startswith("1 check did not finish in time")
+
+
 def test_a_pattern_already_being_judged_is_not_asked_again(slow_claude, caution_case):
     async def _run():
         first = await analyzer.analyze_domain(DOMAIN, budget_s=1.0)
@@ -238,7 +272,7 @@ def test_shutdown_stops_the_judge_before_redis_closes(monkeypatch):
     assert order == ["judge", "redis"]
 
 
-# ── The public check: what the extension and the iPhone wait 3 s for ──
+# ── The public check: what the extension waits 3 s for ──
 
 def test_public_check_answers_caution_without_waiting_for_the_judge(slow_claude, caution_case, monkeypatch, settings,
                                                                    fake_redis):

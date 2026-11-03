@@ -423,9 +423,12 @@ def _format_public_result(
         # Russian user stops seeing "Site does not use HTTPS encryption" in
         # English, which broke the grandma-grade promise on a 10-locale app.
         "reason_codes": _reason_codes(shown, modern_client),
-        # What the verdict rests on. A client blocks a site ONLY when this is
-        # 'blocklist' or 'threat_intel' — never on 'heuristics',
-        # 'ml_and_heuristics', 'unreachable', 'not_found' or an unknown value.
+        # What the verdict rests on. The Android app blocks a link ONLY when
+        # this is 'blocklist' or 'threat_intel', and on 'heuristics' or
+        # 'ml_and_heuristics' only warns (LinkVerdictPolicy). The browser
+        # extension does not read it: it blocks the page on ANY 'dangerous'
+        # (extension/src/content/index.js), whatever made it so — which is why
+        # the LLM judge alone never does (analyzer._llm_judge_within).
         "verdict_basis": vb.basis_of(result),
         # false = DNS says no such domain; null = not checked / no answer.
         "exists": result.exists,

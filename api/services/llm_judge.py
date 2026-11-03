@@ -2,9 +2,12 @@
 
 When the rule-based scorer can't make up its mind — level caution
 (a score of 21-50), no blocklist hit, no allowlist short-
-circuit — Claude weighs in with a final verdict. The point isn't
-to replace the heuristic; it's to break ties on the ~5% of domains
-where 1,000-ish features point in different directions.
+circuit — Claude weighs in. The point isn't to replace the
+heuristic; it's to break ties on the ~5% of domains where
+1,000-ish features point in different directions. Since
+2026-11-03 its opinion moves the score inside caution only: its
+"safe" lands at 29 at the lowest, and the analyzer stops a raise
+at the top of caution (scoring.DANGEROUS_ABOVE).
 
 How it fits the existing pipeline:
 
@@ -35,8 +38,8 @@ Privacy invariants (load-bearing):
      out at once with `llm_judge` in checks_incomplete, and the call
      finishes in the background and fills the cache for the next
      check with the same pattern. A live call takes longer than the
-     ~3 s fresh-check budget, and the extension and the iPhone give
-     a lookup 3 s (2026-11-03). Live calls are capped per day for
+     ~3 s fresh-check budget, and the browser extension (Safari's
+     on the iPhone too) gives a lookup 3 s (2026-11-03). Live calls are capped per day for
      the whole service (paid_budget), and at
      LOAD_SHED_LLM_MAX_INFLIGHT at once per worker (load_shedding):
      past that the judge is skipped, never queued. stop() cancels
@@ -92,8 +95,10 @@ LLM_CACHE_TTL_S = 7 * 24 * 3600
 # this band the rule-based verdict has high-confidence evidence
 # (blocklist hit, known-legit allowlist) and we shouldn't second-
 # guess it. These two are the caution band from before the scorer
-# moved its lines to 20 / 50 (scoring.level_for_score, which the
-# analyzer maps a shifted score with); only _score_band uses them.
+# moved its lines to 20 / 50, and NOT a level: the analyzer maps a
+# shifted score with scoring.level_for_score. Only _score_band uses
+# them, and nothing in the service uses _score_band (2026-11-03) —
+# kept with its test, not to be wired back in.
 CAUTION_LOWER = 30
 CAUTION_UPPER = 70
 
@@ -166,7 +171,11 @@ def _extract_judge_features(signals: dict, score: int) -> dict:
 
 def _score_band(score: int) -> str:
     """Discretise the score into a 3-bucket band so cache hits
-    work across small score differences."""
+    work across small score differences.
+
+    Unused: the cache key hashes the exact feature vector
+    (_cache_key), and a level comes from scoring.level_for_score.
+    """
     if score < CAUTION_LOWER:
         return "safe"
     if score >= CAUTION_UPPER:
@@ -449,8 +458,11 @@ async def judge_ambiguous_verdict(
 ) -> Optional[dict]:
     """Runs the judge when applicable and WAITS for a live call.
 
-    The analyzer does not use this — it never waits (opinion_now). This is
-    the whole call, for a caller that can afford the wait.
+    Not for the analyzer, and nothing in the service calls it (2026-11-03):
+    a live call outlasts the 3 s the browser extension waits, and waiting
+    for it held 60 of 63 caution answers past that. The analyzer asks
+    opinion_now, which never waits. Kept as the judge's whole call for its
+    own tests (cache, budget, shared calls) and for a caller that can wait.
 
     Returns a dict with the LLM's verdict OR None if the judge
     did not run (out of band, no LLM, cache miss + LLM failure).
@@ -501,8 +513,9 @@ async def opinion_now(signals: dict, score: int, level: str) -> tuple[str, Optio
     """The judge without the wait — what the analyzer asks.
 
     A live call takes longer than a fresh check's ~3 s budget (34 of 40
-    re-checks ran out of it, 2026-11-01/03), and the extension and the iPhone
-    give a lookup 3 s: a caution answer must not wait for one. So this
+    re-checks ran out of it, 2026-11-01/03), and the browser extension
+    (Safari's on the iPhone too) gives a lookup 3 s: a caution answer must not
+    wait for one. So this
     returns (CACHED, opinion) when this pattern's answer is in the cache,
     shaped as judge_ambiguous_verdict's. Otherwise it starts the live call —
     or finds it running — and returns (STARTED, None) at once: the call ends
@@ -669,8 +682,9 @@ def _shift_for_verdict(verdict: str, score: int) -> int:
     # 'dangerous'). These targets are from the old 30-70 band, and that is
     # now deliberate: "safe" lands at 29 at the lowest, so the judge, which
     # sees no domain, can never clear a caution to 'safe' (two phishing
-    # hosts were shown 'safe' at 29 on 2026-11-01); "dangerous" adds up to
-    # +20 and counts once the score passes 50.
+    # hosts were shown 'safe' at 29 on 2026-11-01). "Dangerous" proposes up
+    # to +20, and the analyzer stops it at DANGEROUS_ABOVE: the judge alone
+    # never makes a caution 'dangerous' (analyzer._llm_judge_within).
     if verdict == "dangerous":
         target = 70
         return max(0, min(target - score, LLM_MAX_SHIFT))
