@@ -815,10 +815,14 @@ and the public answer's `advisory_ttl` caps the extension's and the app's; the
 the window ends. The extension also takes such a warning off the screen then:
 its link badges, and its block page, whose address carries the window's end
 (`x`) — past it the page checks the site again instead of drawing the old
-verdict. Such a verdict is not sent to family members. Not yet bounded: the
-app's check history keeps the level with no time limit, the share texts (the
-app's share message, the /check card's) carry the level with no credit, and
-the webmail banner stays over a message left open past the window
+verdict, and only the server's answer counts as checked again (the
+extension's offline guess, when the API did not answer, does not). Such a
+verdict is not sent to family members. Not yet bounded: the app's check
+history keeps the level with no time limit, the share texts (the app's share
+message, the /check card's) carry the level with no credit, the webmail
+banner stays over a message left open past the window, and the in-page copy
+of the block page (used only where a browser refuses to take the tab to the
+block page) stays over the scam page past the window
 (`docs/PAID_LAUNCH_SWITCHES.md` §7, "Осталось"). Where it shows, translated
 in all ten languages (`extension.advisory`): the extension's block page, link
 badge tooltips, context-menu check, popup and webmail banner
