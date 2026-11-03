@@ -285,8 +285,11 @@ def test_a_name_whose_every_address_is_non_public_is_not_live():
     # third review of #395 found: an empty list then meant only "no A record",
     # since AAAA was never asked. The probe now asks AAAA whenever no A address
     # is public, so an empty list means neither an A nor an AAAA record —
-    # nothing a browser can connect to (5 of the 200 seed-42 names on
-    # 2026-11-03; Cleanway answered not found, Families gave no address).
+    # nothing a browser can connect to (4 of the 200 seed-42 names on
+    # 2026-11-03; Cleanway answered not found, Families gave no address. The
+    # third review counted 5: www.ershoujian.com was asked as ershoujian.com,
+    # which has no address, while the www host has public ones — fourth review,
+    # tests/test_benchmark_url_host.py).
     assert method.row_existence(True, [], addresses=[]) == "non_public"
     # A CNAME to a Cloudflare tunnel whose only address is private IPv6 (4
     # Allegro names of the same sample).

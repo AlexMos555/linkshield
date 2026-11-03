@@ -23,8 +23,8 @@ Now:
            would move the window past every real row.
   SAMPLE   a fixed-seed draw over the pool's SITES (sample_phishing): the sites
            in a random order, from each up to MAX_PER_SITE of its hosts, each
-           host once (Cleanway checks a domain, not a URL), at its first row in
-           the dump. Every site has the same chance, however many rows or hosts
+           host once (Cleanway checks a host name, not a URL; with or without
+           "www." it is one host), at its first row in the dump. Every site has the same chance, however many rows or hosts
            it has. A site is the registrable domain by the server's own Public
            Suffix List code, and a hosting platform's tenant is a site of its
            own, as the server reads it (site_rule). So two pages on vercel.app
@@ -32,7 +32,9 @@ Now:
            one attacker.
   EXISTS   one fact per row, the same for every resolver (row_existence). The
            benchmark's own probe decides: one A query per URL to Cloudflare's
-           unfiltered resolver at the start of the run, and an AAAA query
+           unfiltered resolver at the start of the run, about the URL's own
+           host name ("www." kept, as a browser asks; every question of the
+           run is about that name), and an AAAA query
            when no A address is public (no A record at all included); the A
            and AAAA addresses are judged together. NXDOMAIN: "nxdomain". An
            answer with no public address by the server's own rule
@@ -433,8 +435,9 @@ def methodology_md(report: dict) -> list[str]:
         f"{sampling['max_per_site']} of its hosts, each host once, so every site has the same chance "
         f"however many rows it has. A site is the {sampling['site_rule']}. {sampling['n']} rows from "
         f"{sampling['sites']} sites.{submitted}",
-        "- Whether a name exists is the benchmark's own probe: one A query per URL to Cloudflare's "
-        "unfiltered resolver, at the start of the run, and an AAAA query when no A address is public "
+        "- Whether a name exists is the benchmark's own probe: one A query per URL, about its own host "
+        "name ('www.' kept, as a browser asks; Cleanway and Families are asked the same name), to "
+        "Cloudflare's unfiltered resolver, at the start of the run, and an AAAA query when no A address is public "
         "(no A record at all included); the A and AAAA addresses are judged together. NXDOMAIN there "
         "makes the row 'not found' for every resolver, whatever it answered (Cleanway's blocklist, "
         "Cloudflare's 0.0.0.0 and PhishTank's listing included), and so does an answer with no public "

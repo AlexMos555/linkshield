@@ -369,13 +369,7 @@ def cleanway_identity_note() -> str:
 # URL helpers
 # ─────────────────────────────────────────────────────────────────
 
-def domain_of(url: str) -> str:
-    """Extract bare hostname from a URL or domain string.
-
-    NB: do NOT use str.lstrip('www.') — it strips any CHARACTERS
-    from {w, ., space}, so 'wsj.com' becomes 'sj.com'. Use
-    removeprefix() which is exact-prefix matching.
-    """
+def _hostname(url: str) -> str:
     s = url.strip()
     if "://" not in s:
         s = "http://" + s
@@ -383,10 +377,30 @@ def domain_of(url: str) -> str:
         host = urlparse(s).hostname or ""
     except Exception:
         host = ""
-    host = host.lower().strip()
-    if host.startswith("www."):
-        host = host[4:]
-    return host
+    return host.lower().strip()
+
+
+def url_host(url: str) -> str:
+    """The URL's own hostname, as a browser asks for it: lowercased, a
+    trailing dot removed, "www." kept. Every DNS and API question of a run is
+    about this name — the existence probe, Cleanway, the in-process analyzer,
+    Families and its control query — as the extension sends a page's hostname
+    (extension/src/background/index.js). Until the fourth review of #395 they
+    were asked domain_of's shortened name: www.ershoujian.com had public A and
+    AAAA addresses while ershoujian.com had only an SOA, so a page anyone
+    could open was 'non_public', not found for every resolver."""
+    return _hostname(url).rstrip(".")
+
+
+def domain_of(url: str) -> str:
+    """The hostname without "www.": the sample's dedup and nothing else
+    (sample_phishing's host_of) — never a name to ask about (url_host).
+
+    NB: do NOT use str.lstrip('www.') — it strips any CHARACTERS
+    from {w, ., space}, so 'wsj.com' becomes 'sj.com'. Use
+    removeprefix() which is exact-prefix matching.
+    """
+    return _hostname(url).removeprefix("www.")
 
 
 def is_ip_address(host: str) -> bool:
@@ -567,8 +581,9 @@ def _str_list(value: object) -> Optional[list[str]]:
 
 
 async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
-    """GET /api/v1/public/check/{domain} on api.cleanway.ai: what a user of
-    the site or the app gets for the domain (only the domain is sent).
+    """GET /api/v1/public/check/{host} on api.cleanway.ai: what a user of
+    the site or the app gets for the URL's host name (url_host: only the
+    host name is sent, "www." kept, as the extension sends a page's).
 
     The public check answers in this order (api/routers/public.py
     public_check): the allowlist of the top 100,000 — 'safe' without
@@ -612,7 +627,7 @@ async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
     `latency_ms` is time spent in requests only — never our own pacing
     or a 429 wait, which say nothing about how fast Cleanway answers.
     """
-    d = domain_of(url)
+    d = url_host(url)
     if not d:
         return Verdict("cleanway", "unknown", detail="bad_domain")
     spent = 0.0
@@ -725,7 +740,7 @@ async def check_cleanway_local(client: httpx.AsyncClient, url: str) -> Verdict:
     No Redis needed — cache is opt-in and falls through cleanly
     on connection failure.
     """
-    d = domain_of(url)
+    d = url_host(url)
     if not d:
         return Verdict("cleanway_local", "unknown", detail="bad_domain")
     t0 = time.monotonic()
@@ -877,7 +892,8 @@ EXISTENCE_PROBE = "existence"
 
 async def probe_existence(client: httpx.AsyncClient, url: str) -> Verdict:
     """The benchmark's own existence witness, asked once for every URL at the
-    start of the run, whatever the resolvers answered: Cloudflare's unfiltered
+    start of the run, whatever the resolvers answered, about the URL's own
+    host name (url_host, "www." kept): Cloudflare's unfiltered
     resolver (_unfiltered_query), an A question, and an AAAA one too when no
     A address is public — no A record at all included: a CNAME to a
     Cloudflare tunnel has only a private IPv6 address (third review of #395).
@@ -887,7 +903,7 @@ async def probe_existence(client: httpx.AsyncClient, url: str) -> Verdict:
     not live when no address is public, none at all included (a takedown, a
     dead end) — and the resolvers' own answers only when `exists` is None,
     the AAAA question failing included (benchmark_method.row_existence)."""
-    d = domain_of(url)
+    d = url_host(url)
     if not d:
         return Verdict(EXISTENCE_PROBE, "unknown", detail="bad_domain")
     if is_ip_address(d):
@@ -936,7 +952,7 @@ async def check_cloudflare_families(client: httpx.AsyncClient, url: str) -> Verd
     NXDOMAIN everywhere, None for the sinkhole or a control query that could
     not tell. It counts only when the probe could not tell.
     """
-    d = domain_of(url)
+    d = url_host(url)
     if not d:
         return Verdict("cloudflare_families", "unknown", detail="bad_domain")
     t0 = time.monotonic()
@@ -1135,7 +1151,6 @@ def existence_of_rows(probe: list[Verdict], results: dict[str, list[Verdict]]) -
 # Fields only Cleanway's answer has (check_cleanway): other rows leave them out.
 _CLEANWAY_FIELDS = ("level", "verdict_basis", "reason_codes", "checks_incomplete")
 
-
 def _raw_rows(resolver: str, verdicts: list[Verdict], outcomes: list[str]) -> list[dict]:
     rows = []
     for v, outcome in zip(verdicts, outcomes, strict=True):
@@ -1255,8 +1270,8 @@ def render_md(report: dict) -> str:
     full_url = [label for name, label in (("gsb", "GSB"), ("phishtank", "PhishTank"), ("virustotal", "VT"))
                 if name in resolvers]
     receive = "receives" if len(full_url) == 1 else "receive"
-    lines.append("- We send DOMAIN only to Cleanway (server-blind invariant) and to Cloudflare "
-                 "(a DNS lookup)." + (f" {' / '.join(full_url)} {receive} the full URL." if full_url else ""))
+    lines.append("- We send only the URL's host name ('www.' kept, as the extension sends a page's) "
+                 "to Cleanway (server-blind invariant) and to Cloudflare (a DNS lookup)." + (f" {' / '.join(full_url)} {receive} the full URL." if full_url else ""))
     window = report.get("cleanway_window_utc") or {}
     ran = (f" The Cleanway checks ran {window['start']} – {window['end']}."
            if window.get("start") and window.get("end") else "")
@@ -1359,8 +1374,9 @@ _QG_MIN_CLASSIFIED_PHISHING = 50
 # Live rows (n - not found). The same 50 as the verdicts: a live row is never
 # fewer than Cleanway's verdicts on them, so this holds nothing more back, and
 # checked first it tells the log the sample died, not that Cleanway went quiet.
-# Not 100: 76 of the 200 names of the seed-42 sample on the 2026-11-03 dump
-# were already dead, so a 200-row run has about 124 live rows; 100 would fail
+# Not 100: 86 of the 200 names of the seed-42 sample on the 2026-11-03 dump
+# were already not live (77 NXDOMAIN, 9 with no public address: the probe of
+# the fourth review of #395), so a 200-row run has about 114 live rows; 100 would fail
 # the week once more than half the sample is dead and keep the site on an
 # older report, for a reason its "not publishable" text cannot name.
 _QG_MIN_RESOLVING_PHISHING = 50
@@ -1719,7 +1735,8 @@ async def main() -> int:
             # landing publishes a false-positive rate only when the latter is
             # True (landing/lib/benchmark.ts falsePositiveRateIsPublishable).
             **legit_sources,
-            "existence": ("one question per URL to Cloudflare's unfiltered resolver "
+            "existence": ("one question per URL, about its own host name ('www.' kept), to "
+                          "Cloudflare's unfiltered resolver "
                           f"({CLOUDFLARE_UNFILTERED_DOH}, A record; AAAA too when no A address is "
                           "public, no A record at all included) at the start of the run: an NXDOMAIN "
                           "there is 'not found' for every resolver, and so is an answer with no public "

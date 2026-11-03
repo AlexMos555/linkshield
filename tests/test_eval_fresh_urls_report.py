@@ -420,7 +420,8 @@ async def test_a_name_that_leads_only_to_non_public_addresses_is_not_live(tmp_pa
 async def test_a_name_with_no_public_address_at_all_is_not_live(tmp_path, monkeypatch):
     """Third review of #395: 4 Allegro names of the seed-42 sample (2026-11-03)
     were a CNAME to a Cloudflare tunnel whose only address is fd10:aec2:5dae::,
-    and 5 names had neither an A nor an AAAA record. All counted as live:
+    and 4 names had neither an A nor an AAAA record (5 by the third review,
+    which asked www.ershoujian.com as its apex). All counted as live:
     Families' CNAME-only answer was a Cloudflare miss, Cleanway's not-found
     answer a caution. The probe asks AAAA whenever no A address is public
     (tests/test_nxdomain_verdict.py); here the row it reports is not live for

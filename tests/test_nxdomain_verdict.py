@@ -300,9 +300,11 @@ def test_benchmark_existence_probe_asks_aaaa_when_no_a_address_is_public():
     answer is not that, so a name without an A record counted as live (third
     review of #395). Of the 200 seed-42 names on 2026-11-03, 4 Allegro names
     were a CNAME to a Cloudflare tunnel whose only address is fd10:aec2:5dae::
-    (private IPv6: nobody on the internet can reach it) and 5 had neither an A
-    nor an AAAA record. Families scored the CNAME-only answer 'safe' (a
-    Cloudflare miss) and Cleanway's not-found answer counted as a caution."""
+    (private IPv6: nobody on the internet can reach it) and 4 had neither an A
+    nor an AAAA record (5 by the third review, which asked www.ershoujian.com
+    as its apex: tests/test_benchmark_url_host.py). Families scored the
+    CNAME-only answer 'safe' (a Cloudflare miss) and Cleanway's not-found
+    answer counted as a caution."""
     tunnel = {"type": 5, "data": "66ffe852-0680-4c83-b048-5470ad21cbd0.cfargotunnel.com."}
     out, client = _probe(_doh_response(0, [tunnel]),
                          _doh_response(0, [tunnel, {"type": 28, "data": "fd10:aec2:5dae::"}]))
