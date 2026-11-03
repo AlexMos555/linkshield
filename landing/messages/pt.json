@@ -115,7 +115,7 @@
       "Seu endereço IP, para limitar quantas verificações uma conexão pode fazer; para isso ele fica guardado como está por no máximo uma hora",
       "Seu e-mail e seu plano, só se você criar uma conta"
     ],
-    "server_note": "Para avaliar um site, nosso servidor pode consultar o nome dele em serviços como o Google Safe Browsing: só o nome, nunca quem você é.",
+    "server_note": "Para avaliar um site, nosso servidor pode consultar o nome dele em serviços como o Google Web Risk: só o nome, nunca quem você é.",
     "device_heading": "O que fica no seu celular",
     "device_items": [
       "A lista de sites de golpe usada pela proteção",
@@ -152,7 +152,7 @@
     "items": [
       {
         "q": "O que o Cleanway fica sabendo sobre mim?",
-        "a": "Os sites são comparados com a lista no próprio celular. Quando um site precisa de uma análise mais detalhada, só o nome dele (como example.com) vai para o nosso servidor, que pode consultar esse nome em serviços como o Google Safe Browsing. Não recebemos links completos, conteúdo de páginas nem textos de mensagens, e não mantemos registro dos sites que você abre. Os detalhes estão na nossa política de privacidade."
+        "a": "Os sites são comparados com a lista no próprio celular. Quando um site precisa de uma análise mais detalhada, só o nome dele (como example.com) vai para o nosso servidor, que pode consultar esse nome em serviços como o Google Web Risk. Não recebemos links completos, conteúdo de páginas nem textos de mensagens, e não mantemos registro dos sites que você abre. Os detalhes estão na nossa política de privacidade."
       },
       {
         "q": "O celular vai ficar mais lento?",
@@ -163,8 +163,8 @@
         "a": "Não ao mesmo tempo. A proteção do Cleanway usa o mecanismo de VPN do Android só para os nomes dos sites: o celular compara cada nome com a lista e busca os que não estão nela como faria sem o Cleanway, no DNS da sua rede ou, se ele não responder, na Cloudflare ou no Quad9. O resto do seu tráfego segue normalmente — nem pelo Cleanway, nem por outro país. O Android só roda um serviço desse tipo por vez; por isso, se você ligar outra VPN, a proteção do Cleanway desliga. Quando terminar, abra o Cleanway e ative a proteção de novo. A verificação manual de um site ou mensagem no app continua funcionando de qualquer jeito."
       },
       {
-        "q": "Qual a diferença para o Google Safe Browsing?",
-        "a": "O Google Safe Browsing é uma das fontes que usamos. O Cleanway também bloqueia sites de golpe conhecidos em todos os apps do celular, não só no navegador, verifica mensagens suspeitas no próprio celular e explica suas conclusões em palavras simples. Quando consultamos o Google sobre um site, enviamos só o nome dele, não quem você é."
+        "q": "Qual a diferença para os avisos do navegador?",
+        "a": "Chrome, Firefox e Safari avisam sozinhos sobre parte dos sites perigosos, com listas do Google. Nós também consultamos o Google, pelo Google Web Risk, e usamos outras fontes. Além disso, o Cleanway bloqueia sites de golpe conhecidos em todos os apps do celular, não só no navegador, verifica mensagens suspeitas no próprio celular e explica suas conclusões em palavras simples. Quando consultamos o Google sobre um site, enviamos só o nome dele, não quem você é."
       },
       {
         "q": "É grátis?",
@@ -566,7 +566,6 @@
     "caveat_endpoint": "O Cleanway é medido pela verificação pública de sites, o mesmo caminho anônimo que um visitante usa, e não por um caminho privilegiado. Ele mede a resposta do nosso servidor, não o bloqueio no celular: a proteção do celular só bloqueia na hora os sites da lista dela, então este número não diz quantos desses links um celular bloquearia.",
     "caveat_rate_limit": "No momento, a execução semanal é freada pelo limite de requisições dessa verificação, então muitos links ficam sem veredito e a maioria das medições é pequena demais para publicar.",
     "caveat_phishtank": "A consulta gratuita do PhishTank costuma responder “não indexado” para links recentes porque sua base fica algumas horas atrasada, então a coluna dele muitas vezes mostra “—”.",
-    "caveat_gsb": "O Google Safe Browsing precisa de uma chave de API; quando nenhuma está configurada para a execução, a coluna dele mostra “—”.",
     "caveat_nxdomain": "Um domínio que não existe mais também recebe NXDOMAIN da Cloudflare e é contado como bloqueio da Cloudflare, o que favorece a Cloudflare em domínios de phishing que já foram derrubados.",
     "caveat_latency": "Os tempos de resposta são medidos a partir da máquina que roda o script (um servidor na nuvem nos EUA ou na UE); de outras regiões eles serão diferentes.",
     "caveat_allowlist": "Nosso servidor considera seguros, sem analisá-los, os sites do top 100.000 da Tranco, e a amostra de sites reais acima vem dessa mesma faixa. Por isso ela não mostra com que frequência o Cleanway chama por engano de perigoso um site real menos conhecido, e não publicamos taxa de alarmes falsos com base nela. Vamos publicar quando a amostra incluir sites reais fora dessa lista.",
@@ -875,7 +874,7 @@
           "Para decidir se o site é perigoso, nosso servidor pode:"
         ],
         "items": [
-          "consultar o nome em serviços de verificação externos: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX e IPQualityScore, e descobrir quando o site foi registrado consultando via RDAP o registro da sua extensão de domínio (para .com, a Verisign). Eles recebem só o nome do site, não quem você é;",
+          "consultar o nome em serviços de verificação externos: Google Web Risk, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX e IPQualityScore, e descobrir quando o site foi registrado consultando via RDAP o registro da sua extensão de domínio (para .com, a Verisign). Eles recebem só o nome do site, não quem você é;",
           "comparar a sua resposta com a do filtro de DNS da Cloudflare (1.1.1.1 for Families), que recebe o nome do site numa consulta de DNS comum;",
           "olhar o próprio site (o endereço, o certificado e as configurações) — a partir do nosso servidor, não do seu celular;",
           "em casos duvidosos, pedir uma segunda opinião a um modelo de IA da Anthropic. Ele recebe só sinais abstratos, sem o nome do site."
@@ -1311,7 +1310,7 @@
     }
   },
   "Reasons": {
-    "flagged_dangerous": "O Google marca este site como perigoso",
+    "flagged_dangerous": "O Google alerta que este site pode ser perigoso",
     "flagged_phishing": "Denunciado como phishing",
     "on_blocklists": "Em listas confiáveis de golpes e spam",
     "threat_reports": "Mencionado em relatórios de ameaças",
@@ -1346,5 +1345,11 @@
     "checks_incomplete": "Algumas verificações não terminaram, então o resultado é menos certo",
     "user_content_platform": "Qualquer pessoa pode criar uma página neste serviço — golpistas também",
     "on_device_list": "Está na lista de sites de golpe do seu celular"
+  },
+  "Advisory": {
+    "google": "Aviso fornecido pelo Google",
+    "learn_more": "Saiba mais:",
+    "learn_phishing": "phishing",
+    "learn_malware": "malware"
   }
 }

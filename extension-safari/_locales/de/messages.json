@@ -37,10 +37,10 @@
     }
   },
   "status_danger_title": {
-    "message": "Das ist eine Betrugsseite"
+    "message": "Das sieht nach einer Betrugsseite aus"
   },
   "status_danger_subtitle": {
-    "message": "$DOMAIN$ gibt sich als andere Seite aus, um Ihre Daten zu stehlen",
+    "message": "$DOMAIN$ gibt sich möglicherweise als andere Seite aus, um Ihre Daten zu stehlen",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -362,10 +362,10 @@
     "message": "STOPP"
   },
   "block_subtitle_scam": {
-    "message": "Das ist eine Betrugsseite"
+    "message": "Das sieht nach einer Betrugsseite aus"
   },
   "block_explanation": {
-    "message": "$DOMAIN$ gibt sich als andere Seite aus, um Ihre Daten zu stehlen.",
+    "message": "$DOMAIN$ gibt sich möglicherweise als andere Seite aus, um Ihre Daten zu stehlen.",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -410,7 +410,7 @@
     "message": "Geschützt von Cleanway. Wir verkaufen Ihre Daten niemals."
   },
   "block_voice_alert": {
-    "message": "Stopp. Die Seite $DOMAIN$ ist gefährlich. Geben Sie Ihr Passwort nicht ein.",
+    "message": "Stopp. Die Seite $DOMAIN$ ist möglicherweise gefährlich. Geben Sie Ihr Passwort nicht ein.",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -434,6 +434,9 @@
   },
   "welcome_hero_subtitle": {
     "message": "Jeder Link wird geprüft. Gefährliche werden automatisch blockiert."
+  },
+  "welcome_limits": {
+    "message": "Kein Schutz ist perfekt: Ab und zu wird eine sichere Seite irrtümlich markiert oder eine gefährliche übersehen."
   },
   "welcome_step1_title": {
     "message": "Automatische Prüfung"
@@ -717,7 +720,7 @@
     "message": "Ein Familienmitglied wurde vor einer verdächtigen Website gewarnt."
   },
   "reason_flagged_dangerous": {
-    "message": "Google stuft diese Seite als gefährlich ein"
+    "message": "Google warnt: Diese Seite ist möglicherweise gefährlich"
   },
   "reason_flagged_phishing": {
     "message": "Als Phishing gemeldet"
@@ -843,7 +846,7 @@
     "message": "Das Sicherheitszertifikat der Seite ist ungültig"
   },
   "evidence_flagged_dangerous": {
-    "message": "Google Safe Browsing – die Liste, mit der Chrome, Firefox und Safari warnen – stuft diese Seite als gefährlich ein."
+    "message": "Diese Seite steht auf Googles Listen mutmaßlich betrügerischer oder schädlicher Seiten (Google Web Risk). Sie könnte versuchen, Ihnen Ihre Daten zu entlocken oder Schadsoftware zu installieren."
   },
   "evidence_flagged_phishing": {
     "message": "Diese Seite steht in Anti-Phishing-Datenbanken – Listen von Seiten, die Menschen Passwörter oder Kartendaten entlocken."
@@ -967,6 +970,18 @@
   },
   "evidence_broken_certificate": {
     "message": "Das Zertifikat, das belegt, wer hinter dieser Seite steht, ist abgelaufen, wurde nicht von einer vertrauenswürdigen Stelle ausgestellt oder gehört zu einer anderen Adresse. Ihr Browser wird ebenfalls davor warnen."
+  },
+  "advisory_google": {
+    "message": "Hinweis bereitgestellt von Google"
+  },
+  "advisory_learn_more": {
+    "message": "Mehr erfahren:"
+  },
+  "advisory_learn_phishing": {
+    "message": "Phishing"
+  },
+  "advisory_learn_malware": {
+    "message": "Schadsoftware"
   },
   "weekly_title": {
     "message": "Meine Woche"
@@ -1123,7 +1138,7 @@
     "message": "Schließen"
   },
   "webmail_finding_url_reputation": {
-    "message": "Ein Link in dieser E-Mail führt zu einer bekannten gefährlichen Seite"
+    "message": "Ein Link in dieser E-Mail führt möglicherweise zu einer gefährlichen Seite"
   },
   "webmail_finding_auth_fail": {
     "message": "Die E-Mail hat die Prüfungen nicht bestanden, die den echten Absender bestätigen"
@@ -1177,7 +1192,7 @@
     "message": "E-Mails, die ich in Gmail, Outlook und Yahoo öffne, auf Phishing prüfen"
   },
   "webmail_setting_consent": {
-    "message": "Aus, bis Sie es einschalten. Wenn eingeschaltet, wird jede E-Mail, die Sie in Gmail, Outlook oder Yahoo Mail öffnen, zur Phishing-Prüfung an den Server von Cleanway (api.cleanway.ai) gesendet: Betreff, Name und Adresse des Absenders, die Reply-To-Adresse, der Text der Nachricht sowie Adresse und Text jedes Links. Die E-Mail wird geprüft und nicht gespeichert; die Domains ihrer Links werden zusätzlich bei Google Safe Browsing geprüft. Sie können es jederzeit ausschalten – die Prüfung endet sofort."
+    "message": "Aus, bis Sie es einschalten. Wenn eingeschaltet, wird jede E-Mail, die Sie in Gmail, Outlook oder Yahoo Mail öffnen, zur Phishing-Prüfung an den Server von Cleanway (api.cleanway.ai) gesendet: Betreff, Name und Adresse des Absenders, die Reply-To-Adresse, der Text der Nachricht sowie Adresse und Text jedes Links. Die E-Mail wird geprüft und nicht gespeichert; die Domains ihrer Links werden zusätzlich bei Google Web Risk geprüft. Sie können es jederzeit ausschalten – die Prüfung endet sofort."
   },
   "webmail_setting_denied": {
     "message": "Ihr Browser hat Cleanway keinen Zugriff auf die Mail-Websites gegeben, daher bleibt die E-Mail-Prüfung aus."

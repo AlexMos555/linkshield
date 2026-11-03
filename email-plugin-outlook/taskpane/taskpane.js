@@ -38,6 +38,7 @@ const els = {
   verdictScore: $("verdict-score"),
   findings: $("findings"),
   findingsList: $("findings-list"),
+  googleAdvisory: $("google-advisory"),
   links: $("links"),
   linksList: $("links-list"),
   btnReport: $("btn-report"),
@@ -253,6 +254,11 @@ function renderVerdict(result) {
 }
 
 function renderFindings(findings) {
+  // POST /email/analyze checks link domains with Google Web Risk only, so a
+  // known_dangerous_link finding is Google's verdict: its credit and the
+  // learn-more links show with it, and with nothing else (Web Risk's rules
+  // for warnings, docs.cloud.google.com/web-risk/docs/user-warnings).
+  els.googleAdvisory.hidden = !findings.some((f) => f && f.code === "known_dangerous_link");
   if (!findings.length) return;
   els.findingsList.innerHTML = "";
   for (const f of findings) {

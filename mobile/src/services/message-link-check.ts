@@ -1,6 +1,7 @@
 import { checkDomain } from "./api";
 import type { LinkCheck, ServerLevel } from "../utils/message-verdict";
 import { isNotFound } from "../utils/check-verdict";
+import { hasGoogleAdvisory } from "../utils/google-advisory";
 
 /**
  * The domain-only server check for one host found in a message.
@@ -39,7 +40,10 @@ export async function checkMessageHost(host: string): Promise<LinkCheck> {
     // The site does not exist (newer servers say so): a fact about the link,
     // never a "dangerous" verdict built on its missing HTTPS.
     if (data && isNotFound(data)) return remember(host, { kind: "not_found" });
-    if (data && isServerLevel(data.level)) return remember(host, { kind: "checked", level: data.level });
+    if (data && isServerLevel(data.level)) {
+      // Google's reason among the server's: the links card credits Google.
+      return remember(host, { kind: "checked", level: data.level, google: hasGoogleAdvisory(data.reasons) });
+    }
     // An answer we cannot read is a failed check, never a clean one.
     if (!error) return { kind: "failed", why: "error" };
     if (error.kind === "rate_limited") return { kind: "failed", why: "rate_limited" };

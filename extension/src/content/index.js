@@ -104,7 +104,20 @@ function _reasonText(reason) {
 function _reasonsHtml(result) {
   return (result.reasons || []).slice(0, 3).map(function(r) {
     return '<div style="font-size:11px;color:#d1d5db;margin:2px 0;">\u2022 ' + _esc(_reasonText(r)) + '</div>';
-  }).join("");
+  }).join("") + _googleAdvisoryHtml(result);
+}
+
+// "Advisory provided by Google" and the learn-more links under the reasons
+// when any of them is Google's — all of them, not only the three shown
+// (content/reason-labels.js; Web Risk's rules for warnings).
+function _googleAdvisoryHtml(result) {
+  var labels = window.__cleanwayReasons;
+  return labels && typeof labels.googleAdvisoryHtml === "function" ? labels.googleAdvisoryHtml(result.reasons) : "";
+}
+
+function _fromGoogle(result) {
+  var labels = window.__cleanwayReasons;
+  return Boolean(labels && typeof labels.fromGoogle === "function" && labels.fromGoogle(result.reasons));
 }
 
 // ═══════════════════════════════════════════════════
@@ -253,6 +266,9 @@ function addBadge(linkEl, result) {
   // Tooltip
   var tooltip = document.createElement("div");
   tooltip.className = "ls-tooltip";
+  // A tooltip lets the pointer through; one with Google's links must take it
+  // (styles/badges.css), or nobody could click "Advisory provided by Google".
+  if (_fromGoogle(result)) tooltip.classList.add("ls-tooltip-links");
   var score = _scoreText(result);
   tooltip.innerHTML = '<div class="ls-tooltip-inner">' +
     '<div class="ls-tooltip-header">' +

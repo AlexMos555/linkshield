@@ -2,8 +2,8 @@
  * Reason lines under a badge, in the browser's language.
  *
  * Both scorers and the API explain a verdict with an English `detail`
- * ("Impersonates paypal.com", "Contains 'login'", "Flagged by Google Safe
- * Browsing") plus a machine-readable `signal` code. A Russian user used to
+ * ("Impersonates paypal.com", "Contains 'login'", "Google lists this site as
+ * possibly unsafe") plus a machine-readable `signal` code. A Russian user used to
  * read «Опасно» followed by English. This maps the code to a plain-language
  * line from packages/i18n-strings (extension.reason) and keeps the English
  * detail only for a code nobody has mapped yet, so a line never renders
@@ -183,5 +183,80 @@
     }
   }
 
-  window.__cleanwayReasons = Object.freeze({ text: reasonText, group: reasonGroup, keys: REASON_KEYS });
+  // ── Google's credit ──────────────────────────────────────────────────
+  // The API's code for a hit on Google's lists: Safe Browsing v4 once, Google
+  // Web Risk in production since 2026-11-03 (api/services/web_risk.py keeps
+  // the code). Web Risk's rules for warnings (docs.cloud.google.com/web-risk/
+  // docs/user-warnings, read 2026-11-03): a warning about a page Google
+  // flagged carries "Advisory provided by Google" linked to the Web Risk
+  // Advisory and lets people learn more (antiphishing.org for phishing,
+  // Google Search Central for malware); a warning built on other sources
+  // must not carry Google's name. The app (mobile/src/utils/google-advisory.ts)
+  // and the site (landing/lib/google-advisory.ts) link the same pages.
+  var GOOGLE_SIGNAL = "safe_browsing";
+  var GOOGLE_LINKS = Object.freeze({
+    advisory: "https://docs.cloud.google.com/web-risk/docs/advisory",
+    phishing: "https://www.antiphishing.org/",
+    malware: "https://developers.google.com/search/docs/advanced/security/malware",
+  });
+
+  /**
+   * @param {Array<{ signal?: string }>} reasons a verdict's reasons
+   * @returns {boolean} whether one of them is Google's
+   */
+  function fromGoogle(reasons) {
+    if (!Array.isArray(reasons)) return false;
+    for (var i = 0; i < reasons.length; i++) {
+      if (reasons[i] && reasons[i].signal === GOOGLE_SIGNAL) return true;
+    }
+    return false;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function message(key, english) {
+    try {
+      return chrome.i18n.getMessage(key) || english;
+    } catch (e) {
+      return english;
+    }
+  }
+
+  function link(href, text) {
+    return '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(text) + "</a>";
+  }
+
+  /**
+   * "Advisory provided by Google" and the learn-more links, as markup for the
+   * block page, a link badge's tooltip and the context-menu check — or "" when
+   * none of the reasons is Google's. Styled by .ls-google-advisory (the block
+   * page's own <style>, styles/badges.css on web pages).
+   */
+  function googleAdvisoryHtml(reasons) {
+    if (!fromGoogle(reasons)) return "";
+    // Literal keys: scripts/test-extension-core.mjs finds each advisory_* key
+    // and checks it in every locale.
+    var credit = message("advisory_google", "Advisory provided by Google");
+    var more = message("advisory_learn_more", "Learn more:");
+    var phishing = message("advisory_learn_phishing", "phishing");
+    var malware = message("advisory_learn_malware", "malware");
+    return '<div class="ls-google-advisory">' +
+      '<div class="ls-google-advisory-credit">' + link(GOOGLE_LINKS.advisory, credit) + "</div>" +
+      '<div class="ls-google-advisory-more">' + escapeHtml(more) + " " +
+      link(GOOGLE_LINKS.phishing, phishing) + " · " + link(GOOGLE_LINKS.malware, malware) + "</div>" +
+      "</div>";
+  }
+
+  window.__cleanwayReasons = Object.freeze({
+    text: reasonText,
+    group: reasonGroup,
+    keys: REASON_KEYS,
+    fromGoogle: fromGoogle,
+    googleAdvisoryHtml: googleAdvisoryHtml,
+    googleLinks: GOOGLE_LINKS,
+  });
 })();

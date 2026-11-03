@@ -28,8 +28,8 @@
 // ─── i18n helper with English fallback ────────────────────────
 const BLOCK_EN = {
   block_title: "STOP",
-  block_subtitle_scam: "This is a scam site",
-  block_explanation: "$DOMAIN$ is pretending to be someone else so it can steal your information.",
+  block_subtitle_scam: "This looks like a scam site",
+  block_explanation: "$DOMAIN$ may be pretending to be someone else to steal your information.",
   block_brand_impersonation: "This site pretends to be $BRAND$",
   block_scheme_heading: "How scammers use sites like this:",
   block_scheme_step1: "You will be asked for your password or bank details",
@@ -39,7 +39,7 @@ const BLOCK_EN = {
   block_proceed_button: "I understand the risk — open anyway",
   block_proceed_countdown: "Wait $N$ seconds…",
   block_trust_footer: "Protected by Cleanway. We never sell your data.",
-  block_voice_alert: "Stop. The site $DOMAIN$ is dangerous. Do not type your password.",
+  block_voice_alert: "Stop. The site $DOMAIN$ may be dangerous. Do not type your password.",
   // Strategy Top-20 #4 — Annotated Evidence cards
   block_evidence_heading: "Why we blocked this site",
   // Strategy Top-20 #15 — Cultural scam explainer heading
@@ -382,6 +382,15 @@ function showBlockPage(result, actions) {
        </div>`
     : "";
 
+  // "Advisory provided by Google" and the learn-more links, when one of the
+  // reasons is Google's (content/reason-labels.js; Web Risk's rules for
+  // warnings). Below the buttons and outside the evidence cards, which the
+  // Kids persona hides: the credit stays on every block Google's verdict made.
+  const _labels = window.__cleanwayReasons;
+  const advisoryHTML = _labels && typeof _labels.googleAdvisoryHtml === "function"
+    ? _labels.googleAdvisoryHtml(reasons)
+    : "";
+
   overlay.innerHTML = `
     <style id="ls-block-styles">
       #ls-block-overlay {
@@ -544,6 +553,15 @@ function showBlockPage(result, actions) {
         background: rgba(148, 163, 184, 0.1); color: #e2e8f0;
       }
       .ls-block-btn-proceed:disabled { opacity: 0.5; cursor: wait; }
+      .ls-google-advisory {
+        margin-top: 22px; font-size: 13px; line-height: 1.5;
+        color: rgba(254, 226, 226, 0.85);
+      }
+      .ls-google-advisory-more { margin-top: 2px; font-size: 12px; }
+      .ls-google-advisory a {
+        color: #fecaca; text-decoration: underline; text-underline-offset: 2px;
+      }
+      .ls-google-advisory a:hover { color: #fff; }
       .ls-block-footer {
         margin-top: 28px; font-size: 11px;
         /* 0.5 was 4.2:1 on the lighter top of the card; 0.7 is ≥ 6:1. */
@@ -599,6 +617,8 @@ function showBlockPage(result, actions) {
           ${e(bt("block_proceed_countdown", ["5"]))}
         </button>
       </div>
+
+      ${advisoryHTML}
 
       <p class="ls-block-footer">
         <span aria-hidden="true">&#x1F512;</span>
@@ -790,6 +810,8 @@ function showBlockPage(result, actions) {
       evBodies.forEach(function (el) { el.style.fontSize = "16px"; el.style.lineHeight = "1.5"; });
       var evIcons = overlay.querySelectorAll(".ls-block-evidence-icon");
       evIcons.forEach(function (el) { el.style.fontSize = "28px"; });
+      var advisory = overlay.querySelector(".ls-google-advisory");
+      if (advisory) advisory.style.fontSize = "18px";
       // Confidence chip was the one text node left at its 11px base
       // while everything around it grew — unreadable for the exact
       // low-vision user this persona exists for.

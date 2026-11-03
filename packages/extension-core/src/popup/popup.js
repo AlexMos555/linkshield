@@ -20,8 +20,8 @@ var FALLBACK_EN = {
   status_safe_subtitle: "No scam links found on $1",
   status_warning_title: "This site looks suspicious",
   status_warning_subtitle: "$1 shows some signs of a scam. Don't enter passwords or card details here unless you trust this site.",
-  status_danger_title: "This is a scam site",
-  status_danger_subtitle: "$1 is pretending to be someone else to steal your information",
+  status_danger_title: "This looks like a scam site",
+  status_danger_subtitle: "$1 may be pretending to be someone else to steal your information",
   status_unknown_title: "Couldn't check this page",
   status_unknown_subtitle: "Try again in a moment",
   status_user_content_title: "Anyone can publish a page here",
@@ -54,6 +54,10 @@ var FALLBACK_EN = {
   offline_warning: "Offline — using basic protection",
   trust_footer: "We check site addresses, not full links or page content",
   confidence_chip: "Confidence: $1%",
+  advisory_google: "Advisory provided by Google",
+  advisory_learn_more: "Learn more:",
+  advisory_learn_phishing: "phishing",
+  advisory_learn_malware: "malware",
   time_just_now: "just now",
   time_minutes: "$1 min",
   time_hours: "$1 h",
@@ -181,6 +185,17 @@ function setStatus(state, title, subtitle) {
   primary.hidden = state !== "danger";
 }
 
+// "Advisory provided by Google" under a verdict one of whose reasons is
+// Google's (content/reason-labels.js fromGoogle), hidden for any other —
+// Web Risk's rules for warnings. It starts hidden (popup.html); the two paths
+// that show a verdict — the block page's and the API's — decide.
+function showGoogleAdvisory(reasons) {
+  var box = $("google-advisory");
+  if (!box) return;
+  var labels = window.__cleanwayReasons;
+  box.hidden = !(labels && typeof labels.fromGoogle === "function" && labels.fromGoogle(reasons));
+}
+
 function levelToState(level) {
   if (level === "safe") return "safe";
   if (level === "user_content") return "user_content";
@@ -260,6 +275,7 @@ async function loadPageStatus() {
     if (shown.domain) _shownVerdict = { domain: shown.domain, level: "dangerous" };
     setStatus("danger", t("status_danger_title"),
       shown.domain ? t("status_danger_subtitle", [shown.domain]) : "");
+    showGoogleAdvisory(shown.reasons);
     if (typeof shown.confidence_pct === "number") {
       var blockedChip = $("confidence-chip");
       if (blockedChip) {
@@ -325,6 +341,7 @@ async function loadPageStatus() {
       subtitle = t("status_unknown_subtitle");
     }
     setStatus(state, title, subtitle);
+    showGoogleAdvisory(r.reasons);
     // Strategy doc #12 — surface the confidence band beneath the
     // verdict. Backend always populates confidence_pct (50-99) on
     // every result; falling back to nothing if the field is

@@ -41,10 +41,10 @@
         }
       },
       "status_danger_title": {
-        "text": "Este é um site fraudulento"
+        "text": "Parece um site fraudulento"
       },
       "status_danger_subtitle": {
-        "text": "$DOMAIN$ está se passando por outro site para roubar seus dados",
+        "text": "$DOMAIN$ pode estar se passando por outro site para roubar seus dados",
         "placeholders": {
           "domain": {
             "content": "$1"
@@ -370,10 +370,10 @@
         "text": "PARE"
       },
       "subtitle_scam": {
-        "text": "Este é um site fraudulento"
+        "text": "Parece um site fraudulento"
       },
       "explanation": {
-        "text": "$DOMAIN$ está se passando por outro site para roubar seus dados.",
+        "text": "$DOMAIN$ pode estar se passando por outro site para roubar seus dados.",
         "placeholders": {
           "domain": {
             "content": "$1"
@@ -418,7 +418,7 @@
         "text": "Protegido pelo Cleanway. Nunca vendemos seus dados."
       },
       "voice_alert": {
-        "text": "Pare. O site $DOMAIN$ é perigoso. Não digite sua senha.",
+        "text": "Pare. O site $DOMAIN$ pode ser perigoso. Não digite sua senha.",
         "placeholders": {
           "domain": {
             "content": "$1"
@@ -444,6 +444,9 @@
       },
       "hero_subtitle": {
         "text": "Cada link que você vê é verificado. Os perigosos são bloqueados automaticamente."
+      },
+      "limits": {
+        "text": "Nenhuma proteção é perfeita: de vez em quando um site seguro pode ser marcado por engano, e um perigoso pode passar despercebido."
       },
       "step1_title": {
         "text": "Verificação automática"
@@ -743,7 +746,7 @@
     },
     "reason": {
       "flagged_dangerous": {
-        "text": "O Google marca este site como perigoso"
+        "text": "O Google alerta que este site pode ser perigoso"
       },
       "flagged_phishing": {
         "text": "Denunciado como phishing"
@@ -871,7 +874,7 @@
     },
     "evidence": {
       "flagged_dangerous": {
-        "text": "O Google Safe Browsing, a lista que Chrome, Firefox e Safari usam para alertar as pessoas, marca este site como perigoso."
+        "text": "Este site está nas listas do Google de sites suspeitos de golpe ou de programas nocivos (Google Web Risk). Ele pode tentar arrancar seus dados ou instalar programas nocivos."
       },
       "flagged_phishing": {
         "text": "Este site está em bases antiphishing — listas de sites que enganam as pessoas para roubar senhas ou dados de cartão."
@@ -995,6 +998,20 @@
       },
       "broken_certificate": {
         "text": "O certificado que comprova quem está por trás deste site expirou, não foi emitido por uma autoridade confiável ou pertence a outro endereço. Seu navegador também vai avisar."
+      }
+    },
+    "advisory": {
+      "google": {
+        "text": "Aviso fornecido pelo Google"
+      },
+      "learn_more": {
+        "text": "Saiba mais:"
+      },
+      "learn_phishing": {
+        "text": "phishing"
+      },
+      "learn_malware": {
+        "text": "malware"
       }
     },
     "weekly": {
@@ -1161,7 +1178,7 @@
         "text": "Fechar"
       },
       "finding_url_reputation": {
-        "text": "Um link deste e-mail leva a um site perigoso conhecido"
+        "text": "Um link deste e-mail pode levar a um site perigoso"
       },
       "finding_auth_fail": {
         "text": "O e-mail não passou nas verificações que confirmam quem realmente o enviou"
@@ -1215,7 +1232,7 @@
         "text": "Verificar se há phishing nos e-mails que abro no Gmail, Outlook e Yahoo"
       },
       "setting_consent": {
-        "text": "Desativado, a menos que você ative. Quando ativado, cada e-mail que você abre no Gmail, Outlook ou Yahoo Mail é enviado ao servidor da Cleanway (api.cleanway.ai) para verificar se é phishing: o assunto, o nome e o endereço do remetente, o endereço Reply-To, o texto da mensagem e o endereço e o texto de cada link. O e-mail é verificado e não é guardado; os domínios dos links também são verificados com o Google Safe Browsing. Desative quando quiser e a verificação para na hora."
+        "text": "Desativado, a menos que você ative. Quando ativado, cada e-mail que você abre no Gmail, Outlook ou Yahoo Mail é enviado ao servidor da Cleanway (api.cleanway.ai) para verificar se é phishing: o assunto, o nome e o endereço do remetente, o endereço Reply-To, o texto da mensagem e o endereço e o texto de cada link. O e-mail é verificado e não é guardado; os domínios dos links também são verificados com o Google Web Risk. Desative quando quiser e a verificação para na hora."
       },
       "setting_denied": {
         "text": "O navegador não deu à Cleanway acesso aos sites de e-mail, então a verificação de e-mails continua desativada."
@@ -1666,7 +1683,7 @@
         "Seu endereço IP, para limitar quantas verificações uma conexão pode fazer; para isso ele fica guardado como está por no máximo uma hora",
         "Seu e-mail e seu plano, só se você criar uma conta"
       ],
-      "server_note": "Para avaliar um site, nosso servidor pode consultar o nome dele em serviços como o Google Safe Browsing: só o nome, nunca quem você é.",
+      "server_note": "Para avaliar um site, nosso servidor pode consultar o nome dele em serviços como o Google Web Risk: só o nome, nunca quem você é.",
       "device_heading": "O que fica no seu celular",
       "device_items": [
         "A lista de sites de golpe usada pela proteção",
@@ -1703,7 +1720,7 @@
       "items": [
         {
           "q": "O que o Cleanway fica sabendo sobre mim?",
-          "a": "Os sites são comparados com a lista no próprio celular. Quando um site precisa de uma análise mais detalhada, só o nome dele (como example.com) vai para o nosso servidor, que pode consultar esse nome em serviços como o Google Safe Browsing. Não recebemos links completos, conteúdo de páginas nem textos de mensagens, e não mantemos registro dos sites que você abre. Os detalhes estão na nossa política de privacidade."
+          "a": "Os sites são comparados com a lista no próprio celular. Quando um site precisa de uma análise mais detalhada, só o nome dele (como example.com) vai para o nosso servidor, que pode consultar esse nome em serviços como o Google Web Risk. Não recebemos links completos, conteúdo de páginas nem textos de mensagens, e não mantemos registro dos sites que você abre. Os detalhes estão na nossa política de privacidade."
         },
         {
           "q": "O celular vai ficar mais lento?",
@@ -1714,8 +1731,8 @@
           "a": "Não ao mesmo tempo. A proteção do Cleanway usa o mecanismo de VPN do Android só para os nomes dos sites: o celular compara cada nome com a lista e busca os que não estão nela como faria sem o Cleanway, no DNS da sua rede ou, se ele não responder, na Cloudflare ou no Quad9. O resto do seu tráfego segue normalmente — nem pelo Cleanway, nem por outro país. O Android só roda um serviço desse tipo por vez; por isso, se você ligar outra VPN, a proteção do Cleanway desliga. Quando terminar, abra o Cleanway e ative a proteção de novo. A verificação manual de um site ou mensagem no app continua funcionando de qualquer jeito."
         },
         {
-          "q": "Qual a diferença para o Google Safe Browsing?",
-          "a": "O Google Safe Browsing é uma das fontes que usamos. O Cleanway também bloqueia sites de golpe conhecidos em todos os apps do celular, não só no navegador, verifica mensagens suspeitas no próprio celular e explica suas conclusões em palavras simples. Quando consultamos o Google sobre um site, enviamos só o nome dele, não quem você é."
+          "q": "Qual a diferença para os avisos do navegador?",
+          "a": "Chrome, Firefox e Safari avisam sozinhos sobre parte dos sites perigosos, com listas do Google. Nós também consultamos o Google, pelo Google Web Risk, e usamos outras fontes. Além disso, o Cleanway bloqueia sites de golpe conhecidos em todos os apps do celular, não só no navegador, verifica mensagens suspeitas no próprio celular e explica suas conclusões em palavras simples. Quando consultamos o Google sobre um site, enviamos só o nome dele, não quem você é."
         },
         {
           "q": "É grátis?",
@@ -2117,7 +2134,6 @@
       "caveat_endpoint": "O Cleanway é medido pela verificação pública de sites, o mesmo caminho anônimo que um visitante usa, e não por um caminho privilegiado. Ele mede a resposta do nosso servidor, não o bloqueio no celular: a proteção do celular só bloqueia na hora os sites da lista dela, então este número não diz quantos desses links um celular bloquearia.",
       "caveat_rate_limit": "No momento, a execução semanal é freada pelo limite de requisições dessa verificação, então muitos links ficam sem veredito e a maioria das medições é pequena demais para publicar.",
       "caveat_phishtank": "A consulta gratuita do PhishTank costuma responder “não indexado” para links recentes porque sua base fica algumas horas atrasada, então a coluna dele muitas vezes mostra “—”.",
-      "caveat_gsb": "O Google Safe Browsing precisa de uma chave de API; quando nenhuma está configurada para a execução, a coluna dele mostra “—”.",
       "caveat_nxdomain": "Um domínio que não existe mais também recebe NXDOMAIN da Cloudflare e é contado como bloqueio da Cloudflare, o que favorece a Cloudflare em domínios de phishing que já foram derrubados.",
       "caveat_latency": "Os tempos de resposta são medidos a partir da máquina que roda o script (um servidor na nuvem nos EUA ou na UE); de outras regiões eles serão diferentes.",
       "caveat_allowlist": "Nosso servidor considera seguros, sem analisá-los, os sites do top 100.000 da Tranco, e a amostra de sites reais acima vem dessa mesma faixa. Por isso ela não mostra com que frequência o Cleanway chama por engano de perigoso um site real menos conhecido, e não publicamos taxa de alarmes falsos com base nela. Vamos publicar quando a amostra incluir sites reais fora dessa lista.",
@@ -2426,7 +2442,7 @@
             "Para decidir se o site é perigoso, nosso servidor pode:"
           ],
           "items": [
-            "consultar o nome em serviços de verificação externos: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX e IPQualityScore, e descobrir quando o site foi registrado consultando via RDAP o registro da sua extensão de domínio (para .com, a Verisign). Eles recebem só o nome do site, não quem você é;",
+            "consultar o nome em serviços de verificação externos: Google Web Risk, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX e IPQualityScore, e descobrir quando o site foi registrado consultando via RDAP o registro da sua extensão de domínio (para .com, a Verisign). Eles recebem só o nome do site, não quem você é;",
             "comparar a sua resposta com a do filtro de DNS da Cloudflare (1.1.1.1 for Families), que recebe o nome do site numa consulta de DNS comum;",
             "olhar o próprio site (o endereço, o certificado e as configurações) — a partir do nosso servidor, não do seu celular;",
             "em casos duvidosos, pedir uma segunda opinião a um modelo de IA da Anthropic. Ele recebe só sinais abstratos, sem o nome do site."
@@ -3837,7 +3853,7 @@
     },
     "onboarding": {
       "s1_title": "Verifique qualquer coisa antes de tocar",
-      "s1_desc": "Cole um link, escaneie um código QR ou compartilhe qualquer coisa suspeita direto para o Cleanway. Você recebe uma resposta simples e os motivos por trás dela.",
+      "s1_desc": "Cole um link, escaneie um código QR ou compartilhe qualquer coisa suspeita direto para o Cleanway. Você recebe uma resposta simples e os motivos por trás dela. Nenhuma verificação é perfeita: de vez em quando um site seguro pode ser marcado por engano, ou um perigoso passar despercebido.",
       "s2_title": "Feito para ser privado",
       "s2_desc": "Para verificar um link, nossos servidores recebem o nome do site e um número aleatório da instalação que muda todo dia. Suas senhas, o texto das suas mensagens e os endereços completos das páginas nunca saem do celular.",
       "s3_title": "Um escudo para todos os aplicativos",
@@ -3900,7 +3916,7 @@
       "nav_title": "Estão me ligando"
     },
     "reason": {
-      "flagged_dangerous": "O Google marca este site como perigoso",
+      "flagged_dangerous": "O Google alerta que este site pode ser perigoso",
       "flagged_phishing": "Denunciado como phishing",
       "on_blocklists": "Em listas confiáveis de golpes e spam",
       "threat_reports": "Mencionado em relatórios de ameaças",

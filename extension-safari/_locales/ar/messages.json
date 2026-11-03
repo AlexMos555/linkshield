@@ -37,10 +37,10 @@
     }
   },
   "status_danger_title": {
-    "message": "هذا موقع احتيالي"
+    "message": "يبدو أن هذا موقع احتيالي"
   },
   "status_danger_subtitle": {
-    "message": "$DOMAIN$ ينتحل صفة موقع آخر لسرقة معلوماتك",
+    "message": "قد يكون $DOMAIN$ ينتحل صفة موقع آخر لسرقة معلوماتك",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -362,10 +362,10 @@
     "message": "قف"
   },
   "block_subtitle_scam": {
-    "message": "هذا موقع احتيالي"
+    "message": "يبدو أن هذا موقع احتيالي"
   },
   "block_explanation": {
-    "message": "$DOMAIN$ ينتحل صفة موقع آخر ليسرق معلوماتك.",
+    "message": "قد يكون $DOMAIN$ ينتحل صفة موقع آخر ليسرق معلوماتك.",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -410,7 +410,7 @@
     "message": "محمي بواسطة Cleanway. لا نبيع بياناتك أبدًا."
   },
   "block_voice_alert": {
-    "message": "توقف. الموقع $DOMAIN$ خطير. لا تكتب كلمة المرور.",
+    "message": "توقف. قد يكون الموقع $DOMAIN$ خطيرًا. لا تكتب كلمة المرور.",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -434,6 +434,9 @@
   },
   "welcome_hero_subtitle": {
     "message": "يتم فحص كل رابط تراه. الروابط الخطرة تُحظر تلقائيًا."
+  },
+  "welcome_limits": {
+    "message": "لا توجد حماية مثالية: قد يُصنَّف موقع آمن خطأً من حين لآخر، وقد يفوتنا موقع خطير."
   },
   "welcome_step1_title": {
     "message": "فحص تلقائي"
@@ -717,7 +720,7 @@
     "message": "تم تحذير أحد أفراد عائلتك من موقع مشبوه."
   },
   "reason_flagged_dangerous": {
-    "message": "يصنّف Google هذا الموقع كخطير"
+    "message": "يحذّر Google من أن هذا الموقع قد يكون خطيرًا"
   },
   "reason_flagged_phishing": {
     "message": "تم الإبلاغ عنه كتصيّد"
@@ -843,7 +846,7 @@
     "message": "شهادة الأمان لهذا الموقع غير صالحة"
   },
   "evidence_flagged_dangerous": {
-    "message": "تصنّف Google Safe Browsing، وهي القائمة التي تستخدمها Chrome وFirefox وSafari لتحذير الناس، هذا الموقع على أنه خطير."
+    "message": "هذا الموقع مدرج في قوائم Google للمواقع المشتبه في أنها مخادعة أو ضارة (Google Web Risk). قد يحاول استدراجك لكشف بياناتك أو تثبيت برامج ضارة."
   },
   "evidence_flagged_phishing": {
     "message": "هذا الموقع مدرج في قواعد بيانات مكافحة التصيّد — قوائم بمواقع تخدع الناس لسرقة كلمات المرور أو بيانات البطاقات."
@@ -967,6 +970,18 @@
   },
   "evidence_broken_certificate": {
     "message": "الشهادة التي تثبت من يدير هذا الموقع منتهية الصلاحية، أو لم تصدرها جهة موثوقة، أو تخص عنوانًا آخر. سيحذّرك متصفحك من ذلك أيضًا."
+  },
+  "advisory_google": {
+    "message": "التحذير مقدَّم من Google"
+  },
+  "advisory_learn_more": {
+    "message": "اعرف المزيد:"
+  },
+  "advisory_learn_phishing": {
+    "message": "التصيد الاحتيالي"
+  },
+  "advisory_learn_malware": {
+    "message": "البرامج الضارة"
   },
   "weekly_title": {
     "message": "أسبوعي"
@@ -1123,7 +1138,7 @@
     "message": "إغلاق"
   },
   "webmail_finding_url_reputation": {
-    "message": "رابط في هذه الرسالة يقود إلى موقع خطير معروف"
+    "message": "قد يقود رابط في هذه الرسالة إلى موقع خطير"
   },
   "webmail_finding_auth_fail": {
     "message": "فشلت الرسالة في الفحوصات التي تؤكد مرسلها الحقيقي"
@@ -1177,7 +1192,7 @@
     "message": "افحص الرسائل التي أفتحها في Gmail وOutlook وYahoo بحثًا عن التصيّد"
   },
   "webmail_setting_consent": {
-    "message": "متوقّف ما لم تشغّله بنفسك. عند تشغيله، تُرسَل كل رسالة تفتحها في Gmail أو Outlook أو Yahoo Mail إلى خادم Cleanway ‏(api.cleanway.ai) لفحصها بحثًا عن التصيّد: الموضوع، واسم المرسل وعنوانه، وعنوان Reply-To، ونص الرسالة، وعنوان كل رابط فيها ونصّه. تُفحَص الرسالة ولا تُحفَظ؛ وتُفحَص نطاقات روابطها أيضًا عبر Google Safe Browsing. أوقفه في أي وقت فيتوقف الفحص فورًا."
+    "message": "متوقّف ما لم تشغّله بنفسك. عند تشغيله، تُرسَل كل رسالة تفتحها في Gmail أو Outlook أو Yahoo Mail إلى خادم Cleanway ‏(api.cleanway.ai) لفحصها بحثًا عن التصيّد: الموضوع، واسم المرسل وعنوانه، وعنوان Reply-To، ونص الرسالة، وعنوان كل رابط فيها ونصّه. تُفحَص الرسالة ولا تُحفَظ؛ وتُفحَص نطاقات روابطها أيضًا عبر Google Web Risk. أوقفه في أي وقت فيتوقف الفحص فورًا."
   },
   "webmail_setting_denied": {
     "message": "لم يمنح متصفحك Cleanway إذن الوصول إلى مواقع البريد، لذلك يبقى فحص الرسائل متوقفًا."

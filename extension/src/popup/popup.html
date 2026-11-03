@@ -54,6 +54,17 @@
       <span class="confidence-chip" id="confidence-chip" hidden></span>
     </section>
 
+    <!-- Under a verdict built on Google's lists only (popup.js
+         showGoogleAdvisory): Web Risk's rules for warnings ask for this
+         credit, linked, and for a way to learn more. Outside the live status
+         card, so a screen reader does not read links as the verdict. -->
+    <p class="google-advisory" id="google-advisory" hidden>
+      <a href="https://docs.cloud.google.com/web-risk/docs/advisory" target="_blank" rel="noopener noreferrer" data-i18n="advisory_google">Advisory provided by Google</a>
+      <span class="google-advisory-more"><span data-i18n="advisory_learn_more">Learn more:</span>
+        <a href="https://www.antiphishing.org/" target="_blank" rel="noopener noreferrer" data-i18n="advisory_learn_phishing">phishing</a> &middot;
+        <a href="https://developers.google.com/search/docs/advanced/security/malware" target="_blank" rel="noopener noreferrer" data-i18n="advisory_learn_malware">malware</a></span>
+    </p>
+
     <!-- Primary action (only shown on danger state) -->
     <div class="primary-action" id="primary-action" hidden>
       <button class="btn btn-danger" id="btn-close-tab" type="button" data-i18n="action_close_tab">Close this page</button>
@@ -172,6 +183,7 @@
   <script src="../utils/platform.js"></script>
   <script src="../utils/token-store.js"></script>
   <script src="../utils/blocked-url.js"></script>
+  <script src="../content/reason-labels.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

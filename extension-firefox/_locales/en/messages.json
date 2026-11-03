@@ -39,10 +39,10 @@
     }
   },
   "status_danger_title": {
-    "message": "This is a scam site"
+    "message": "This looks like a scam site"
   },
   "status_danger_subtitle": {
-    "message": "$DOMAIN$ is pretending to be someone else to steal your information",
+    "message": "$DOMAIN$ may be pretending to be someone else to steal your information",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -364,10 +364,10 @@
     "message": "STOP"
   },
   "block_subtitle_scam": {
-    "message": "This is a scam site"
+    "message": "This looks like a scam site"
   },
   "block_explanation": {
-    "message": "$DOMAIN$ is pretending to be someone else so it can steal your information.",
+    "message": "$DOMAIN$ may be pretending to be someone else to steal your information.",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -412,7 +412,7 @@
     "message": "Protected by Cleanway. We never sell your data."
   },
   "block_voice_alert": {
-    "message": "Stop. The site $DOMAIN$ is dangerous. Do not type your password.",
+    "message": "Stop. The site $DOMAIN$ may be dangerous. Do not type your password.",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -436,6 +436,9 @@
   },
   "welcome_hero_subtitle": {
     "message": "Every link you see is being checked. Dangerous ones will be blocked automatically."
+  },
+  "welcome_limits": {
+    "message": "No protection is perfect: now and then a safe site may be flagged by mistake, and a dangerous one may be missed."
   },
   "welcome_step1_title": {
     "message": "Automatic scanning"
@@ -719,7 +722,7 @@
     "message": "Your family member was warned about a suspicious site."
   },
   "reason_flagged_dangerous": {
-    "message": "Google flags this site as dangerous"
+    "message": "Google warns this site may be dangerous"
   },
   "reason_flagged_phishing": {
     "message": "Reported as phishing"
@@ -845,7 +848,7 @@
     "message": "The site's security certificate is invalid"
   },
   "evidence_flagged_dangerous": {
-    "message": "Google Safe Browsing — the list Chrome, Firefox and Safari use to warn people — marks this site as unsafe."
+    "message": "This site is on Google's lists of suspected deceptive or harmful sites (Google Web Risk). It may try to trick you out of your details or install harmful programs."
   },
   "evidence_flagged_phishing": {
     "message": "This site is in anti-phishing databases — lists of sites that trick people out of passwords or card details."
@@ -969,6 +972,18 @@
   },
   "evidence_broken_certificate": {
     "message": "The certificate that proves who runs this site has expired, was not issued by a trusted authority, or belongs to another address. Your browser will warn about it too."
+  },
+  "advisory_google": {
+    "message": "Advisory provided by Google"
+  },
+  "advisory_learn_more": {
+    "message": "Learn more:"
+  },
+  "advisory_learn_phishing": {
+    "message": "phishing"
+  },
+  "advisory_learn_malware": {
+    "message": "malware"
   },
   "weekly_title": {
     "message": "My week"
@@ -1125,7 +1140,7 @@
     "message": "Close"
   },
   "webmail_finding_url_reputation": {
-    "message": "A link in this email leads to a known dangerous site"
+    "message": "A link in this email may lead to a dangerous site"
   },
   "webmail_finding_auth_fail": {
     "message": "The email failed the checks that confirm who really sent it"
@@ -1179,7 +1194,7 @@
     "message": "Scan emails I open in Gmail, Outlook and Yahoo for phishing"
   },
   "webmail_setting_consent": {
-    "message": "Off unless you turn it on. When on, every email you open in Gmail, Outlook or Yahoo Mail is sent to Cleanway's server (api.cleanway.ai) to be checked for phishing: its subject, the sender's name and address, the Reply-To address, the text of the message, and the address and text of each link in it. The email is checked and not stored; the domains of its links are also checked with Google Safe Browsing. Turn this off at any time and scanning stops at once."
+    "message": "Off unless you turn it on. When on, every email you open in Gmail, Outlook or Yahoo Mail is sent to Cleanway's server (api.cleanway.ai) to be checked for phishing: its subject, the sender's name and address, the Reply-To address, the text of the message, and the address and text of each link in it. The email is checked and not stored; the domains of its links are also checked with Google Web Risk. Turn this off at any time and scanning stops at once."
   },
   "webmail_setting_denied": {
     "message": "Your browser did not give Cleanway access to the mail sites, so email scanning stays off."

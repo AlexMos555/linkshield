@@ -37,10 +37,10 @@
     }
   },
   "status_danger_title": {
-    "message": "Este es un sitio fraudulento"
+    "message": "Esto parece un sitio fraudulento"
   },
   "status_danger_subtitle": {
-    "message": "$DOMAIN$ se hace pasar por otro sitio para robar tu información",
+    "message": "$DOMAIN$ podría estar haciéndose pasar por otro sitio para robar tu información",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -362,10 +362,10 @@
     "message": "ALTO"
   },
   "block_subtitle_scam": {
-    "message": "Este es un sitio fraudulento"
+    "message": "Esto parece un sitio fraudulento"
   },
   "block_explanation": {
-    "message": "$DOMAIN$ se hace pasar por otro sitio para robar tus datos.",
+    "message": "$DOMAIN$ podría estar haciéndose pasar por otro sitio para robar tus datos.",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -410,7 +410,7 @@
     "message": "Protegido por Cleanway. Nunca vendemos tus datos."
   },
   "block_voice_alert": {
-    "message": "Detente. El sitio $DOMAIN$ es peligroso. No escribas tu contraseña.",
+    "message": "Detente. El sitio $DOMAIN$ puede ser peligroso. No escribas tu contraseña.",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -434,6 +434,9 @@
   },
   "welcome_hero_subtitle": {
     "message": "Cada enlace que ves se revisa. Los peligrosos se bloquean automáticamente."
+  },
+  "welcome_limits": {
+    "message": "Ninguna protección es perfecta: de vez en cuando un sitio seguro puede marcarse por error y uno peligroso puede pasar sin aviso."
   },
   "welcome_step1_title": {
     "message": "Revisión automática"
@@ -717,7 +720,7 @@
     "message": "Se avisó a un familiar sobre un sitio sospechoso."
   },
   "reason_flagged_dangerous": {
-    "message": "Google marca este sitio como peligroso"
+    "message": "Google advierte que este sitio puede ser peligroso"
   },
   "reason_flagged_phishing": {
     "message": "Reportado como phishing"
@@ -843,7 +846,7 @@
     "message": "El certificado de seguridad del sitio no es válido"
   },
   "evidence_flagged_dangerous": {
-    "message": "Google Safe Browsing, la lista que usan Chrome, Firefox y Safari para avisar a la gente, marca este sitio como peligroso."
+    "message": "Este sitio está en las listas de Google de sitios sospechosos de engaño o de software dañino (Google Web Risk). Podría intentar sacarte tus datos o instalar programas dañinos."
   },
   "evidence_flagged_phishing": {
     "message": "Este sitio figura en bases de datos antiphishing: listas de sitios que engañan a la gente para robar contraseñas o datos de tarjetas."
@@ -967,6 +970,18 @@
   },
   "evidence_broken_certificate": {
     "message": "El certificado que demuestra quién está detrás de este sitio ha caducado, no lo emitió una autoridad de confianza o pertenece a otra dirección. Tu navegador también te avisará."
+  },
+  "advisory_google": {
+    "message": "Aviso proporcionado por Google"
+  },
+  "advisory_learn_more": {
+    "message": "Más información:"
+  },
+  "advisory_learn_phishing": {
+    "message": "phishing"
+  },
+  "advisory_learn_malware": {
+    "message": "malware"
   },
   "weekly_title": {
     "message": "Mi semana"
@@ -1123,7 +1138,7 @@
     "message": "Cerrar"
   },
   "webmail_finding_url_reputation": {
-    "message": "Un enlace de este correo lleva a un sitio peligroso conocido"
+    "message": "Un enlace de este correo podría llevar a un sitio peligroso"
   },
   "webmail_finding_auth_fail": {
     "message": "El correo no superó las comprobaciones que confirman quién lo envió de verdad"
@@ -1177,7 +1192,7 @@
     "message": "Analizar en busca de phishing los correos que abro en Gmail, Outlook y Yahoo"
   },
   "webmail_setting_consent": {
-    "message": "Desactivado salvo que lo actives. Cuando está activado, cada correo que abres en Gmail, Outlook o Yahoo Mail se envía al servidor de Cleanway (api.cleanway.ai) para comprobar si es phishing: el asunto, el nombre y la dirección del remitente, la dirección Reply-To, el texto del mensaje y la dirección y el texto de cada enlace. El correo se analiza y no se guarda; los dominios de sus enlaces también se comprueban con Google Safe Browsing. Desactívalo cuando quieras y el análisis se detiene al instante."
+    "message": "Desactivado salvo que lo actives. Cuando está activado, cada correo que abres en Gmail, Outlook o Yahoo Mail se envía al servidor de Cleanway (api.cleanway.ai) para comprobar si es phishing: el asunto, el nombre y la dirección del remitente, la dirección Reply-To, el texto del mensaje y la dirección y el texto de cada enlace. El correo se analiza y no se guarda; los dominios de sus enlaces también se comprueban con Google Web Risk. Desactívalo cuando quieras y el análisis se detiene al instante."
   },
   "webmail_setting_denied": {
     "message": "Tu navegador no dio a Cleanway acceso a los sitios de correo, así que el análisis de correos sigue desactivado."

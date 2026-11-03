@@ -82,6 +82,37 @@
   display: block;
 }
 
+/* A tooltip with Google's credit (content/index.js): its links must be
+   clickable, so it takes the pointer, and the gap above the badge is padding
+   instead of margin — moving the pointer up to a link keeps it open. */
+.ls-tooltip.ls-tooltip-links {
+  pointer-events: auto;
+  margin-bottom: 0;
+  padding-bottom: 8px;
+}
+
+/* "Advisory provided by Google" + learn-more links, under the reasons of a
+   verdict built on Google's lists (content/reason-labels.js), in a tooltip
+   or the context-menu check. Explicit colours: the page's own link styles
+   must not make them unreadable on the dark box. */
+.ls-google-advisory {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #cbd5e1;
+  text-align: start;
+}
+
+.ls-google-advisory a {
+  color: #93c5fd;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.ls-google-advisory a:hover {
+  color: #bfdbfe;
+}
+
 .ls-tooltip-inner {
   background: #1f2937;
   color: #f3f4f6;

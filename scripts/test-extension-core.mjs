@@ -575,7 +575,7 @@ const KEY_USE_RES = [
   // Keys chosen before the call (ternaries, lookup tables): any literal in a
   // namespace that exists only for i18n must be a real key. (Not pwned_:
   // password-pwned.js also keeps a storage counter under that prefix.)
-  /["'`]((?:evidence|weekly|score|breach|webmail|options)_[a-z0-9_]+)["'`]/g,
+  /["'`]((?:evidence|weekly|score|breach|webmail|options|advisory)_[a-z0-9_]+)["'`]/g,
 ];
 
 // Static text in the extension pages: data-i18n, -title, -placeholder,

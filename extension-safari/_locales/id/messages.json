@@ -37,10 +37,10 @@
     }
   },
   "status_danger_title": {
-    "message": "Ini situs penipuan"
+    "message": "Ini tampaknya situs penipuan"
   },
   "status_danger_subtitle": {
-    "message": "$DOMAIN$ berpura-pura menjadi situs lain untuk mencuri data Anda",
+    "message": "$DOMAIN$ mungkin berpura-pura menjadi situs lain untuk mencuri data Anda",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -362,10 +362,10 @@
     "message": "STOP"
   },
   "block_subtitle_scam": {
-    "message": "Ini situs penipuan"
+    "message": "Ini tampaknya situs penipuan"
   },
   "block_explanation": {
-    "message": "$DOMAIN$ berpura-pura menjadi situs lain untuk mencuri data Anda.",
+    "message": "$DOMAIN$ mungkin berpura-pura menjadi situs lain untuk mencuri data Anda.",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -410,7 +410,7 @@
     "message": "Dilindungi oleh Cleanway. Kami tidak pernah menjual data Anda."
   },
   "block_voice_alert": {
-    "message": "Berhenti. Situs $DOMAIN$ berbahaya. Jangan masukkan kata sandi Anda.",
+    "message": "Berhenti. Situs $DOMAIN$ mungkin berbahaya. Jangan masukkan kata sandi Anda.",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -434,6 +434,9 @@
   },
   "welcome_hero_subtitle": {
     "message": "Setiap tautan yang Anda lihat diperiksa. Yang berbahaya diblokir otomatis."
+  },
+  "welcome_limits": {
+    "message": "Tidak ada perlindungan yang sempurna: sesekali situs aman bisa ditandai karena keliru, dan situs berbahaya bisa terlewat."
   },
   "welcome_step1_title": {
     "message": "Pemeriksaan otomatis"
@@ -717,7 +720,7 @@
     "message": "Anggota keluarga Anda diperingatkan tentang situs mencurigakan."
   },
   "reason_flagged_dangerous": {
-    "message": "Google menandai situs ini berbahaya"
+    "message": "Google memperingatkan situs ini mungkin berbahaya"
   },
   "reason_flagged_phishing": {
     "message": "Dilaporkan sebagai phishing"
@@ -843,7 +846,7 @@
     "message": "Sertifikat keamanan situs ini tidak valid"
   },
   "evidence_flagged_dangerous": {
-    "message": "Google Safe Browsing, daftar yang dipakai Chrome, Firefox, dan Safari untuk memperingatkan pengguna, menandai situs ini berbahaya."
+    "message": "Situs ini ada di daftar Google untuk situs yang diduga menipu atau berbahaya (Google Web Risk). Situs ini mungkin mencoba memancing data Anda atau memasang program berbahaya."
   },
   "evidence_flagged_phishing": {
     "message": "Situs ini ada di basis data antiphishing — daftar situs yang menipu orang untuk mencuri kata sandi atau data kartu."
@@ -967,6 +970,18 @@
   },
   "evidence_broken_certificate": {
     "message": "Sertifikat yang membuktikan siapa pengelola situs ini sudah kedaluwarsa, tidak diterbitkan oleh otoritas tepercaya, atau milik alamat lain. Browser Anda juga akan memperingatkannya."
+  },
+  "advisory_google": {
+    "message": "Peringatan disediakan oleh Google"
+  },
+  "advisory_learn_more": {
+    "message": "Pelajari lebih lanjut:"
+  },
+  "advisory_learn_phishing": {
+    "message": "phishing"
+  },
+  "advisory_learn_malware": {
+    "message": "malware"
   },
   "weekly_title": {
     "message": "Minggu saya"
@@ -1123,7 +1138,7 @@
     "message": "Tutup"
   },
   "webmail_finding_url_reputation": {
-    "message": "Tautan di email ini mengarah ke situs berbahaya yang dikenal"
+    "message": "Tautan di email ini mungkin mengarah ke situs berbahaya"
   },
   "webmail_finding_auth_fail": {
     "message": "Email ini gagal dalam pemeriksaan yang memastikan pengirim sebenarnya"
@@ -1177,7 +1192,7 @@
     "message": "Periksa email yang saya buka di Gmail, Outlook, dan Yahoo dari phishing"
   },
   "webmail_setting_consent": {
-    "message": "Mati kecuali Anda menyalakannya. Saat menyala, setiap email yang Anda buka di Gmail, Outlook, atau Yahoo Mail dikirim ke server Cleanway (api.cleanway.ai) untuk diperiksa dari phishing: subjek, nama dan alamat pengirim, alamat Reply-To, teks pesan, serta alamat dan teks setiap tautan di dalamnya. Email diperiksa dan tidak disimpan; domain tautannya juga diperiksa dengan Google Safe Browsing. Matikan kapan saja dan pemeriksaan langsung berhenti."
+    "message": "Mati kecuali Anda menyalakannya. Saat menyala, setiap email yang Anda buka di Gmail, Outlook, atau Yahoo Mail dikirim ke server Cleanway (api.cleanway.ai) untuk diperiksa dari phishing: subjek, nama dan alamat pengirim, alamat Reply-To, teks pesan, serta alamat dan teks setiap tautan di dalamnya. Email diperiksa dan tidak disimpan; domain tautannya juga diperiksa dengan Google Web Risk. Matikan kapan saja dan pemeriksaan langsung berhenti."
   },
   "webmail_setting_denied": {
     "message": "Browser Anda tidak memberi Cleanway akses ke situs email, jadi pemeriksaan email tetap mati."

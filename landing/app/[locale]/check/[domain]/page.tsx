@@ -9,6 +9,7 @@ import ShareScanButton from "@/components/ShareScanButton";
 import { routing, type Locale } from "@/i18n/routing";
 import { hostFromSegment } from "@/lib/check-host";
 import { displayHost } from "@/lib/display-host";
+import { GOOGLE_ADVISORY_LINKS, hasGoogleAdvisory } from "@/lib/google-advisory";
 import { localePath } from "@/lib/locale-path";
 import { reasonLines } from "@/lib/reason-label";
 import { safeJsonLd } from "@/lib/json-ld";
@@ -186,6 +187,7 @@ export default async function CheckPage({ params }: Props) {
   const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
   const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
   const reasons = await getTranslations({ locale: safeLocale, namespace: "Reasons" });
+  const advisory = await getTranslations({ locale: safeLocale, namespace: "Advisory" });
   const result = await fetchScan(decodedDomain);
 
   // No verdict (API down, timed out, rate-limited): say so. Showing a yellow
@@ -195,6 +197,10 @@ export default async function CheckPage({ params }: Props) {
   const color = level ? LEVEL_COLORS[level] : "#8796ab";
   const canonical = urlFor(safeLocale, decodedDomain);
   const signals = level ? reasonLabels(result, (key) => reasons(key)) : [];
+  // One of the reasons is Google's (Web Risk): Google's rules for warnings ask
+  // for its credit, linked, and a way to learn more — and for none of it on a
+  // verdict built on other sources (lib/google-advisory.ts).
+  const google = level !== null && hasGoogleAdvisory(result.reason_codes);
   const href = (path: string) => localePath(safeLocale, path);
 
   // ── JSON-LD: rich structured data ──────────────────────────────
@@ -340,6 +346,22 @@ export default async function CheckPage({ params }: Props) {
                 </div>
               ))}
             </div>
+          )}
+
+          {google && (
+            <p data-testid="google-advisory" style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, margin: "0 0 20px" }}>
+              <a href={GOOGLE_ADVISORY_LINKS.advisory} target="_blank" rel="noopener noreferrer" style={{ color: "#60a5fa", textDecoration: "underline" }}>
+                {advisory("google")}
+              </a>
+              <br />
+              {advisory("learn_more")}{" "}
+              <a href={GOOGLE_ADVISORY_LINKS.phishing} target="_blank" rel="noopener noreferrer" style={{ color: "#60a5fa", textDecoration: "underline" }}>
+                {advisory("learn_phishing")}
+              </a>{" "}&middot;{" "}
+              <a href={GOOGLE_ADVISORY_LINKS.malware} target="_blank" rel="noopener noreferrer" style={{ color: "#60a5fa", textDecoration: "underline" }}>
+                {advisory("learn_malware")}
+              </a>
+            </p>
           )}
 
           {level && result.confidence === "low" && (
