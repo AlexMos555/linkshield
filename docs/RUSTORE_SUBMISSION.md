@@ -510,12 +510,22 @@ in place (no "App not installed"). That proves B2 is fixed end-to-end.
 > blocked site, the QR scanner (camera) and the after-call screen. No release
 > key was used and nothing was installed on the phone during the upgrade.
 
-> **Expo SDK 58 (1.1.0, #327, 2026-10-24) — compile check only, and no log
-> kept.** The mirror was deleted afterwards and no gradle output or checksum of
-> these builds survives, so everything in this paragraph is a session record,
-> not evidence: before #327 merges, rebuild with `cw_build` above (it keeps the
-> gradle log now) and attach the logs and checksums. What *was* re-checked with
-> a kept log (2026-10-25, excerpts in #327): on AGP 9.2.1 / Gradle 9.4.1 with
+> **Expo SDK 58 (1.1.0, #327): 2026-10-24 compile check without a log; redone
+> with the release key and logs on 2026-11-03.** For the 2026-10-24 builds the
+> mirror was deleted afterwards and no gradle output or checksum survives, so
+> their results ("The session record" below) are not evidence. **Redone
+> 2026-11-03** with `cw_build` above and
+> the release key, 1.1.0 (110): site and RuStore `assembleRelease`, Play
+> `bundleRelease assembleRelease`, all BUILD SUCCESSFUL, signed `CN=Cleanway`
+> with the same certificate as the published 1.0.3. Logs in
+> `~/Desktop/cleanway-android-out/logs/` (`1.1.0-110-*-gradle.log`, file checks
+> `1.1.0-110-artifact-checks.txt`, store guard `1.1.0-110-distribution-guard.log`,
+> Kotlin tests `1.1.0-110-kotlin-tests.log`: 342 of 344, the same two
+> `MessageAnalyzerTest` time budgets), checksums in `SHA256SUMS-1.1.0.txt`;
+> excerpts in the #327 description (docs/EXPO_UPGRADE_PLAN.md §10.2). The Play
+> AAB of that run has no `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` (none exists yet):
+> rebuild C with it before Play. Also re-checked with a kept log
+> (2026-10-25, excerpts in a #327 comment): on AGP 9.2.1 / Gradle 9.4.1 with
 > the template's AGP-9 opt-outs, `preReleaseBuild` is in the `assembleRelease`
 > and `bundleRelease` graphs and runs before anything compiles, so the
 > share-intent guard prints its 5× `ok:` and fails on a fake 8.0.0 package or

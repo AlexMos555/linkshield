@@ -232,12 +232,15 @@ needed. Exact converter flags: docs/IOS.md §2.6.
 > leads to `/android` (direct APK). Everything below is what Play Console asks
 > for, answered from the code.
 >
-> **1.1.0 (Expo SDK 58 / RN 0.88, draft #327, 2026-10-24):** the requirements in
-> §6.A still hold on a debug-signed compile check (a session record, no log
-> kept: re-check with logs before #327 merges, docs/EXPO_UPGRADE_PLAN.md §10.2)
-> — `targetSdkVersion 36`,
-> `compileSdkVersion 37`, 16 KB alignment of all `arm64-v8a` libraries, the same
-> permissions; the AAB is 49 MB, ARM-only. R8 now minifies release builds:
+> **1.1.0 (Expo SDK 58 / RN 0.88, draft #327):** re-checked with logs on the
+> release-signed 1.1.0 (110) builds on 2026-11-03 (docs/EXPO_UPGRADE_PLAN.md
+> §10.2, first table) — `targetSdkVersion 36`,
+> `compileSdkVersion 37`, 16 KB alignment of all 27 `arm64-v8a` libraries in the
+> three APKs, the same permissions (Play adds only `BILLING`), signed with the
+> same certificate as the published 1.0.3; the AAB is 49 MB, ARM-only. Not
+> re-checked on 1.1.0: edge-to-edge (emulator), predictive back, 16 KB
+> alignment inside the AAB and the real-device retest
+> (docs/EXPO_UPGRADE_PLAN.md §6.2). R8 now minifies release builds:
 > upload each release's `mapping.txt` to Play (docs/RUSTORE_SUBMISSION.md §2,
 > docs/EXPO_UPGRADE_PLAN.md §10).
 

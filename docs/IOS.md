@@ -58,23 +58,40 @@ xcodebuild -workspace Cleanway.xcworkspace -scheme Cleanway -configuration Debug
 Debug loads JS from Metro (`npx expo start` in `$M`); Release embeds the bundle.
 Both configurations were built and run on the iOS 26.2 simulator with Xcode 26.3
 (2026-10-09, Expo SDK 54). `plugins/withXcode26Patches.js` keeps fmt / Sentry /
-expo-localization compiling on Xcode 26 (SDK 54; on SDK 58 it patches nothing).
+expo-localization compiling on Xcode 26 (SDK 54). On SDK 58 only its patch 4
+acts: expo-modules-jsi on Xcode below 26.4, so this Mac's Xcode 26.3 needs it.
 A full build is ~4 GB of DerivedData — delete the mirror and `build/` afterwards.
 
 **Expo SDK 58 (1.1.0, #327, 2026-10-25):** the same recipe builds the Debug
 simulator app with Xcode 26.3 (BUILD SUCCEEDED; `pod install` 123 pods —
-a session record: the log was not kept, so rebuild and keep it before #327
-merges, docs/EXPO_UPGRADE_PLAN.md §10.2). Expo
+a session record, the log was not kept). Later SDK 58 builds have logs in
+`~/Desktop/cleanway-android-out/logs/`: on 2026-11-02 a Release simulator build
+with patch 4 succeeded twice (`ios-1.1.0-sim-release-0211-run1-full.log`,
+`…-run2-summary.log`) and launched on the iPhone 16e simulator (a session
+record: the launch has no log); then the Release archives below
+(`ios-1.1.0-7-archive.log` on 2026-11-02, rebuilt after #392 as
+`ios-1.1.0-7b-archive.log` on 2026-11-03). `pod install` was not kept with its full output. Not
+yet run on a device: that is the TestFlight phone check
+(docs/EXPO_UPGRADE_PLAN.md §6.2, §10.3). Expo
 officially wants Xcode 26.4+ from SDK 56, and in #253 the Swift 6.2.4 compiler
 crashed on `expo-modules-core`; since `expo@58.0.19` `ExpoModulesCore` and five
 other Expo modules come as precompiled xcframeworks, and Xcode 26.3 imports
 them. Short on disk, build one architecture without the index or dSYMs (~2 GB
 of DerivedData instead of ~4 GB): add `ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES
 COMPILER_INDEX_STORE_ENABLE=NO DEBUG_INFORMATION_FORMAT=dwarf` to the
-`xcodebuild` line. Not yet tried on SDK 58: running it, a Release build, an
-archive. App Store builds are made here too, with the archive steps below
-(founder, 2026-11-02: Xcode 26.3, EAS §1.2 only as the fallback;
-docs/EXPO_UPGRADE_PLAN.md §9, decision 3).
+`xcodebuild` line. App Store builds are made here too, with the archive steps
+below (founder, 2026-11-02: Xcode 26.3, EAS §1.2 only as the fallback;
+docs/EXPO_UPGRADE_PLAN.md §9, decision 3). 1.1.0 (7) was archived that way
+and uploaded to TestFlight on 2026-11-03; the logs are
+`~/Desktop/cleanway-android-out/logs/ios-1.1.0-7b-archive.log`, `…-checks.txt`
+and `ios-1.1.0-7-upload.log`. The upload warns "Upload Symbols Failed" for
+four frameworks. React, ReactNativeDependencies and hermesvm come prebuilt
+without dSYMs, so crash reports in App Store Connect leave their frames
+unsymbolicated. ExpoCameraBarcodeScanning does ship a dSYM with the UUID Apple
+asked for, inside its xcframework
+(`Pods/ExpoCameraBarcodeScanning/ExpoCameraBarcodeScanning.xcframework/ios-arm64/dSYMs`),
+but it did not reach the archive's `dSYMs/`. The upload still succeeds. The
+app, its extensions and the other frameworks have dSYMs.
 
 **For App Store Connect** (how 1.0.6 builds 5 and 6 were made), archive Release
 from the same mirror, then check what the bundle carries **before** uploading

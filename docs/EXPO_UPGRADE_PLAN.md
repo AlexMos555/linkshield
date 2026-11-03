@@ -25,7 +25,7 @@
 | На какую версию | **SDK 58** (React Native 0.88, React 19.3). Это последняя версия: поддержка примерно до осени 2027, iOS 27 и сценовый цикл в ней по умолчанию |
 | Как | Для пользователей — **один релиз 1.1.0**. В коде два шага. Шаг А: новая архитектура React Native на SDK 54, только как контрольная точка; её можно проверить на этом iMac. Шаг Б: прыжок на 58 на основе #253 |
 | Что уже сделано в #253 | Зависимости SDK 58 подобраны. Проверки CI для мобильного кода зелёные. Android debug-сборка собирается. Уходят два из трёх уязвимых пакетов, по которым предупреждения сейчас отклонены |
-| Что осталось | Перенести #253 на текущий `main` (он отстал на 72 коммита). Исправить одно место, которое ломается молча (выгрузка данных). Собрать iOS (ни разу не собиралась). Собрать release-версии. Проверить всё на телефонах |
+| Что осталось | Перенести #253 на текущий `main` (он отстал на 72 коммита). Исправить одно место, которое ломается молча (выгрузка данных). Собрать iOS (ни разу не собиралась). Собрать release-версии. Проверить всё на телефонах. → 10.3: на 03.11 перенос, выгрузка данных, iOS-архив 1.1.0 (7) в TestFlight и подписанные Android-сборки 1.1.0 (110) сделаны; остались проверка на телефонах (6.2) и Play AAB с ключом RevenueCat |
 | Срочно, отдельно от обновления | В `expo-share-intent` 5.1.1 на Android была дыра (обход пути): любое приложение на телефоне могло записать свои файлы в приватную папку Cleanway, например в настройки и списки. **Закрыта в #318 патчем для 5.1.1. Исправление войдёт в 1.0.6**: на Android эта версия ещё не опубликована (раздел 1.2). Файлы 1.0.6 (107), собранные до слияния #318, исправления не содержат: их удалить, все три сборки пересобрать. В 1.1.0 берём версию ≥ 9.0.0, а патч удаляем |
 | Главное препятствие | Этот iMac (2019 года) не поддерживает macOS Tahoe, поэтому Xcode 26.4+ на нём не работает, а SDK 56+ официально требует 26.4+. Решение основателя (02.11): собирать iOS здесь на Xcode 26.3 (Debug для симулятора собрался, 10.2), EAS — запасной путь. С апреля 2027 это не поможет даже на SDK 54: Xcode 27 требует Tahoe 26.6 |
 | Сколько работы | 5–9 рабочих дней Claude и 2–3 дня основателя на проверку на телефонах. По календарю 2–3 недели |
@@ -40,7 +40,9 @@
   (раздел 1.2, решение 8);
 - согласовать план;
 - принять минимальную iOS 16.4: потеряются iPhone 6s, 7 и SE первого поколения;
-- выбрать, как собирать iOS: только в облаке EAS или на новом Mac.
+- выбрать, как собирать iOS: только в облаке EAS или на новом Mac. → 10.3:
+  решено 02.11 — на этом Mac с Xcode 26.3, EAS — запасной путь (решение 3);
+  так собран архив 1.1.0 (7).
 
 ---
 
@@ -380,7 +382,7 @@ versions incrementally, one at a time». #253 показал, что прыжо�
 | `expo prebuild` (SDK 57) | — | Теперь по умолчанию стирает `android/` и `ios/`. Наши инструкции и так используют `--clean` и после каждого prebuild возвращают ключ подписи (`docs/RUSTORE_SUBMISSION.md` §2). В комментарии `plugins/withDistributionGuard.js` осталось «без `--clean`» — поправить | Сделано в #327 |
 | Сценовый цикл iOS (SDK 58) | — | prebuild создаёт `SceneDelegate.swift`, окно создаёт сцена. Ни один наш плагин не меняет `AppDelegate` (проверено). Окно для капчи (ASWebAuthenticationSession) уже берётся из `connectedScenes` (`modules/cleanway-safari/ios/CleanwaySafariModule.swift:146-150`). Ссылки `cleanway://` и передача из «Поделиться» теперь приходят через сцену; Expo обещает передавать их подписчикам `ExpoAppDelegate` | Проверить холодный и тёплый старт |
 | iOS 27 с iOS 27 SDK | — | Окно iPhone-приложения может менять размер, а `requireFullScreen` от этого больше не спасает. У нас только портретный режим и только iPhone (`supportsTablet: false`) — проверить вёрстку на нестандартной ширине | Проверить на iOS 27 |
-| R8 в release-сборках Android (SDK 58) | выключен → включён | В шаблоне `android.enableMinifyInReleaseBuilds=true`. В нашем Kotlin-модуле рефлексии нет (проверено: только `org.json`). Классы из манифеста (служба VPN, ресиверы, активити) сохраняют правила AAPT. Класс Expo-модуля перечислен в сгенерированном списке пакетов, а сохранять модули Expo должны правила `expo-modules-core` — это проверит release-сборка. RevenueCat и Sentry приносят свои правила. Итог: APK меньше (это важно для мобильного трафика в воронке Tele2), но стек вызовов в отчётах о падениях запутан. Нужно хранить `mapping.txt` каждого релиза и загружать его в Play | Release-сборки в #327 собирались, но лог не сохранился (→ 10.2). Решение в разделе 9 |
+| R8 в release-сборках Android (SDK 58) | выключен → включён | В шаблоне `android.enableMinifyInReleaseBuilds=true`. В нашем Kotlin-модуле рефлексии нет (проверено: только `org.json`). Классы из манифеста (служба VPN, ресиверы, активити) сохраняют правила AAPT. Класс Expo-модуля перечислен в сгенерированном списке пакетов, а сохранять модули Expo должны правила `expo-modules-core` — это проверит release-сборка. RevenueCat и Sentry приносят свои правила. Итог: APK меньше (это важно для мобильного трафика в воронке Tele2), но стек вызовов в отчётах о падениях запутан. Нужно хранить `mapping.txt` каждого релиза и загружать его в Play | Release-сборки в #327 собирались, но лог не сохранился. → 10.2: 03.11 собраны с ключом и логами, `mapping.txt` каждой сохранён; на телефоне не запускались (6.2). Решение в разделе 9 |
 | Gradle / AGP | 8.14 / 8.11 → 9.4.1 / 9.2.1 | Шаблон 58 отключает новинки AGP 9 (`android.builtInKotlin=false`, `android.newDsl=false`). `modules/cleanway-vpn/android/build.gradle` ещё на `apply from: ExpoModulesCorePlugin.gradle` и `lintOptions` — это работает, пока `newDsl=false`. Технический долг: перейти на `expo-module-gradle-plugin` и `lint {}` | Debug собирается (#253, 2 предупреждения) |
 
 ### 3.2 Наши config-плагины (`mobile/plugins/`)
@@ -402,10 +404,10 @@ BUILD SUCCESSFUL. Мы так и задумывали — чтобы плаги�
 | `withShareIntentGuard` | нет release со старым `expo-share-intent` | Дописывает в конец, `pre<Variant>Build` запускает `scripts/check-share-intent.mjs` | AGP 9.2.1 / Gradle 9.4.1: пять строк `ok:` перед сборкой; поддельный 8.0.0 и фильтр `text/*` в манифесте — падение (→ 10.2) | В логе каждой release-сборки — пять строк `ok:` (`docs/RUSTORE_SUBMISSION.md` §2) |
 | `withDarkSystemBars` | ночной режим до `super.onCreate` | В `MainActivity.kt` шаблона 58 по-прежнему `super.onCreate(null)` | Шаблон `sdk-58` | Визуально: тёмная панель навигации при светлой теме телефона |
 | `withBackupRules` | наши правила резервного копирования | Атрибуты манифеста, без изменений | — | Проверить итоговый манифест |
-| `withIosAppStore` | без push-права, только `dns-settings` | Без изменений. Должен стоять первым | prebuild в #253 прошёл | Проверить права в сборке EAS |
-| `withSmsFilter` | цель расширения SMS-фильтра | Минимум 15.1 → 16.4 | Сделано в #253. В CI `ios-sms-engine` (`swift test`) проходит, но это только движок, не расширение | Компиляция расширения в EAS |
-| `withSafariExtension` | цель Safari-расширения | Использует внутренности пакета `xcode`. → 10.1 п. 2: в #327 это `xcode` 4.0.0 (его требует `@expo/config-plugins` 58.0.10), наша правка в нём уже есть, `patches/xcode+3.0.1.patch` удалён. Минимум приложения теперь совпадает с расширением (16.4) | prebuild в #253 создал все цели с 16.4 | Проверить, что EAS создаёт профиль для расширения (`extra.eas.build.experimental.ios.appExtensions`) |
-| `withXcode26Patches` | три заплатки для Xcode 26 (fmt, Sentry, expo-localization) | Все три срабатывают только по условию. По описанию #253, на 58 они уже ничего не меняют: в RN 0.88 ядро собрано заранее, в Sentry 8 нет исправляемой строки, у expo-localization не найдётся якорь. Ломает сборку только в одном случае — если в Podfile нет `post_install do \|installer\|`, но в 58 он есть | prebuild в #253 прошёл | После первой сборки EAS посмотреть лог `pod install`: если строк `[Cleanway] patched` нет, удалить плагин отдельным PR |
+| `withIosAppStore` | без push-права, только `dns-settings` | Без изменений. Должен стоять первым | prebuild в #253 прошёл | Проверить права в сборке EAS. → 10.2: права проверены в архиве 1.1.0 (7) — `dns-settings`, app group, без `aps-environment` |
+| `withSmsFilter` | цель расширения SMS-фильтра | Минимум 15.1 → 16.4 | Сделано в #253. В CI `ios-sms-engine` (`swift test`) проходит, но это только движок, не расширение | Компиляция расширения в EAS. → 10.2: расширение собрано и подписано в архиве 1.1.0 (7) на Xcode 26.3; работа фильтра — на телефоне (6.2) |
+| `withSafariExtension` | цель Safari-расширения | Использует внутренности пакета `xcode`. → 10.1 п. 2: в #327 это `xcode` 4.0.0 (его требует `@expo/config-plugins` 58.0.10), наша правка в нём уже есть, `patches/xcode+3.0.1.patch` удалён. Минимум приложения теперь совпадает с расширением (16.4) | prebuild в #253 создал все цели с 16.4 | Проверить, что EAS создаёт профиль для расширения (`extra.eas.build.experimental.ios.appExtensions`). → 10.2: на этом Mac расширение собрано и подписано в архиве 1.1.0 (7), TestFlight его принял; профиль в EAS проверять, только если перейдём на EAS |
+| `withXcode26Patches` | заплатки для Xcode 26: три старые (fmt, Sentry, expo-localization) и с 02.11 четвёртая — `expo-modules-jsi` на Xcode ниже 26.4 | Все срабатывают только по условию. По описанию #253, первые три на 58 уже ничего не меняют: в RN 0.88 ядро собрано заранее, в Sentry 8 нет исправляемой строки, у expo-localization не найдётся якорь. Четвёртая (expo/expo#52754) нужна этому iMac: без неё Xcode 26.3 не собирает `expo-modules-jsi` 58.0.21. Ломает сборку только в одном случае — если в Podfile нет `post_install do \|installer\|`, но в 58 он есть | prebuild в #253 прошёл; архив 1.1.0 (7) на Xcode 26.3 собран с заплаткой 4 (02.11) | Удалить плагин отдельным PR, только когда iOS собирается на Xcode 26.4+ (EAS или новый Mac) и в логе `pod install` нет строк `[Cleanway] patched` |
 
 **Проверка меток (сделано в #327, шесть меток: добавились share-intent и тёмные панели).** Небольшой скрипт
 `mobile/scripts/check-prebuild-gradle.mjs` запускается в зеркале после
@@ -424,10 +426,10 @@ BUILD SUCCESSFUL. Мы так и задумывали — чтобы плаги�
 
 | Модуль | Что на SDK 58 | Проверено | Не проверено |
 |---|---|---|---|
-| `cleanway-vpn` (Kotlin, только Android) | Expo Modules API работает в новой архитектуре напрямую (JSI). В TS объявлен `isLinkHandlerSupported` (#253) | Android: компилируется в `assembleDebug` (#253) | Запуск и остановка VPN, события, `BootReceiver` в процессе `:boot`, `ShieldWatchdog`, `LinkGuardActivity`, `LinkCheckService`, будильник обновления списка. Всё это — с R8. Kotlin-тесты (`./gradlew :cleanway-vpn:testDebugUnitTest`): в #327 до переноса на `main` записано 341 из 343, лог не сохранился; с #336 тестов больше — прогнать заново (→ 10.2) |
-| `cleanway-sms-filter` (Swift) | pod 15.1 → 16.4 (#253) | Тесты платформ в CI | Компиляция |
-| `cleanway-safari` (Swift) | pod 15.1 → 16.4 (#253). Окно капчи (#277) появилось после основы #253 | Тесты платформ в CI | Компиляция и запуск |
-| `cleanway-dns` (Swift) | DNS-защита iPhone, вынесена из `cleanway-vpn` после основы #253 (#388): pod 15.1 → 16.4 при переносе в #327, как у соседей | Тесты платформ в CI (`test-ios-dns.mjs`, `test-ios-native-modules.mjs`) | Компиляция и запуск |
+| `cleanway-vpn` (Kotlin, только Android) | Expo Modules API работает в новой архитектуре напрямую (JSI). В TS объявлен `isLinkHandlerSupported` (#253) | Android: компилируется в `assembleDebug` (#253) | Запуск и остановка VPN, события, `BootReceiver` в процессе `:boot`, `ShieldWatchdog`, `LinkGuardActivity`, `LinkCheckService`, будильник обновления списка. Всё это — с R8. Kotlin-тесты (`./gradlew :cleanway-vpn:testDebugUnitTest`): в #327 до переноса на `main` записано 341 из 343, лог не сохранился; с #336 тестов больше — прогнать заново. → 10.2: 03.11 прогнано с логом — 342 из 344, падают те же два бюджета времени `MessageAnalyzerTest` |
+| `cleanway-sms-filter` (Swift) | pod 15.1 → 16.4 (#253) | Тесты платформ в CI | Компиляция. → 10.2: компилируется (архив 1.1.0 (7)); работа — на телефоне (6.2) |
+| `cleanway-safari` (Swift) | pod 15.1 → 16.4 (#253). Окно капчи (#277) появилось после основы #253 | Тесты платформ в CI | Компиляция и запуск. → 10.2: компилируется (архив 1.1.0 (7)); запуск — на телефоне (6.2) |
+| `cleanway-dns` (Swift) | DNS-защита iPhone, вынесена из `cleanway-vpn` после основы #253 (#388): pod 15.1 → 16.4 при переносе в #327, как у соседей | Тесты платформ в CI (`test-ios-dns.mjs`, `test-ios-native-modules.mjs`) | Компиляция и запуск. → 10.2: компилируется (архив 1.1.0 (7)); запуск — на телефоне (6.2) |
 
 До #327 на iOS не было собрано ничего (→ 10.2: в #327 Debug для симулятора
 собрался на Xcode 26.3, лог не сохранился). В #253 сборка `xcodebuild` упала ещё до нашего
@@ -436,6 +438,9 @@ BUILD SUCCESSFUL. Мы так и задумывали — чтобы плаги�
 SDK 56+ требует Xcode 26.4+. Кроме того, с SDK 55 ядро Expo перешло на режим
 Swift 6, и более строгие проверки параллелизма могут дать ошибки в наших трёх
 модулях и двух расширениях. Это выяснится только на первой сборке в EAS.
+→ 10.2: выяснилось без EAS — 02–03.11 Release-архив 1.1.0 (7) на Xcode 26.3
+собран с логом (ARCHIVE SUCCEEDED): три наших модуля и три расширения
+компилируются, с заплаткой 4 `withXcode26Patches`.
 
 ---
 
@@ -534,7 +539,9 @@ Swift 6, и более строгие проверки параллелизма 
 
 - Android: APK для сайта, APK для RuStore и AAB для Play, каждый со своим
   prebuild;
-- iOS: EAS `preview`, а затем `production`.
+- iOS: EAS `preview`, а затем `production`. → 10.3: архив Release на этом Mac
+  (Xcode 26.3, `docs/IOS.md` §1.1, решение 3) → TestFlight; 1.1.0 (7) уже там.
+  EAS — запасной путь.
 
 ### 6.1 Проверки без телефона (делает Claude)
 
@@ -617,7 +624,7 @@ Swift 6, и более строгие проверки параллелизма 
 6. Экран настройки SMS-фильтра. Фильтр включается в настройках iOS.
 7. Защита DNS (`dns-settings`) включается.
 8. Капча во встроенном окне. Обязательно, даже если на сервере она выключена:
-   тогда принудительно, как в п. 14 для Android (development-сборка в EAS).
+   тогда принудительно, как в п. 14 для Android (development-сборка на этом Mac по `docs/IOS.md` §1.1; EAS — запасной путь).
 9. QR-сканер, запрос доступа к камере на языке телефона.
 10. Экран подписки (sandbox-аккаунт), если задан `EXPO_PUBLIC_REVENUECAT_IOS_KEY`.
 11. Арабский — справа налево.
@@ -639,7 +646,7 @@ pre-launch нет новых падений.
 | А. Новая архитектура на SDK 54 (контрольная точка) | 0,5–1 день | 0,5 дня | Сборки на этом iMac: iOS-симулятор и Android |
 | Б1. Перенос #253 на `main`, `account-export`, документы | 1 день | — | |
 | Б2. Release-сборки Android ×3 и проверки 6.1 | 1 день | — | Чистая сборка на iMac ~20 минут |
-| Б3. iOS в EAS: сборки, ошибки компиляции, Release | 1–3 дня | Нажать «Approve» на запросы EAS | Больше всего неизвестного: режим Swift 6, очередь EAS |
+| Б3. iOS в EAS: сборки, ошибки компиляции, Release | 1–3 дня | Нажать «Approve» на запросы EAS | Больше всего неизвестного: режим Swift 6, очередь EAS. → 10.3: собрано на этом Mac (Xcode 26.3), архив 1.1.0 (7) в TestFlight; EAS не понадобился |
 | Б4. Проверка на телефонах | — | 1–2 дня | Раздел 6.2 |
 | Б5. Исправления по итогам | 1–2 дня | 0,5 дня | Запас |
 | **Итого** | **5–9 дней** | **2–3 дня** | По календарю 2–3 недели |
@@ -692,7 +699,7 @@ pre-launch нет новых падений.
 | 4 | Две новые прямые зависимости, без которых SDK 58 не работает: `@expo/vector-icons` (раньше приходил через `expo`) и `expo-splash-screen` (экран запуска). `react-native-worklets` из #253 не нужен: reanimated удаляем на шаге А (2.2), и нативных библиотек становится на две меньше | Принять | — |
 | 5 | R8 в release-сборках Android | Оставить включённым: APK меньше. Хранить `mapping.txt` каждого релиза и загружать в Play. Выключить при необходимости можно своим плагином без новой зависимости | — |
 | 6 | TypeScript 6 или остаться на 5.9 | TS 6, как в #253: это выбор Expo для SDK 58, и CI с ним зелёный. Если предупреждения о TS 5 станут ошибками — откатиться на 5.9 через `expo.install.exclude` | В 1.1.0 — 5.9, так собрана и проверена ветка (10.1 п. 3). TS 6 — отдельным PR после 1.1.0: с `react-i18next` 17 его больше ничто не держит |
-| 7 | Отдельно, позже 1.1.0: `@expo/vector-icons` → `@react-native-vector-icons/*`; удаление `withXcode26Patches`; модернизация Gradle в модуле VPN; со временем `expo-sharing` (с SDK 55 умеет принимать «Поделиться») вместо стороннего `expo-share-intent` | Запланировать после 1.1.0 | — |
+| 7 | Отдельно, позже 1.1.0: `@expo/vector-icons` → `@react-native-vector-icons/*`; удаление `withXcode26Patches` (когда iOS будет собираться на Xcode 26.4+: заплатка 4 нужна Xcode 26.3); модернизация Gradle в модуле VPN; со временем `expo-sharing` (с SDK 55 умеет принимать «Поделиться») вместо стороннего `expo-share-intent` | Запланировать после 1.1.0 | — |
 | 8 | Когда выпустить исправление `expo-share-intent` на Android (1.2) | В 1.0.6 (#318): на Android она ещё не опубликована, ждать 1.1.0 не нужно. Сайт, RuStore и Play. Файлы 1.0.6 (107), собранные до слияния #318, удалить, все три пересобрать и проверить фильтр `text/plain` через `aapt2`. iPhone не затронут, его можно не пересобирать. Ту же правку держать в `release/1.0.x` | Сделано: #318 в 1.0.6 |
 
 ---
@@ -807,49 +814,68 @@ pre-launch нет новых падений.
 | Защиты release-сборки на AGP 9.2.1 / Gradle 9.4.1: `withShareIntentGuard`, `withSeedGuard`, `withDistributionGuard` (25.10) | Отдельный минимальный Android-проект: те же AGP 9.2.1, Gradle 9.4.1 и флаги шаблона 58 (`android.builtInKotlin=false`, `android.newDsl=false`). Конец `app/build.gradle` — то, что пишут `_patch()` наших трёх плагинов; рядом настоящий `scripts/check-share-intent.mjs`, `app.json` ветки, `expo-share-intent` 9.0.0 и `@expo/config-plugins` 58.0.10 (хеш архива совпал с lock). `preReleaseBuild` есть в графе `assembleRelease` и `bundleRelease` и выполняется до компиляции. `assembleRelease`: строка магазина, пять строк `ok:` от проверки share-intent, BUILD SUCCESSFUL (с `-PcleanwayNoSeed`). Падают, как задумано: без стартового списка (`assembleRelease` и `bundleRelease`); `expo-share-intent` с версией 8.0.0; фильтр `text/*` в манифесте; AAB с `site`; сборка для другого магазина. `assembleDebug` защиты не запускает. React Native и Kotlin-плагина в проекте нет: проверен механизм AGP, а не сборка приложения | Выдержки из логов — [комментарий в #327](https://github.com/AlexMos555/linkshield/pull/327#issuecomment-6389656068) |
 | Версии зависимостей против SDK 58 | 02.11, после переноса на `main` и перехода на последние патчи SDK 58: в чистом зеркале `npm install` ставит ровно `mobile/package-lock.json` (`cmp` без разницы), `check-share-intent` — 4× `ok:`, `npx expo install --check` — «Dependencies are up to date» (expo 58.0.22, react-native 0.88.1, react 19.3.0; `typescript` исключён), `npx expo-doctor` — 20/20. До переноса (25.10) сверялось только без установки: 24 прямые зависимости против `bundledNativeModules.json` `expo@58.0.19` | Повторяется за несколько минут: `docs/RUSTORE_SUBMISSION.md` §2, шаги 1–2 и `npm install` |
 | Таймаут на `expo/fetch` (10.1 п. 10) | Тесты в `scripts/test-api-client-errors.mjs` и `mobile/scripts/test-account-session.mjs` падали на старом коде и проходят на новом | CI (`test`, `mobile`) |
+| Android release-сборки 1.1.0 (110) с ключом (03.11, ветка на `9b8b3509`) | По `docs/RUSTORE_SUBMISSION.md` §2 (`cw_build`): сайт и RuStore `assembleRelease` — BUILD SUCCESSFUL за 8 мин 47 с и 7 мин 26 с, Play `bundleRelease` + `assembleRelease` — за 14 мин 56 с. Перед каждой сборкой `check-prebuild-gradle` — все шесть меток плагинов; в каждом логе gradle строка `Cleanway: building …`, строки защит `ok:` и ни одной `signing with the DEBUG key`. Подпись всех трёх APK и AAB — `CN=Cleanway`, SHA-256 сертификата `6d3813a1…2daa3233`, тот же, что у опубликованной 1.0.3 (обновление встанет поверх). Ключ после сборок удалён из зеркала. Play AAB собран без `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`: ключа `goog_…` нет ни в `mobile/.env`, ни в корневом `.env`, в `1.1.0-110-play-gradle.log` строка `warning: EXPO_PUBLIC_REVENUECAT_ANDROID_KEY is not set` — экран оплаты в нём пишет, что оплата в приложении скоро появится | `~/Desktop/cleanway-android-out/logs/1.1.0-110-build-run.log`, `1.1.0-110-{site,rustore,play}-gradle.log`; подписи и сертификат 1.0.3 — `1.1.0-110-artifact-checks.txt`; хеши — `SHA256SUMS-1.1.0.txt` рядом с файлами |
+| Проверки файлов 1.1.0 (110) (03.11) | `aapt2`: minSdk 24, targetSdk 36, compileSdk 37, `armeabi-v7a` + `arm64-v8a`; фильтр «Поделиться» только `text/plain` (`SEND */*` есть только в `<queries>` — это видимость приложений, не фильтр); служба VPN `specialUse`; BootReceiver в `:boot`; правила бэкапа на месте. Разрешения сайта и RuStore совпадают, у Play только плюс `BILLING`; против опубликованной 1.0.3 добавилось одно `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` — оно в приложении с 1.0.4 (`ff9ebabc`, 07.10; `docs/STORES.md` §6.7). `zipalign -c -P 16` проходит у всех трёх APK; все 27 `arm64-v8a` библиотек выровнены на 16 КБ (`llvm-readelf`). В AAB по 27 библиотек `arm64-v8a` и `armeabi-v7a`, x86 нет. Стартовый список во всех трёх APK, publishable-ключ во всех APK и в AAB. `mapping.txt` — 88 МБ (сайт, RuStore) и 113 МБ (Play) | `~/Desktop/cleanway-android-out/logs/1.1.0-110-artifact-checks.txt`, конец `1.1.0-110-build-run.log` |
+| `:cleanway-vpn:testDebugUnitTest` (03.11) | 342 из 344. Падают те же два бюджета времени `MessageAnalyzerTest`, что и на SDK 54: этот iMac медленнее, а 03.11 он ещё и был загружен (средняя нагрузка 19–48): 13,2 и 16,6 мс при пороге 5 мс, 551 и 770 мс при пороге 250 мс. Код фильтра от SDK не зависит. Значения полного прогона и нагрузка записаны в конце лога | `~/Desktop/cleanway-android-out/logs/1.1.0-110-kotlin-tests.log` |
+| `withDistributionGuard` на зеркале SDK 58 (03.11) | `--dry-run` (граф задач строится, защита срабатывает в `taskGraph.whenReady`, ничего не собирается). `android/` для `play`: `rustore assembleRelease` и `site bundleRelease` останавливаются («android/ was generated for "play"…»), без `EXPO_PUBLIC_DISTRIBUTION` и с `bogus` — тоже, каждая со своим объяснением; `play bundleRelease` и `play assembleRelease` проходят. `android/` для `site`: AAB останавливается («an App Bundle (AAB) is for a store…»), APK проходит | `~/Desktop/cleanway-android-out/logs/1.1.0-110-distribution-guard.log` |
+| iOS: архив 1.1.0 (7) и TestFlight (02–03.11, Xcode 26.3) | ARCHIVE SUCCEEDED (пересобран 03.11 после #392). Версия 1.1.0, сборка 7, iOS 16.4; адрес Supabase, `review@cleanway.ai` и publishable-ключ в `main.jsbundle`; в файлах приложения нет VPN/Vpn/vpn (ASCII), UTF-16 «VPN» — 20 раз, только путь в Настройках, в конфиге EXConstants — 0 (10.4); права: `dns-settings`, app group, без `aps-environment`; `codesign --deep --strict` проходит; три расширения. 03.11 загружен в TestFlight (`Upload succeeded`). Предупреждения «Upload Symbols Failed» — у четырёх библиотек: React, ReactNativeDependencies и hermesvm приходят собранными без dSYM; у ExpoCameraBarcodeScanning dSYM с нужным UUID есть внутри xcframework, но в архив не попал (`docs/IOS.md` §1.1) | `~/Desktop/cleanway-android-out/logs/ios-1.1.0-7b-archive.log`, `ios-1.1.0-7b-archive-checks.txt`, `ios-1.1.0-7-upload.log` |
 
-**По записям сессии 24–25.10, лог не сохранился.** Зеркало
-`~/Library/Caches/cleanway-dev/cwmobile` удалено. В
-`~/Desktop/cleanway-android-out` только APK 1.0.6 на SDK 54 (их хеши совпадают
-с `SHA256SUMS-1.0.6.txt`, то есть сборки SDK 58 туда не попали). CI не делает
-ни prebuild, ни gradle. Поэтому строки ниже — запись того, что делалось, а не
-доказательство для слияния. Перед слиянием каждую повторить с логом (10.3).
+**По записям сессии 24–25.10, лог не сохранился.** На 25.10 зеркало
+`~/Library/Caches/cleanway-dev/cwmobile` было удалено, а в
+`~/Desktop/cleanway-android-out` лежали только APK 1.0.6 на SDK 54 (их хеши
+совпадали с `SHA256SUMS-1.0.6.txt`), то есть сборки SDK 58 той сессии туда не
+попали. CI не делает ни prebuild, ни gradle. Поэтому строки ниже — запись
+того, что делалось 24–25.10, а не доказательство. 02–03.11 они повторены с
+логом (отметка в скобках, первая таблица), кроме полного вывода iOS
+`pod install`; Debug-сборку для симулятора заменила Release-сборка для
+симулятора 02.11 (10.3).
 
 | Что | Записано |
 |---|---|
 | `npx expo-doctor` в зеркале | 20/20 (02.11 повторено после переноса — первая таблица) |
 | `npx expo install --check` | «Dependencies are up to date» (`typescript` исключён; 02.11 повторено — первая таблица) |
-| `scripts/check-prebuild-gradle.mjs` после каждого prebuild | Все шесть меток плагинов на месте (подпись, ABI, стартовый список, магазин, share-intent, тёмные панели) |
-| Android `assembleRelease`, сайт и RuStore | Собираются без ключа (debug-подпись). 62 МБ, armeabi-v7a + arm64-v8a. Первая сборка 14 мин, следующие 6–8 мин |
-| Android `bundleRelease` + `assembleRelease`, Play | AAB 49 МБ (ARM), APK 64 МБ; BILLING и RevenueCat только тут |
-| `aapt2` | targetSdk 36, compileSdk 37, minSdk 24; разрешения сайта совпадают с APK 1.0.6; фильтр «Поделиться» только `text/plain`; VPN `specialUse` + `vpn`; BootReceiver в `:boot`; правила бэкапа |
-| 16 КБ | `zipalign -c -P 16` проходит; все 27 `arm64-v8a` библиотек выровнены (APK и AAB) |
-| R8 | Включён; классы из манифеста сохранили имена; `mapping.txt` ~88 МБ на сборку |
-| `withDistributionGuard` | AAB с `site` и сборка для другого магазина падают в начале gradle, как на SDK 54 |
-| `:cleanway-vpn:testDebugUnitTest` | 341 из 343; два падения — те же бюджеты времени `MessageAnalyzerTest` на этом iMac (9,6 мс), что и на SDK 54 |
-| `withXcode26Patches` | `pod install` не напечатал ни одной строки `[Cleanway] patched`: на SDK 58 плагин ничего не делает, его можно удалять отдельным PR после сборки в EAS |
-| iOS prebuild | 4 цели, у всех 16.4; `SceneDelegate.swift` и `UIApplicationSceneManifest`; права: `dns-settings`, app group один раз, без `aps-environment` |
+| `scripts/check-prebuild-gradle.mjs` после каждого prebuild | Все шесть меток плагинов на месте (подпись, ABI, стартовый список, магазин, share-intent, тёмные панели) (03.11 повторено с ключом и логом — первая таблица) |
+| Android `assembleRelease`, сайт и RuStore | Собираются без ключа (debug-подпись). 62 МБ, armeabi-v7a + arm64-v8a. Первая сборка 14 мин, следующие 6–8 мин (03.11 повторено с ключом и логом — первая таблица) |
+| Android `bundleRelease` + `assembleRelease`, Play | AAB 49 МБ (ARM), APK 64 МБ; BILLING и RevenueCat только тут (03.11 повторено с ключом и логом — первая таблица) |
+| `aapt2` | targetSdk 36, compileSdk 37, minSdk 24; разрешения сайта совпадают с APK 1.0.6; фильтр «Поделиться» только `text/plain`; VPN `specialUse` + `vpn`; BootReceiver в `:boot`; правила бэкапа (03.11 повторено с логом; разрешения сравнены с опубликованной 1.0.3 — первая таблица) |
+| 16 КБ | `zipalign -c -P 16` проходит; все 27 `arm64-v8a` библиотек выровнены (APK и AAB) (03.11 повторено с логом для трёх APK — первая таблица) |
+| R8 | Включён; классы из манифеста сохранили имена; `mapping.txt` ~88 МБ на сборку (03.11: `mapping.txt` есть у всех трёх сборок; 88 МБ — сайт и RuStore, у Play 113 МБ — первая таблица) |
+| `withDistributionGuard` | AAB с `site` и сборка для другого магазина падают в начале gradle, как на SDK 54 (03.11 повторено с логом на зеркале приложения — первая таблица) |
+| `:cleanway-vpn:testDebugUnitTest` | 341 из 343; два падения — те же бюджеты времени `MessageAnalyzerTest` на этом iMac (9,6 мс), что и на SDK 54 (03.11 повторено с логом — первая таблица) |
+| `withXcode26Patches` | 25.10 `pod install` не напечатал ни одной строки `[Cleanway] patched`. 02.11 на `expo-modules-jsi` 58.0.21 Xcode 26.3 перестал собирать iOS (expo/expo#52754); добавлена заплатка 4 (только Xcode ниже 26.4), с ней собран архив 1.1.0 (7). Удалять плагин — только при сборке на Xcode 26.4+ |
+| iOS prebuild | 4 цели, у всех 16.4; `SceneDelegate.swift` и `UIApplicationSceneManifest`; права: `dns-settings`, app group один раз, без `aps-environment` (03.11 повторено на архиве 1.1.0 (7): приложение и три расширения — 16.4, `UIApplicationSceneManifest` с `Cleanway.SceneDelegate` в Info.plist архива, права — `ios-1.1.0-7b-archive-checks.txt`; первая таблица) |
 | iOS `pod install` | 123 pod-а; `ExpoModulesCore` и ещё 5 модулей Expo SDK 58 приходят уже собранными (precompiled xcframework) |
-| iOS симулятор, Xcode 26.3 (по `docs/IOS.md` §1.1) | **Собирается.** `xcodebuild` Debug для симулятора: BUILD SUCCEEDED за 228 с (только x86_64, без индекса и dSYM: на диске было ~4 ГБ; первая попытка с обеими архитектурами остановлена из-за места, ошибок до остановки не было). Компилятор Swift 6.2.4 больше не падает, как в #253: `ExpoModulesCore` приходит готовым xcframework, и Xcode 26.3 его импортирует. `CleanwayVpn`, `CleanwaySafari`, `CleanwaySmsFilter`, все три расширения и приложение собрались без ошибок; предупреждения в нашем коде — только устаревшие API в сгенерированном `ShareViewController.swift`. Официально SDK 56+ требует Xcode 26.4+, так что для Release и App Store это не доказательство. На симуляторе не запускалась: единственный загруженный симулятор занят другой сессией |
+| iOS симулятор, Xcode 26.3 (по `docs/IOS.md` §1.1) | **Собирается.** `xcodebuild` Debug для симулятора: BUILD SUCCEEDED за 228 с (только x86_64, без индекса и dSYM: на диске было ~4 ГБ; первая попытка с обеими архитектурами остановлена из-за места, ошибок до остановки не было). Компилятор Swift 6.2.4 больше не падает, как в #253: `ExpoModulesCore` приходит готовым xcframework, и Xcode 26.3 его импортирует. `CleanwayVpn`, `CleanwaySafari`, `CleanwaySmsFilter`, все три расширения и приложение собрались без ошибок; предупреждения в нашем коде — только устаревшие API в сгенерированном `ShareViewController.swift`. Официально SDK 56+ требует Xcode 26.4+, так что для Release и App Store это не доказательство. На симуляторе не запускалась: единственный загруженный симулятор занят другой сессией (02.11: вместо Debug — Release-сборка для симулятора с заплаткой 4, дважды BUILD SUCCEEDED с логом — `ios-1.1.0-sim-release-0211-run1-full.log`, `…-run2-summary.log`; запустилась на iPhone 16e, запуск записан сессией без лога — 10.3) |
 
 ### 10.3 Что осталось
 
-- **Перед слиянием повторить с логами всё из второй таблицы 10.2:** три
-  release-сборки по `docs/RUSTORE_SUBMISSION.md` §2 (`cw_build` теперь пишет
-  лог gradle в `$OUT/logs/` и останавливается, если защиты не напечатали свои
-  строки), проверки `aapt2`, `zipalign`, `llvm-readelf` с выводом в файл, хеши
-  файлов, `:cleanway-vpn:testDebugUnitTest`, iOS-сборка (`expo-doctor` и
-  `expo install --check` повторены 02.11, 10.2). Выдержки и хеши — в PR.
-  Отметка [x] без них доказательством не считается.
+- ~~Перед слиянием повторить с логами всё из второй таблицы 10.2~~ — сделано
+  02–03.11: три release-сборки с ключом, проверки `aapt2`, `zipalign`,
+  `llvm-readelf`, хеши, `:cleanway-vpn:testDebugUnitTest`,
+  `withDistributionGuard`, iOS-архив (10.2,
+  первая таблица; логи в `~/Desktop/cleanway-android-out/logs/`). Выдержки и
+  хеши — в описании PR. iOS `pod install` с полным выводом не сохранён (в логе
+  архива его нет, а строка заплатки 4 видна только на чистых `node_modules`).
+  Симулятор: 02.11 Release-сборка для симулятора с заплаткой 4 собралась
+  дважды (`ios-1.1.0-sim-release-0211-run1-full.log`, `…-run2-summary.log`) и
+  запустилась на iPhone 16e — запуск записан сессией, без лога. На телефоне —
+  проверка из TestFlight (6.2), она и так условие слияния.
 - Проверка на телефонах — весь раздел 6.2 (ничего не ставилось ни на
   телефон, ни в эмулятор).
-- iOS Release и архив для App Store Connect — на этом Mac с Xcode 26.3 по
-  `docs/IOS.md` §1.1 (решение 3); EAS (`development`/`preview`, затем
-  `production`) — если локально не выйдет (раздел 5, риск 5).
-- Версия 1.1.0 уже в ветке (iOS build 7, `versionCode` 110). Перед
-  выпуском: подписанные сборки по `docs/RUSTORE_SUBMISSION.md` §2 с ключом;
-  `mapping.txt` каждого релиза — в Play.
-- Отдельными PR после 1.1.0 (решение 7): удалить `withXcode26Patches`;
+- ~~iOS Release и архив для App Store Connect~~ — сделано на этом Mac с
+  Xcode 26.3 по `docs/IOS.md` §1.1 (решение 3): архив 1.1.0 (7) 03.11
+  загружен в TestFlight (10.2, первая таблица). EAS не понадобился.
+- Версия 1.1.0 уже в ветке (iOS build 7, `versionCode` 110). Подписанные
+  сборки с ключом сделаны 03.11 (10.2), но Play AAB — без публичного ключа
+  RevenueCat (его ещё нет). Перед проверкой оплаты на телефоне и загрузкой в
+  Play: основатель заводит ключ `goog_…` в RevenueCat
+  (`docs/runbooks/revenuecat.md`), сборку C пересобрать с
+  `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` (`docs/RUSTORE_SUBMISSION.md` §2; новый
+  AAB, `mapping-1.1.0-110-play.txt` и строки в `SHA256SUMS-1.1.0.txt`) — или
+  записать решение выпустить 1.1.0 в Play без оплаты в приложении. При
+  выпуске: `mapping.txt` Play — в Play Console вместе с AAB.
+- Отдельными PR после 1.1.0 (решение 7): удалить `withXcode26Patches`
+  (когда iOS будет собираться на Xcode 26.4+);
   `@expo/vector-icons` → `@react-native-vector-icons/*`; TS 6 (с переноса
   на `main` его ничто не держит, 10.1 п. 3); Gradle модуля VPN на
   `expo-module-gradle-plugin`.
