@@ -271,6 +271,7 @@ async function loadPageStatus() {
   // this the extension page fell into "not a web page" below and the popup
   // said "This page is safe" over the STOP screen.
   var domain = "";
+  var behindBlock = false;
   var blockedHref = blockedPageUrl(tab);
   if (blockedHref) {
     var shown = self.cleanwayBlockedUrl.parse(blockedHref);
@@ -280,6 +281,7 @@ async function loadPageStatus() {
     // the block page itself does (blocked/blocked.js).
     if (shown.domain && self.cleanwayBlockedUrl.needsRecheck(shown, Date.now())) {
       domain = shown.domain;
+      behindBlock = true;
     } else {
       if (shown.domain) _shownVerdict = { domain: shown.domain, level: "dangerous" };
       setStatus("danger", t("status_danger_title"),
@@ -322,6 +324,10 @@ async function loadPageStatus() {
     // already counted it; it is not a "warning" on top of that.
     var resp = await chrome.runtime.sendMessage({ type: "CHECK_DOMAINS", domains: [domain], page: true });
     var r = resp && resp.results && resp.results[0];
+    // Over the block page only the server's answer is a fresh check: the
+    // offline guess (the API did not answer) is "couldn't check", as the
+    // block page itself says — never "safe" over the old warning.
+    if (r && behindBlock && r.level !== "dangerous" && r.source !== "api" && r.source !== "platform") r = null;
     if (!r) {
       _shownVerdict = { domain: domain, level: "unknown" };
       setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));

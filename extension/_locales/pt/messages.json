@@ -448,6 +448,9 @@
       }
     }
   },
+  "block_recheck_caution": {
+    "message": "Ainda assim, ele mostra alguns sinais de fraude. Não digite senhas nem dados do cartão lá se não confiar neste site."
+  },
   "block_recheck_failed": {
     "message": "O Cleanway não conseguiu verificar $DOMAIN$ novamente agora. O aviso anterior expirou.",
     "placeholders": {
@@ -461,6 +464,20 @@
   },
   "block_recheck_back": {
     "message": "Voltar"
+  },
+  "block_recheck_failed_title": {
+    "message": "Não foi possível verificar novamente"
+  },
+  "block_recheck_retry": {
+    "message": "Tentar novamente"
+  },
+  "block_recheck_paused": {
+    "message": "O aviso anterior sobre $DOMAIN$ expirou. Clique em “Tentar novamente” para verificar o site outra vez.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
   },
   "welcome_hero_title": {
     "message": "Você está protegido agora"

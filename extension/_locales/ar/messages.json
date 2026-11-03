@@ -448,6 +448,9 @@
       }
     }
   },
+  "block_recheck_caution": {
+    "message": "لكن تظهر عليه بعض علامات الاحتيال. لا تُدخل كلمات المرور أو بيانات بطاقتك فيه إن لم تكن تثق بهذا الموقع."
+  },
   "block_recheck_failed": {
     "message": "تعذّر على Cleanway فحص $DOMAIN$ مرة أخرى الآن. انتهت صلاحية التحذير السابق.",
     "placeholders": {
@@ -461,6 +464,20 @@
   },
   "block_recheck_back": {
     "message": "رجوع"
+  },
+  "block_recheck_failed_title": {
+    "message": "تعذّر الفحص مرة أخرى"
+  },
+  "block_recheck_retry": {
+    "message": "إعادة المحاولة"
+  },
+  "block_recheck_paused": {
+    "message": "انتهت صلاحية التحذير السابق بشأن $DOMAIN$. اضغط «إعادة المحاولة» لفحص الموقع مرة أخرى.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
   },
   "welcome_hero_title": {
     "message": "أنت محمي الآن"

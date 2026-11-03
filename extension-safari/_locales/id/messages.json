@@ -448,6 +448,9 @@
       }
     }
   },
+  "block_recheck_caution": {
+    "message": "Namun, situs ini masih menunjukkan beberapa tanda penipuan. Jangan masukkan kata sandi atau data kartu di sana jika Anda tidak memercayainya."
+  },
   "block_recheck_failed": {
     "message": "Cleanway tidak dapat memeriksa ulang $DOMAIN$ saat ini. Peringatan sebelumnya sudah kedaluwarsa.",
     "placeholders": {
@@ -461,6 +464,20 @@
   },
   "block_recheck_back": {
     "message": "Kembali"
+  },
+  "block_recheck_failed_title": {
+    "message": "Tidak dapat memeriksa ulang"
+  },
+  "block_recheck_retry": {
+    "message": "Coba lagi"
+  },
+  "block_recheck_paused": {
+    "message": "Peringatan sebelumnya tentang $DOMAIN$ sudah kedaluwarsa. Klik “Coba lagi” untuk memeriksa ulang situs ini.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
   },
   "welcome_hero_title": {
     "message": "Anda sekarang terlindungi"

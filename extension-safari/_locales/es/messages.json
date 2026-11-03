@@ -448,6 +448,9 @@
       }
     }
   },
+  "block_recheck_caution": {
+    "message": "Aun así, muestra algunas señales de fraude. No introduzcas contraseñas ni datos de tarjeta allí si no confías en este sitio."
+  },
   "block_recheck_failed": {
     "message": "Cleanway no pudo comprobar $DOMAIN$ de nuevo ahora. La advertencia anterior ha caducado.",
     "placeholders": {
@@ -461,6 +464,20 @@
   },
   "block_recheck_back": {
     "message": "Volver"
+  },
+  "block_recheck_failed_title": {
+    "message": "No se pudo comprobar de nuevo"
+  },
+  "block_recheck_retry": {
+    "message": "Intentar de nuevo"
+  },
+  "block_recheck_paused": {
+    "message": "La advertencia anterior sobre $DOMAIN$ ha caducado. Pulsa «Intentar de nuevo» para comprobar el sitio otra vez.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
   },
   "welcome_hero_title": {
     "message": "Ya estás protegido"

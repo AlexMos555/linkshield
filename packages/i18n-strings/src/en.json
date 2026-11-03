@@ -458,6 +458,9 @@
           }
         }
       },
+      "recheck_caution": {
+        "text": "It still shows some signs of a scam. Don't enter passwords or card details there unless you trust it."
+      },
       "recheck_failed": {
         "text": "Cleanway could not check $DOMAIN$ again right now. The earlier warning has expired.",
         "placeholders": {
@@ -471,6 +474,20 @@
       },
       "recheck_back": {
         "text": "Go back"
+      },
+      "recheck_failed_title": {
+        "text": "Could not check again"
+      },
+      "recheck_retry": {
+        "text": "Try again"
+      },
+      "recheck_paused": {
+        "text": "The earlier warning about $DOMAIN$ has expired. Press “Try again” to check the site once more.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
       }
     },
     "welcome": {

@@ -23,6 +23,16 @@
  * now" with a button to open the site. A page left open takes the warning
  * down when the window ends, and when it is shown again (visibilitychange,
  * pageshow from the back/forward cache: hidden tabs' timers are throttled).
+ *
+ * Only the server's answer is "checked again" (source "api", or "platform"
+ * for a user-content host). Without one — the lookup's 3 s ran out, a 5xx,
+ * a 429, offline — the background hands back the offline scorer's guess
+ * (source "local"), and that is no fresh check: right at the window's end
+ * the server has dropped its own copy too and analyses the site anew, often
+ * for longer than 3 s. So the page asks once more a few seconds later, then
+ * says it could not check, with "Try again" as the main button. Kids mode
+ * never gets "Open the site", on any screen: a child should not get past a
+ * block from this page (block-page.js).
  */
 (function () {
   "use strict";
@@ -34,11 +44,26 @@
   var MIN_WAIT_MS = 1000;
   // The site check waits up to 3 s for the API (background/public-check.js).
   var ANSWER_TIMEOUT_MS = 10000;
+  // No answer from the server: asked once more after this. The server keeps
+  // analysing after the extension stops waiting, and caches what it found.
+  var RETRY_AFTER_MS = 5000;
+  // A Google block with no window of its own (advisory_ttl 0) comes back
+  // with the background's 30 s: neither side keeps it, so every round is a
+  // fresh analysis on the server, counted against this install's limit.
+  // After this many such rounds in a row the page stops asking by itself.
+  var SHORT_WINDOW_MS = 60000;
+  var MAX_SHORT_ROUNDS = 3;
+  // Settings never answering: "Open the site" stays hidden (skillLevel).
+  var SKILL_TIMEOUT_MS = 1000;
   var RECHECK_EN = {
     block_rechecking: "Checking $DOMAIN$ again…",
     block_recheck_title: "Checked again",
     block_recheck_clear: "$DOMAIN$ is not flagged as dangerous now. The earlier warning has expired.",
+    block_recheck_caution: "It still shows some signs of a scam. Don't enter passwords or card details there unless you trust it.",
+    block_recheck_failed_title: "Could not check again",
     block_recheck_failed: "Cleanway could not check $DOMAIN$ again right now. The earlier warning has expired.",
+    block_recheck_paused: "The earlier warning about $DOMAIN$ has expired. Press “Try again” to check the site once more.",
+    block_recheck_retry: "Try again",
     block_recheck_open: "Open the site",
     block_recheck_back: "Go back",
   };
@@ -46,6 +71,7 @@
   var expiryTimer = null;
   var asking = false;
   var warningDrawn = false;
+  var shortRounds = 0;
 
   function send(message) {
     try {
@@ -75,6 +101,26 @@
       }
     });
   }
+
+  /**
+   * The persona from Settings (chrome.storage.local, as block-page.js reads
+   * it). Settings that never answer count as Kids: no way into the site.
+   */
+  var skillLevel = new Promise(function (resolve) {
+    var done = false;
+    var finish = function (data) {
+      if (done) return;
+      done = true;
+      resolve((data && data.skill_level) || "regular");
+    };
+    setTimeout(function () { finish({ skill_level: "kids" }); }, SKILL_TIMEOUT_MS);
+    try {
+      var got = chrome.storage.local.get(["skill_level"], finish);
+      if (got && typeof got.then === "function") got.then(finish, function () { finish(null); });
+    } catch (e) {
+      finish(null);
+    }
+  });
 
   function _t(key, subs) {
     try {
@@ -138,21 +184,36 @@
     if (expiryTimer) clearTimeout(expiryTimer);
     expiryTimer = null;
     if (typeof shown.advisory_until !== "number") return;
-    expiryTimer = setTimeout(recheck, Math.max(shown.advisory_until - Date.now(), MIN_WAIT_MS));
+    expiryTimer = setTimeout(windowOver, Math.max(shown.advisory_until - Date.now(), MIN_WAIT_MS));
   }
 
-  function button(text, primary, onClick) {
+  function windowOver() {
+    if (shortRounds >= MAX_SHORT_ROUNDS) pause();
+    else recheck();
+  }
+
+  function button(text, main, onClick) {
     var b = document.createElement("button");
     b.type = "button";
     b.textContent = text;
+    if (main) b.setAttribute("data-main", "true");
     b.style.cssText = "font:inherit;font-size:16px;font-weight:600;padding:12px 20px;margin:6px;border-radius:10px;cursor:pointer;min-height:44px;"
-      + (primary ? "background:#f8fafc;color:#0f172a;border:1px solid #f8fafc;" : "background:transparent;color:#f8fafc;border:1px solid #94a3b8;");
+      + (main ? "background:#f8fafc;color:#0f172a;border:1px solid #f8fafc;" : "background:transparent;color:#f8fafc;border:1px solid #94a3b8;");
     b.addEventListener("click", onClick);
     return b;
   }
 
-  /** Neutral: no warning, no Google credit. `title` only once the answer is in. */
-  function drawNote(title, line, withOpen) {
+  var BACK = { key: "block_recheck_back", onClick: goBack };
+  var RETRY = { key: "block_recheck_retry", onClick: function () { shortRounds = 0; recheck(); } };
+  // Straight to the site, no "open anyway" allowance: if it is flagged
+  // again, the page check blocks it again.
+  var OPEN = { key: "block_recheck_open", onClick: function () { location.replace(shown.url); } };
+
+  /**
+   * Neutral: no warning, no Google credit. `title` only once the answer is
+   * in. `actions`: the main one first.
+   */
+  function drawNote(title, lines, actions) {
     var dark = "#0f172a";
     document.documentElement.style.background = dark;
     document.body.style.background = dark;
@@ -168,19 +229,71 @@
       h.textContent = title;
       box.appendChild(h);
     }
-    var p = document.createElement("p");
-    p.style.cssText = "font-size:17px;line-height:1.5;margin:0 0 20px;overflow-wrap:anywhere;";
-    p.textContent = line;
-    box.appendChild(p);
-    var actions = document.createElement("div");
-    actions.appendChild(button(_t("block_recheck_back"), !withOpen, goBack));
-    if (withOpen && shown.url) {
-      // Straight to the site, no "open anyway" allowance: if it is flagged
-      // again, the page check blocks it again.
-      actions.appendChild(button(_t("block_recheck_open"), true, function () { location.replace(shown.url); }));
-    }
-    box.appendChild(actions);
+    lines.forEach(function (line) {
+      var p = document.createElement("p");
+      p.style.cssText = "font-size:17px;line-height:1.5;margin:0 0 20px;overflow-wrap:anywhere;";
+      p.textContent = line;
+      box.appendChild(p);
+    });
+    var row = document.createElement("div");
+    actions.forEach(function (a, i) {
+      row.appendChild(button(_t(a.key), i === 0, a.onClick));
+    });
+    box.appendChild(row);
     document.body.appendChild(box);
+  }
+
+  /** The server's answer (or the platform rule), not the offline guess. */
+  function checked(r) {
+    return Boolean(r) && (r.source === "api" || r.source === "platform");
+  }
+
+  function askSite() {
+    return ask({ type: "CHECK_DOMAINS", domains: [shown.domain], page: true }).then(function (reply) {
+      return reply && Array.isArray(reply.results) && reply.results[0] ? reply.results[0] : null;
+    });
+  }
+
+  /** Once more after a few seconds, unless the first answer settles it. */
+  function askSiteTwice() {
+    return askSite().then(function (r) {
+      if (r && (r.level === "dangerous" || checked(r))) return r;
+      return new Promise(function (resolve) {
+        setTimeout(function () { resolve(askSite()); }, RETRY_AFTER_MS);
+      });
+    });
+  }
+
+  function drawBlock(r) {
+    var left = typeof r.advisory_until === "number" ? r.advisory_until - Date.now() : null;
+    shortRounds = left !== null && left <= SHORT_WINDOW_MS ? shortRounds + 1 : 0;
+    var base = "";
+    try { base = chrome.runtime.getURL(""); } catch (e) { /* the old address stays */ }
+    var next = base ? B.build(base, {
+      domain: shown.domain,
+      confidence_pct: r.confidence_pct,
+      reasons: r.reasons,
+      advisory_until: r.advisory_until,
+    }, shown.url) : null;
+    if (next) {
+      // The fresh verdict and its window in the address: a reload, the
+      // popup and "open anyway" read this one.
+      try { window.history.replaceState(null, "", next); } catch (e) { /* the page still draws it */ }
+      shown = B.parse(next);
+    }
+    drawWarning();
+  }
+
+  function drawAnswer(r, skill) {
+    var open = skill !== "kids" && shown.url ? [OPEN] : [];
+    var d = [shown.domain];
+    if (checked(r)) {
+      var lines = [_t("block_recheck_clear", d)];
+      if (r.level === "caution") lines.push(_t("block_recheck_caution"));
+      drawNote(_t("block_recheck_title"), lines, open.concat([BACK]));
+    } else {
+      drawNote(_t("block_recheck_failed_title"), [_t("block_recheck_failed", d)], [RETRY, BACK].concat(open));
+    }
   }
 
   function recheck() {
@@ -189,35 +302,29 @@
     if (expiryTimer) clearTimeout(expiryTimer);
     expiryTimer = null;
     clearScreen();
-    drawNote("", _t("block_rechecking", [shown.domain]), false);
-    ask({ type: "CHECK_DOMAINS", domains: [shown.domain], page: true }).then(function (reply) {
+    drawNote("", [_t("block_rechecking", [shown.domain])], [BACK]);
+    Promise.all([askSiteTwice(), skillLevel]).then(function (got) {
       asking = false;
-      var r = reply && Array.isArray(reply.results) ? reply.results[0] : null;
+      var r = got[0];
       clearScreen();
-      if (r && r.level === "dangerous") {
-        var base = "";
-        try { base = chrome.runtime.getURL(""); } catch (e) { /* the old address stays */ }
-        var next = base ? B.build(base, {
-          domain: shown.domain,
-          confidence_pct: r.confidence_pct,
-          reasons: r.reasons,
-          advisory_until: r.advisory_until,
-        }, shown.url) : null;
-        if (next) {
-          // The fresh verdict and its window in the address: a reload, the
-          // popup and "open anyway" read this one.
-          try { window.history.replaceState(null, "", next); } catch (e) { /* the page still draws it */ }
-          shown = B.parse(next);
-        }
-        drawWarning();
-        return;
-      }
-      drawNote(_t("block_recheck_title"), r ? _t("block_recheck_clear", [shown.domain]) : _t("block_recheck_failed", [shown.domain]), true);
+      if (r && r.level === "dangerous") drawBlock(r);
+      else drawAnswer(r, got[1]);
     });
   }
 
+  /**
+   * A Google block with no window, asked about MAX_SHORT_ROUNDS times in a
+   * row: its warning goes as before, and the page waits for the person.
+   */
+  function pause() {
+    if (expiryTimer) clearTimeout(expiryTimer);
+    expiryTimer = null;
+    clearScreen();
+    drawNote("", [_t("block_recheck_paused", [shown.domain])], [RETRY, BACK]);
+  }
+
   function recheckIfOver() {
-    if (warningDrawn && !asking && B.needsRecheck(shown, Date.now())) recheck();
+    if (warningDrawn && !asking && B.needsRecheck(shown, Date.now())) windowOver();
   }
 
   if (shown.domain && B.needsRecheck(shown, Date.now())) recheck();

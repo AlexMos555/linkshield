@@ -456,6 +456,9 @@
           }
         }
       },
+      "recheck_caution": {
+        "text": "Mostra però alcuni segnali di truffa. Non inserire password né dati della carta lì se non ti fidi di questo sito."
+      },
       "recheck_failed": {
         "text": "Cleanway non è riuscito a controllare di nuovo $DOMAIN$ in questo momento. L'avviso precedente è scaduto.",
         "placeholders": {
@@ -469,6 +472,20 @@
       },
       "recheck_back": {
         "text": "Torna indietro"
+      },
+      "recheck_failed_title": {
+        "text": "Impossibile controllare di nuovo"
+      },
+      "recheck_retry": {
+        "text": "Riprova"
+      },
+      "recheck_paused": {
+        "text": "L'avviso precedente su $DOMAIN$ è scaduto. Premi «Riprova» per controllare di nuovo il sito.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
       }
     },
     "welcome": {

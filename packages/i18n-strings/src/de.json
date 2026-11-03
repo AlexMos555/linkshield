@@ -456,6 +456,9 @@
           }
         }
       },
+      "recheck_caution": {
+        "text": "Die Website zeigt aber einige Anzeichen von Betrug. Geben Sie dort keine Passwörter oder Kartendaten ein, wenn Sie ihr nicht vertrauen."
+      },
       "recheck_failed": {
         "text": "Cleanway konnte $DOMAIN$ gerade nicht erneut prüfen. Die frühere Warnung ist abgelaufen.",
         "placeholders": {
@@ -469,6 +472,20 @@
       },
       "recheck_back": {
         "text": "Zurück"
+      },
+      "recheck_failed_title": {
+        "text": "Erneute Prüfung nicht möglich"
+      },
+      "recheck_retry": {
+        "text": "Erneut versuchen"
+      },
+      "recheck_paused": {
+        "text": "Die frühere Warnung zu $DOMAIN$ ist abgelaufen. Wählen Sie „Erneut versuchen“, um die Website noch einmal zu prüfen.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
       }
     },
     "welcome": {
