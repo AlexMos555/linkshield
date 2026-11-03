@@ -118,7 +118,12 @@ async def test_the_raw_json_keeps_every_answer_and_how_it_was_counted(tmp_path, 
     report, _md = await _run_main(eval_module, monkeypatch, tmp_path, ["https://phish0.example/login"], adapters,
                                   sample=1)
     row = report["raw"]["phishing"]["cleanway"][0]
-    assert row["verdict_basis"] == "threat_intel" and row["reason_codes"] == ["urlhaus"]
+    # This used to say `reason_codes == ["urlhaus"]`: a published row naming
+    # the feed. With every feed but Google named, a threat_intel row naming
+    # none named Google's Web Risk hit by elimination (fourth review of #395;
+    # test_no_published_row_names_google_or_any_other_feed). The row says that
+    # an external feed listed the host, not which, and drops the score.
+    assert row["verdict_basis"] == "threat_intel" and row["reason_codes"] == [] and row["score"] is None
     assert row["checks_incomplete"] == ["rdap"] and row["exists"] is True and row["level"] == "dangerous"
     assert row["outcome"] == "dangerous"
     other = report["raw"]["phishing"]["phishtank"][0]
@@ -500,3 +505,62 @@ async def test_the_gate_log_says_how_many_cleanway_answers_were_degraded(tmp_pat
     ]
     # The gate decides as before: this run is too small to publish.
     assert not (tmp_path / "latest.json").exists()
+
+
+@pytest.mark.asyncio
+async def test_no_published_row_names_google_or_any_other_feed(tmp_path, monkeypatch):
+    """Cleanway's answer can rest on Google Web Risk (reason code
+    'safe_browsing'), and the weekly report is committed to this public repo.
+    Google's Web Risk terms let a product show a warning from Google's list
+    only while that list is fresh and with Google's notice; a public row
+    naming a Google hit per URL, kept for weeks, is neither. Dropping that one
+    code is not enough: with every other feed named, a 'threat_intel' row that
+    names none names Google by elimination, and so does its score by the
+    public weights (api/services/scoring.py: 80 for safe_browsing). So a
+    published row names no third-party source, and a row that had one loses
+    its score too. verdict_basis still says that an external feed listed it."""
+    eval_module = _load_eval_module()
+    pool = ["https://google-only.example/", "https://many-feeds.example/", "https://otx.example/",
+            "https://heuristics.example/"]
+    answers = {
+        pool[0]: ("dangerous", 80, "threat_intel", ["safe_browsing"]),
+        pool[1]: ("dangerous", 100, "threat_intel", ["safe_browsing", "urlhaus", "phishtank", "multi_blocklist"]),
+        pool[2]: ("caution", 45, "heuristics", ["alienvault_otx", "domain_new"]),
+        pool[3]: ("caution", 45, "heuristics", ["domain_new", "no_https"]),
+    }
+
+    def cleanway(url):
+        level, score, basis, codes = answers.get(url, ("safe", 0, "heuristics", ["safe_browsing"]))
+        verdict = level if level != "caution" else "unknown"
+        return eval_module.Verdict("cleanway", verdict, score=score, detail=level, level=level,
+                                   verdict_basis=basis, reason_codes=list(codes), checks_incomplete=[])
+
+    report, md = await _run_main(eval_module, monkeypatch, tmp_path, pool, {"cleanway": _by_url(cleanway)},
+                                 sample=4)
+    hidden = eval_module.THIRD_PARTY_SOURCE_CODES
+    rows = dict(zip(report["raw"]["phishing_urls"], report["raw"]["phishing"]["cleanway"], strict=True))
+    for url, row in [*rows.items(), *zip(report["raw"]["legit_urls"], report["raw"]["safe"]["cleanway"])]:
+        assert not hidden & set(row["reason_codes"]), url
+    google, many, otx, heuristics = (rows[u] for u in pool)
+    assert (google["reason_codes"], google["score"], google["verdict_basis"]) == ([], None, "threat_intel")
+    assert (google["level"], google["outcome"]) == ("dangerous", "dangerous")
+    assert (many["reason_codes"], many["score"]) == ([], None)
+    assert (otx["reason_codes"], otx["score"], otx["verdict_basis"]) == (["domain_new"], None, "heuristics")
+    assert (heuristics["reason_codes"], heuristics["score"]) == (["domain_new", "no_https"], 45)
+    assert report["phishing"]["cleanway"]["tp"] == 2           # the counts are untouched
+    published = (tmp_path / "t-fresh-urls.json").read_text(encoding="utf-8")
+    assert "safe_browsing" not in published and "safe_browsing" not in md
+    assert "names no third-party source" in md
+
+
+def test_the_hidden_codes_cover_every_external_source_the_server_names():
+    """If a feed is added to the server and not here, its name would show per
+    URL and make Google's the only unnamed one again."""
+    from api.services.reason_codes import KNOWN_REASON_CODES
+    from api.services.verdict_basis import THREAT_INTEL_REASONS
+
+    hidden = _load_eval_module().THIRD_PARTY_SOURCE_CODES
+    assert THREAT_INTEL_REASONS <= hidden
+    assert {"alienvault_otx", "alienvault_otx_high", "ipqs_phishing", "ipqs_high_risk", "multi_blocklist"} <= hidden
+    assert hidden <= KNOWN_REASON_CODES                        # no typo hides nothing
+    assert "cleanway_blocklist" not in hidden                  # our own list is ours to name

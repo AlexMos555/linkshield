@@ -605,7 +605,8 @@ async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
       verdict_basis      what the verdict rests on: blocklist, threat_intel,
                          allowlist, ml_and_heuristics, heuristics,
                          unreachable, not_found, user_content
-      reason_codes       the reasons shown, as codes
+      reason_codes       the reasons shown, as codes (published without
+                         the third-party ones: THIRD_PARTY_SOURCE_CODES)
       checks_incomplete  checks the time budget cut off
       exists             false: the analyzer's not-found answer — an NXDOMAIN,
                          or a name that resolves into a blocked or private
@@ -1151,12 +1152,42 @@ def existence_of_rows(probe: list[Verdict], results: dict[str, list[Verdict]]) -
 # Fields only Cleanway's answer has (check_cleanway): other rows leave them out.
 _CLEANWAY_FIELDS = ("level", "verdict_basis", "reason_codes", "checks_incomplete")
 
+# Reason codes that name a third-party source (api/services/scoring.py). The
+# weekly report is committed to this public repo, and Cleanway's answer can
+# rest on Google Web Risk ('safe_browsing'), whose terms let a product show a
+# warning from Google's list only while the list is fresh and with Google's
+# notice. So a published row says THAT an external feed listed the host
+# (verdict_basis 'threat_intel'), never WHICH: with every other feed named, a
+# row naming none would name Google's by elimination. For the same reason a
+# row that had one loses its score, which the public weights would decode
+# (80 is safe_browsing's). The counts do not use either field.
+# checks_incomplete may still name safe_browsing: a lookup that did not finish
+# in time, so no answer from Google at all.
+THIRD_PARTY_SOURCE_CODES = frozenset({
+    "safe_browsing", "phishtank", "urlhaus", "phishstats", "threatfox", "spamhaus_dbl", "surbl",
+    "malware_bazaar", "feodo", "alienvault_otx", "alienvault_otx_high", "ipqs_phishing",
+    "ipqs_high_risk", "multi_blocklist",
+})
+
+
+def _unnamed_sources(row: dict) -> None:
+    """A Cleanway row as published: no third-party source named (THIRD_PARTY_SOURCE_CODES)."""
+    codes = row.get("reason_codes")
+    named = any(c in THIRD_PARTY_SOURCE_CODES for c in codes or ())
+    if codes is not None:
+        row["reason_codes"] = [c for c in codes if c not in THIRD_PARTY_SOURCE_CODES]
+    if named or row.get("verdict_basis") == "threat_intel":
+        row["score"] = None
+
+
 def _raw_rows(resolver: str, verdicts: list[Verdict], outcomes: list[str]) -> list[dict]:
     rows = []
     for v, outcome in zip(verdicts, outcomes, strict=True):
         row = asdict(v)
         row.pop("addresses")  # the existence probe's alone (_probe_rows)
-        if not resolver.startswith("cleanway"):
+        if resolver.startswith("cleanway"):
+            _unnamed_sources(row)
+        else:
             for key in _CLEANWAY_FIELDS:
                 row.pop(key)
         row["outcome"] = outcome
@@ -1310,7 +1341,11 @@ def render_md(report: dict) -> str:
     lines.append("- Cleanway's 'caution' band is reported as 'unknown' in recall and FPR so the "
                  "binary comparison is apples-to-apples; 'Every answer, by kind' counts it. The raw "
                  "JSON keeps each Cleanway answer's level, verdict_basis, reason codes, "
-                 "checks_incomplete and exists.")
+                 "checks_incomplete and exists, but names no third-party source per URL: verdict_basis "
+                 "'threat_intel' says an external feed listed the host, not which one. Cleanway's "
+                 "answer can rest on Google Web Risk, whose results are not ours to republish, and "
+                 "naming every other feed would name Google's by elimination; a row that had one also "
+                 "leaves out its score.")
     lines.append("")
     lines.append("**Reproduce**: `python3 scripts/eval_fresh_urls.py`.")
     return "\n".join(lines)
