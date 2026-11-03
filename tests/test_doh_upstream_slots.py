@@ -719,6 +719,9 @@ async def test_a_request_the_upstream_never_answers_gives_its_slot_back_after_re
         assert await doh_upstream.proxy_to_upstream(query("warm.example.org")) is not None
         assert await doh_upstream.proxy_to_upstream(query("r1.dead.example")) is None
         assert len(doh_upstream._abandoned) == 1
+        # The live queries need time to be answered on the new connection after the drop:
+        # at 0.3 s a busy CI runner sometimes ran out before the reconnect (PR #327, 2026-11-02).
+        monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 2.0)
         started = time.monotonic()
         i = 0
         while time.monotonic() - started < 3.0:  # traffic on the same connection, 3 x REQUEST_TIMEOUT_S
