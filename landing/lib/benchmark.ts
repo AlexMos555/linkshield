@@ -13,17 +13,62 @@ import path from "node:path";
  * that there is no trustworthy number yet.
  */
 
+/** A Wilson 95% interval [low, high] of a rate, 0..1; null when nothing was counted. */
+export type Wilson95 = [number, number] | null;
+
 export interface ResolverStats {
   tp: number;
   fp: number;
   tn: number;
   fn: number;
+  /** Everything but tp/fn/fp/tn: caution, not found and no answer alike. */
   unknown: number;
+  /** tp / (tp + fn): leaves caution, dead names and no answer out (see the counts below). */
   recall: number | null;
   fpr: number | null;
   precision: number | null;
   f1: number | null;
   latency_p50_ms: number | null;
+  // Since method_version 2 (2026-11-03, scripts/benchmark_method.py summarize);
+  // absent in older snapshots. Nothing on the site reads them yet: which
+  // figure the site shows is the founder's call.
+  /** Rows in the batch. */
+  n?: number;
+  dangerous?: number;
+  caution?: number;
+  safe?: number;
+  /** Rows whose name resolves nowhere: not found for every resolver, whatever it answered. */
+  not_found?: number;
+  no_answer?: number;
+  /** n - not_found. */
+  resolving?: number;
+  dangerous_rate_all?: number | null;
+  dangerous_rate_resolving?: number | null;
+  recall_wilson95?: Wilson95;
+  fpr_wilson95?: Wilson95;
+  dangerous_rate_all_wilson95?: Wilson95;
+  dangerous_rate_resolving_wilson95?: Wilson95;
+}
+
+/** How the phishing sample was drawn (method_version 2). */
+export interface BenchmarkSampling {
+  seed: number;
+  max_per_site: number;
+  pool_rows: number;
+  pool_hosts: number;
+  pool_sites: number;
+  n: number;
+  sites: number;
+  site_rule: string;
+  dump_sha256: string | null;
+  submitted: { oldest: string; median: string; newest: string } | null;
+}
+
+/** Rows by existence: the same fact for every resolver's row. */
+export interface ExistenceCounts {
+  resolves: number;
+  nxdomain: number;
+  unknown: number;
 }
 
 export interface BenchmarkSources {
@@ -39,9 +84,17 @@ export interface BenchmarkSources {
 
 export interface BenchmarkSnapshot {
   ts: string;
+  /**
+   * 2 since 2026-11-03: a fixed-seed sample capped per site, and a name that
+   * resolves nowhere counted as not found for every resolver. Absent = 1, the
+   * old rules; the two are not comparable.
+   */
+  method_version?: number;
   n_phishing: number;
   n_safe: number;
   sources?: BenchmarkSources;
+  sampling?: BenchmarkSampling;
+  existence?: { phishing: ExistenceCounts; safe: ExistenceCounts };
   phishing: Record<string, ResolverStats>;
   safe: Record<string, ResolverStats>;
 }

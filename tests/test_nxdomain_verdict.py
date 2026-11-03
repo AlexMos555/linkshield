@@ -206,3 +206,68 @@ def test_benchmark_reads_cleanway_not_found_as_unknown():
     client.get = AsyncMock(return_value=resp)
     verdict = asyncio.run(ev.check_cleanway(client, "http://sbertank.ru/"))
     assert (verdict.verdict, verdict.detail) == ("unknown", "not_found")
+
+
+def test_benchmark_does_not_count_an_unverified_nxdomain_as_a_block():
+    """The control query answered SERVFAIL. That says nothing about the name,
+    and it counted as Cloudflare's block: any answer but NXDOMAIN did."""
+    ev = _eval_module()
+    client = _client_answering(_doh_response(3), _doh_response(2))
+    verdict = asyncio.run(ev.check_cloudflare_families(client, "http://maybe-dead.top/login"))
+    assert (verdict.verdict, verdict.detail) == ("unknown", "nxdomain_unverified")
+
+
+def test_benchmark_families_says_what_it_learned_about_existence():
+    """Its answer is one of the row's existence witnesses
+    (benchmark_method.row_existence)."""
+    ev = _eval_module()
+
+    def families(*responses):
+        return asyncio.run(ev.check_cloudflare_families(_client_answering(*responses), "http://x.top/"))
+
+    assert families(_doh_response(3), _doh_response(3)).exists is False
+    assert families(_doh_response(3), _doh_response(0, [{"type": 1, "data": "5.6.7.8"}])).exists is True
+    assert families(_doh_response(0, [{"type": 1, "data": "5.6.7.8"}])).exists is True
+    # Families sinkholes a name it lists whether or not the name exists.
+    assert families(_doh_response(0, [{"type": 1, "data": "0.0.0.0"}])).exists is None
+
+
+def _failed_doh():
+    resp = MagicMock()
+    resp.status_code = 503
+    return resp
+
+
+@pytest.mark.parametrize("response, exists, detail", [
+    (_doh_response(3), False, "nxdomain"),
+    (_doh_response(0, [{"type": 1, "data": "1.2.3.4"}]), True, "noerror"),
+    (_doh_response(0), True, "noerror"),          # the name exists, it has no A record
+    (_doh_response(2), None, "status=2"),         # SERVFAIL: could not tell
+    (_failed_doh(), None, "http=503"),
+], ids=["nxdomain", "resolves", "no-a-record", "servfail", "http-error"])
+def test_benchmark_existence_probe(response, exists, detail):
+    """One question per URL to Cloudflare's unfiltered resolver, whatever the
+    resolvers answered: the benchmark's own witness."""
+    ev = _eval_module()
+    out = asyncio.run(ev.probe_existence(_client_answering(response), "http://phish.top/login"))
+    assert (out.exists, out.detail) == (exists, detail)
+
+
+def test_benchmark_existence_probe_asks_nothing_for_an_ip_address():
+    ev = _eval_module()
+    client = _client_answering()
+    out = asyncio.run(ev.probe_existence(client, "http://221.14.192.60/login"))
+    assert (out.exists, out.detail) == (True, "ip_literal")
+    client.get.assert_not_awaited()
+
+
+def test_benchmark_counts_a_dead_name_for_no_one_even_from_the_blocklist():
+    """Cleanway's blocklist answers before any existence check (public_check
+    step 3) and Families sinkholes a listed name that no longer exists."""
+    ev = _eval_module()
+    listed = ev.Verdict("cleanway", "dangerous", level="dangerous", verdict_basis="blocklist")
+    sinkhole = ev.Verdict("cloudflare_families", "dangerous", detail="status=0 ip_block=True")
+    for verdict in (listed, sinkhole):
+        dead = ev.classify([verdict], "dangerous", existence=["nxdomain"])
+        assert (dead["tp"], dead["not_found"], dead["unknown"]) == (0, 1, 1), verdict.name
+        assert ev.classify([verdict], "dangerous", existence=["resolves"])["tp"] == 1, verdict.name

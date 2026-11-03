@@ -32,10 +32,17 @@ Usage:
     # Re-check the curated legitimate sample (resolves, outside the allowlist):
     python3 scripts/eval_fresh_urls.py --verify-legit-sample
 
-Each competitor is wrapped in a small async adapter that returns
-{"verdict": "safe"|"dangerous"|"unknown", "latency_ms": float}.
+Each competitor is wrapped in a small async adapter that returns a
+Verdict: "safe"|"dangerous"|"unknown", its latency, and what else the
+answer said (Cleanway's verdict_basis, reason codes, existence).
 Adapters fail open — if a service errors out we record "unknown"
 and don't count it against recall.
+
+How the phishing sample is drawn and how every answer is counted
+(method_version 2, since 2026-11-03: a fixed-seed sample capped per
+site, and one existence fact per URL, the same for every resolver) is
+scripts/benchmark_method.py. Reports before 2026-11-03 are counted by
+the old rules and are not comparable with later ones.
 
 This file is INTENTIONALLY long and verbose — the report is the
 moat. Anyone in the world should be able to read this script and
@@ -47,8 +54,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import csv
+import gzip
 import hashlib
 import io
+import ipaddress
 import json
 import logging
 import os
@@ -70,6 +79,7 @@ import httpx
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 import benchmark_legit  # noqa: E402
+import benchmark_method  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs" / "benchmarks"
@@ -378,53 +388,54 @@ def domain_of(url: str) -> str:
     return host
 
 
-def dedup_urls(urls: list[str]) -> list[str]:
-    """Keep first occurrence per registrable-ish key. Cheaper than
-    proper eTLD+1 parsing — for benchmarking it's good enough."""
-    seen = set()
-    out = []
-    for u in urls:
-        h = domain_of(u)
-        if not h or h in seen:
-            continue
-        seen.add(h)
-        out.append(u)
-    return out
+def is_ip_address(host: str) -> bool:
+    try:
+        ipaddress.ip_address(host.strip("[]"))
+    except ValueError:
+        return False
+    return True
 
 
 # ─────────────────────────────────────────────────────────────────
 # Sample sources
 # ─────────────────────────────────────────────────────────────────
 
-async def fetch_phishtank_recent(limit: int) -> list[str]:
-    """PhishTank online-valid.csv.gz — ALL active verified phish.
-    Anonymous download works; PHISHTANK_API_KEY is optional and
-    only raises rate limits. The dump is 1-3 MB gzipped."""
+@dataclass
+class PhishtankDump:
+    """Every row of the online-valid dump that has a URL, in the dump's order.
+    `submitted[i]` is row i's submission_time; `sha256` fingerprints the
+    decompressed CSV, so whoever holds the same file can check they draw the
+    same sample (benchmark_method.sample_phishing)."""
+    urls: list[str]
+    sha256: str = ""
+    submitted: Optional[list[str]] = None
+
+
+async def fetch_phishtank_dump(client: Optional[httpx.AsyncClient] = None) -> PhishtankDump:
+    """PhishTank online-valid.csv.gz — ALL active verified phish, every row
+    (until 2026-11-03 only the first sample x 3, from which the sample was the
+    top). Anonymous download works; PHISHTANK_API_KEY is optional and only
+    raises rate limits. The dump is 1-3 MB gzipped."""
     log.info("fetching PhishTank online-valid feed …")
-    async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-        # Anonymous download still works — but they politely ask
-        # for a User-Agent so we don't look like a bot. They also
-        # redirect to a signed CDN URL — follow_redirects is required.
-        r = await client.get(
-            PHISHTANK_FEED_URL,
-            headers={"User-Agent": "Cleanway-benchmark/1.0"},
-        )
-        r.raise_for_status()
-        body = r.content
-    # Gzipped CSV with header row: phish_id,url,phish_detail_url,...
-    import gzip
-    text = gzip.decompress(body).decode("utf-8", errors="ignore")
-    out = []
-    rows = csv.DictReader(io.StringIO(text))
-    for row in rows:
+    if client is None:
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as own:
+            return await fetch_phishtank_dump(own)
+    # Anonymous download still works — but they politely ask for a
+    # User-Agent so we don't look like a bot. They also redirect to a
+    # signed CDN URL — follow_redirects is required.
+    r = await client.get(PHISHTANK_FEED_URL, headers={"User-Agent": "Cleanway-benchmark/1.0"})
+    r.raise_for_status()
+    # Gzipped CSV with header row: phish_id,url,phish_detail_url,submission_time,...
+    raw = gzip.decompress(r.content)
+    urls: list[str] = []
+    submitted: list[str] = []
+    for row in csv.DictReader(io.StringIO(raw.decode("utf-8", errors="ignore"))):
         u = (row.get("url") or "").strip()
         if u:
-            out.append(u)
-        if len(out) >= limit * 3:  # over-fetch, dedup later
-            break
-    out = dedup_urls(out)[:limit]
-    log.info("PhishTank: %d urls", len(out))
-    return out
+            urls.append(u)
+            submitted.append((row.get("submission_time") or "").strip())
+    log.info("PhishTank: %d rows", len(urls))
+    return PhishtankDump(urls, hashlib.sha256(raw).hexdigest(), submitted)
 
 
 def fetch_tranco_legit(limit: int) -> list[str]:
@@ -529,24 +540,56 @@ class Verdict:
     score: Optional[float] = None
     latency_ms: float = 0.0
     detail: str = ""
+    # What Cleanway's answer said besides its level (check_cleanway). Only
+    # Cleanway's rows carry them in the raw JSON (_raw_rows).
+    level: Optional[str] = None
+    verdict_basis: Optional[str] = None
+    reason_codes: Optional[list[str]] = None
+    checks_incomplete: Optional[list[str]] = None
+    # Does the name exist, as far as this answer tells: False = NXDOMAIN,
+    # True = it resolved, None = the answer says nothing about it. Every
+    # resolver's is a witness for the row (benchmark_method.row_existence).
+    exists: Optional[bool] = None
+
+
+def _str_list(value: object) -> Optional[list[str]]:
+    if isinstance(value, list) and all(isinstance(x, str) for x in value):
+        return list(value)
+    return None
 
 
 async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
-    """GET /api/v1/public/check/{domain} on api.cleanway.ai.
-    Lightweight public endpoint — rule + ML scoring, NO threat-
-    intel API fan-out (intentional per api/routers/public.py:80).
+    """GET /api/v1/public/check/{domain} on api.cleanway.ai: what a user of
+    the site or the app gets for the domain (only the domain is sent).
 
-    On HTTP 429 (rate-limited): wait 25s (one full rate-limit
-    window + 5s slack) and retry once. Without this retry, a
-    benchmark batch that drifts past the 5/min IP cap records the
-    affected URLs as 'unknown', which artificially deflates recall.
-    A single retry per URL caps the worst-case batch time at
-    2 × (N × MIN_INTERVAL_S + N × 25s).
+    The public check answers in this order (api/routers/public.py
+    public_check): the allowlist of the top 100,000 — 'safe' without
+    analysis, unless its age gate holds a young registration back; then
+    Cleanway's own blocklist — 'dangerous' at once, before any existence
+    check, so a listed name that no longer resolves is still 'dangerous';
+    then the full analyzer — threat-intel sources (as LICENSED_INTEL
+    allows), site probes, ML, the LLM judge — inside a ~3 s budget.
 
-    Both attempts go out under the same identity: without the token, the
-    same virtual install waits out the 429 and asks again (the other
-    installs go on meanwhile) — a per-install limit is never dodged by
-    switching ids.
+    The Verdict is 'dangerous' / 'safe' for those levels and 'unknown'
+    otherwise; `detail` is the level, 'not_found' when the answer says
+    exists: false, or why there was no answer. The answer's own fields are
+    kept, per URL, in the raw JSON:
+      level              safe / caution / dangerous
+      verdict_basis      what the verdict rests on: blocklist, threat_intel,
+                         allowlist, ml_and_heuristics, heuristics,
+                         unreachable, not_found, user_content
+      reason_codes       the reasons shown, as codes
+      checks_incomplete  checks the time budget cut off
+      exists             false: DNS says no such name; null: not checked
+                         (an allowlist or blocklist answer) or no answer
+    How the row is then counted — a name that resolves nowhere is
+    'not_found' whatever Cleanway said — is benchmark_method.outcome.
+
+    On HTTP 429 the same identity waits (Retry-After, at most 60 s; 25 s
+    when the server sent none) and asks once more; a second 429 is
+    'unknown' (rate_limited). Without the token, the same virtual install
+    waits out the 429 (the other installs go on meanwhile) — a per-install
+    limit is never dodged by switching ids.
 
     `latency_ms` is time spent in requests only — never our own pacing
     or a 429 wait, which say nothing about how fast Cleanway answers.
@@ -586,15 +629,23 @@ async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
         data = r.json()
         level = (data.get("level") or "").lower()
         score = data.get("score")
-        if data.get("exists") is False:
+        exists = data.get("exists")
+        facts = {
+            "level": level or None,
+            "verdict_basis": data.get("verdict_basis") if isinstance(data.get("verdict_basis"), str) else None,
+            "reason_codes": _str_list(data.get("reason_codes")),
+            "checks_incomplete": _str_list(data.get("checks_incomplete")),
+            "exists": exists if isinstance(exists, bool) else None,
+        }
+        if exists is False:
             # The domain no longer exists — nobody can block or miss it.
             return Verdict("cleanway", "unknown", score=score,
-                           latency_ms=elapsed, detail="not_found")
+                           latency_ms=elapsed, detail="not_found", **facts)
         v = "dangerous" if level == "dangerous" else (
             "safe" if level == "safe" else "unknown"
         )
         return Verdict("cleanway", v, score=score,
-                       latency_ms=elapsed, detail=level)
+                       latency_ms=elapsed, detail=level, **facts)
     except Exception as exc:
         if started is not None:  # the request itself failed (timeout, reset)
             spent += time.monotonic() - started
@@ -670,8 +721,13 @@ async def check_cleanway_local(client: httpx.AsyncClient, url: str) -> Verdict:
         v = "dangerous" if level == "dangerous" else (
             "safe" if level == "safe" else "unknown"
         )
+        from api.services.verdict_basis import basis_of  # noqa: E402 — the analyzer loaded the package
+        exists = getattr(result, "exists", None)
         return Verdict("cleanway_local", v, score=score,
-                       latency_ms=elapsed, detail=level)
+                       latency_ms=elapsed, detail=level, level=level,
+                       verdict_basis=basis_of(result),
+                       checks_incomplete=list(getattr(result, "checks_incomplete", None) or []),
+                       exists=exists if isinstance(exists, bool) else None)
     except Exception as exc:
         return Verdict("cleanway_local", "unknown",
                        latency_ms=(time.monotonic() - t0) * 1000,
@@ -759,8 +815,12 @@ async def check_phishtank(client: httpx.AsyncClient, url: str) -> Verdict:
 CLOUDFLARE_UNFILTERED_DOH = "https://cloudflare-dns.com/dns-query"
 
 
-async def _unfiltered_nxdomain(client: httpx.AsyncClient, d: str) -> Optional[bool]:
-    """Does Cloudflare's UNFILTERED resolver also say NXDOMAIN? None if unsure."""
+async def _unfiltered_lookup(client: httpx.AsyncClient, d: str) -> tuple[Optional[bool], str]:
+    """(does the name exist, why we say so) by Cloudflare's UNFILTERED
+    resolver: True on NOERROR (with an answer or without one: the name is
+    there), False on NXDOMAIN, None when it could not tell — SERVFAIL, an
+    HTTP error, a timeout. Until 2026-11-03 Families' control query read any
+    answer but NXDOMAIN, SERVFAIL included, as "the name exists"."""
     try:
         r = await client.get(
             CLOUDFLARE_UNFILTERED_DOH,
@@ -769,10 +829,35 @@ async def _unfiltered_nxdomain(client: httpx.AsyncClient, d: str) -> Optional[bo
             timeout=8.0,
         )
         if r.status_code != 200:
-            return None
-        return r.json().get("Status", 0) == 3
-    except Exception:
-        return None
+            return None, f"http={r.status_code}"
+        status = r.json().get("Status")
+    except Exception as exc:
+        return None, f"err:{type(exc).__name__}"
+    if status == 0:
+        return True, "noerror"
+    if status == 3:
+        return False, "nxdomain"
+    return None, f"status={status}"
+
+
+EXISTENCE_PROBE = "existence"
+
+
+async def probe_existence(client: httpx.AsyncClient, url: str) -> Verdict:
+    """The benchmark's own existence witness, asked once for every URL
+    whatever the resolvers answered: Cloudflare's unfiltered resolver
+    (_unfiltered_lookup). An IP address exists without DNS. Not a resolver:
+    its Verdict is always 'unknown', its answer is `exists`
+    (benchmark_method.row_existence weighs it with the resolvers' own)."""
+    d = domain_of(url)
+    if not d:
+        return Verdict(EXISTENCE_PROBE, "unknown", detail="bad_domain")
+    if is_ip_address(d):
+        return Verdict(EXISTENCE_PROBE, "unknown", detail="ip_literal", exists=True)
+    t0 = time.monotonic()
+    exists, detail = await _unfiltered_lookup(client, d)
+    return Verdict(EXISTENCE_PROBE, "unknown", latency_ms=(time.monotonic() - t0) * 1000,
+                   detail=detail, exists=exists)
 
 
 async def check_cloudflare_families(client: httpx.AsyncClient, url: str) -> Verdict:
@@ -786,7 +871,16 @@ async def check_cloudflare_families(client: httpx.AsyncClient, url: str) -> Verd
     Cloudflare "hits" in the 2026-06 run were domains that no longer
     existed (report 2026-09-25 #18). So an NXDOMAIN is re-asked of the
     unfiltered resolver; if that one says NXDOMAIN too, the verdict is
-    'unknown' (detail 'nxdomain') and counts for no one.
+    'unknown' (detail 'nxdomain') and counts for no one, and if it cannot
+    tell (SERVFAIL, an error) it is 'unknown' ('nxdomain_unverified').
+
+    The 0.0.0.0 sinkhole comes before any such check: Families answers it
+    for a name it lists whether or not the name still exists (12 of the 16
+    names Cleanway found dead on 2026-11-01). That 'dangerous' stays the raw
+    answer; the benchmark's own existence probe makes the row 'not_found'
+    for every resolver (benchmark_method.outcome). `exists` says what this
+    answer learned: True when a resolver answered for the name, False on
+    NXDOMAIN everywhere, None for the sinkhole.
     """
     d = domain_of(url)
     if not d:
@@ -817,15 +911,16 @@ async def check_cloudflare_families(client: httpx.AsyncClient, url: str) -> Verd
                            latency_ms=elapsed,
                            detail=f"status={status} ip_block=True")
         if status == 3:
-            everywhere = await _unfiltered_nxdomain(client, d)
-            if everywhere is False:
+            exists, _why = await _unfiltered_lookup(client, d)
+            if exists:
                 return Verdict("cloudflare_families", "dangerous",
-                               latency_ms=elapsed, detail="status=3 blocked")
+                               latency_ms=elapsed, detail="status=3 blocked", exists=True)
             return Verdict("cloudflare_families", "unknown", latency_ms=elapsed,
-                           detail="nxdomain" if everywhere else "nxdomain_unverified")
+                           detail="nxdomain" if exists is False else "nxdomain_unverified",
+                           exists=exists)
         if status == 0 and answers:
             return Verdict("cloudflare_families", "safe",
-                           latency_ms=elapsed, detail="resolved")
+                           latency_ms=elapsed, detail="resolved", exists=True)
         return Verdict("cloudflare_families", "unknown",
                        latency_ms=elapsed,
                        detail=f"status={status}")
@@ -886,9 +981,11 @@ ADAPTERS = {
     "phishtank": check_phishtank,
     "cloudflare_families": check_cloudflare_families,
     "virustotal": check_virustotal,
+    EXISTENCE_PROBE: probe_existence,
 }
 
 CONCURRENCY["cleanway_local"] = 4  # 18 parallel checks per URL, easy on the analyzer
+CONCURRENCY[EXISTENCE_PROBE] = 8   # the same unfiltered resolver Families re-asks
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -960,40 +1057,54 @@ def _utc_now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
-def classify(verdicts: list[Verdict], expected: str) -> dict:
+def outcomes_of(verdicts: list[Verdict], existence: Optional[list[str]] = None) -> list[str]:
+    """How each answer is counted (benchmark_method.outcome). `existence` is
+    the row's fact, one per verdict; without it, each answer's own `exists`."""
+    if existence is None:
+        existence = [benchmark_method.row_existence([v.exists]) for v in verdicts]
+    return [benchmark_method.outcome(v.verdict, v.level, e) for v, e in zip(verdicts, existence, strict=True)]
+
+
+def existence_of_rows(probe: list[Verdict], results: dict[str, list[Verdict]]) -> list[str]:
+    """Each row's existence from every witness: the probe and every resolver."""
+    return [benchmark_method.row_existence([p.exists, *(rows[i].exists for rows in results.values())])
+            for i, p in enumerate(probe)]
+
+
+# Fields only Cleanway's answer has (check_cleanway): other rows leave them out.
+_CLEANWAY_FIELDS = ("level", "verdict_basis", "reason_codes", "checks_incomplete")
+
+
+def _raw_rows(resolver: str, verdicts: list[Verdict], outcomes: list[str]) -> list[dict]:
+    rows = []
+    for v, outcome in zip(verdicts, outcomes, strict=True):
+        row = asdict(v)
+        if not resolver.startswith("cleanway"):
+            for key in _CLEANWAY_FIELDS:
+                row.pop(key)
+        row["outcome"] = outcome
+        rows.append(row)
+    return rows
+
+
+def _probe_rows(probe: list[Verdict], existence: list[str]) -> list[dict]:
+    return [{"exists": p.exists, "detail": p.detail, "latency_ms": p.latency_ms, "status": status}
+            for p, status in zip(probe, existence, strict=True)]
+
+
+def classify(verdicts: list[Verdict], expected: str, existence: Optional[list[str]] = None) -> dict:
     """expected ∈ {'dangerous', 'safe'}.
 
-    Returns a dict with TP/FP/TN/FN/unknown counts + recall, FPR,
-    precision, F1 assuming the resolver claims to detect the
-    expected class. For the 'dangerous' batch, recall = TP/(TP+FN);
-    for the 'safe' batch we care about FPR.
+    The summary of benchmark_method.summarize — TP/FP/TN/FN/unknown, recall,
+    FPR, precision, F1 as before (recall = TP/(TP+FN) on the 'dangerous'
+    batch, FPR on the 'safe' one; caution, not found and no answer are all
+    'unknown'), every kind of answer counted apart, the rates over all and
+    over resolving rows with Wilson 95% intervals — plus latency. A row whose
+    name resolves nowhere (`existence`) is not found, whatever the answer.
     """
-    tp = fp = tn = fn = unk = 0
-    for v in verdicts:
-        if v.verdict == "unknown":
-            unk += 1
-            continue
-        if expected == "dangerous":
-            if v.verdict == "dangerous":
-                tp += 1
-            else:
-                fn += 1
-        else:
-            if v.verdict == "dangerous":
-                fp += 1
-            else:
-                tn += 1
-    recall = tp / (tp + fn) if (tp + fn) > 0 else None
-    fpr = fp / (fp + tn) if (fp + tn) > 0 else None
-    precision = tp / (tp + fp) if (tp + fp) > 0 else None
-    f1 = None
-    if recall is not None and precision is not None and (precision + recall) > 0:
-        f1 = 2 * precision * recall / (precision + recall)
     latencies = [v.latency_ms for v in verdicts if v.latency_ms > 0]
     return {
-        "tp": tp, "fp": fp, "tn": tn, "fn": fn, "unknown": unk,
-        "recall": recall, "fpr": fpr,
-        "precision": precision, "f1": f1,
+        **benchmark_method.summarize(outcomes_of(verdicts, existence), expected),
         "latency_p50_ms": (statistics.median(latencies) if latencies else None),
         "latency_p95_ms": (sorted(latencies)[int(0.95 * len(latencies))]
                            if len(latencies) >= 20 else None),
@@ -1019,13 +1130,15 @@ def render_md(report: dict) -> str:
     lines.append(
         "|---|---|---|---|---|---|---|---|---|"
     )
+    def _ci(ci):
+        return f" ({ci[0]*100:.1f}–{ci[1]*100:.1f}%)" if ci else ""
     for name, m in report["phishing"].items():
         def _pct(x):
             return f"{x*100:.1f}%" if x is not None else "—"
         def _n(x):
             return f"{x:.0f}" if x is not None else "—"
         lines.append(
-            f"| {name} | {_pct(m['recall'])} | {_pct(m['precision'])} "
+            f"| {name} | {_pct(m['recall'])}{_ci(m.get('recall_wilson95'))} | {_pct(m['precision'])} "
             f"| {_pct(m['f1'])} | {m['fp']} | {m['tp']} | {m['fn']} "
             f"| {m['unknown']} | {_n(m['latency_p50_ms'])} |"
         )
@@ -1044,10 +1157,11 @@ def render_md(report: dict) -> str:
         def _n(x):
             return f"{x:.0f}" if x is not None else "—"
         lines.append(
-            f"| {name} | {_pct(m['fpr'])} | {m['fp']} | {m['tn']} "
+            f"| {name} | {_pct(m['fpr'])}{_ci(m.get('fpr_wilson95'))} | {m['fp']} | {m['tn']} "
             f"| {m['unknown']} | {_n(m['latency_p50_ms'])} |"
         )
     lines.append("")
+    lines += benchmark_method.render_outcomes_md(report)
     if report.get("cleanway_on_legit"):
         lines += benchmark_legit.render_breakdown_md(report["cleanway_on_legit"])
     lines.append("## Methodology")
@@ -1056,6 +1170,7 @@ def render_md(report: dict) -> str:
                  "until 2026-10-21 also URLhaus, which then closed anonymous downloads — "
                  "earlier runs are a different mix); "
                  "the Cleanway ML model has NOT been trained on these specific URLs.")
+    lines += benchmark_method.methodology_md(report)
     if report.get("sources", {}).get("legit_outside_allowlist"):
         lines.append("- Legit samples are real Russian sites OUTSIDE the top 100,000 the server "
                      "trusts on sight (Majestic Million + Chrome UX Report; Tranco's until 2026-10-23) — "
@@ -1082,9 +1197,10 @@ def render_md(report: dict) -> str:
                  "checks past a cap run without that source, as a user's would. "
                  "Phishing and legitimate URLs are interleaved, so both batches "
                  f"meet the same budget state.{ran}")
-    lines.append("- 'Unknown' = the resolver didn't return a definitive verdict "
-                 "(rate-limited, not indexed, error). 'Unknown' is NOT counted as "
-                 "either correct or incorrect — it's reported separately.")
+    lines.append("- 'Unknown' = no definitive verdict: Cleanway's caution, a name that does not "
+                 "resolve, or no answer (rate-limited, not indexed, error). 'Unknown' is NOT counted "
+                 "as either correct or incorrect in recall and FPR; 'Every answer, by kind' counts "
+                 "each apart. Intervals are Wilson 95%.")
     if "virustotal" in resolvers:
         lines.append("- VirusTotal verdict is 'dangerous' iff ≥2 vendors out of 70+ flag the URL.")
     asked_names = non_commercial_asked(report)
@@ -1101,10 +1217,11 @@ def render_md(report: dict) -> str:
     lines.append("- Cloudflare 1.1.1.1 for Families is treated as 'dangerous' on a "
                  "0.0.0.0 sinkhole, or on NXDOMAIN only when Cloudflare's unfiltered "
                  "resolver still resolves the name. A domain that no longer exists "
-                 "(NXDOMAIN everywhere) is 'unknown' for every resolver, not a catch.")
-    lines.append("- Cleanway's 'caution' band is reported as 'unknown' here so the "
-                 "binary comparison is apples-to-apples. The raw JSON shows the per-"
-                 "resolver level distribution.")
+                 "is 'not found' for every resolver, not a catch — the sinkhole included.")
+    lines.append("- Cleanway's 'caution' band is reported as 'unknown' in recall and FPR so the "
+                 "binary comparison is apples-to-apples; 'Every answer, by kind' counts it. The raw "
+                 "JSON keeps each Cleanway answer's level, verdict_basis, reason codes, "
+                 "checks_incomplete and exists.")
     lines.append("")
     lines.append("**Reproduce**: `python3 scripts/eval_fresh_urls.py`.")
     return "\n".join(lines)
@@ -1293,6 +1410,9 @@ async def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--sample", type=int, default=500,
                    help="URLs per side (phishing + legit). Default 500.")
+    p.add_argument("--seed", type=int, default=benchmark_method.PHISHING_SAMPLE_SEED,
+                   help="Seed of the random phishing sample drawn from PhishTank's dump "
+                        f"(default {benchmark_method.PHISHING_SAMPLE_SEED}; recorded in the report).")
     p.add_argument("--out-tag", default=None,
                    help="Tag appended to output filename. Default: timestamp.")
     p.add_argument("--virustotal", action=argparse.BooleanOptionalAction, default=False,
@@ -1341,11 +1461,22 @@ async def main() -> int:
 
     # ── Fetch samples ────────────────────────────────────────────
     try:
-        phishtank = await fetch_phishtank_recent(args.sample)
+        dump = await fetch_phishtank_dump()
     except Exception as exc:
         log.error("PhishTank fetch failed: %s", exc)
-        phishtank = []
-    phishing_urls = dedup_urls(phishtank)[:args.sample]
+        dump = PhishtankDump([])
+    site_of, site_rule = benchmark_method.site_rule()
+    picked, sampling = benchmark_method.sample_phishing(
+        dump.urls, args.sample, seed=args.seed, host_of=domain_of, site_of=site_of)
+    phishing_urls = [dump.urls[i] for i in picked]
+    sampling.update({
+        "site_rule": site_rule,
+        "dump_sha256": dump.sha256 or None,
+        "submitted": (benchmark_method.submitted_span(dump.submitted[i] for i in picked)
+                      if dump.submitted else None),
+    })
+    log.info("phishing sample: %d rows from %d sites (seed=%d, of %d rows on %d sites)",
+             sampling["n"], sampling["sites"], args.seed, sampling["pool_rows"], sampling["pool_sites"])
     legit_urls, legit_sites, legit_sources = pick_legit(args.legit_source, args.sample)
 
     if not phishing_urls or not legit_urls:
@@ -1386,58 +1517,81 @@ async def main() -> int:
     # service, so the run takes as long as the slowest one (Cleanway's paced
     # installs; VirusTotal, at 16 s a lookup, when asked) instead of the sum
     # of all of them. Within a resolver the two batches are interleaved
-    # (interleave_batches).
+    # (interleave_batches). The existence probe runs beside them: one
+    # question per URL, the same for every resolver's row.
     async def _both(r: str) -> tuple[list[Verdict], list[Verdict], dict[str, str]]:
         start = _utc_now()
         phish, safe = await run_resolver_on_both(r, phishing_urls, legit_urls)
-        _log_unknown_rate(r, "phishing", phish)
-        _log_unknown_rate(r, "safe", safe)
+        if r != EXISTENCE_PROBE:
+            _log_unknown_rate(r, "phishing", phish)
+            _log_unknown_rate(r, "safe", safe)
         return phish, safe, {"start": start, "end": _utc_now()}
 
-    outcomes = dict(zip(resolvers, await asyncio.gather(*[_both(r) for r in resolvers])))
-    phishing_results: dict[str, list[Verdict]] = {r: o[0] for r, o in outcomes.items()}
-    safe_results: dict[str, list[Verdict]] = {r: o[1] for r, o in outcomes.items()}
-    windows: dict[str, dict[str, str]] = {r: o[2] for r, o in outcomes.items()}
+    asked = [*resolvers, EXISTENCE_PROBE]
+    runs = dict(zip(asked, await asyncio.gather(*[_both(r) for r in asked])))
+    probe = runs.pop(EXISTENCE_PROBE)
+    phishing_results: dict[str, list[Verdict]] = {r: o[0] for r, o in runs.items()}
+    safe_results: dict[str, list[Verdict]] = {r: o[1] for r, o in runs.items()}
+    windows: dict[str, dict[str, str]] = {r: o[2] for r, o in runs.items()}
+    existence = {"phishing": existence_of_rows(probe[0], phishing_results),
+                 "safe": existence_of_rows(probe[1], safe_results)}
+    log.info("existence: phishing %s, legit %s",
+             benchmark_method.existence_counts(existence["phishing"]),
+             benchmark_method.existence_counts(existence["safe"]))
 
     # ── Classify + build report ──────────────────────────────────
+    results = {"phishing": phishing_results, "safe": safe_results}
+    counted = {batch: {r: outcomes_of(results[batch][r], existence[batch]) for r in resolvers}
+               for batch in results}
     report: dict = {
         "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        # 2 since 2026-11-03 (benchmark_method): reports without it are
+        # counted by the old rules and are not comparable.
+        "method_version": benchmark_method.METHOD_VERSION,
         "n_phishing": len(phishing_urls),
         "n_safe": len(legit_urls),
         "sources": {
-            "phishing": f"PhishTank online-valid ({len(phishtank)} URLs), "
-                        "deduplicated by registrable domain.",
+            "phishing": (f"PhishTank online-valid ({len(dump.urls)} URLs), a random sample "
+                         f"(seed={args.seed}) of its hosts: each host once, at most "
+                         f"{sampling['max_per_site']} per site, a site being a registrable domain "
+                         "or a hosting platform's tenant (details: `sampling`)."),
             # `legit` and `legit_outside_allowlist`: see pick_legit. The
             # landing publishes a false-positive rate only when the latter is
             # True (landing/lib/benchmark.ts falsePositiveRateIsPublishable).
             **legit_sources,
+            "existence": ("one question per URL to Cloudflare's unfiltered resolver "
+                          f"({CLOUDFLARE_UNFILTERED_DOH}, A record), beside every resolver's own "
+                          "answer: a name some witness found missing and none resolved is "
+                          "'not found' for every resolver."),
             "cleanway_api": CLEANWAY_API,
             "cleanway_identity": cleanway_identity_note(),
             **local_lookup,
         },
+        # How the phishing sample was drawn: seed, cap, the dump it came from.
+        "sampling": sampling,
+        "existence": {batch: benchmark_method.existence_counts(rows) for batch, rows in existence.items()},
         # When the Cleanway checks ran: the UTC day whose paid-source budgets
         # (IPQS, LLM judge) they could spend.
         "cleanway_window_utc": windows.get("cleanway"),
         # How Cleanway answered each real site, by slice — null for a Tranco run.
         "cleanway_on_legit": (
-            benchmark_legit.legit_breakdown(
-                [benchmark_legit.cleanway_outcome(v.verdict, v.detail) for v in safe_results["cleanway"]],
-                legit_sites,
-            )
+            benchmark_legit.legit_breakdown(counted["safe"]["cleanway"], legit_sites)
             if legit_sites is not None else None
         ),
         "phishing": {
-            r: classify(phishing_results[r], "dangerous") for r in resolvers
+            r: classify(phishing_results[r], "dangerous", existence["phishing"]) for r in resolvers
         },
         "safe": {
-            r: classify(safe_results[r], "safe") for r in resolvers
+            r: classify(safe_results[r], "safe", existence["safe"]) for r in resolvers
         },
         "raw": {
-            "phishing": {
-                r: [asdict(v) for v in phishing_results[r]] for r in resolvers
-            },
-            "safe": {
-                r: [asdict(v) for v in safe_results[r]] for r in resolvers
+            # Every answer as given, and how it was counted ("outcome").
+            "phishing": {r: _raw_rows(r, phishing_results[r], counted["phishing"][r]) for r in resolvers},
+            "safe": {r: _raw_rows(r, safe_results[r], counted["safe"][r]) for r in resolvers},
+            # The probe's answer and each row's existence ("status").
+            "existence": {
+                "phishing": _probe_rows(probe[0], existence["phishing"]),
+                "safe": _probe_rows(probe[1], existence["safe"]),
             },
             "phishing_urls": phishing_urls,
             "legit_urls": legit_urls,
