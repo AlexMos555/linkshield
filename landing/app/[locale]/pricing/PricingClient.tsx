@@ -193,6 +193,7 @@ export default function PricingClient({ pricing, initialInterval }: PricingClien
             </ul>
             <PrimaryInstallLink
               androidLabel={nav("install_android")}
+              iosLabel={nav("install_ios")}
               className="block text-center px-4 py-3 min-h-[44px] rounded-xl font-semibold transition bg-slate-700 text-white hover:bg-slate-600"
             >
               {nav("install")}

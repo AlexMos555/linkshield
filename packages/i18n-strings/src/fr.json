@@ -1559,6 +1559,8 @@
       "install_short": "Installer",
       "install_android": "Télécharger l'app Android",
       "install_android_short": "App Android",
+      "install_ios": "Télécharger dans l'App Store",
+      "install_ios_short": "App Store",
       "support": "Aide",
       "skip_to_content": "Aller au contenu principal"
     },

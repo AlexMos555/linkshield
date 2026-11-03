@@ -8,6 +8,8 @@
     "install_short": "Установить",
     "install_android": "Скачать для Android",
     "install_android_short": "Приложение",
+    "install_ios": "Скачать в App Store",
+    "install_ios_short": "App Store",
     "support": "Поддержка",
     "skip_to_content": "Перейти к основному содержанию"
   },

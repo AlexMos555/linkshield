@@ -112,7 +112,7 @@ export default async function GradePage({ params }: Props) {
   if (host !== domain || grade !== letter) redirect(pathFor(safeLocale, host, grade));
   const decoded = displayHost(host);
   const canonical = urlFor(safeLocale, host, grade);
-  // Android-only labels for the primary install CTA (see PrimaryInstallLink).
+  // Android- and iPhone-only labels for the primary install CTA (see PrimaryInstallLink).
   const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
   const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
   const check = await getTranslations({ locale: safeLocale, namespace: "Check" });
@@ -174,6 +174,7 @@ export default async function GradePage({ params }: Props) {
           </a>
           <PrimaryInstallLink
             androidLabel={nav("install_android")}
+            iosLabel={nav("install_ios")}
             style={{
               background: "#22c55e",
               color: "#052e16",
@@ -263,6 +264,7 @@ export default async function GradePage({ params }: Props) {
           </p>
           <PrimaryInstallLink
             androidLabel={hero("cta_android")}
+            iosLabel={nav("install_ios")}
             style={{
               display: "inline-block",
               background: "#22c55e",

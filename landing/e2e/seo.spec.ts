@@ -177,18 +177,39 @@ test("www.cleanway.ai redirects permanently to the apex", async ({ request }) =>
   expect(response.headers()["location"]).toBe("https://cleanway.ai/ru/pricing");
 });
 
-test("home JSON-LD: a crawlable logo and the Android app", async ({ page }) => {
+const APP_STORE_URL = "https://apps.apple.com/app/id6821030874";
+
+test("home JSON-LD: a crawlable logo, the Android app and the iPhone app", async ({ page }) => {
   await page.goto("/ru");
   const graph = await page.$$eval('script[type="application/ld+json"]', (scripts) =>
     scripts.flatMap((s) => (JSON.parse(s.textContent ?? "{}")["@graph"] ?? []) as Array<Record<string, unknown>>),
   );
   const org = graph.find((n) => n["@type"] === "Organization");
   expect(org?.logo).toBe("https://cleanway.ai/icon-192.png");
-  const app = graph.find((n) => n["@type"] === "MobileApplication");
-  expect(app?.operatingSystem).toBe("Android");
-  expect(app?.installUrl).toBe("https://cleanway.ai/ru/android");
+  const apps = graph.filter((n) => n["@type"] === "MobileApplication");
+  expect(apps.map((a) => a.operatingSystem)).toEqual(["Android", "iOS"]);
+  const android = apps.find((a) => a.operatingSystem === "Android");
+  expect(android?.["@id"]).toBe(`${SITE}#android-app`);
+  expect(android?.installUrl).toBe("https://cleanway.ai/ru/android");
+  const ios = apps.find((a) => a.operatingSystem === "iOS");
+  expect(ios?.["@id"]).toBe(`${SITE}#ios-app`);
+  expect(ios?.installUrl).toBe(APP_STORE_URL);
+  expect(ios?.url).toBe(APP_STORE_URL);
+  expect(ios?.inLanguage).toBe("ru");
+  expect(ios?.publisher).toEqual({ "@id": `${SITE}#organization` });
+  expect(ios?.offers).toEqual(android?.offers);
+  expect(ios?.applicationCategory).toBe(android?.applicationCategory);
   const logo = await page.request.get("/icon-192.png");
   expect(logo.status()).toBe(200);
+});
+
+test("/ios and /<locale>/ios redirect to the App Store, temporarily", async ({ request }) => {
+  // 307, not 308: browsers cache a permanent redirect, and the target may change.
+  for (const path of ["/ios", ...LOCALES.map((l) => `/${l}/ios`)]) {
+    const response = await request.get(path, { maxRedirects: 0 });
+    expect(response.status(), path).toBe(307);
+    expect(response.headers()["location"], path).toBe(APP_STORE_URL);
+  }
 });
 
 test("Russian pages name what people search for (links, SMS, site check)", async ({ page }) => {

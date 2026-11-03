@@ -1,4 +1,4 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, devices, Page } from "@playwright/test";
 
 import { BILLING_ON, STRIPE_LIVE } from "./billing-flag";
 
@@ -145,8 +145,12 @@ test("testimonials render three cards", async ({ page }) => {
 
 // ─── Primary install CTA (desktop keeps the DoH profile path) ────────────────
 //
-// PrimaryInstallLink only re-points Android user agents; on desktop the
-// server-rendered /dns href and label must survive hydration untouched.
+// PrimaryInstallLink re-points phone user agents (Android → /android, iPhone
+// and iPad → the App Store); on desktop the server-rendered /dns href and
+// label must survive hydration untouched.
+
+/** PLATFORMS.ios.href in lib/install-urls.ts. */
+const APP_STORE_URL = "https://apps.apple.com/app/id6821030874";
 
 test("desktop primary CTAs stay on /dns after hydration", async ({ page }) => {
   await page.goto("/en");
@@ -159,4 +163,83 @@ test("desktop primary CTAs stay on /dns after hydration", async ({ page }) => {
   const hero = page.getByTestId("primary-install-hero");
   await expect(hero).toHaveAttribute("href", "/dns");
   await expect(hero).toHaveText("Get protected — free");
+});
+
+// The hero's phone row (InstallButtons): both apps are live links, iOS is no
+// longer a "Coming soon" pill.
+test("home phone row links the iPhone app to the App Store", async ({ page }) => {
+  await page.goto("/en");
+  const main = page.locator("main");
+  await expect(main.getByRole("link", { name: "iOS", exact: true })).toHaveAttribute("href", APP_STORE_URL);
+  await expect(main.getByRole("link", { name: "Android", exact: true })).toHaveAttribute("href", "/android");
+});
+
+// The iPhone 14 profile in Chromium, not WebKit: the mobile-safari project
+// never hydrates against http://localhost (see mobile.spec.ts), so it cannot
+// see the client-side swap. Everything but the browser engine is the device's.
+test.describe("on an iPhone", () => {
+  const { defaultBrowserType: _webkit, ...iPhone } = devices["iPhone 14"];
+  test.use(iPhone);
+
+  test("every primary CTA leads to the App Store after hydration", async ({ page }) => {
+    await page.goto("/en");
+
+    // The compact nav has room for two words (nav.install_ios_short): the
+    // full label wrapped to three or four lines there on a 390 px iPhone.
+    const navMobile = page.getByTestId("primary-install-nav-mobile");
+    await expect(navMobile).toHaveAttribute("href", APP_STORE_URL);
+    await expect(navMobile).toHaveText("App Store");
+
+    const hero = page.getByTestId("primary-install-hero");
+    await expect(hero).toHaveAttribute("href", APP_STORE_URL);
+    await expect(hero).toHaveText("Get it on the App Store");
+
+    // Hidden at this viewport, but the same component: it must swap too.
+    await expect(page.getByTestId("primary-install-nav")).toHaveAttribute("href", APP_STORE_URL);
+    await expect(page.getByTestId("primary-install-final")).toHaveAttribute("href", APP_STORE_URL);
+  });
+
+  test("the label is in the page's language", async ({ page }) => {
+    await page.goto("/ru");
+    const hero = page.getByTestId("primary-install-hero");
+    await expect(hero).toHaveAttribute("href", APP_STORE_URL);
+    await expect(hero).toHaveText("Скачать в App Store");
+  });
+});
+
+// iPadOS 13+ asks for the desktop site by default and then reports a Mac user
+// agent; only its touch points tell it apart from a real Mac (none has a
+// touchscreen). The iPad goes to the App Store, the Mac keeps /dns.
+const MAC_SAFARI_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15";
+
+async function withTouchPoints(page: Page, points: number): Promise<void> {
+  await page.addInitScript((n) => {
+    Object.defineProperty(Navigator.prototype, "maxTouchPoints", { get: () => n });
+  }, points);
+}
+
+test.describe("on a Mac user agent", () => {
+  test.use({ userAgent: MAC_SAFARI_UA });
+
+  test("an iPad in desktop mode is sent to the App Store", async ({ page }) => {
+    await withTouchPoints(page, 5);
+    await page.goto("/en");
+
+    const nav = page.getByTestId("primary-install-nav");
+    await expect(nav).toHaveAttribute("href", APP_STORE_URL);
+    await expect(nav).toHaveText("Get it on the App Store");
+    await expect(page.getByTestId("primary-install-hero")).toHaveAttribute("href", APP_STORE_URL);
+  });
+
+  test("a Mac keeps the DNS profile path", async ({ page }) => {
+    await withTouchPoints(page, 0);
+    await page.goto("/en");
+    await page.waitForLoadState("networkidle");
+
+    const nav = page.getByTestId("primary-install-nav");
+    await expect(nav).toHaveAttribute("href", "/dns");
+    await expect(nav).toHaveText("Install");
+    await expect(page.getByTestId("primary-install-hero")).toHaveAttribute("href", "/dns");
+  });
 });

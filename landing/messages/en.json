@@ -8,6 +8,8 @@
     "install_short": "Install",
     "install_android": "Get the Android app",
     "install_android_short": "Android app",
+    "install_ios": "Get it on the App Store",
+    "install_ios_short": "App Store",
     "support": "Support",
     "skip_to_content": "Skip to main content"
   },

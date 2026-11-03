@@ -1559,6 +1559,8 @@
       "install_short": "इंस्टॉल करें",
       "install_android": "Android ऐप डाउनलोड करें",
       "install_android_short": "Android ऐप",
+      "install_ios": "App Store से डाउनलोड करें",
+      "install_ios_short": "App Store",
       "support": "सहायता",
       "skip_to_content": "मुख्य सामग्री पर जाएँ"
     },

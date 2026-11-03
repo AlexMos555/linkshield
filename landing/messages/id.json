@@ -8,6 +8,8 @@
     "install_short": "Pasang",
     "install_android": "Unduh aplikasi Android",
     "install_android_short": "Aplikasi Android",
+    "install_ios": "Unduh di App Store",
+    "install_ios_short": "App Store",
     "support": "Bantuan",
     "skip_to_content": "Langsung ke konten utama"
   },

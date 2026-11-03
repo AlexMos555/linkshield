@@ -8,6 +8,8 @@
     "install_short": "تثبيت",
     "install_android": "تحميل تطبيق Android",
     "install_android_short": "تطبيق Android",
+    "install_ios": "تحميل من App Store",
+    "install_ios_short": "App Store",
     "support": "المساعدة",
     "skip_to_content": "انتقل إلى المحتوى الرئيسي"
   },

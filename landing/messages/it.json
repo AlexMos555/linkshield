@@ -8,6 +8,8 @@
     "install_short": "Installa",
     "install_android": "Scarica l'app Android",
     "install_android_short": "App Android",
+    "install_ios": "Scarica su App Store",
+    "install_ios_short": "App Store",
     "support": "Assistenza",
     "skip_to_content": "Vai al contenuto principale"
   },
