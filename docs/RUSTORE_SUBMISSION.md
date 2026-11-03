@@ -271,9 +271,10 @@ cp "$REPO/mobile/package-lock.json" "$M/package-lock.json"
 node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"; "out of step" = STOP, regenerate the lock (end of §2)
 
 cd "$M"
-npm install                # postinstall: mobile/patches/ is empty since SDK 58 (1.0.x: "expo-share-intent@5.1.1 ✔"). Exit ≠ 0 = STOP, fix it first
+npm install                # postinstall: mobile/patches/ is empty since SDK 58 (1.0.x: "decode-uri-component@0.2.2 ✔", "expo-share-intent@5.1.1 ✔"). Exit ≠ 0 = STOP, fix it first
 cmp "$REPO/mobile/package-lock.json" package-lock.json && echo "installed exactly the committed lock"   # a difference = STOP, regenerate the lock (end of §2)
 node scripts/check-share-intent.mjs   # 4× "ok:" (1.0.x: 3×); "CHECK FAILED" = STOP (docs/EXPO_UPGRADE_PLAN.md §1.2)
+# 1.0.x only: node scripts/test-decode-uri-component.mjs → "all … checks pass"; "FAIL" = STOP (same §1.2). SDK 58 does not install the package.
 # (This block has no `set -e`, so the lines below would still run. A release
 # build refuses to start anyway without the fix — plugins/withShareIntentGuard.js
 # re-runs the check before compiling — but do not count on getting that far.)

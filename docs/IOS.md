@@ -43,7 +43,7 @@ const c=JSON.parse(fs.readFileSync("vendor/api-client/package.json"));
 c.dependencies["@cleanway/api-types"]="file:../api-types";
 fs.writeFileSync("vendor/api-client/package.json",JSON.stringify(c,null,2)+"\n");'
 node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"; "out of step" = regenerate mobile/package-lock.json first (docs/RUSTORE_SUBMISSION.md §2)
-npm install                                    # installs mobile/package-lock.json, which came along
+npm install                                    # installs mobile/package-lock.json, which came along (1.0.x: then node scripts/test-decode-uri-component.mjs, docs/EXPO_UPGRADE_PLAN.md §1.2)
 # The Safari extension target bundles the repo's built extension-safari/
 # (plugins/withSafariExtension.js); outside the repo it must be told where.
 bash "$REPO/scripts/build-extensions.sh" > /dev/null
