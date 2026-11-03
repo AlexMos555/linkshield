@@ -31,8 +31,8 @@ export interface ResolverStats {
   f1: number | null;
   latency_p50_ms: number | null;
   // Since method_version 2 (2026-11-03, scripts/benchmark_method.py summarize);
-  // absent in older snapshots. Only the gate reads them (no_answer,
-  // resolving): which figure the site shows is the founder's call.
+  // absent in older snapshots. The gate reads no_answer and resolving; the
+  // site's detection figure (detectionFigures) the answered rates.
   /** Rows in the batch. */
   n?: number;
   dangerous?: number;
@@ -204,6 +204,99 @@ export function recallIsPublishable(snapshot: BenchmarkSnapshot | null): boolean
     classified(ours, "tp", "fn") >= MIN_PHISHING_CLASSIFIED &&
     noAnswerRate(ours) <= MAX_NO_ANSWER_RATE
   );
+}
+
+/** A share of the answered links with its Wilson 95% interval (all 0..1), and how many links it counts. */
+export interface AnsweredShare {
+  rate: number;
+  low: number;
+  high: number;
+  count: number;
+}
+
+/**
+ * The one detection figure the site quotes, from one report's phishing half
+ * for Cleanway: of the links in the sample whose name still existed and that
+ * got an answer (`answered`), the share Cleanway called dangerous — the
+ * headline — and the share it warned about at all (dangerous or caution).
+ */
+export interface DetectionFigures {
+  /** When the run ended. */
+  ts: string;
+  /** Phishing links in the sample. */
+  n: number;
+  /** The sample was drawn from links submitted to PhishTank in this many days before the dump's newest one. */
+  days: number;
+  /** Links whose name no longer existed (the benchmark's own DNS probe): not counted. */
+  notFound: number;
+  /** Live links without an answer (HTTP 429, an error, a timeout): not counted. */
+  noAnswer: number;
+  /** n − notFound − noAnswer: what both shares are of. */
+  answered: number;
+  dangerous: AnsweredShare;
+  warned: AnsweredShare;
+}
+
+function isCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+/** The stored share and interval, only when they are `count` of `of` and the interval holds the share. */
+function answeredShare(count: number, of: number, rate: unknown, interval: Wilson95 | undefined): AnsweredShare | null {
+  if (count > of || typeof rate !== "number" || Math.abs(rate - count / of) > 1e-9) return null;
+  if (!Array.isArray(interval) || interval.length !== 2) return null;
+  const [low, high] = interval;
+  if (typeof low !== "number" || typeof high !== "number" || !(0 <= low && low <= rate && rate <= high && high <= 1)) {
+    return null;
+  }
+  return { rate, low, high, count };
+}
+
+/**
+ * The figures the home badge, /transparency and /methodology quote, or null
+ * when the site must say there is no trustworthy number yet.
+ *
+ * Not recall (tp / (tp + fn)): that leaves out every caution, every dead link
+ * and every link without an answer. On 2026-11-01 it read 92.9% while 145 of
+ * the 200 links were called dangerous and 28 got a caution.
+ *
+ * Only from a method_version 2 report (scripts/benchmark_method.py) that
+ * clears the gate. A method 1 report (every one before 2026-11-03, the
+ * committed 2026-11-01 one included) cannot give this figure: its summary has
+ * one "unknown" for a caution, a dead link and no answer (44 = 28 + 16 + 0 on
+ * 2026-11-01), its raw rows know a dead link only from Cleanway's own
+ * not-found answer (a dead name its blocklist still listed counted as
+ * caught), it stored no submission times (so nothing says the links were
+ * from the past week), and one campaign could fill a quarter of it. A figure
+ * recomputed from it would carry a sentence the report cannot back.
+ *
+ * The rates and intervals are the report's own, and are shown only when the
+ * report's counts give them: answered = n − not found − no answer =
+ * dangerous + caution + safe, and each rate is its count over answered,
+ * inside its interval. A report without a window of days (a draw over the
+ * whole dump, links of any age) has no headline either: the copy says the
+ * links were submitted in the days before the run.
+ */
+export function detectionFigures(snapshot: BenchmarkSnapshot | null): DetectionFigures | null {
+  if (!snapshot || (snapshot.method_version ?? 1) < 2 || !recallIsPublishable(snapshot)) return null;
+  const ours = snapshot.phishing.cleanway;
+  const days = snapshot.sampling?.window?.days;
+  if (!isCount(days) || days === 0) return null;
+  const counts = [ours.n, ours.dangerous, ours.caution, ours.safe, ours.not_found, ours.no_answer, ours.answered];
+  if (!counts.every(isCount)) return null;
+  const [n, dangerous, caution, safe, notFound, noAnswer, answered] = counts as number[];
+  if (
+    n !== snapshot.n_phishing ||
+    answered !== n - notFound - noAnswer ||
+    answered !== dangerous + caution + safe ||
+    answered === 0
+  ) {
+    return null;
+  }
+  const called = answeredShare(dangerous, answered, ours.dangerous_rate_answered, ours.dangerous_rate_answered_wilson95);
+  const warned = answeredShare(dangerous + caution, answered, ours.warned_rate_answered, ours.warned_rate_answered_wilson95);
+  if (!called || !warned) return null;
+  return { ts: snapshot.ts, n, days, notFound, noAnswer, answered, dangerous: called, warned };
 }
 
 /**

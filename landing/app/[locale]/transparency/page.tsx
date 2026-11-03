@@ -6,9 +6,10 @@
  * positives, verified by the analyst team") with literal $PERIOD$ / $DATE$
  * placeholders on top (report #12). None of those numbers came from a
  * measurement. Now the page reads the committed weekly benchmark
- * (docs/benchmarks/latest.json) and shows a figure only when the sample clears
- * the quality gate in lib/benchmark.ts; otherwise it says, in plain words,
- * that there is no trustworthy number yet.
+ * (docs/benchmarks/latest.json) and shows a figure only when the report is
+ * made by the current method and clears the quality gate in lib/benchmark.ts
+ * (detectionFigures); otherwise it says, in plain words, that there is no
+ * trustworthy number yet.
  */
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
@@ -16,12 +17,13 @@ import { getTranslations } from "next-intl/server";
 import { routing, type Locale } from "@/i18n/routing";
 import {
   MIN_PHISHING_SAMPLE,
+  detectionFigures,
   falsePositiveRateIsPublishable,
   loadLatestBenchmark,
-  recallIsPublishable,
   type BenchmarkSnapshot,
 } from "@/lib/benchmark";
 import { DATA_SOURCES_ANCHOR } from "@/lib/data-sources";
+import { detectionMessageArgs } from "@/lib/detection-copy";
 import { localePath } from "@/lib/locale-path";
 import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 
@@ -84,16 +86,10 @@ export async function generateMetadata({
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
 
-function recallText(t: Translate, snapshot: BenchmarkSnapshot | null, locale: string): string {
-  if (!snapshot || !recallIsPublishable(snapshot)) {
-    return t("recall_not_yet", { min: MIN_PHISHING_SAMPLE });
-  }
-  const ours = snapshot.phishing.cleanway;
-  return t("recall_measured", {
-    date: day(snapshot.ts, locale),
-    recall: percent(ours.recall ?? 0, locale),
-    classified: ours.tp + ours.fn,
-  });
+function detectionText(t: Translate, snapshot: BenchmarkSnapshot | null, locale: string): string {
+  const figures = detectionFigures(snapshot);
+  if (!figures) return t("recall_not_yet", { min: MIN_PHISHING_SAMPLE });
+  return t("recall_measured", detectionMessageArgs(figures, locale));
 }
 
 function falseAlarmText(t: Translate, snapshot: BenchmarkSnapshot | null, locale: string): string {
@@ -127,7 +123,7 @@ export default async function TransparencyPage({
 
       <section style={section} data-testid="transparency-recall">
         <h2 style={h2}>{t("section_accuracy")}</h2>
-        <p>{recallText(t, snapshot, safeLocale)}</p>
+        <p>{detectionText(t, snapshot, safeLocale)}</p>
       </section>
 
       <section style={section} data-testid="transparency-fp">

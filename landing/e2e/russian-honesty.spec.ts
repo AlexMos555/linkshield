@@ -3,8 +3,8 @@ import { join } from "node:path";
 import { test, expect } from "@playwright/test";
 import {
   type BenchmarkSnapshot,
+  detectionFigures,
   falsePositiveRateIsPublishable,
-  recallIsPublishable,
 } from "../lib/benchmark";
 
 import { BILLING_ON, SUPPORT_LIVE } from "./billing-flag";
@@ -118,17 +118,55 @@ test("/ru/transparency/methodology credits its open data and links the licences"
   await expect(sources).not.toContainText("Methodology.");
 });
 
+test("/ru home and /ru/transparency quote the detection figure only from a current-method report", async ({ page }) => {
+  // Of the live links that got an answer: called dangerous, and warned at all
+  // (lib/benchmark.ts detectionFigures). A report made by the old method
+  // (no method_version, the committed 2026-11-01 one) has neither.
+  const figures = detectionFigures(BENCHMARK);
+  await page.goto("/ru");
+  const badge = page.getByTestId("detection-badge");
+  if (figures) {
+    await expect(badge).toContainText("назвал опасными");
+    await expect(badge).toContainText(`из ${figures.answered} `);
+    await expect(badge).toContainText("Хотя бы предупреждение получили");
+    await expect(badge).not.toContainText("{");
+  } else {
+    await expect(badge).toHaveCount(0);
+  }
+
+  await page.goto("/ru/transparency");
+  const detection = page.getByTestId("transparency-recall");
+  if (figures) {
+    await expect(detection).toContainText("назвал опасными");
+    await expect(detection).toContainText(`всего ${figures.n}`);
+    await expect(detection).not.toContainText("Надёжной цифры пока нет");
+  } else {
+    await expect(detection).toContainText("Надёжной цифры пока нет");
+  }
+  await expect(detection).not.toContainText("{");
+});
+
 test("/ru/transparency/methodology is Russian and shows results only for a big enough sample", async ({ page }) => {
   await page.goto("/ru/transparency/methodology");
   await expect(page.locator("h1")).toContainText("Как мы измеряем");
   const notPublishable = page.getByTestId("methodology-not-publishable");
   const main = page.locator("main");
-  if (recallIsPublishable(BENCHMARK)) {
+  // The tables show only what the home page may quote: a current-method
+  // report that clears the gate. An old-method report says so instead.
+  if (detectionFigures(BENCHMARK)) {
     await expect(notPublishable).toHaveCount(0);
     await expect(page.getByRole("heading", { name: /Фишинговые ссылки/ })).toBeVisible();
-    await expect(main.locator("table").first()).toContainText("Cloudflare 1.1.1.1 for Families");
+    const table = main.locator("table").first();
+    await expect(table).toContainText("Cloudflare 1.1.1.1 for Families");
+    await expect(table).toContainText("Названо опасными");
+    await expect(table).toContainText("Хотя бы предупреждение");
+    await expect(table).not.toContainText("Доля пойманного");
   } else {
     await expect(notPublishable).toBeVisible();
+    if ((BENCHMARK.method_version ?? 1) < 2) {
+      await expect(notPublishable).toContainText("по старой методике");
+    }
+    await expect(notPublishable).not.toContainText("{");
   }
   // Their free APIs bar a commercial product: the weekly run stopped comparing
   // them on 2026-10-24, and an older snapshot's rows stay in the raw files only.

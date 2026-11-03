@@ -4,7 +4,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { InstallButtons } from "@/components/InstallButtons";
 import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
-import { loadLiveRecall } from "@/lib/live-recall";
+import { detectionMessageArgs } from "@/lib/detection-copy";
+import { loadLiveDetection } from "@/lib/live-detection";
 import { localePath } from "@/lib/locale-path";
 import { OPERATOR } from "@/lib/operator";
 import { billingMessageArgs } from "@/lib/billing";
@@ -105,10 +106,14 @@ export default async function Home({ params }: HomeProps) {
   const cta = await getTranslations("FinalCta");
   const footer = await getTranslations("Footer");
   const support = await getTranslations("Support");
-  // Live phishing-recall number from the most recent weekly benchmark. Null
-  // until a run clears the quality gate — then there is no badge at all rather
-  // than a number nobody measured.
-  const liveRecall = await loadLiveRecall();
+  // The detection figure from the most recent weekly benchmark: of the fresh
+  // phishing links still alive that got an answer, the share our server
+  // called dangerous (with its interval), and the share it warned about at
+  // all. Null for a report made by the old method or one that does not clear
+  // the quality gate — then there is no badge at all rather than a number
+  // nobody can back (lib/benchmark.ts detectionFigures).
+  const liveDetection = await loadLiveDetection();
+  const detectionArgs = liveDetection ? detectionMessageArgs(liveDetection, locale) : null;
   // The home page describes the free Android app, so its pricing block says
   // what is free — everywhere. The old plan cards sold extension features
   // (link badges, "10 API checks/day") and a 14-day trial nobody on Android
@@ -173,13 +178,16 @@ export default async function Home({ params }: HomeProps) {
             element that starts at opacity 0 is not painted — the heading and
             CTA only counted as "loaded" (LCP) once the fade finished. */}
         <div className="max-w-3xl mx-auto">
-          {liveRecall && (
-            <a
-              href={href("/transparency/methodology")}
-              className="inline-block max-w-full bg-green-500/10 text-green-400 border border-green-500/30 px-4 py-1.5 rounded-full text-sm font-semibold mb-8 hover:bg-green-500/20 transition"
-            >
-              {hero("badge", { recall: liveRecall.pct })}
-            </a>
+          {detectionArgs && (
+            <div className="mb-8" data-testid="detection-badge">
+              <a
+                href={href("/transparency/methodology")}
+                className="inline-block max-w-full bg-green-500/10 text-green-400 border border-green-500/30 px-4 py-1.5 rounded-2xl text-sm font-semibold hover:bg-green-500/20 transition"
+              >
+                {hero("badge", detectionArgs)}
+              </a>
+              <p className="mt-2 text-xs text-slate-400 max-w-xl mx-auto">{hero("badge_warned", detectionArgs)}</p>
+            </div>
           )}
           <h1 className="text-4xl md:text-6xl font-extrabold text-white leading-tight mb-6 break-words max-w-full">
             {hero("title_part1")}<br />

@@ -9,10 +9,19 @@
  * an older snapshot's rows for them are not shown (lib/benchmark.ts
  * comparedRows), and neither is the text that described them.
  *
- * The tables appear only when the snapshot clears the same gate the site uses
- * everywhere (lib/benchmark.ts). Otherwise the page says how small the last
- * run was and links to every raw weekly result, instead of printing a
+ * The tables appear only when the snapshot has the figure the site quotes
+ * everywhere (lib/benchmark.ts detectionFigures): a report made by the
+ * current method (method_version 2, since 2026-11-03) that clears the gate.
+ * Otherwise the page says why — the old method, or how small the last run
+ * was — and links to every raw weekly result, instead of printing a
  * percentage from 24 links under "Snapshot: $DATE$" (report #12).
+ *
+ * The phishing table shows, for each service, the same two shares as the
+ * home page — called dangerous, and warned at all (dangerous or caution) —
+ * over the links whose name still existed and that got an answer, with their
+ * 95% intervals and every count behind them. Recall, precision (always 100%
+ * on a batch of phishing links only) and F1 are gone from it: recall left
+ * every caution, dead link and missing answer out.
  *
  * It ends with "Data sources" (DataSources.tsx): the credit the open data the
  * product is built from asks for, linked from the app's Settings → About.
@@ -21,15 +30,18 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { routing, type Locale } from "@/i18n/routing";
 import {
+  MAX_NO_ANSWER_RATE,
   MIN_PHISHING_CLASSIFIED,
   MIN_PHISHING_SAMPLE,
   comparedRows,
+  detectionFigures,
   falsePositiveRateIsPublishable,
   legitSampleRanking,
   loadLatestBenchmark,
   recallIsPublishable,
   type BenchmarkSnapshot,
   type ResolverStats,
+  type Wilson95,
 } from "@/lib/benchmark";
 import { localePath } from "@/lib/locale-path";
 
@@ -100,19 +112,35 @@ function rowStyle(name: string): React.CSSProperties {
   return name.startsWith("cleanway") ? { background: "#0c4a6e1a" } : {};
 }
 
+/** A share over the answered links, with its 95% interval on a second line. */
+function ShareCell({ rate, interval, locale }: { rate: number | null | undefined; interval: Wilson95 | undefined; locale: string }) {
+  return (
+    <td style={_tdNum}>
+      {pct(rate ?? null, locale)}
+      {interval ? (
+        <span style={_interval}>
+          {pct(interval[0], locale)}–{pct(interval[1], locale)}
+        </span>
+      ) : null}
+    </td>
+  );
+}
+
 function PhishingTable({ data, t, locale }: { data: BenchmarkSnapshot; t: Translate; locale: string }) {
   return (
-    <div style={{ overflowX: "auto", marginBottom: 24 }}>
+    <div style={{ overflowX: "auto", marginBottom: 12 }}>
       <table style={_table}>
         <thead>
           <tr>
             <th style={_th}>{t("col_service")}</th>
-            <th style={_thNum}>{t("col_recall")}</th>
-            <th style={_thNum}>{t("col_precision")}</th>
-            <th style={_thNum}>{t("col_f1")}</th>
-            <th style={_thNum}>{t("col_tp")}</th>
-            <th style={_thNum}>{t("col_fn")}</th>
-            <th style={_thNum}>{t("col_unknown")}</th>
+            <th style={_thNum}>{t("col_dangerous_share")}</th>
+            <th style={_thNum}>{t("col_warned_share")}</th>
+            <th style={_thNum}>{t("col_answered")}</th>
+            <th style={_thNum}>{t("col_dangerous")}</th>
+            <th style={_thNum}>{t("col_caution")}</th>
+            <th style={_thNum}>{t("col_safe")}</th>
+            <th style={_thNum}>{t("col_not_found")}</th>
+            <th style={_thNum}>{t("col_no_answer")}</th>
             <th style={_thNum}>{t("col_latency")}</th>
           </tr>
         </thead>
@@ -120,12 +148,14 @@ function PhishingTable({ data, t, locale }: { data: BenchmarkSnapshot; t: Transl
           {comparedRows(data.phishing).map(([name, m]: [string, ResolverStats]) => (
             <tr key={name} style={rowStyle(name)}>
               <td style={_td}><strong>{RESOLVER_LABELS[name] || name}</strong></td>
-              <td style={_tdNum}>{pct(m.recall, locale)}</td>
-              <td style={_tdNum}>{pct(m.precision, locale)}</td>
-              <td style={_tdNum}>{pct(m.f1, locale)}</td>
-              <td style={_tdNum}>{m.tp}</td>
-              <td style={_tdNum}>{m.fn}</td>
-              <td style={_tdNum}>{m.unknown}</td>
+              <ShareCell rate={m.dangerous_rate_answered} interval={m.dangerous_rate_answered_wilson95} locale={locale} />
+              <ShareCell rate={m.warned_rate_answered} interval={m.warned_rate_answered_wilson95} locale={locale} />
+              <td style={_tdNum}>{m.answered ?? "—"}</td>
+              <td style={_tdNum}>{m.dangerous ?? "—"}</td>
+              <td style={_tdNum}>{m.caution ?? "—"}</td>
+              <td style={_tdNum}>{m.safe ?? "—"}</td>
+              <td style={_tdNum}>{m.not_found ?? "—"}</td>
+              <td style={_tdNum}>{m.no_answer ?? "—"}</td>
               <td style={_tdNum}>{ms(m.latency_p50_ms)}</td>
             </tr>
           ))}
@@ -171,18 +201,35 @@ function Results({ data, t, locale }: { data: BenchmarkSnapshot | null; t: Trans
     return <p style={{ color: "#f59e0b" }}>{t("results_unavailable")}</p>;
   }
   const ours = data.phishing?.cleanway;
+  // Made by the old method (no method_version): its counts cannot give the
+  // shares this page and the home page quote, and it is not comparable with
+  // a current report (lib/benchmark.ts detectionFigures says why).
+  if ((data.method_version ?? 1) < 2) {
+    return (
+      <p data-testid="methodology-not-publishable" style={{ color: "#fbbf24" }}>
+        {t("results_old_method", { date: day(data.ts, locale) })}
+      </p>
+    );
+  }
   if (!recallIsPublishable(data)) {
     return (
       <p data-testid="methodology-not-publishable" style={{ color: "#fbbf24" }}>
         {t("results_not_publishable", {
           date: day(data.ts, locale),
           phishing: data.n_phishing,
-          classified: (ours?.tp ?? 0) + (ours?.fn ?? 0),
+          live: ours?.resolving ?? 0,
+          answered: ours?.answered ?? 0,
           min_phishing: MIN_PHISHING_SAMPLE,
           min_classified: MIN_PHISHING_CLASSIFIED,
+          min_answered_share: Math.round((1 - MAX_NO_ANSWER_RATE) * 100),
         })}
       </p>
     );
+  }
+  // Clears the gate, but its counts do not give its own shares (or it has no
+  // window of days): print none of it.
+  if (!detectionFigures(data)) {
+    return <p style={{ color: "#f59e0b" }}>{t("results_unavailable")}</p>;
   }
   return (
     <>
@@ -191,6 +238,7 @@ function Results({ data, t, locale }: { data: BenchmarkSnapshot | null; t: Trans
       </p>
       <h3 style={_h3}>{t("phishing_table_heading")}</h3>
       <PhishingTable data={data} t={t} locale={locale} />
+      <p style={{ color: "#94a3b8", fontSize: 13, marginBottom: 24 }}>{t("phishing_table_note")}</p>
       <h3 style={_h3}>{t("safe_table_heading")}</h3>
       {falsePositiveRateIsPublishable(data) ? (
         <SafeTable data={data} t={t} locale={locale} />
@@ -406,6 +454,13 @@ const _tdNum: React.CSSProperties = {
   ..._td,
   textAlign: "end",
   fontVariantNumeric: "tabular-nums",
+};
+
+const _interval: React.CSSProperties = {
+  display: "block",
+  color: "#94a3b8",
+  fontSize: 12,
+  whiteSpace: "nowrap",
 };
 
 const _codeblock: React.CSSProperties = {
