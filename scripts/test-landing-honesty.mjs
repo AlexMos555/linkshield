@@ -450,9 +450,10 @@ check("the home badge says it is our site check, not what the phone blocks, in e
   assert.match(en.transparency.recall_measured, /not what the phone blocks/);
 });
 check("\"not found\" is what the run counts as not found: a missing domain or one pointing nowhere a visitor can reach", () => {
-  // Since 2026-11-04 (scripts/benchmark_method.py NOT_LIVE) a name whose every
-  // address is non-public (0.0.0.0, a private range: a takedown) is not found
-  // for every service, as a missing one; the probe asks AAAA too in that case.
+  // Since 2026-11-04 (scripts/benchmark_method.py NOT_LIVE, no_public_address)
+  // a name with no public address in A and AAAA together — none at all, or
+  // only 0.0.0.0 and private ranges (a takedown) — is not found for every
+  // service, as a missing one; the probe asks AAAA whenever no A address is public.
   for (const locale of LOCALES) {
     const source = landingSource(locale);
     for (const [ns, key] of [["hero", "badge_warned"], ["transparency", "recall_measured"],
@@ -467,9 +468,15 @@ check("\"not found\" is what the run counts as not found: a missing domain or on
   }
   assert.doesNotMatch(en.methodology.verdict_mapping_p1, /one DNS query/);
   assert.doesNotMatch(en.methodology.caveat_nxdomain, /one DNS query/);
-  assert.match(en.methodology.caveat_nxdomain, /an A query, and an AAAA query too when every A address is non-public/);
-  const workflow = fs.readFileSync(path.join(ROOT, "scripts", "eval_fresh_urls.py"), "utf-8");
-  assert.match(workflow, /_unfiltered_query\(client, d, "AAAA"\)/, "the probe the copy describes");
+  assert.match(en.methodology.caveat_nxdomain,
+    /an A query, and an AAAA query too when no A address is public \(no A record at all included\)/);
+  assert.match(en.methodology.caveat_nxdomain,
+    /no public address in A and AAAA together — none at all, or only non-public ones/);
+  // The probe the copy describes: AAAA asked when the A answer has no public address.
+  const probe = fs.readFileSync(path.join(ROOT, "scripts", "eval_fresh_urls.py"), "utf-8");
+  assert.match(probe, /if benchmark_method\.no_public_address\(addresses\):[^\n]*\n\s*status6, more, failed6 = await _unfiltered_query\(client, d, "AAAA"\)/);
+  const method = fs.readFileSync(path.join(ROOT, "scripts", "benchmark_method.py"), "utf-8");
+  assert.match(method, /return NON_PUBLIC if no_public_address\(addresses\) else RESOLVES/);
 });
 check("the regression rule the methodology page states is the workflow's: Wilson intervals, at the cron's time", () => {
   const workflow = fs.readFileSync(path.join(ROOT, ".github", "workflows", "weekly-benchmark.yml"), "utf-8");

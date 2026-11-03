@@ -40,8 +40,9 @@ export interface ResolverStats {
   safe?: number;
   /**
    * Rows that are not live by the benchmark's own probe — the name does not
-   * exist, or (since 2026-11-04) every address it has is non-public (0.0.0.0,
-   * a private range: a takedown): not found for every resolver, whatever it answered.
+   * exist, or (since 2026-11-04) it has no public address in A and AAAA
+   * together: none at all, or only 0.0.0.0 and private ranges (a takedown).
+   * Not found for every resolver, whatever it answered.
    */
   not_found?: number;
   /** Live rows that got no answer: HTTP 429, an error, a timeout. */
@@ -231,7 +232,7 @@ export interface AnsweredFigures {
   ts: string;
   /** Rows in the batch's sample. */
   n: number;
-  /** Rows that were not live (the benchmark's own DNS probe: no such name, or only non-public addresses): not counted. */
+  /** Rows that were not live (the benchmark's own DNS probe: no such name, or no public address): not counted. */
   notFound: number;
   /** Live rows without an answer (HTTP 429, an error, a timeout): not counted. */
   noAnswer: number;

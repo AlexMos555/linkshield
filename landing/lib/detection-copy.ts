@@ -28,7 +28,7 @@ export type AnsweredMessageArgs = {
   answered: number;
   /** Links (or real sites) in the sample. */
   n: number;
-  /** Left out: names that were not live (gone, or only non-public addresses), live ones without an answer. */
+  /** Left out: names that were not live (gone, or no public address), live ones without an answer. */
   not_found: number;
   no_answer: number;
 };

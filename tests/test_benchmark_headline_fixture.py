@@ -70,9 +70,10 @@ def test_its_window_is_the_one_the_script_writes_for_its_newest_row_and_clock():
 
 
 def test_its_existence_counts_have_the_keys_the_script_writes():
-    """Since 2026-11-04 a name whose every address is non-public (0.0.0.0, a
-    private range: a takedown) is counted apart (non_public) and is not found
-    for every resolver, as a missing one (benchmark_method.NOT_LIVE)."""
+    """Since 2026-11-04 a name with no public address in A and AAAA together
+    (none at all, or only 0.0.0.0 and private ranges: a takedown) is counted
+    apart (non_public) and is not found for every resolver, as a missing one
+    (benchmark_method.NOT_LIVE, no_public_address)."""
     method = _module("benchmark_method")
     for batch in ("phishing", "safe"):
         counts = FIXTURE["existence"][batch]
