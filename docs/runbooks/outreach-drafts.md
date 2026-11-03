@@ -82,3 +82,70 @@ Apple ускоряет проверку не всегда. Если откажу
 > Best regards,
 > Aleksandr Moskotin
 > ACECORE GLOBAL TECHNOLOGIES – FZCO (Cleanway)
+
+## 4. PhishTank / Cisco Talos: ключ для коммерческого сервиса
+
+**Когда:** сейчас. Ключ бесплатный, коммерческое использование API PhishTank
+разрешено (FAQ: «Yes, it is OK»). Но регистрация на phishtank.org 03.11.2026
+закрыта («New user registration temporarily disabled»), поэтому только письмом.
+Замер 03.11.2026 (смоделировано выгрузкой без ключа): ключ даёт +6 п.п. на
+независимом фишинге из TweetFeed за неделю и почти всё, что раньше давала
+phishing.army ([THIRD_PARTY_FEEDS.md](../THIRD_PARTY_FEEDS.md)).
+
+**Кому:** через phishtank.org → Contact (ведёт Cisco Talos).
+Тема: *API application key for a commercial anti-phishing service*
+
+> Hello,
+>
+> We run Cleanway, an anti-phishing service that blocks phishing sites for
+> its users through DNS filtering and link checks on iPhone, Android and the
+> web. We would like to use the PhishTank online-valid data feed with an
+> application key. Your FAQ says commercial use of the API is OK, but new
+> user registration is currently disabled, so we cannot create an account
+> and register an application.
+>
+> Could you create an account and an application key for us, or tell us how
+> to get one? We would download the feed once a day, as recommended, and
+> credit PhishTank on our methodology page.
+>
+> Best regards,
+> Aleksandr Moskotin
+> ACECORE GLOBAL TECHNOLOGIES – FZCO (Cleanway)
+
+**После ответа:** ключ положить в Railway и в секреты GitHub как
+`PHISHTANK_API_KEY`, включить `BLOCKLIST_PHISHTANK_SOURCE`. Значение в чат не
+присылать. Еженедельный бенчмарк сейчас берёт фишинг из PhishTank; с ключом
+выборка станет «сама себя проверяющей», и её нужно перевести на другой
+источник до первого прогона с ключом. Это делает Claude.
+
+## 5. OpenPhish: пробный доступ к Premium и цена
+
+**Когда:** по желанию, не срочно. Бесплатная лента Community запрещает любое
+коммерческое использование, и по замеру 03.11.2026 она добавляет 0–3 сайта на
+любой выборке. Платные Premium и Platinum не измерены: нет доступа, цены на
+сайте нет («Contact Us»). Покупать только после бесплатного пробного доступа и
+замера тем же способом.
+
+**Кому:** contact@openphish.com. OpenPhish просит писать с адреса компании.
+Из обычной почты от имени @cleanway.ai письмо не дойдёт: у домена DMARC
+`p=reject`, а отправлять от его имени настроено только письма сервиса (Resend).
+Пока писать с amoskotin@gmail.com, назвав компанию.
+Тема: *Premium feed: trial and commercial licence for Cleanway*
+
+> Hello,
+>
+> We run Cleanway, an anti-phishing service by ACECORE GLOBAL TECHNOLOGIES –
+> FZCO (Dubai), that blocks phishing sites for its users through DNS filtering
+> and link checks. We are evaluating commercial phishing feeds before our paid
+> launch.
+>
+> Could you tell us the price of the Premium and Platinum feeds for this use,
+> and whether a trial is possible? We would like to measure the feed's
+> coverage against our current sources before buying. Please also confirm
+> what the licence allows. Today our apps download our combined blocklist to
+> block domains on the user's device; if OpenPhish entries may only be used
+> on our servers (in link checks), we would like to know that too.
+>
+> Best regards,
+> Aleksandr Moskotin
+> ACECORE GLOBAL TECHNOLOGIES – FZCO (Cleanway)
