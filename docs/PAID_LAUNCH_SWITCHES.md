@@ -252,7 +252,7 @@ Variables: нет `LICENSED_INTEL=all` и нет `PUBLISH_CONFIRMED_THREATS`.
   интервал Уилсона этой недели ниже интервала прошлой. Падение на 5–10 п. п. он
   отмечает редко (при ~100 вердиктах — в 3–18% недель). Поэтому падение проверять
   глазами: строка `::notice::Cleanway recall …` этого шага в логе прогона
-  (Actions → «Weekly fresh-URL benchmark») с полнотой и интервалом обеих недель или
+  (Actions → «Weekly fresh-URL benchmark (recall transparency)») с полнотой и интервалом обеих недель или
   столбец Recall у `cleanway` в еженедельном отчёте
   `docs/benchmarks/<дата>-fresh-urls.md` против прошлого. Если у двух последних
   отчётов разный `method_version`, шаг их не сравнивает
