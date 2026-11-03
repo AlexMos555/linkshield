@@ -452,22 +452,27 @@ paragraphs and no backticks); count again after any edit. The Notes that went
 with **1.0.6 (6)** on 2026-11-02 differed only in that paragraph; it is kept
 as history after the reply, marked "do not paste". Before pasting for build 7,
 repeat on its archive the whole search of docs/EXPO_UPGRADE_PLAN.md §10.4 —
-`main.jsbundle`, the EXConstants config and the binaries — and attach the
-output to the 1.1.0 PR (#327). The VPN paragraph rests on what the first two
-showed on SDK 54 (Release, simulator); the binaries were not searched there,
-and on SDK 58 none of the three has been run yet. With `$M` the mirror of §1.1:
+every file of the app, the UTF-16 strings of `main.jsbundle` and the
+EXConstants config — and attach the output to the 1.1.0 PR (#327). Done on the
+build 7 archive on 2026-11-03, after #392, with the expected output below
+(the #327 checklist); repeat on any rebuilt archive. With `$M` the mirror of
+§1.1:
 
 ```bash
 A="$M/Cleanway.xcarchive/Products/Applications/Cleanway.app"
-LC_ALL=C grep -aci vpn "$A/main.jsbundle"                  # 0: no ASCII "vpn" (the Settings path is UTF-16)
+# Every file in the app — its executable, Frameworks/, PlugIns/*.appex and
+# their resources — for the word as it is written (VPN, Vpn, vpn; ASCII).
+LC_ALL=C grep -rcaE 'VPN|Vpn|vpn' "$A" | grep -v ':0$'   # no output
+# The bundle's UTF-16 strings: only the Settings path ("General → VPN &
+# Device Management → DNS" and its translations: 2 keys × 10 locales).
+python3 -c 'import sys; print(open(sys.argv[1],"rb").read().count("VPN".encode("utf-16-le")))' "$A/main.jsbundle"   # 20
 LC_ALL=C grep -aci vpn "$A/EXConstants.bundle/app.config"  # 0: no BIND_VPN_SERVICE in the app's config
-# The binaries and every other file in the app: its executable, Frameworks/,
-# PlugIns/*.appex and their resources. Prints each file with a match.
-LC_ALL=C grep -rcai vpn "$A" | grep -v ':0$'
-# Expected until the next model retrain (EXPO_UPGRADE_PLAN.md §10.4), one line:
-#   .../PlugIns/CleanwaySmsFilter.appex/message_model.json:8
-# — its data_sha256 names 8 files under mobile/modules/cleanway-vpn/ (below,
-# "What stays"). Any other file: find out what matches and record it there
+# A case-insensitive search (grep -rcai vpn) also finds byte noise, none of it
+# a word (build 7, 2026-11-03): main.jsbundle 2 ("…IUvpNINCwL…", a sample AWS
+# request id in @sentry/conventions, and "vPn" inside bytecode), Cleanway 1
+# (code-signature bytes; they change when the app is re-signed), hermesvm 2
+# and ReactNativeDependencies 2 (C++ mangled names: "…IFvPN6hermes…",
+# "…EEvPNSt3__1…"). Anything else: find out what matches and record it here
 # before pasting.
 ```
 
@@ -662,18 +667,18 @@ the reply below say what 1.1.0 carries.
 What stays, because DNS protection needs it: NetworkExtension.framework and
 the `dns-settings` entitlement (`plugins/withIosAppStore.js`; only
 `CleanwayDnsModule.swift` imports NetworkExtension). The automated analysis
-can flag 1.1.0 for them again, so the Notes keep the VPN paragraph. Also
-still in build 7, until the next model retrain (docs/EXPO_UPGRADE_PLAN.md
-§10.4): the SMS filter's `message_model.json`, which `plugins/withSmsFilter.js`
-copies from `modules/cleanway-vpn/android/src/main/assets` into
-`PlugIns/CleanwaySmsFilter.appex`, names 8 files under
-`mobile/modules/cleanway-vpn/` in its `data_sha256`. The app never shows it,
-but it is an ASCII "vpn" in the build. Checked on SDK 54 (simulator, Release,
-2026-11-02): no ASCII `vpn` in `main.jsbundle`, UTF-16 "VPN" only in the
-Settings path, none in the EXConstants config; the binaries and the
-extensions' files were not searched. Not yet repeated on the build 7 archive
-(SDK 58): run all three searches at the top of §3.6 before pasting the build
-7+ paragraph or sending the reply below.
+can flag 1.1.0 for them again, so the Notes keep the VPN paragraph. Gone
+since #392: the SMS filter's `message_model.json` (copied from
+`modules/cleanway-vpn/android/src/main/assets` into
+`PlugIns/CleanwaySmsFilter.appex` and `CleanwayMessageEngineAssets.bundle`)
+named 8 files under `mobile/modules/cleanway-vpn/` in its `data_sha256`; it
+now names them from the module's `src/` (`ml/sms/data.py` `provenance_key`),
+and `mobile/scripts/test-ios-sms-filter.mjs` keeps the shared text assets
+free of "vpn". Checked on the build 7 archive (SDK 58, 2026-11-03): no
+VPN/Vpn/vpn in any file of the app, UTF-16 "VPN" only in the Settings path,
+none in the EXConstants config. Repeat the searches at the top of §3.6 on any
+rebuilt archive before pasting the build 7+ paragraph or sending the reply
+below.
 
 If App Review asks about the "VPN" again for 1.1.0, reply with the text below.
 Re-check it first, as for the 1.0.6 reply: GET vs POST from iOS and what
