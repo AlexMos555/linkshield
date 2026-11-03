@@ -28,11 +28,12 @@ And OPERATOR_SUFFIXES, the opposite of a shared platform: suffixes where
 every name is the operator's own (googleapis.com).
 
 TENANT_SUFFIXES_NOT_IN_MODEL are tenant suffixes found after the served ML
-model was trained (mybluehost.me, zapier.app, edgeone.dev …). TENANT_SUFFIXES
-is the model's tenant feature (ml_features.shared_tenant), so these stay out
-of it, and out of tenant_suffix_of() and is_shared_platform_site(), until a
-retrain moves them there; the scorer's allowlist and rank rules add them
-(scoring._ALLOWLIST_TENANT_ZONES).
+model was trained (zapier.app, edgeone.dev). TENANT_SUFFIXES is the model's
+tenant feature (ml_features.shared_tenant), so these stay out of it, and out
+of tenant_suffix_of() and is_shared_platform_site(), until a retrain moves
+them there; the scorer's allowlist, rank and name rules add them
+(scoring._ALLOWLIST_TENANT_ZONES, _RANK_TENANT_SUFFIXES, _tenant_label,
+_not_in_model_tenant_site).
 
 This module only answers "is this a shared platform?". What to do about it is
 the caller's job (scoring.is_trusted_top_domain, the analyzer's informational

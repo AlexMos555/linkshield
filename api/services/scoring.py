@@ -258,13 +258,25 @@ def is_hosting_platform_site(domain: str) -> bool:
 _PROVIDER_NAMED_SUFFIXES: frozenset[str] = frozenset({"cloudfront.net", "firebaseio.com"})
 
 
+# The curated hosting platforms whose customers' labels the name rules read
+# (_tenant_label): the scorer's hand list, data/hosting_platforms.json
+# tenant_suffixes (through tenant_suffix_of) and its platforms found after
+# the served model (TENANT_SUFFIXES_NOT_IN_MODEL). Until 2026-11-03 the last
+# were left out, so the rules judged 'zapier' and 'edgeone' for every tenant
+# and never the customer's own name, as for duckdns before 2026-10-15 (review
+# of #396: on the first draft's zones 'mybluehost', 'clickfunnels' and
+# 'formstack' drew points for every tenant).
+_TENANT_LABEL_SUFFIXES: frozenset[str] = HOSTING_PLATFORMS | TENANT_SUFFIXES_NOT_IN_MODEL
+
+
 def _tenant_label(domain: str) -> Optional[str]:
     """The name a customer chose on a dynamic-DNS service (gedivan of
     gedivan.duckdns.org) or a curated hosting platform (HOSTING_PLATFORMS
-    and data/hosting_platforms.json: polite-tulumba-704e1b of
-    polite-tulumba-704e1b.netlify.app), else None — for registered names,
-    their subdomains, the platforms' own hosts (www.duckdns.org) and the
-    platforms that name hosts themselves (_PROVIDER_NAMED_SUFFIXES).
+    and data/hosting_platforms.json, its tenant_suffixes_not_in_model
+    included: polite-tulumba-704e1b of polite-tulumba-704e1b.netlify.app),
+    else None — for registered names, their subdomains, the platforms' own
+    hosts (www.duckdns.org) and the platforms that name hosts themselves
+    (_PROVIDER_NAMED_SUFFIXES).
 
     Deliberately not the PSL-derived suffixes: those are mostly
     infrastructure (trafficmanager.net, elb.amazonaws.com) whose host names
@@ -272,7 +284,7 @@ def _tenant_label(domain: str) -> Optional[str]:
     d = (domain or "").lower().strip(".")
     suffix = _dynamic_dns_suffix_of(d)
     if not suffix:
-        suffix = tenant_suffix_of(d, HOSTING_PLATFORMS)
+        suffix = tenant_suffix_of(d, _TENANT_LABEL_SUFFIXES)
         if not suffix or suffix in _PROVIDER_NAMED_SUFFIXES or registrable_domain(d).endswith("." + suffix):
             return None
     return d[: -(len(suffix) + 1)].split(".")[-1]
@@ -354,12 +366,15 @@ def top_domain_key(domain: str) -> Optional[str]:
 # random label is NXDOMAIN, the site redirects to Hostinger, 2026-10-27).
 #
 # And data/hosting_platforms.json 'tenant_suffixes_not_in_model', the same
-# kind of zone kept out of the model's tenant list until a retrain: on
-# 2026-11-03 zrg.okx.mybluehost.me, a PhishTank phish, was "safe 0" from the
-# allowlist on the live /public/check (mybluehost.me, Bluehost's temporary
-# domains, is #11,072), and under 63 more site and shop builders, form and
-# landing-page builders, free hosts and blog hosts the allowlist trusted any
-# random subdomain (jimdo.com, tistory.com, wufoo.com, cafe24.com …).
+# kind of zone kept out of the model's tenant list until a retrain. Its
+# zones today (zapier.app, edgeone.dev) are no top-100k names, so this
+# refuses nothing yet. The top-100k zones measured for it stay trusted for
+# now: on 2026-11-03 zrg.okx.mybluehost.me, a PhishTank phish, was "safe 0"
+# from the allowlist on the live /public/check (mybluehost.me, Bluehost's
+# temporary domains, is #11,072), but out of the allowlist about half of
+# Bluehost's real temporary addresses went to caution, as did 16 of 41
+# ActiveCampaign pages (ac-page.com), all 20 Locaweb sites measured
+# (hospedagemdesites.ws) and real Tistory blogs (review of #396).
 _ALLOWLIST_TENANT_ZONES: frozenset[str] = frozenset({
     "sakura.ne.jp", "dothome.co.kr", "isweb.co.kr",
     "lojaintegrada.com.br", "lojavirtualnuvem.com.br", "shop2000.com.tw",
@@ -1136,11 +1151,15 @@ def _has_fake_tld_in_subdomain(domain: str, legacy: bool = False) -> bool:
 # PSL-derived ones included (ondigitalocean.app, altervista.org, hf.space),
 # but not the operators' own suffixes (fonts.googleapis.com is Google's) nor
 # a zone with a restricted label (gov.scot: its names are the Scottish
-# Government's agencies, not anyone's pick). The allowlist-only zones count
-# too (sakura.ne.jp, mybluehost.me, zapier.app …): a zone whose tenants the
-# allowlist refuses is not one whose rank vouches for them (2026-11-03).
+# Government's agencies, not anyone's pick). The platforms found after the
+# served model count too (TENANT_SUFFIXES_NOT_IN_MODEL: zapier.app,
+# edgeone.dev), 2026-11-03. The other allowlist-only zones of
+# 2026-10-27 (sakura.ne.jp, hostgator.com.br …) do not yet: their operators'
+# own hosts under the zone (financeiro.hostgator.com.br) would lose the
+# platform's rank with their tenants (review of #396), and no list names
+# those hosts yet.
 _RANK_TENANT_SUFFIXES: frozenset[str] = frozenset(
-    z for z in (_SCORER_SHARED_SUFFIXES | _ALLOWLIST_TENANT_ZONES) - OPERATOR_SUFFIXES
+    z for z in (_SCORER_SHARED_SUFFIXES | TENANT_SUFFIXES_NOT_IN_MODEL) - OPERATOR_SUFFIXES
     if not _RESTRICTED_ZONE_LABELS.intersection(z.split("."))
 )
 
@@ -1172,6 +1191,24 @@ def _platform_tenant_site(domain: str) -> Optional[str]:
     if registrable != suffix and not suffix.endswith("." + registrable):
         return None
     return ".".join(d.split(".")[-(suffix.count(".") + 2):])
+
+
+def _not_in_model_tenant_site(domain: str) -> Optional[str]:
+    """The customer's own site (my-bakery.zapier.app of
+    shop.my-bakery.zapier.app) when `domain` is a tenant of a platform found
+    after the served model (TENANT_SUFFIXES_NOT_IN_MODEL), else None.
+
+    The excessive-subdomains rule counts from it (calculate_score 3.11): the
+    level every tenant has by construction is not the customer's, and
+    shop.my-bakery.zapier.app has one, not two. Only these zones: on the
+    curated lists the rule still counts from the platform
+    (shop.x.netlify.app), a recall change with its own pass. And the model's
+    verdict on such a tenant is weak (calculate_score 3.34)."""
+    d = (domain or "").lower().strip(".")
+    zone = tenant_suffix_of(d, TENANT_SUFFIXES_NOT_IN_MODEL)
+    if zone not in TENANT_SUFFIXES_NOT_IN_MODEL:
+        return None
+    return ".".join(d.split(".")[-(zone.count(".") + 2):])
 
 
 def popularity_rank(signals: dict, domain: Optional[str] = None) -> Optional[int]:
@@ -1824,7 +1861,13 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # and kvs.gov.spb.ru have ONE subdomain level each, a.b.evil.com has two
     # — and so does vk.com.msk.ru, whose registered name 'com' reads as a TLD.
     # Either form works — decoding never adds or removes a label separator.
-    sub_levels = _apparent_subdomain_levels(ascii_domain)
+    # On a platform found after the model, from the customer's own site
+    # (_not_in_model_tenant_site): shop.my-bakery.zapier.app has one.
+    tenant_site = _not_in_model_tenant_site(ascii_domain)
+    if tenant_site:
+        sub_levels = ascii_domain.lower().strip(".").count(".") - tenant_site.count(".")
+    else:
+        sub_levels = _apparent_subdomain_levels(ascii_domain)
     if sub_levels >= 2:
         below = ascii_domain.lower().strip(".").split(".", sub_levels)[-1]
         score += 15
@@ -2284,6 +2327,16 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
                 ))
     except Exception:
         pass  # ML is optional — don't break scoring if unavailable
+    # On a platform found after the served model (_not_in_model_tenant_site)
+    # the model's verdict is weak: it never saw the zone as shared (it reads
+    # is_hosting_subdomain 0). On 2026-11-03, with real probes, it put 2 of
+    # 22 real Zapier interfaces and 8 of 18 real EdgeOne sites at 'dangerous'
+    # with nothing but weak signals beside it
+    # (new-form-project-bc6d19.zapier.app, claude-agent-starter-python.edgeone.dev),
+    # and none of the 27 phishing tenants measured there (PR #396). Until the
+    # retrain teaches it the zone.
+    if tenant_site and reasons and reasons[-1].signal in ("ml_high_risk", "ml_suspicious"):
+        weak_here.append(reasons[-1])
 
     # ── Weak signals alone are a caution (WEAK_SIGNALS) ──
     # Every reason stays in the list, so the person sees what was found; only
