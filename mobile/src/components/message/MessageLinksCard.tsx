@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import type { MessageLink } from "../../../modules/cleanway-vpn";
 import { colors, space, radius } from "../../utils/theme";
 import { LINK_KEYS } from "../../utils/message-labels";
-import { linkVerdict, type LinkCheck, type LinkVerdict } from "../../utils/message-verdict";
+import { googleAdvised, linkVerdict, type LinkCheck, type LinkVerdict } from "../../utils/message-verdict";
+import { GoogleAdvisory } from "../check/GoogleAdvisory";
 
 interface Props {
   links: MessageLink[];
@@ -57,6 +58,8 @@ export function MessageLinksCard({ links, linkChecks, listAvailable, listStale }
       ) : listStale ? (
         <Text style={s.note}>{t("mobile.message.list_stale")}</Text>
       ) : null}
+      {/* A link above is risky on Google's lists (Web Risk): its credit. */}
+      {googleAdvised(linkChecks) && <GoogleAdvisory />}
     </View>
   );
 }

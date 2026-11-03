@@ -76,6 +76,14 @@
       margin-left: auto;
       margin-right: auto;
     }
+    /* Before anything is blocked, the person reads that protection can be
+       wrong both ways (Google Web Risk's rules for warnings ask for it). */
+    .limits {
+      font-size: 14px;
+      color: var(--text-muted);
+      max-width: 520px;
+      margin: -28px auto 40px;
+    }
 
     /* Steps grid */
     .steps {
@@ -235,6 +243,7 @@
     <p class="subtitle" data-i18n="welcome_hero_subtitle">
       Every link you see is being checked. Dangerous ones will be blocked automatically.
     </p>
+    <p class="limits" data-i18n="welcome_limits">No protection is perfect: now and then a safe site may be flagged by mistake, and a dangerous one may be missed.</p>
 
     <div class="steps">
       <div class="step">

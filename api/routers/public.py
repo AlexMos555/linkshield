@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.config import get_settings
 from api.models.schemas import DomainResult, RiskLevel
-from api.services import allowlist_age, load_shedding, ml_scorer, public_stats
+from api.services import allowlist_age, google_advisory, load_shedding, ml_scorer, public_stats
 from api.services import verdict_basis as vb
 from api.services.cleanway_blocklist import listed_as
 from api.services.domain_validator import DomainValidationError, validate_domain
@@ -124,25 +124,30 @@ async def _get_public_cache(domain: str) -> DomainResult | None:
         return None
 
 
-def _public_cache_ttl(result: DomainResult) -> int:
+def _public_cache_ttl(result: DomainResult, google_left: int | None = None) -> int:
+    """`google_left`: how long Google's answer behind the verdict stays valid
+    (google_advisory.seconds_left) — the verdict is kept no longer."""
     if result.exists is False:
-        return _NOT_FOUND_CACHE_TTL_SECONDS
-    if result.checks_incomplete or vb.basis_of(result) == vb.BASIS_UNREACHABLE:
-        return _PARTIAL_CACHE_TTL_SECONDS
-    return _PUBLIC_CACHE_TTL_SECONDS
+        ttl = _NOT_FOUND_CACHE_TTL_SECONDS
+    elif result.checks_incomplete or vb.basis_of(result) == vb.BASIS_UNREACHABLE:
+        ttl = _PARTIAL_CACHE_TTL_SECONDS
+    else:
+        ttl = _PUBLIC_CACHE_TTL_SECONDS
+    return google_advisory.capped(ttl, google_left)
 
 
 async def _put_public_cache(result: DomainResult) -> None:
     """Write the public-endpoint cache. A full verdict is kept for a day; a
-    not-found or partial one for much less (see the TTL constants)."""
+    not-found or partial one for much less (see the TTL constants); one that
+    rests on Google only while Google's answer is valid, and not at all once
+    it is not (Web Risk's rules for warnings, api/services/google_advisory.py)."""
     try:
+        ttl = _public_cache_ttl(result, await google_advisory.seconds_left(result))
+        if ttl <= 0:
+            return
         from api.services.cache import get_redis
         r = await get_redis()
-        await r.setex(
-            _PUBLIC_CACHE_PREFIX + result.domain,
-            _public_cache_ttl(result),
-            result.model_dump_json(),
-        )
+        await r.setex(_PUBLIC_CACHE_PREFIX + result.domain, ttl, result.model_dump_json())
     except Exception:
         pass  # Cache failures don't break the response
 
@@ -165,7 +170,8 @@ async def public_check(domain: str, request: Request):
          onedrive.live.com, disk.yandex.kz): a fixed "real service, we cannot
          vouch for the page" caution (verdict_basis 'user_content'), no analysis.
       4. Per-endpoint Redis cache, in its own namespace: a day for a full
-         verdict, less for a not-found or partial one.
+         verdict, less for a not-found or partial one, and one resting on
+         Google only while Google's answer is valid.
       5. A fresh-analysis cap per minute — per IP, or per install when the
          app sends X-Cleanway-Install (CGNAT: one IP, thousands of phones).
       6. SINGLEFLIGHT coalescing: N concurrent requests for the same fresh
@@ -175,6 +181,10 @@ async def public_check(domain: str, request: Request):
     'threat_intel' are evidence a client may block on; everything else is
     advice. `exists` is false for a domain that does not exist, and
     `checks_incomplete` names checks the time budget cut off.
+    `advisory_ttl` (seconds, null when no reason is Google's) is how long a
+    verdict resting on Google may still be shown from a cache: Web Risk allows
+    a warning only while Google's answer is valid. 0: show it now, keep it
+    nowhere.
     """
     # 1) Validate domain (cheap, in-process).
     try:
@@ -211,7 +221,15 @@ async def public_check(domain: str, request: Request):
     #    fresh-analysis cap below.
     cached = await _get_public_cache(domain)
     if cached:
-        return await _build_response(cached, modern)
+        left = await google_advisory.seconds_left(cached)
+        # A copy that outlived Google's answer (Redis lost the shorter key)
+        # is never served: the site is checked again below. Nor one whose
+        # answer ran out during the competitor lookup (up to 3 s): a window
+        # of 0 on a cached copy is Google's verdict after Google's answer.
+        if left is None or left > 0:
+            response = await _build_response(cached, modern)
+            if left is None or response["advisory_ttl"] != 0:
+                return response
 
     # 6) Cap the expensive fan-out, then run it once per domain. A worker
     #    already running its whole fresh-analysis budget answers 503 at once,
@@ -220,7 +238,9 @@ async def public_check(domain: str, request: Request):
     if domain not in _INFLIGHT:
         load_shedding.FRESH_ANALYSES.check()
     await _enforce_fresh_check_budget(request)
-    return _format_public_result(await _analyze_once(domain, withheld), modern_client=modern)
+    result = await _analyze_once(domain, withheld)
+    return _format_public_result(
+        result, modern_client=modern, advisory_ttl=await google_advisory.seconds_left(result))
 
 
 async def _enforce_fresh_check_budget(request: Request) -> None:
@@ -380,6 +400,7 @@ def _format_public_result(
     result: DomainResult,
     competitors: list[dict] | None = None,
     modern_client: bool = True,
+    advisory_ttl: int | None = None,
 ) -> dict:
     """Format result for public/SEO consumption.
 
@@ -396,6 +417,8 @@ def _format_public_result(
 
     `modern_client` False (no X-Cleanway-Install) adapts the reasons to
     clients that cannot localize the newer codes (_LEGACY_CODE_ALIASES).
+    `advisory_ttl`: google_advisory.seconds_left of the verdict (see
+    public_check).
     """
     confidence_pct = (
         getattr(result, "confidence_pct", None)
@@ -434,6 +457,11 @@ def _format_public_result(
         "exists": result.exists,
         # Checks the time budget cut off, by name (empty when complete).
         "checks_incomplete": list(result.checks_incomplete),
+        # How many more seconds a verdict resting on Google may be shown from a
+        # cache — the extension's, the app's, the website's; null when no
+        # reason is Google's. Web Risk allows a warning only while Google's
+        # answer is valid (api/services/google_advisory.py).
+        "advisory_ttl": advisory_ttl,
         "checked_at": datetime.now(timezone.utc).isoformat(),
         # Side-by-side comparison — nobody else publishes this.
         # Renders as a 'vs Cloudflare' card on the landing scorecard.
@@ -463,7 +491,10 @@ async def _build_response(result: DomainResult, modern_client: bool = True) -> d
     except Exception as exc:
         logger.debug("competitor lookup failed for %s: %s", result.domain, exc)
         competitors = []
-    return _format_public_result(result, competitors=competitors, modern_client=modern_client)
+    # After the (up to 3 s) competitor lookup: the window counts from the reply.
+    advisory_ttl = await google_advisory.seconds_left(result)
+    return _format_public_result(result, competitors=competitors, modern_client=modern_client,
+                                 advisory_ttl=advisory_ttl)
 
 
 @router.get(

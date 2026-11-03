@@ -59,6 +59,12 @@ export interface PublicCheckResponse {
   exists?: boolean | null;
   /** What the verdict rests on, e.g. "threat_intel" or "heuristics" (newer servers). */
   verdict_basis?: string | string[] | null;
+  /**
+   * Seconds a verdict resting on Google's lists may still be shown from a
+   * cache (Web Risk allows a warning only while Google's answer is valid);
+   * null when no reason is Google's. 0: show it now, keep it nowhere.
+   */
+  advisory_ttl?: number | null;
   cta?: string | null;
   install_url?: string | null;
   transparency_url?: string | null;
@@ -86,6 +92,8 @@ export interface PublicCheckResult {
   exists?: boolean;
   /** What the verdict rests on, always a list; absent on servers that do not say. */
   verdict_basis?: string[];
+  /** Seconds Google's part stays valid (see PublicCheckResponse); absent when the server gives none. */
+  advisory_ttl?: number;
 }
 
 function basisList(value: PublicCheckResponse["verdict_basis"]): string[] | undefined {
@@ -115,6 +123,9 @@ export function normalizePublicCheck(raw: PublicCheckResponse): PublicCheckResul
     checked_at: raw.checked_at ?? undefined,
     ...(typeof raw.exists === "boolean" ? { exists: raw.exists } : {}),
     ...(basis ? { verdict_basis: basis } : {}),
+    ...(typeof raw.advisory_ttl === "number" && Number.isFinite(raw.advisory_ttl) && raw.advisory_ttl >= 0
+      ? { advisory_ttl: raw.advisory_ttl }
+      : {}),
   };
 }
 

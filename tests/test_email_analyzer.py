@@ -10,6 +10,8 @@ Three layers:
 """
 from __future__ import annotations
 
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -583,3 +585,19 @@ async def test_analyzer_caps_link_lookups_at_max():
     assert len(calls) <= MAX_LINKS_TO_CHECK
     # Must have actually used the cap (otherwise the test isn't testing anything).
     assert len(calls) == MAX_LINKS_TO_CHECK
+
+
+@pytest.mark.asyncio
+async def test_a_link_the_checker_flags_is_worded_as_a_suspicion():
+    # POST /email/analyze checks link domains with Google Web Risk only
+    # (api/routers/email.py). Web Risk's rules for warnings: never call a page
+    # certainly unsafe (docs.cloud.google.com/web-risk/docs/user-warnings). The
+    # Outlook add-in shows this English message as it is.
+    async def checker(domain: str) -> bool:
+        return True
+
+    result = await analyze_email(EmailHeaders(), EmailBody(html='<a href="https://evil.test/a">a</a>'), checker)
+    [finding] = [f for f in result.findings if f.code == "known_dangerous_link"]
+    assert "evil.test" in finding.message
+    assert "Known-dangerous" not in finding.message
+    assert re.search(r"\b(suspected|possibly|may)\b", finding.message, re.I), finding.message

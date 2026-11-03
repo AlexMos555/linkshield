@@ -13,6 +13,13 @@
  * a hostname is dropped, the "open anyway" address must be http(s) on that
  * very host, reason codes are snake_case words, lengths are capped.
  *
+ * A verdict resting on Google's lists carries the end of Google's window
+ * (`x`, epoch ms: background/google-verdict.js advisoryUntil). The address
+ * outlives it — a restored tab, Forward after "Go back to safety", the
+ * browser history — and Web Risk allows a warning only while Google's
+ * answer is valid, so past `x` (or with none) the page draws nothing from
+ * its address and asks again (needsRecheck; blocked/blocked.js, the popup).
+ *
  * Classic script with no imports (like utils/api-base.js): blocked.html
  * loads it with <script src>, the background imports it for its side
  * effect, scripts/test-extension-core.mjs runs it in a vm. It publishes
@@ -27,6 +34,8 @@
   var MAX_URL = 2048;
   var HOST_RE = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?)*\.?$/;
   var SIGNAL_RE = /^[a-z0-9_]{1,64}$/;
+  var UNTIL_RE = /^\d{1,16}$/;
+  var GOOGLE_REASON = "safe_browsing"; // background/google-verdict.js
 
   function cleanHost(value) {
     if (typeof value !== "string") return "";
@@ -67,9 +76,16 @@
     return Number.isInteger(n) && n >= 50 && n <= 99 ? n : null;
   }
 
+  /** An epoch-ms time: a positive safe integer (a number is floored), else null. */
+  function cleanUntil(value) {
+    var n = typeof value === "number" && Number.isFinite(value) ? Math.floor(value)
+      : typeof value === "string" && UNTIL_RE.test(value) ? Number(value) : NaN;
+    return Number.isSafeInteger(n) && n > 0 ? n : null;
+  }
+
   /**
    * The block page's full address for `verdict` (domain, reasons,
-   * confidence_pct) blocked at `pageUrl`. `base` is
+   * confidence_pct, advisory_until) blocked at `pageUrl`. `base` is
    * chrome.runtime.getURL(""). Null when the domain isn't a hostname.
    */
   function build(base, verdict, pageUrl) {
@@ -85,16 +101,18 @@
       return { s: r.signal, t: r.detail };
     });
     if (reasons.length) parts.push("r=" + encodeURIComponent(JSON.stringify(reasons)));
+    var until = cleanUntil(v.advisory_until);
+    if (until !== null) parts.push("x=" + until);
     return String(base || "") + PAGE_PATH + "?" + parts.join("&");
   }
 
   /**
    * The verdict back out of a block page's query string (location.search,
    * or a full blocked.html address). Every field validated; never throws.
-   * @returns {{domain: string, url: string, confidence_pct: (number|null), reasons: Array<{signal: string, detail: string}>}}
+   * @returns {{domain: string, url: string, confidence_pct: (number|null), reasons: Array<{signal: string, detail: string}>, advisory_until: (number|null)}}
    */
   function parse(search) {
-    var out = { domain: "", url: "", confidence_pct: null, reasons: [] };
+    var out = { domain: "", url: "", confidence_pct: null, reasons: [], advisory_until: null };
     if (typeof search !== "string") return out;
     var q = search;
     var at = q.indexOf("?");
@@ -110,6 +128,7 @@
     out.domain = cleanHost(params.get("d"));
     out.url = cleanUrl(params.get("u"), out.domain);
     out.confidence_pct = cleanConfidence(params.get("c"));
+    out.advisory_until = cleanUntil(params.get("x"));
     var raw = params.get("r");
     if (raw) {
       try {
@@ -122,6 +141,28 @@
       } catch (e) { /* malformed: no reasons */ }
     }
     return out;
+  }
+
+  /**
+   * Whether a verdict (parse()'s, or the background's) rests on Google's
+   * lists: it has Google's window, or one of its reasons is Google's.
+   */
+  function restsOnGoogle(shown) {
+    if (!shown) return false;
+    if (typeof shown.advisory_until === "number") return true;
+    return Array.isArray(shown.reasons) && shown.reasons.some(function (r) {
+      return Boolean(r) && r.signal === GOOGLE_REASON;
+    });
+  }
+
+  /**
+   * True when a block page may not draw its verdict from its own address: it
+   * rests on Google and Google's window is over at `nowMs`, or was never
+   * given. The page asks the background again instead.
+   */
+  function needsRecheck(shown, nowMs) {
+    if (!restsOnGoogle(shown)) return false;
+    return !(typeof shown.advisory_until === "number" && shown.advisory_until > nowMs);
   }
 
   /** True when `url` is the block page of the extension at `base`. */
@@ -138,5 +179,7 @@
     cleanHost: cleanHost,
     cleanUrl: cleanUrl,
     isBlockedPageUrl: isBlockedPageUrl,
+    restsOnGoogle: restsOnGoogle,
+    needsRecheck: needsRecheck,
   };
 })(typeof self !== "undefined" ? self : globalThis);

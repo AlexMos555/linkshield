@@ -35,6 +35,8 @@ import {
   isNotFound, reasonsToShow, serverLevel, showScore, shownLevel, type ServerAnswer,
 } from "../src/utils/check-verdict";
 import { ListedMark, NotFoundCard, ServerDetailsNote } from "../src/components/check/CheckStates";
+import { GoogleAdvisory } from "../src/components/check/GoogleAdvisory";
+import { hasGoogleAdvisory } from "../src/utils/google-advisory";
 import { useAnnounce } from "../src/hooks/useAnnounce";
 import { useCallGuard } from "../src/components/call/CallGuardProvider";
 import { LockedDetailsCard, NotListedCard } from "../src/components/paywall/LockedDetails";
@@ -176,6 +178,9 @@ export default function SharedScreen() {
   const label = listed ? t("mobile.result.listed_title") : t(`mobile.result.verdict_${level}`);
   const score = showScore(listed, result) ? result?.score : undefined;
   const reasons = signalLines(listed, result, t);
+  // Any of the server's reasons, shown or among the "+N more": the verdict
+  // rests on Google's lists, so it carries Google's credit (Web Risk's rules).
+  const google = hasGoogleAdvisory(reasonsToShow(listed, result));
   const shown = reasons.slice(0, 3);
   const hidden = reasons.length - shown.length;
   const safe = level === "safe";
@@ -237,6 +242,7 @@ export default function SharedScreen() {
           {hidden > 0 && (
             <Text style={s.moreSignals}>{t("mobile.shared.more_signals", { n: hidden })}</Text>
           )}
+          {google && <GoogleAdvisory />}
         </View>
       )}
 

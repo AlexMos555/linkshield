@@ -588,7 +588,7 @@ for the safety check).
 
 | Data type | Collected? | Sent off device? | Purpose | Shared w/ 3rd parties? |
 |---|---|---|---|---|
-| **Site names (hosts) of links the person checks** — typed, pasted, scanned from a QR code, shared, opened through the link guard, or found in a shared message (max 3 per message). Not full URLs, not page content | Yes, transient | Yes → `api.cleanway.ai` (`GET /api/v1/public/check/{host}`, no account token) | App functionality — the scam check | The server checks the bare host with threat-intelligence services (Google Safe Browsing and others listed in `docs/PRIVACY.md`) and Cloudflare's family resolver; no user identity goes with it |
+| **Site names (hosts) of links the person checks** — typed, pasted, scanned from a QR code, shared, opened through the link guard, or found in a shared message (max 3 per message). Not full URLs, not page content | Yes, transient | Yes → `api.cleanway.ai` (`GET /api/v1/public/check/{host}`, no account token) | App functionality — the scam check | The server checks the bare host with threat-intelligence services (Google Web Risk and others listed in `docs/PRIVACY.md`) and Cloudflare's family resolver; no user identity goes with it |
 | **Message (SMS) text** the person shares or pastes | Processed on the phone only | **No** — the text never leaves the phone and is never stored | Scam check of the message | No |
 | **Email address** | Only if the person signs in (optional) | Yes → our backend (Supabase) | Account, linked-devices list | No |
 | **Device list of the account** (a random device ID, platform, a name) | Only when signed in | Yes → our backend | Showing / unlinking the person's devices | No |
@@ -859,11 +859,11 @@ Cleanway — защита от мошенников в телефоне. Не д
 • Остальные сайты телефон находит как обычно — через вашего оператора или Wi-Fi, а если они не отвечают — через общедоступные сервисы Cloudflare или Quad9.
 • На Android одновременно может работать только один VPN. Если у вас уже включён другой VPN, придётся выбрать: он или защита Cleanway.
 • Текст СМС проверяется на телефоне и никуда не отправляется. На наш сервер могут уйти только имена сайтов из ссылок в сообщении — не больше трёх.
-• Когда вы проверяете ссылку, на сервер Cleanway уходит только имя сайта (например, example.ru), без остальной части адреса. Сервер сверяет его в том числе с внешними базами опасных сайтов, например Google Safe Browsing.
+• Когда вы проверяете ссылку, на сервер Cleanway уходит только имя сайта (например, example.ru), без остальной части адреса. Сервер сверяет его в том числе с внешними базами опасных сайтов, например Google Web Risk.
 • Мы не показываем рекламу и не продаём данные.
 
 ЧЕГО CLEANWAY НЕ ОБЕЩАЕТ
-Новые мошеннические сайты и сообщения появляются каждый день, и ни одна программа не ловит их все. Если сомневаетесь — не переходите по ссылке, никому не называйте коды из СМС и перезвоните в банк по номеру на обратной стороне карты.
+Новые мошеннические сайты и сообщения появляются каждый день, и ни одна программа не ловит их все. Бывает и наоборот: изредка безопасный сайт помечается по ошибке. Если сомневаетесь — не переходите по ссылке, никому не называйте коды из СМС и перезвоните в банк по номеру на обратной стороне карты.
 
 СКОЛЬКО СТОИТ
 Основная защита — бесплатно.
