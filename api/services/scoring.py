@@ -291,7 +291,10 @@ _TENANT_LABEL_SUFFIXES: frozenset[str] = HOSTING_PLATFORMS | TENANT_SUFFIXES_NOT
 # and entropy on '3afcd4', review of #396). And 5 are Zapier's own ids, a
 # cuid (c and 24 base-36 characters: cmp8f64bv001l4v51du7zjkae, 'ACSI Quote
 # Request'). For the day the retrain moves zapier.app into tenant_suffixes
-# and the rules start reading its tenants.
+# and the rules start reading its tenants. Before then, measure or tighten
+# the cuid shape: any 25-character label that starts with 'c' and has three
+# digits matches it too (coinbasewalletlogin123456), and the name rules
+# would read nothing of it (review of #396).
 _ZAPIER_ID = re.compile(r"c[a-z0-9]{24}")
 _HEX_DIGITS = frozenset("0123456789abcdef")
 _ZAPIER_DEFAULT_NAMES: frozenset[str] = frozenset({
@@ -457,7 +460,19 @@ _ALLOWLIST_TENANT_ZONES: frozenset[str] = frozenset({
 # temporary addresses went to caution or worse (review of #396): another
 # site's certificate on the shared server, a forward to the customer's own
 # domain, the model on Bluehost's own website-<hex> names.
-EVIDENCE_ONLY_TENANT_ZONES: frozenset[str] = frozenset({"mybluehost.me"})
+#
+# Each zone with the number of labels the platform itself generates for an
+# account, left of the zone: <customer's labels>.<abc>.<def>.mybluehost.me.
+# Bluehost picks the two 3-letter labels (all 1,486 Common Crawl hosts of
+# 2026-10 have exactly two, the letters spread evenly), so the customer did
+# not choose them and a brand there says nothing about the site: 8 of the
+# 17,576 labels are global brands (att, aws, dhl, dpd, irs, olx, ups, wix),
+# about one account in 1,100. Read as the customer's, they took real sites
+# from 'safe 0' to caution 30 — esh.aws.mybluehost.me ('Avila Styles —
+# Coming Soon'), alpineeagle-co-uk.lvj.wix.mybluehost.me (a car restorer;
+# crt.sh, review of #396). _evidence_only_customer_name drops them.
+EVIDENCE_ONLY_ACCOUNT_LABELS: dict[str, int] = {"mybluehost.me": 2}
+EVIDENCE_ONLY_TENANT_ZONES: frozenset[str] = frozenset(EVIDENCE_ONLY_ACCOUNT_LABELS)
 
 
 def is_evidence_only_tenant(domain: str) -> bool:
@@ -465,6 +480,21 @@ def is_evidence_only_tenant(domain: str) -> bool:
     the zone itself nor its www). tenant_suffix_of() also answers for the
     curated tenant_suffixes, so the zone it finds must be one of these."""
     return tenant_suffix_of((domain or "").lower().strip("."), EVIDENCE_ONLY_TENANT_ZONES) in EVIDENCE_ONLY_TENANT_ZONES
+
+
+def _evidence_only_customer_name(domain: str) -> Optional[str]:
+    """The labels the customer chose, with the zone, for a site under
+    EVIDENCE_ONLY_TENANT_ZONES — paypal-login.mybluehost.me of
+    paypal-login.abc.def.mybluehost.me: the account labels the platform
+    generated (EVIDENCE_ONLY_ACCOUNT_LABELS) dropped. None when the customer
+    chose none (abc.def.mybluehost.me, the account's own address) and for
+    any other name."""
+    d = (domain or "").lower().strip(".")
+    zone = tenant_suffix_of(d, EVIDENCE_ONLY_TENANT_ZONES)
+    if zone not in EVIDENCE_ONLY_ACCOUNT_LABELS:
+        return None
+    customer = d.split(".")[: -(zone.count(".") + 1 + EVIDENCE_ONLY_ACCOUNT_LABELS[zone])]
+    return f"{'.'.join(customer)}.{zone}" if customer else None
 
 
 # Hosts under a newly reached compound-suffix entry that many people publish
@@ -1246,6 +1276,13 @@ def _has_fake_tld_in_subdomain(domain: str, legacy: bool = False) -> bool:
 # own hosts under the zone (financeiro.hostgator.com.br) would lose the
 # platform's rank with their tenants (review of #396), and no list names
 # those hosts yet.
+#
+# For mybluehost.me the tenant's site is one account label and the zone
+# (okx.mybluehost.me of zrg.okx.mybluehost.me), which about one account in
+# 17,576 shares: the account is two labels (EVIDENCE_ONLY_ACCOUNT_LABELS).
+# It feeds only the SURBL query, which LICENSED_INTEL=licensed switches off
+# in production, and OTX's top-10k and dead-name lookups, which list no such
+# name. So it stays: two labels would change the SURBL query, unmeasured.
 _RANK_TENANT_SUFFIXES: frozenset[str] = frozenset(
     z for z in (_SCORER_SHARED_SUFFIXES | TENANT_SUFFIXES_NOT_IN_MODEL | EVIDENCE_ONLY_TENANT_ZONES) - OPERATOR_SUFFIXES
     if not _RESTRICTED_ZONE_LABELS.intersection(z.split("."))
@@ -1465,12 +1502,16 @@ def _evidence_only_verdict(domain: str, score: int, reasons: list[DomainReason])
     """The verdict on a customer's site under EVIDENCE_ONLY_TENANT_ZONES:
     Layer 1's evidence (`score`, `reasons`: the threat lists, OTX, IPQS, the
     favicon and watchtower brand checks) plus the brand rules on the names
-    the customer chose — a brand as a whole label (paypal.abc.mybluehost.me,
+    the customer chose — a brand as a whole label (paypal.abc.def.mybluehost.me,
     _check_brand_in_subdomain) or next to a lure word
-    (paypal-login.abc.mybluehost.me, _check_brand_on_hosting_tenant) — and
-    nothing else: no hygiene signal, no name shape, no model. 'safe' 0 when
-    none of them speaks."""
-    brand = _check_brand_in_subdomain(domain) or _check_brand_on_hosting_tenant(domain, EVIDENCE_ONLY_TENANT_ZONES)
+    (paypal-login.abc.def.mybluehost.me, _check_brand_on_hosting_tenant) — and
+    nothing else: no hygiene signal, no name shape, no model. Not the
+    account labels the platform generated (_evidence_only_customer_name):
+    esh.aws.mybluehost.me names no brand. 'safe' 0 when none of them speaks."""
+    customer = _evidence_only_customer_name(domain)
+    brand = customer and (
+        _check_brand_in_subdomain(customer) or _check_brand_on_hosting_tenant(customer, EVIDENCE_ONLY_TENANT_ZONES)
+    )
     if brand:
         score += 30
         reasons.append(DomainReason(

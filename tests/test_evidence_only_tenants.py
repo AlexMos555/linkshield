@@ -13,6 +13,8 @@ model's opinion of Bluehost's own website-<hex> names.
 from __future__ import annotations
 
 import asyncio
+import itertools
+import string
 
 import pytest
 
@@ -132,7 +134,9 @@ def test_a_list_or_report_still_decides(hit, expected):
 
 def test_the_motivating_phish_is_dangerous_on_googles_listing():
     """zrg.okx.mybluehost.me: Safe Browsing's Transparency Report listed it
-    as phishing on 2026-11-03; production asks Web Risk since that day."""
+    as phishing on 2026-11-03; production asks Web Risk since that day. Web
+    Risk is asked about http://<host>/ (web_risk._params), so this holds if
+    Google lists the host itself, not only the phishing page's path."""
     assert _score("zrg.okx.mybluehost.me", safe_browsing_hit=True, missing_security_headers=["csp"])[:2] == (80, "dangerous")
 
 
@@ -140,19 +144,91 @@ def test_the_motivating_phish_is_dangerous_on_googles_listing():
     ("paypal.abc.def.mybluehost.me", "paypal"),          # a brand as a whole label
     ("paypal-login.abc.def.mybluehost.me", "paypal"),    # a brand next to a lure word
     ("sberbank.abc.def.mybluehost.me", "sberbank"),
-    ("abc.paypal-verify.mybluehost.me", "paypal"),
+    ("paypal-verify.abc.def.mybluehost.me", "paypal"),
+    ("secure.paypal-login.abc.def.mybluehost.me", "paypal"),  # a label deeper
+    # account labels that spell brands do not hide the customer's
+    ("paypal-login.esh.aws.mybluehost.me", "paypal"),
+    ("sberbank.lvj.wix.mybluehost.me", "sberbank"),
 ])
 def test_a_brand_in_the_customers_name_is_evidence(host, brand):
-    score, level, reasons = _score(host)
-    assert (score, level, reasons) == (30, "caution", {"brand_subdomain_abuse": 30})
+    score, level, reasons = scoring.calculate_score(_signals(host))
+    assert (score, level.value) == (30, "caution")
+    assert [(r.signal, r.weight) for r in reasons] == [("brand_subdomain_abuse", 30)]
+    assert f"'{brand}'" in reasons[0].detail
     # with a report beside it, dangerous
     assert _score(host, alienvault_pulse_count=3)[:2] == (60, "dangerous")
+
+
+# Real temporary addresses whose account labels Bluehost generated as a
+# brand's name, from the certificate logs (crt.sh, review of #396), with what
+# the probes saw there. The previous version of the brand check read the
+# account labels too, and each went from the allowlist's 'safe 0' to caution
+# 30 for "Uses the 'aws' / 'wix' brand name".
+BRAND_ACCOUNTS = [
+    ("esh.aws.mybluehost.me", dict(cert_age_days=29, dns_has_mx=True)),  # Avila Styles — Coming Soon
+    ("avilastyles.esh.aws.mybluehost.me", dict(cert_age_days=29, missing_security_headers=["csp", "hsts", "xfo"])),
+    ("350friendly.esh.aws.mybluehost.me", dict(cert_age_days=13)),  # 350Friendly — Coming Soon
+    ("hudsonwebsolutionscom.esh.aws.mybluehost.me", dict(cert_age_days=9, missing_security_headers=["csp", "hsts"])),
+    ("aig.wix.mybluehost.me", dict(cert_age_days=29, dns_has_mx=True)),  # Kaylie Ames Marceca — Coming Soon
+    ("lvj.wix.mybluehost.me", dict(cert_age_days=28, dns_has_mx=True)),
+    # Alpine Eagle - Classic Car Restorations
+    ("alpineeagle-co-uk.lvj.wix.mybluehost.me", dict(cert_age_days=2, missing_security_headers=["csp", "hsts"])),
+]
+
+
+@pytest.mark.parametrize("host,seen", BRAND_ACCOUNTS)
+def test_an_account_label_that_spells_a_brand_is_not_the_customers(host, seen):
+    assert _score(host, **seen) == (0, "safe", {})
+
+
+def test_no_three_letter_account_label_fires_a_brand_rule():
+    """Every account is <3 letters>.<3 letters>, picked by Bluehost (all 1,486
+    Common Crawl hosts of 2026-10; the letters spread evenly): a phisher
+    cannot choose them, so a brand there says nothing. 8 of the 17,576
+    labels are global brands (att, aws, dhl, dpd, irs, olx, ups, wix) — about
+    one account in 1,100 — in either position, under every site of the
+    account. (With a customer's own label in front: BRAND_ACCOUNTS above.
+    Each of those costs the brand rules a few hundred microseconds, too slow
+    for 35,152 here.)"""
+    labels = ["".join(t) for t in itertools.product(string.ascii_lowercase, repeat=3)]
+    # The rules themselves read some of them as brands: this is what the
+    # verdict must not pass on.
+    assert {"aws", "wix"} <= {lab for lab in labels if scoring._check_brand_in_subdomain(f"{lab}.qqq.{BLUEHOST}")}
+    fired = []
+    for lab in labels:
+        for account in (f"{lab}.qqq", f"qqq.{lab}"):
+            for host in (f"{account}.{BLUEHOST}", f"www.{account}.{BLUEHOST}"):
+                if scoring._evidence_only_verdict(host, 0, []) != (0, RiskLevel.safe, []):
+                    fired.append(host)
+    assert fired == []
 
 
 @pytest.mark.parametrize("host", [r[0] for r in REAL] + ["website-911ca792.qup.hak.mybluehost.me"])
 def test_no_brand_rule_fires_on_bluehosts_own_names(host):
     assert scoring._check_brand_in_subdomain(host) is None
     assert scoring._check_brand_on_hosting_tenant(host, scoring.EVIDENCE_ONLY_TENANT_ZONES) is None
+    assert scoring._evidence_only_verdict(host, 0, []) == (0, RiskLevel.safe, [])
+
+
+@pytest.mark.parametrize("host,customer", [
+    ("paypal-login.abc.def.mybluehost.me", "paypal-login.mybluehost.me"),
+    ("secure.paypal.abc.def.mybluehost.me", "secure.paypal.mybluehost.me"),
+    ("alpineeagle-co-uk.lvj.wix.mybluehost.me", "alpineeagle-co-uk.mybluehost.me"),
+    ("www.website-fa76de8b.xva.vgj.mybluehost.me", "www.website-fa76de8b.mybluehost.me"),
+    # the account's own address: the customer chose no name
+    ("esh.aws.mybluehost.me", None),
+    ("zrg.okx.mybluehost.me", None),
+    ("abc.mybluehost.me", None),  # a shape Bluehost does not issue
+    ("mybluehost.me", None),
+    ("paypal-login.netlify.app", None),  # not an evidence-only zone
+])
+def test_the_customers_name_is_left_of_the_two_account_labels(host, customer):
+    assert scoring._evidence_only_customer_name(host) == customer
+
+
+def test_every_evidence_only_zone_says_how_many_labels_its_platform_generates():
+    assert set(scoring.EVIDENCE_ONLY_ACCOUNT_LABELS) == scoring.EVIDENCE_ONLY_TENANT_ZONES
+    assert scoring.EVIDENCE_ONLY_ACCOUNT_LABELS[BLUEHOST] == 2
 
 
 # ── The analyzer ──
