@@ -18,8 +18,10 @@ its URL constant below and in docs/THIRD_PARTY_FEEDS.md:
                        stated; ACN's terms bar commercial use — left out
                        under BLOCKLIST_LICENSED_ONLY since 2026-10-23)
   * PhishDestroy     — DestroyList, DNS-verified active domains (CC0 / MIT)
-  * PhishTank        — verified-online dump, ONLY with PHISHTANK_API_KEY
-                       (api/services/phishtank_feed.py: one download a day)
+  * PhishTank        — verified-online dump, ONLY with PHISHTANK_API_KEY or
+                       BLOCKLIST_PHISHTANK_SOURCE (keyless: the public dump,
+                       "a few downloads per day" without a key) —
+                       api/services/phishtank_feed.py: one download a day
 
 Retired: URLhaus (abuse.ch). Since 2026-10-21 its bulk exports answer
 410 Gone without a personal Auth-Key, and its terms (2025-11-04) allow
@@ -37,11 +39,13 @@ published names only they backed leave with that run instead of lingering
 in retention. Default off: with it unset the build is today's, byte for
 byte. BLOCKLIST_EXCLUDE_FEEDS names further feeds to leave out (comma
 separated, by the names above) — for measurements such as
-scripts/eval_day_one_coverage.py, never for production. Flipping either
-changes the set by more than the churn gate allows: publish once with
---force. CSIRT Italia joining the switch while it was already on moves only
-its own exact hosts (184 distinct on 2026-10-23, ~0.03% of the set): no
---force.
+scripts/eval_day_one_coverage.py, never for production. A switch moves the
+set by a few percent, far under the churn gate (MAX_CHURN, 50%): measured
+2026-11-03 on one feed snapshot, phishing.army (the bulk of what
+BLOCKLIST_LICENSED_ONLY leaves out) ~2.4% either way, PhishTank on ~2.3% —
+most of their names are in other feeds too. So no --force; keep it for a
+change the gate really flags. CSIRT Italia joining the switch while it was already on moved
+only its own exact hosts (184 distinct on 2026-10-23, ~0.03% of the set).
 
 Exact-host-only sources: CERT Polska and CSIRT Italia name the precise host
 and say so — CERT Polska's API spec is explicit that listing `a.example.com`
@@ -105,6 +109,8 @@ Env:
     BLOCKLIST_LICENSED_ONLY    — 1/true to leave out OpenPhish, phishing.army, CSIRT Italia (default off)
     BLOCKLIST_EXCLUDE_FEEDS    — comma-separated feed names to leave out (measurements only)
     PHISHTANK_API_KEY          — set: PhishTank joins the feeds, one cached download a day
+    BLOCKLIST_PHISHTANK_SOURCE — 1/true: PhishTank joins without a key (the public dump, once a
+                                 day; a failed pull waits ~12 h). A key, when set, is used instead
 """
 from __future__ import annotations
 
@@ -429,13 +435,20 @@ def phishtank_key(environ=None) -> str:
     return (os.environ if environ is None else environ).get(phishtank_feed.KEY_ENV, "").strip()
 
 
+def phishtank_enabled(environ=None) -> bool:
+    """PhishTank is a source with a key, or without one when
+    BLOCKLIST_PHISHTANK_SOURCE is on (the anonymous dump, once a day)."""
+    return bool(phishtank_key(environ)) or _env_flag(phishtank_feed.SOURCE_ENV, environ)
+
+
 def run_sources(excluded: frozenset = frozenset(), environ=None) -> frozenset[str]:
     """The sources a run with these exclusions has: every feed but the
-    excluded ones, PhishTank only with a key. What _fetch_feeds fetches, said
-    without fetching — the day-one benchmark records it per build so a
-    PhishTank number is marked circular the day the key makes it a source."""
+    excluded ones, PhishTank only when phishtank_enabled. What _fetch_feeds
+    fetches, said without fetching — the day-one benchmark records it per
+    build so a PhishTank number is marked circular the day PhishTank becomes
+    a source, with a key or without."""
     out = set(FEED_NAMES) - set(excluded)
-    if not phishtank_key(environ):
+    if not phishtank_enabled(environ):
         out.discard(phishtank_feed.SOURCE_NAME)
     return frozenset(out)
 
@@ -1269,11 +1282,12 @@ async def _fetch_feeds(r=None, excluded: frozenset = frozenset(), now: float | N
         except Exception as e:  # noqa: BLE001
             logger.warning("CSIRT Italia fetch failed: %s (continuing)", e)
             fetched["CSIRT Italia"] = None
-    # PhishTank: a source only with a key, one cached download a day
-    # (phishtank_feed). Same failure shape as the others. A URL feed, so it
-    # promotes registrables like OpenPhish.
+    # PhishTank: a source with a key, or keyless under
+    # BLOCKLIST_PHISHTANK_SOURCE; one cached download a day (phishtank_feed).
+    # Same failure shape as the others. A URL feed, so it promotes
+    # registrables like OpenPhish.
     key = phishtank_key()
-    if key and phishtank_feed.SOURCE_NAME not in excluded:
+    if phishtank_enabled() and phishtank_feed.SOURCE_NAME not in excluded:
         name = phishtank_feed.SOURCE_NAME
         try:
             parsed = await phishtank_feed.fetch_hosts(r, key, time.time() if now is None else now,
@@ -1285,8 +1299,10 @@ async def _fetch_feeds(r=None, excluded: frozenset = frozenset(), now: float | N
                         len(set(hosts) | set(exact_hosts)))
         except Exception as e:  # noqa: BLE001
             # An HTTP client's message can carry the URL, and the URL carries
-            # the key.
-            logger.warning("%s fetch failed: %s (continuing)", name, str(e).replace(key, "<key>"))
+            # the key. Without a key there is nothing to hide — and
+            # str.replace("", …) would put "<key>" between every character.
+            msg = str(e).replace(key, "<key>") if key else str(e)
+            logger.warning("%s fetch failed: %s (continuing)", name, msg)
             fetched[name] = None
     return FeedFetch(hosts=hosts, exact_hosts=exact_hosts, fetched=fetched, by_feed=by_feed,
                      exact_feeds=frozenset(exact_feeds))

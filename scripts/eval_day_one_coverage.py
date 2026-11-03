@@ -24,8 +24,9 @@ bytes — feeds move by the minute):
   2. scores each against two held-out samples, in freshness windows
      (hosts the source FIRST reported within 1, 7 and 30 days of its newest
      report):
-       PhishTank online-valid   held out today; circular the day
-                                PHISHTANK_API_KEY makes it a source
+       PhishTank online-valid   held out today; circular once it is a
+                                source (PHISHTANK_API_KEY, or
+                                BLOCKLIST_PHISHTANK_SOURCE without a key)
        TweetFeed year.csv       a source since 2026-09-26 — honest only for
                                 the *-minus-tweetfeed variants, and marked
                                 `circular` for the others
@@ -78,7 +79,9 @@ DEFAULT_DAYS = (1, 7, 30)
 PHISHTANK_DUMP = "phishtank-online-valid.csv.gz"
 # The dump the refresh job downloads with PHISHTANK_API_KEY, when the key is
 # set for the benchmark too: one download for every build, kept under a
-# fixed name because the URL that fetched it carries the key.
+# fixed name because the URL that fetched it carries the key. Without a key
+# (BLOCKLIST_PHISHTANK_SOURCE) the job asks for the sample's own file, which
+# is kept as PHISHTANK_DUMP: one anonymous pull a session.
 PHISHTANK_KEYED_DUMP = "phishtank-keyed-online-valid.csv.gz"
 SNAPSHOT_EXTRAS = frozenset({PHISHTANK_DUMP, PHISHTANK_KEYED_DUMP})
 QUESTION = ("Of the phishing hosts a held-out source first reported within the last N days, what share does "
@@ -148,19 +151,23 @@ class Snapshot:
         return r.content
 
     def conditional_fetcher(self, real: Callable) -> Callable:
-        """The refresh job's conditional GET (its keyed PhishTank download)
-        through the snapshot: one download, every build reads the same
-        bytes. Only the body touches the disk — the URL carries the key, so
-        it is neither indexed nor logged."""
-        path = self.dir / PHISHTANK_KEYED_DUMP
+        """The refresh job's conditional GET (its PhishTank download) through
+        the snapshot: one download, every build reads the same bytes. Only
+        the body touches the disk — a keyed URL carries the key, so it is
+        neither indexed nor logged. The keyless URL is the file the
+        PhishTank sample is read from, so it shares that file
+        (PHISHTANK_DUMP) and the sample does not pull it again."""
+        keyed = self.dir / PHISHTANK_KEYED_DUMP
 
         async def _fetch(url: str, headers) -> tuple[int, dict, bytes]:
+            path = self.dir / PHISHTANK_DUMP if url == ho.PHISHTANK_ONLINE_VALID_URL else keyed
             if path.exists():
                 return 200, {}, path.read_bytes()
             status, resp_headers, body = await real(url, headers)
             if status == 200 and body:
                 path.write_bytes(body)
-                log.info("snapshot: fetched the keyed PhishTank dump (%d bytes)", len(body))
+                log.info("snapshot: fetched the %s PhishTank dump (%d bytes)",
+                         "keyed" if path == keyed else "keyless", len(body))
             return status, dict(resp_headers), body
         return _fetch
 
@@ -171,14 +178,15 @@ class Snapshot:
 async def build_variants(rdd, snapshot: Snapshot, names: dict[str, frozenset]) -> dict[str, dict]:
     """name -> {excluded_feeds, feeds, names, artifact_bytes, sha256, hashes}.
     `feeds` is what the build was made from (rdd.run_sources): with
-    PHISHTANK_API_KEY set, PhishTank is in it and score() marks the PhishTank
-    numbers circular."""
+    PHISHTANK_API_KEY or BLOCKLIST_PHISHTANK_SOURCE set (rdd.phishtank_enabled),
+    PhishTank is in it and score() marks the PhishTank numbers circular."""
     rdd._fetch = snapshot.fetcher(rdd._fetch)
     rdd.MISP_EVENT_PAUSE = 0
-    if rdd.phishtank_key():
+    if rdd.phishtank_enabled():
         rdd._fetch_conditional = snapshot.conditional_fetcher(rdd._fetch_conditional)
-        log.warning("%s is set: PhishTank is a source of every build here, so its sample is circular "
-                    "(held_out.phishtank.*.circular) and leaves the headline", rdd.phishtank_feed.KEY_ENV)
+        log.warning("%s or %s is set: PhishTank is a source of every build here, so its sample is "
+                    "circular (held_out.phishtank.*.circular) and leaves the headline",
+                    rdd.phishtank_feed.KEY_ENV, rdd.phishtank_feed.SOURCE_ENV)
     out: dict[str, dict] = {}
     for name, excluded in names.items():
         path = snapshot.dir / f"artifact-{name}.bin"
@@ -282,8 +290,8 @@ def assemble(builds: dict[str, dict], held_out: dict, days: tuple[int, ...], sna
         "held_out": held_out,
         "headline": headline(held_out),
         "notes": [
-            "PhishTank is held out only while PHISHTANK_API_KEY is unset on the refresh job; with it set, "
-            "PhishTank is a source and its numbers here are circular.",
+            "PhishTank is held out only while it is not a source of the refresh job (PHISHTANK_API_KEY "
+            "unset and BLOCKLIST_PHISHTANK_SOURCE off); once it is, its numbers here are circular.",
             "TweetFeed year.csv is a source since 2026-09-26 (#47): its numbers are honest only for the "
             "*-minus-tweetfeed variants (marked circular=false).",
             "phishing.army is built from PhishTank, OpenPhish, CERT.pl, PhishFindR, urlscan and Phishunt, so the "
