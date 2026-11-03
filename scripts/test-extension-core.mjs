@@ -3008,6 +3008,12 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     assert.deepEqual(await run(blockedAt([{ s: "safe_browsing", t: "Google" }]), safe), { hidden: true, state: "safe" });
     assert.deepEqual(await run(blockedAt([{ s: "safe_browsing", t: "Google" }], Date.now() - 1000), others), { hidden: true, state: "danger" });
     assert.deepEqual(await run(blockedAt([{ s: "safe_browsing", t: "Google" }], Date.now() - 1000), google), { hidden: false, state: "danger" });
+    // Over the block page, the offline scorer's guess (the API did not
+    // answer) is no fresh verdict: "couldn't check", as the page itself says.
+    for (const level of ["safe", "caution"]) {
+      assert.deepEqual(await run(blockedAt([{ s: "safe_browsing", t: "Google" }], Date.now() - 1000), { ...safe, level, source: "local" }),
+        { hidden: true, state: "unknown" }, `an offline ${level} over the block page`);
+    }
 
     const html = readFileSync(join(ROOT, tree, "src/popup/popup.html"), "utf8");
     const box = html.match(/<(p|div)\b[^>]*\bid="google-advisory"[^>]*>[\s\S]*?<\/\1>/);
@@ -3325,8 +3331,11 @@ function loadContentPage(tree, { clock, answer }) {
   return { ctx, time, sent, link, badgeOf, fireDoc, document: sb.document };
 }
 
-/** blocked.html's scripts (blocked-url.js, then blocked.js) at `search`. */
-function loadBlockedPage(tree, { clock, search, answer }) {
+/**
+ * blocked.html's scripts (blocked-url.js, then blocked.js) at `search`.
+ * `skill`: the persona in chrome.storage.local (Settings), none = regular.
+ */
+function loadBlockedPage(tree, { clock, search, answer, skill }) {
   const time = fakeTimers(clock);
   const sent = [];
   const drawn = [];
@@ -3345,6 +3354,15 @@ function loadBlockedPage(tree, { clock, search, answer }) {
       i18n: {
         getMessage: (k, subs) => (k === "@@bidi_dir" ? "ltr" : `<${k}${subs && [].concat(subs).length ? `:${[].concat(subs).join(",")}` : ""}>`),
         getUILanguage: () => "en",
+      },
+      storage: {
+        local: {
+          get: (keys, cb) => {
+            const data = skill ? { skill_level: skill } : {};
+            if (cb) cb(data);
+            return Promise.resolve(data);
+          },
+        },
       },
       runtime: {
         getURL: (p) => EXT + (p || ""),
@@ -3392,6 +3410,12 @@ const blockedSearch = (B, verdict, pageUrl = "https://evil.example/login") => {
   return url.slice(url.indexOf("?"));
 };
 const checksSent = (sent) => sent.filter((m) => m.type === "CHECK_DOMAINS");
+// Without the server's answer the block page asks once more, a few seconds
+// later (the server is often still analysing the site): within this.
+const RETRY_WAIT_MS = 10_000;
+const buttonTexts = (page) => page.buttons().map((b) => b.textContent);
+const mainButtons = (page) => page.buttons().filter((b) => b.getAttribute("data-main") === "true").map((b) => b.textContent);
+const OPEN_BUTTON = /block_recheck_open/;
 
 for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
   await check(`[${tree}] the block page's address carries Google's window, and a past one means "check again"`, () => {
@@ -3489,9 +3513,15 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
       assert.deepEqual(page.opened, ["https://evil.example/login"]);
     }
 
-    // No answer at all: says so, and still draws nothing from the address.
+    // No answer at all: asks once more, then says so, and still draws
+    // nothing from the address.
     const silent = loadBlockedPage(tree, { clock, search: cases[0][1], answer: () => undefined });
     await flush();
+    assert.deepEqual(silent.drawn, []);
+    assert.equal(checksSent(silent.sent).length, 1);
+    clock.t += RETRY_WAIT_MS;
+    await silent.time.runDue();
+    assert.equal(checksSent(silent.sent).length, 2, "gave up without asking once more");
     assert.deepEqual(silent.drawn, []);
     assert.match(silent.body.text(), /<block_recheck_failed:evil\.example>/);
 
@@ -3533,6 +3563,17 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     await page.time.runDue();
     assert.equal(checksSent(page.sent).length, 1, "the timer asked a second time");
 
+    // Visible all along: the timer alone takes the warning down at the end.
+    clock.t = Date.UTC(2026, 10, 4, 12);
+    const visibleUntil = clock.t + 120_000;
+    const visible = loadBlockedPage(tree, { clock, search: blockedSearch(B, { domain: "evil.example", reasons: GOOGLE_REASONS, advisory_until: visibleUntil }), answer });
+    assert.equal(visible.drawn.length, 1);
+    clock.t = visibleUntil;
+    await visible.time.runDue();
+    assert.equal(checksSent(visible.sent).length, 1, "the timer did not ask at the window's end");
+    assert.equal(visible.document.getElementById("ls-block-overlay"), null, "the expired warning stayed on a visible page");
+    assert.match(visible.body.text(), /<block_recheck_clear:evil\.example>/);
+
     // Restored from the back/forward cache (Forward after "Go back to safety").
     clock.t = Date.UTC(2026, 10, 4, 12);
     const restored = loadBlockedPage(tree, { clock, search: blockedSearch(B, { domain: "evil.example", reasons: GOOGLE_REASONS, advisory_until: clock.t + 60_000 }), answer });
@@ -3548,6 +3589,163 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     other.fire("visibilitychange");
     await other.time.runDue();
     assert.deepEqual(checksSent(other.sent), []);
+  });
+
+  await check(`[${tree}] the block page's re-check counts only the server's answer as "checked again"`, async () => {
+    const B = loadBlockedUrl(tree);
+    const clock = { t: Date.UTC(2026, 10, 6, 9) };
+    const search = blockedSearch(B, { domain: "evil.example", reasons: GOOGLE_REASONS, advisory_until: clock.t - 60_000 });
+    const api = (level) => ({ domain: "evil.example", level, score: level === "caution" ? 45 : 3, source: "api", reasons: [] });
+    // What the background hands back when the API gave it nothing (its 3 s
+    // timeout, a 5xx, a 429, offline): the offline scorer's verdict.
+    const offline = (level) => ({ domain: "evil.example", level, score: level === "caution" ? 45 : 0, source: "local",
+      reasons: [{ signal: "brand_lookalike", detail: "Looks like PayPal", weight: 30 }] });
+    const notChecked = [
+      ["offline caution", { results: [offline("caution")] }],
+      ["offline safe", { results: [offline("safe")] }],
+      ["no source", { results: [{ domain: "evil.example", level: "safe", score: 0, reasons: [] }] }],
+      ["no results", { results: [] }],
+    ];
+    for (const [why, reply] of notChecked) {
+      const page = loadBlockedPage(tree, { clock, search, answer: () => reply });
+      await flush();
+      let text = page.body.text();
+      assert.ok(!/block_recheck_clear|<block_recheck_title>/.test(text), `${why}: read as checked again: ${text}`);
+      assert.match(text, /<block_rechecking:evil\.example>/, `${why}: gave up at once`);
+      assert.equal(checksSent(page.sent).length, 1);
+      clock.t += RETRY_WAIT_MS;
+      await page.time.runDue();
+      assert.equal(checksSent(page.sent).length, 2, `${why}: did not ask once more`);
+      text = page.body.text();
+      assert.ok(!/block_recheck_clear|<block_recheck_title>/.test(text), `${why}: read as checked again: ${text}`);
+      assert.match(text, /<block_recheck_failed_title>/, `${why}: ${text}`);
+      assert.match(text, /<block_recheck_failed:evil\.example>/, `${why}: ${text}`);
+      assert.deepEqual(page.drawn, [], `${why}: drew a warning`);
+      // "Try again" leads; "Open the site" is there, but not the main button.
+      assert.deepEqual(mainButtons(page), ["<block_recheck_retry>"], `${why}: ${buttonTexts(page)}`);
+      assert.ok(buttonTexts(page).includes("<block_recheck_back>"), `${why}: no way back`);
+      assert.ok(buttonTexts(page).some((t) => OPEN_BUTTON.test(t)), `${why}: regular mode lost the open button`);
+      // Then it waits for the person: no asking in a loop.
+      clock.t += 10 * 60_000;
+      await page.time.runDue();
+      assert.equal(checksSent(page.sent).length, 2, `${why}: asked again by itself`);
+    }
+
+    // The server finished its analysis by the second ask: that one counts.
+    let calls = 0;
+    const late = loadBlockedPage(tree, { clock, search, answer: () => (++calls === 1 ? { results: [offline("caution")] } : { results: [api("safe")] }) });
+    await flush();
+    clock.t += RETRY_WAIT_MS;
+    await late.time.runDue();
+    assert.equal(checksSent(late.sent).length, 2);
+    assert.match(late.body.text(), /<block_recheck_clear:evil\.example>/);
+    assert.deepEqual(mainButtons(late), ["<block_recheck_open>"]);
+
+    // "Try again" asks again, and a server answer then counts.
+    let reply = { results: [offline("safe")] };
+    const retried = loadBlockedPage(tree, { clock, search, answer: () => reply });
+    await flush();
+    clock.t += RETRY_WAIT_MS;
+    await retried.time.runDue();
+    reply = { results: [api("safe")] };
+    retried.buttons().find((b) => b.textContent === "<block_recheck_retry>").fire("click");
+    await flush();
+    assert.equal(checksSent(retried.sent).length, 3, "try again did not ask");
+    assert.match(retried.body.text(), /<block_recheck_clear:evil\.example>/);
+
+    // The offline scorer calling it dangerous: drawn, as the page check would
+    // block it — with no window, and so no Google credit.
+    const scam = loadBlockedPage(tree, { clock, search, answer: () => ({ results: [offline("dangerous")] }) });
+    await flush();
+    assert.equal(scam.drawn.length, 1);
+    assert.equal(checksSent(scam.sent).length, 1);
+
+    // The server says caution: checked again, not flagged as dangerous now —
+    // with a word that the site still needs a closer look.
+    const caution = loadBlockedPage(tree, { clock, search, answer: () => ({ results: [api("caution")] }) });
+    await flush();
+    const text = caution.body.text();
+    assert.match(text, /<block_recheck_title>/);
+    assert.match(text, /<block_recheck_clear:evil\.example>/);
+    assert.match(text, /<block_recheck_caution>/, `caution read as clear: ${text}`);
+    assert.equal(checksSent(caution.sent).length, 1);
+    assert.deepEqual(mainButtons(caution), ["<block_recheck_open>"]);
+    const safe = loadBlockedPage(tree, { clock, search, answer: () => ({ results: [api("safe")] }) });
+    await flush();
+    assert.ok(!/block_recheck_caution/.test(safe.body.text()), "a safe answer called for a closer look");
+
+    // A user-content host (the platform rule, no API needed): checked.
+    const platform = loadBlockedPage(tree, { clock, search, answer: () => ({ results: [{ domain: "evil.example", level: "user_content", score: null, source: "platform", reasons: [] }] }) });
+    await flush();
+    assert.match(platform.body.text(), /<block_recheck_clear:evil\.example>/);
+  });
+
+  await check(`[${tree}] in Kids mode the block page's re-check never offers to open the site`, async () => {
+    const B = loadBlockedUrl(tree);
+    const clock = { t: Date.UTC(2026, 10, 6, 9) };
+    const search = blockedSearch(B, { domain: "evil.example", reasons: GOOGLE_REASONS, advisory_until: clock.t - 60_000 });
+    const answers = [
+      ["checked, not flagged", () => ({ results: [{ domain: "evil.example", level: "safe", score: 3, source: "api", reasons: [] }] }), /block_recheck_clear/],
+      ["could not check", () => ({ results: [{ domain: "evil.example", level: "safe", score: 0, source: "local", reasons: [] }] }), /block_recheck_failed/],
+    ];
+    for (const [why, answer, screen] of answers) {
+      const kids = loadBlockedPage(tree, { clock, search, answer, skill: "kids" });
+      await flush();
+      clock.t += RETRY_WAIT_MS;
+      await kids.time.runDue();
+      assert.match(kids.body.text(), screen, `${why}: ${kids.body.text()}`);
+      assert.ok(!buttonTexts(kids).some((t) => OPEN_BUTTON.test(t)), `${why}: a child can open the site: ${buttonTexts(kids)}`);
+      assert.ok(buttonTexts(kids).includes("<block_recheck_back>"), `${why}: no way back`);
+      const regular = loadBlockedPage(tree, { clock, search, answer, skill: "regular" });
+      await flush();
+      clock.t += RETRY_WAIT_MS;
+      await regular.time.runDue();
+      assert.ok(buttonTexts(regular).some((t) => OPEN_BUTTON.test(t)), `${why}: regular mode has no open button`);
+    }
+  });
+
+  await check(`[${tree}] a Google block with no window of its own is not asked about every 30 s with no end`, async () => {
+    const B = loadBlockedUrl(tree);
+    const clock = { t: Date.UTC(2026, 10, 6, 9) };
+    // advisory_ttl 0: the background shows it for 30 s and keeps it nowhere,
+    // so each round is a fresh server analysis.
+    const answer = () => ({ results: [{ domain: "evil.example", level: "dangerous", score: 90, source: "api", reasons: [{ ...GOOGLE_REASONS[0], weight: 10 }], advisory_until: clock.t + ZERO_WINDOW_MS }] });
+    const page = loadBlockedPage(tree, { clock, search: blockedSearch(B, { domain: "evil.example", reasons: GOOGLE_REASONS }), answer });
+    await flush();
+    assert.equal(page.drawn.length, 1);
+    const roundsAfter = async (n) => {
+      for (let i = 0; i < n; i++) {
+        clock.t += ZERO_WINDOW_MS;
+        await page.time.runDue();
+      }
+      return checksSent(page.sent).length;
+    };
+    const asked = await roundsAfter(10);
+    assert.ok(asked <= 5, `asked ${asked} times in 5 minutes`);
+    assert.equal(await roundsAfter(20), asked, "kept asking");
+    // The warning still came down when its 30 s ended: a neutral page, no
+    // Google credit, no way into the site, and a way to ask again.
+    assert.equal(page.document.getElementById("ls-block-overlay"), null, "the warning outlived its window");
+    const text = page.body.text();
+    assert.ok(!/advisory_google/.test(text));
+    assert.match(text, /<block_recheck_paused:evil\.example>/, text);
+    assert.deepEqual(mainButtons(page), ["<block_recheck_retry>"]);
+    assert.ok(!buttonTexts(page).some((t) => OPEN_BUTTON.test(t)), "offers to open a site Google flagged a minute ago");
+    page.buttons().find((b) => b.textContent === "<block_recheck_retry>").fire("click");
+    await flush();
+    assert.equal(checksSent(page.sent).length, asked + 1, "try again did not ask");
+    assert.ok(page.document.getElementById("ls-block-overlay"), "the fresh block was not drawn");
+
+    // A window of its own (the server keeps that answer): asked at each end.
+    const long = () => ({ results: [{ domain: "evil.example", level: "dangerous", score: 90, source: "api", reasons: [{ ...GOOGLE_REASONS[0], weight: 10 }], advisory_until: clock.t + 600_000 }] });
+    const kept = loadBlockedPage(tree, { clock, search: blockedSearch(B, { domain: "evil.example", reasons: GOOGLE_REASONS }), answer: long });
+    await flush();
+    for (let i = 0; i < 8; i++) {
+      clock.t += 600_000;
+      await kept.time.runDue();
+    }
+    assert.equal(checksSent(kept.sent).length, 9);
+    assert.ok(kept.document.getElementById("ls-block-overlay"), "a block with a real window stopped being drawn");
   });
 
   await check(`[${tree}] a link badge on Google's verdict goes when Google's answer does, and the link is checked again`, async () => {
@@ -3597,10 +3795,37 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
     assert.equal(page.badgeOf(g), null, "the tooltip of an expired Google badge could still show");
     assert.ok(!g.hasAttribute("data-ls-scanned"), "the link will not be checked again");
 
-    // Coming back to the tab sweeps the rest.
+    // Coming back to the tab sweeps the rest: a Google badge whose timer a
+    // hidden tab never ran goes, a badge on other sources stays.
+    clock.t += 2_000;
+    await page.time.runDue();
+    assert.ok(page.badgeOf(g), "g.example was not drawn again after the pointer took it down");
     clock.t += 5 * 3600_000;
     page.fireDoc("visibilitychange");
+    assert.equal(page.badgeOf(g), null, "coming back to the tab left an expired Google badge");
     assert.ok(page.badgeOf(o), "a badge on other sources has a window now");
+  });
+
+  await check(`[${tree}] a link whose Google badge went is checked again, with no other link asking`, async () => {
+    const clock = { t: Date.UTC(2026, 10, 4, 12) };
+    const answer = (msg) => ({
+      results: msg.domains.map((d) => (d === "reader.example"
+        ? { domain: d, level: "safe", score: 1, source: "api", reasons: [] }
+        : { domain: d, level: "dangerous", score: 90, source: "api", reasons: [{ ...GOOGLE_REASONS[0], weight: 10 }], advisory_until: clock.t + 60_000 })),
+    });
+    const page = loadContentPage(tree, { clock, answer });
+    const g = page.link("g.example");
+    clock.t += 500;
+    await page.time.runDue();
+    assert.ok(page.badgeOf(g), "no badge drawn");
+    const asked = checksSent(page.sent).length;
+    clock.t += 60_000;
+    await page.time.runDue();
+    clock.t += 2_000;
+    await page.time.runDue();
+    const again = checksSent(page.sent).slice(asked).flatMap((m) => m.domains);
+    assert.ok(again.includes("g.example"), `g.example was not checked again: ${JSON.stringify(again)}`);
+    assert.ok(page.badgeOf(g), "the fresh answer drew no badge");
   });
 
   await check(`[${tree}] a relative never hears of a block with Google's window, whatever its shown reasons`, async () => {
@@ -3620,7 +3845,8 @@ for (const tree of [SOURCE_TREE, ...BROWSER_TREES]) {
 }
 
 await check("the block page's re-check words exist in every locale and are translated", () => {
-  const keys = ["block_rechecking", "block_recheck_title", "block_recheck_clear", "block_recheck_failed", "block_recheck_open", "block_recheck_back"];
+  const keys = ["block_rechecking", "block_recheck_title", "block_recheck_clear", "block_recheck_failed", "block_recheck_open", "block_recheck_back",
+    "block_recheck_failed_title", "block_recheck_retry", "block_recheck_caution", "block_recheck_paused"];
   for (const tree of BROWSER_TREES) {
     const en = readJson(join(tree, "_locales", "en", "messages.json"));
     for (const locale of LOCALES) {
@@ -3628,8 +3854,9 @@ await check("the block page's re-check words exist in every locale and are trans
       for (const key of keys) {
         assert.ok(m[key] && m[key].message, `${tree}/${locale} lacks ${key}`);
         if (locale !== "en") assert.notEqual(m[key].message, en[key].message, `${tree}/${locale} ${key} is English`);
+        assert.ok(!/Google/.test(m[key].message), `${tree}/${locale} ${key} names Google on the re-check screen`);
       }
-      for (const key of ["block_rechecking", "block_recheck_clear", "block_recheck_failed"]) {
+      for (const key of ["block_rechecking", "block_recheck_clear", "block_recheck_failed", "block_recheck_paused"]) {
         assert.match(m[key].message, /\$DOMAIN\$/, `${tree}/${locale} ${key} does not name the site`);
         assert.ok(!/Google/.test(m[key].message), `${tree}/${locale} ${key} names Google on a page with no Google warning`);
       }
