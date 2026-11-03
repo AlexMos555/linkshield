@@ -279,6 +279,46 @@ def test_the_keyed_phishtank_dump_is_fetched_once_and_its_url_never_written(tmp_
     assert d1.snapshot_fingerprint(snap)["bodies"] == 1
 
 
+def test_the_benchmark_keeps_httpx_from_logging_the_keyed_url(tmp_path, monkeypatch, caplog):
+    """httpx logs every request at INFO with its full URL, and the keyed
+    PhishTank URL carries the key. The benchmark quiets that logger itself,
+    whether or not the refresh module it loads does too: a fresh copy of the
+    script, httpx's logger as a new process finds it, one keyed GET through
+    the snapshot with only the network mocked."""
+    import asyncio
+    import importlib.util
+    import logging
+
+    import httpx
+
+    httpx_log = logging.getLogger("httpx")
+    saved = httpx_log.level
+    httpx_log.setLevel(logging.NOTSET)
+    try:
+        spec = importlib.util.spec_from_file_location("eval_day_one_coverage_fresh",
+                                                      ROOT / "scripts" / "eval_day_one_coverage.py")
+        bench = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bench)  # type: ignore[union-attr]
+        seen = []
+
+        def _handler(request):
+            seen.append(str(request.url))
+            return httpx.Response(200, content=b"phish_id,url\n1,https://a.example/\n")
+
+        async def _real(url, headers):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(_handler)) as client:
+                r = await client.get(url, headers=dict(headers))
+            return r.status_code, dict(r.headers), r.content
+
+        caplog.set_level(logging.DEBUG)
+        url = "https://data.phishtank.com/data/s3cr3t-k3y/online-valid.csv.gz"
+        assert asyncio.run(bench.Snapshot(tmp_path).conditional_fetcher(_real)(url, {}))[0] == 200
+        assert seen == [url]
+        assert "s3cr3t-k3y" not in caplog.text
+    finally:
+        httpx_log.setLevel(saved)
+
+
 def test_snapshot_serves_a_cached_body_without_fetching_again(tmp_path):
     import asyncio
 

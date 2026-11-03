@@ -25,15 +25,21 @@ once in FETCH_INTERVAL_SECONDS, send If-None-Match / If-Modified-Since when
 we do, and honour a longer Cache-Control max-age if one is ever sent. The
 parsed hostnames are kept in one Redis hash (CACHE_KEY, zlib-packed, a few
 hundred KB) so the four daily cron runs share one download. A failed
-download — a non-200 answer or a raised connection error alike — uses the
-cached hosts for up to STALE_MAX_SECONDS; past that the source is reported
-down and the outage guard carries its names (see blocklist_feed_health).
-Without a key a failed pull also holds the next try back for
-RETRY_AFTER_FAILURE_SECONDS (RETRY_KEY), so a throttled day costs about two
-requests, not four; with a key every run may retry.
+download — a non-200/304 answer, a raised connection error, or a 200 that
+is no readable dump (an HTML page, a header-only CSV, a broken gzip) alike —
+uses the cached hosts for up to STALE_MAX_SECONDS; past that the source is
+reported down and the outage guard carries its names (see
+blocklist_feed_health). Without a key a failed pull also holds the next try
+back for RETRY_AFTER_FAILURE_SECONDS (RETRY_KEY), so a throttled day costs
+about two requests, not four; with a key every run may retry.
 
-The key never appears in a log line or an exception: the URL that carries
-it is built in `feed_url` and passed only to the fetcher.
+The key never appears in a log line. The URL that carries it is built in
+`feed_url` and passed only to the fetcher; this module logs a failed
+download by its error's type, not its message; the refresh job replaces the
+key in the message of an error passed on to it (_fetch_feeds); and both
+scripts that download the dump (scripts/refresh_dangerous_domains.py,
+scripts/eval_day_one_coverage.py) keep httpx's request log — one INFO line
+per request, full URL included — at WARNING.
 """
 from __future__ import annotations
 
@@ -124,6 +130,18 @@ def decompress(body: bytes) -> str:
     if body[:2] == b"\x1f\x8b":
         body = gzip.decompress(body)
     return body.decode("utf-8", errors="replace")
+
+
+def _read_dump(body: bytes) -> tuple[list[str], str]:
+    """(hosts, "") for a readable dump; ([], what is wrong) for a body that
+    is none. Only the error's type is kept: a message could quote the body."""
+    try:
+        hosts = parse_hosts(decompress(body))
+    except (OSError, EOFError, zlib.error, csv.Error) as e:
+        # OSError covers gzip.BadGzipFile; EOFError a truncated gzip;
+        # csv.Error a line past the csv field limit (an HTML page's script).
+        return [], f"is unreadable ({type(e).__name__})"
+    return hosts, "" if hosts else "parsed to no hosts"
 
 
 def parse_max_age(cache_control: Optional[str]) -> int:
@@ -240,8 +258,9 @@ async def fetch_hosts(r, key: str, now: float, fetch: Fetcher, dry_run: bool = F
     else one conditional download. Raises when nothing usable came back —
     the caller records the source as down, like any other feed.
 
-    Without a key a failed pull (an error, a non-200/304 answer, an empty
-    dump) also holds the next try back for RETRY_AFTER_FAILURE_SECONDS;
+    A failed pull (an error, a non-200/304 answer, a 200 that is no
+    readable dump) serves the cached dump while it is usable. Without a key
+    it also holds the next try back for RETRY_AFTER_FAILURE_SECONDS;
     meanwhile the cached dump serves while usable, and past that the source
     is down without another request. A dry run reads that hold but never
     writes it, as it never writes the cache."""
@@ -268,9 +287,9 @@ async def fetch_hosts(r, key: str, now: float, fetch: Fetcher, dry_run: bool = F
 
 async def _download(r, key: str, now: float, fetch: Fetcher, cached: Optional[CachedDump],
                     dry_run: bool) -> tuple[list[str], bool]:
-    """(hosts, True) after a good answer (200 with hosts, or 304), (cached
-    hosts, False) when a failed one fell back on the cache; raises when it
-    could not."""
+    """(hosts, True) after a good answer (200 with a readable dump, or
+    304), (cached hosts, False) when a failed one fell back on the cache;
+    raises when it could not."""
     try:
         status, headers, body = await fetch(feed_url(key), conditional_headers(cached))
     except Exception as e:  # noqa: BLE001
@@ -290,16 +309,24 @@ async def _download(r, key: str, now: float, fetch: Fetcher, cached: Optional[Ca
             await save(r, fresh)
         return list(fresh.hosts), True
     if status == 200:
-        hosts = parse_hosts(decompress(body))
-        if not hosts:
-            raise ValueError("PhishTank dump parsed to no hosts")
-        fresh = CachedDump(hosts=tuple(dict.fromkeys(hosts)), fetched_at=now, etag=lower.get("etag", ""),
-                           last_modified=lower.get("last-modified", ""),
-                           max_age=parse_max_age(lower.get("cache-control")))
-        logger.info("PhishTank: downloaded %d URLs (%d distinct hosts)", len(hosts), len(fresh.hosts))
-        if not dry_run:
-            await save(r, fresh)
-        return list(fresh.hosts), True
+        hosts, problem = _read_dump(body)
+        if hosts:
+            fresh = CachedDump(hosts=tuple(dict.fromkeys(hosts)), fetched_at=now, etag=lower.get("etag", ""),
+                               last_modified=lower.get("last-modified", ""),
+                               max_age=parse_max_age(lower.get("cache-control")))
+            logger.info("PhishTank: downloaded %d URLs (%d distinct hosts)", len(hosts), len(fresh.hosts))
+            if not dry_run:
+                await save(r, fresh)
+            return list(fresh.hosts), True
+        # A 200 that is no dump — an HTML "additional security checks" page,
+        # a header-only CSV, a broken gzip — is a failed pull like a
+        # throttled answer: the cached dump carries the day while it is
+        # usable, and it is never replaced by nothing.
+        if cached is not None and cached.usable_at(now):
+            logger.warning("PhishTank: the downloaded dump %s — using the cached dump from %s",
+                           problem, _utc(cached.fetched_at))
+            return list(cached.hosts), False
+        raise ValueError(f"PhishTank dump {problem}")
     if cached is not None and cached.usable_at(now):
         logger.warning("PhishTank: download answered HTTP %d — using the cached dump from %s",
                        status, _utc(cached.fetched_at))

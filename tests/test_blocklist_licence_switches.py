@@ -20,12 +20,14 @@ test_refresh_dangerous_domains.py builds; it is imported, not copied.
 from __future__ import annotations
 
 import gzip
+import importlib.util
 import json
 import logging
 
+import httpx
 import pytest
 from test_refresh_dangerous_domains import (
-    BASE, CSIRT_EVENT, DAY, T0, _FakeRedis, _phone_blocks, _published, _stub_world, rdd,
+    _SCRIPT, BASE, CSIRT_EVENT, DAY, T0, _FakeRedis, _phone_blocks, _published, _stub_world, rdd,
 )
 
 from api.services import blocklist_feed_backing as feed_backing
@@ -427,6 +429,43 @@ async def test_a_failed_phishtank_download_without_a_usable_cache_is_raised():
         await phishtank_feed.fetch_hosts(None, "k3y", T0, _refused)
 
 
+@pytest.fixture
+def httpx_logger_as_found():
+    """httpx's logger as a new process finds it: no level of its own, so it
+    follows the root's INFO and logs every request with its full URL
+    ("HTTP Request: GET https://data.phishtank.com/data/<key>/…")."""
+    log = logging.getLogger("httpx")
+    saved = log.level
+    log.setLevel(logging.NOTSET)
+    yield
+    log.setLevel(saved)
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("httpx_logger_as_found")
+async def test_the_keyed_url_never_reaches_a_log_through_the_real_fetcher(monkeypatch, caplog):
+    """The job's own _fetch_conditional and httpx, only the network mocked:
+    the key in the URL stays out of every log line, at any level."""
+    spec = importlib.util.spec_from_file_location("refresh_dangerous_domains_fresh", _SCRIPT)
+    job = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(job)  # type: ignore[union-attr]  # the script's setup, as the job runs it
+    seen: list[str] = []
+
+    def _handler(request):
+        seen.append(str(request.url))
+        return httpx.Response(200, content=gzip.compress(PHISHTANK_CSV.encode("utf-8")))
+
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(job.httpx, "AsyncClient",
+                        lambda *a, **k: real_client(*a, transport=httpx.MockTransport(_handler), **k))
+    caplog.set_level(logging.DEBUG)
+    url = phishtank_feed.feed_url("s3cr3t-k3y")
+    status, _headers, body = await job._fetch_conditional(url, phishtank_feed.conditional_headers(None))
+    assert status == 200 and phishtank_feed.parse_hosts(phishtank_feed.decompress(body))
+    assert seen == [url], "the request really went out, with the key in its URL"
+    assert "s3cr3t-k3y" not in caplog.text
+
+
 @pytest.mark.asyncio
 async def test_a_dry_run_downloads_phishtank_but_writes_no_cache(monkeypatch):
     fake = _FakeRedis()
@@ -453,6 +492,93 @@ async def test_an_empty_phishtank_dump_is_a_failed_fetch_not_an_empty_feed():
 
     with pytest.raises(ValueError, match="parsed to no hosts"):
         await phishtank_feed.fetch_hosts(None, "k3y", T0, _empty)
+
+
+# A 200 that is no dump: what a CDN or bot check may answer instead of the
+# file. Each is a failed pull like a throttled 404 or 509 — the cached dump
+# carries the day while it is usable — not a reason to call the source down.
+UNREADABLE_DUMPS = {
+    "html-challenge-page": b"<!DOCTYPE html><html><head><title>Additional security checks</title></head>"
+                           b"<body><p>Checking your browser before you continue.</p></body></html>",
+    # One line longer than the csv module's field limit (131,072 chars).
+    "html-page-with-a-long-inline-script": b"<html><script>" + b"x" * 200_000 + b"</script></html>",
+    "header-only-csv": gzip.compress(b"phish_id,url,phish_detail_url,submission_time\n"),
+    "truncated-gzip": gzip.compress(PHISHTANK_CSV.encode("utf-8"))[:40],
+    "gzip-magic-then-garbage": b"\x1f\x8b" + b"garbage" * 10,
+    "empty-body": b"",
+}
+
+
+def _answers_200_with(monkeypatch, body: bytes) -> list[str]:
+    calls: list[str] = []
+
+    async def _fetch(url, headers):
+        calls.append(url)
+        return 200, {}, body
+
+    monkeypatch.setattr(rdd, "_fetch_conditional", _fetch)
+    return calls
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", list(UNREADABLE_DUMPS.values()), ids=list(UNREADABLE_DUMPS))
+async def test_an_unreadable_200_uses_the_usable_cache_like_a_throttled_answer(monkeypatch, caplog, body):
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    env = {phishtank_feed.KEY_ENV: "k3y"}
+    _tank(monkeypatch, (200, {}))
+    assert await _refresh(monkeypatch, fake, T0, env=env) == 0
+
+    _answers_200_with(monkeypatch, body)
+    caplog.clear()
+    assert await _refresh(monkeypatch, fake, T0 + DAY + 60, env=env) == 0
+    assert "using the cached dump" in caplog.text
+    assert "FEED DEGRADED" not in caplog.text
+    assert "PhishTank fetch failed" not in caplog.text
+    assert {"www.tank-phish.com", "tank-phish.com"} <= _published(fake)
+    cached = phishtank_feed.decode(fake.data[phishtank_feed.CACHE_KEY])
+    assert cached is not None and cached.fetched_at == T0, "a page that is no dump never replaces the cache"
+
+    # Past the stale window it is an outage, as for any other failed pull.
+    caplog.clear()
+    assert await _refresh(monkeypatch, fake, T0 + 4 * DAY, env=env) == 0
+    assert "FEED DEGRADED: PhishTank" in caplog.text
+    assert "k3y" not in caplog.text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", list(UNREADABLE_DUMPS.values()), ids=list(UNREADABLE_DUMPS))
+async def test_an_unreadable_200_without_a_usable_cache_is_raised(body):
+    async def _fetch(url, headers):
+        return 200, {}, body
+
+    with pytest.raises(ValueError, match="PhishTank dump"):
+        await phishtank_feed.fetch_hosts(None, "k3y", T0, _fetch)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", list(UNREADABLE_DUMPS.values()), ids=list(UNREADABLE_DUMPS))
+async def test_an_unreadable_keyless_200_uses_the_cache_and_holds_the_next_try(monkeypatch, caplog, body):
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    env = {phishtank_feed.SOURCE_ENV: "true"}
+    _tank(monkeypatch, (200, {}))
+    assert await _refresh(monkeypatch, fake, T0, env=env) == 0
+
+    failed = T0 + DAY + 60
+    calls = _answers_200_with(monkeypatch, body)
+    caplog.clear()
+    assert await _refresh(monkeypatch, fake, failed, env=env) == 0
+    assert calls == [phishtank_feed.ANON_FEED_URL]
+    assert "using the cached dump" in caplog.text
+    assert "FEED DEGRADED" not in caplog.text
+    assert {"www.tank-phish.com"} <= _published(fake)
+    assert float(fake.data[phishtank_feed.RETRY_KEY]) == failed + phishtank_feed.RETRY_AFTER_FAILURE_SECONDS
+
+    # The next 6-hourly run does not ask again; the cache still serves.
+    assert await _refresh(monkeypatch, fake, failed + 6 * 3600, env=env) == 0
+    assert len(calls) == 1
+    assert {"www.tank-phish.com"} <= _published(fake)
 
 
 # ── URLhaus, retired 2026-10-21 ──────────────────────────────────────────────
@@ -617,7 +743,7 @@ async def test_phishtank_without_a_key_downloads_the_anonymous_dump_once_a_day(m
     assert await _refresh(monkeypatch, fake, T0, env=env) == 0
     assert tank.calls[0][0] == phishtank_feed.ANON_FEED_URL
     assert tank.calls[0][1]["User-Agent"] == "Cleanway-blocklist/1.0 (+https://cleanway.ai)"
-    assert "www.tank-phish.com" in _published(fake)
+    assert {"www.tank-phish.com"} <= _published(fake)
     assert await _refresh(monkeypatch, fake, T0 + 3600, env=env) == 0
     assert len(tank.calls) == 1
     assert await _refresh(monkeypatch, fake, T0 + DAY + 60, env=env) == 0
@@ -674,7 +800,7 @@ async def test_a_failed_keyless_pull_waits_about_twelve_hours_before_the_next_tr
     assert "PhishTank: the last keyless download failed" in caplog.text
     assert "using the cached dump" in caplog.text
     assert "FEED DEGRADED" not in caplog.text
-    assert "www.tank-phish.com" in _published(fake)
+    assert {"www.tank-phish.com"} <= _published(fake)
 
     # The run twelve hours after the failure tries again (throttled again).
     assert await _refresh(monkeypatch, fake, failed + 12 * HOUR, env=env) == 0
@@ -691,14 +817,14 @@ async def test_a_failed_keyless_pull_waits_about_twelve_hours_before_the_next_tr
     assert await _refresh(monkeypatch, fake, T0 + 4 * DAY + 6 * HOUR, env=env) == 0
     assert len(tank.calls) == 4
     assert "FEED DEGRADED: PhishTank" in caplog.text
-    assert "www.tank-phish.com" in _published(fake)
+    assert {"www.tank-phish.com"} <= _published(fake)
 
     # Twelve hours on it is asked again and back.
     caplog.clear()
     assert await _refresh(monkeypatch, fake, T0 + 4 * DAY + 12 * HOUR, env=env) == 0
     assert len(tank.calls) == 5
     assert "PhishTank: downloaded" in caplog.text
-    assert "www.tank-phish.com" in _published(fake)
+    assert {"www.tank-phish.com"} <= _published(fake)
 
 
 @pytest.mark.asyncio
@@ -762,3 +888,57 @@ async def test_with_a_key_a_failed_pull_is_tried_again_on_the_next_run(monkeypat
     assert await _refresh(monkeypatch, fake, T0 + DAY + 60 + 6 * HOUR, env=env) == 0
     assert len(tank.calls) == 3
     assert phishtank_feed.RETRY_KEY not in fake.data
+
+
+# With the variable unset the workflow still passes both names to the job:
+# PHISHTANK_API_KEY='' and BLOCKLIST_PHISHTANK_SOURCE=false (the expression
+# `vars.BLOCKLIST_PHISHTANK_SOURCE == 'true'` renders as the word "false").
+
+WORKFLOW_ENV_VARIABLE_UNSET = {phishtank_feed.KEY_ENV: "", phishtank_feed.SOURCE_ENV: "false"}
+
+
+@pytest.mark.parametrize("raw", ["false", "False", "0", "off", ""])
+def test_the_switch_spelled_off_keeps_phishtank_out(raw):
+    env = {phishtank_feed.KEY_ENV: "", phishtank_feed.SOURCE_ENV: raw}
+    assert not rdd.phishtank_enabled(env)
+    assert phishtank_feed.SOURCE_NAME not in rdd.run_sources(frozenset(), env)
+
+
+@pytest.mark.asyncio
+async def test_the_workflows_values_with_the_variable_unset_download_nothing(monkeypatch):
+    fake = _FakeRedis()
+
+    async def _never(url, headers):
+        raise AssertionError("PhishTank must not be downloaded while the variable is unset")
+
+    monkeypatch.setattr(rdd, "_fetch_conditional", _never)
+    assert await _refresh(monkeypatch, fake, T0, env=WORKFLOW_ENV_VARIABLE_UNSET) == 0
+    assert not {"www.tank-phish.com", "tank-phish.com"} & _published(fake)
+    assert phishtank_feed.CACHE_KEY not in fake.data and phishtank_feed.RETRY_KEY not in fake.data
+
+
+@pytest.mark.asyncio
+async def test_with_the_variable_and_the_key_both_set_the_job_pulls_the_keyed_url(monkeypatch, caplog):
+    """What the workflow passes once the variable is on and the secret exists."""
+    caplog.set_level(logging.INFO)
+    fake = _FakeRedis()
+    env = {phishtank_feed.KEY_ENV: "k3y", phishtank_feed.SOURCE_ENV: "true"}
+    tank = _tank(monkeypatch, (200, {}))
+    assert await _refresh(monkeypatch, fake, T0, env=env) == 0
+    assert [url for url, _headers in tank.calls] == [phishtank_feed.feed_url("k3y")]
+    assert phishtank_feed.ANON_FEED_URL not in [url for url, _headers in tank.calls]
+    assert {"www.tank-phish.com", "tank-phish.com"} <= _published(fake)
+    assert "k3y" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_a_keyless_wait_still_in_redis_does_not_hold_back_a_keyed_pull(monkeypatch):
+    """The key arrives while a failed keyless pull still holds the next try:
+    the keyed URL is asked on the very next run."""
+    fake = _FakeRedis()
+    fake.data[phishtank_feed.RETRY_KEY] = str(int(T0 + 10 * HOUR))
+    env = {phishtank_feed.KEY_ENV: "k3y", phishtank_feed.SOURCE_ENV: "true"}
+    tank = _tank(monkeypatch, (200, {}))
+    assert await _refresh(monkeypatch, fake, T0, env=env) == 0
+    assert [url for url, _headers in tank.calls] == [phishtank_feed.feed_url("k3y")]
+    assert {"www.tank-phish.com"} <= _published(fake)

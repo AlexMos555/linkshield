@@ -71,6 +71,10 @@ if str(ROOT / "scripts") not in sys.path:
 import heldout_sets as ho  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+# httpx logs every request at INFO with its full URL, and a keyed PhishTank
+# URL carries PHISHTANK_API_KEY: neither client may log below WARNING.
+for _client_log in ("httpx", "httpcore"):
+    logging.getLogger(_client_log).setLevel(logging.WARNING)
 log = logging.getLogger("day-one-coverage")
 
 SCHEMA = "cleanway.day-one-coverage/1"

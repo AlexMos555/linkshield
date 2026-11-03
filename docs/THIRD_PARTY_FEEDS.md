@@ -45,7 +45,7 @@ names. Redistribution to every phone is the act each licence has to allow.
 | **CERT Polska** Lista Ostrzeżeń | `https://hole.cert.pl/domains/v2/domains.txt` | API spec §1: publicly available, may be processed without restriction, manually or automatically; names that leave the list must be unblocked (we rebuild from scratch every run) (read 2026-09-21) | Exact hosts only (never promoted to a whole domain) | Keep |
 | **CSIRT Italia / ACN** MISP feed | `https://www.csirt.gov.it/feed-misp/manifest.json` | Only events tagged `tlp:clear` / `tlp:white` are read — TLP:CLEAR means unlimited disclosure; anything else is skipped (the TLP marking is read per event, 2026-09-21). TLP is a sharing label, not a licence: FIRST says it "was not designed to handle licensing terms" and TLP:CLEAR sharing is "subject to standard copyright rules" (first.org/tlp, read 2026-10-23). The feed states no licence (manifest and events, 2026-10-23). ACN's Note legali (acn.gov.it/portale/note-legali, read 2026-10-23; www.csirt.gov.it redirects to acn.gov.it) say the site's contents, data included, are ACN's unless stated otherwise, grant no licence beyond personal use, and bar commercial use without ACN's prior written authorisation. Whether that covers the MISP feed is not stated | Malware C2 hostnames, exact only | **`BLOCKLIST_LICENSED_ONLY=1` removes it** (`NON_COMMERCIAL_FEEDS`) — left out under `BLOCKLIST_LICENSED_ONLY` since 2026-10-23; revisit if ACN grants permission. Policy: commercially licensed sources only, and nothing here grants a commercial licence. Not fetched, not an outage; the exact hosts only it backed leave with the first publish after the change, like a switched-off feed's — its window read 2026-10-23 held 340 host entries, 184 distinct hosts, none on the popularity guard: ~0.03 % of the ~700k live set (699,870 members in production's refresh run of 2026-10-23), far under the 50 % churn gate, so no `--force`. Names it listed before that window and production still holds in retention go when their 14-day window ends, as for any switched-off feed. No longer credited on the methodology page as a source in use; with the switch off it is read exactly as before |
 | **PhishDestroy** DestroyList, DNS-verified active domains | `https://raw.githubusercontent.com/phishdestroy/destroylist/main/dns/active_domains.json` | phishdestroy.io/dataset: data "Released under CC0 1.0 Universal", "no restrictions, no attribution required", fit for "commercial products"; repository MIT; the same page notes the HuggingFace card says MIT and the Live page CC-BY-4.0 — all three allow a paid product, and §5 attributes it anyway. Sources: their own parsers (ads, SEO, social, dnstwist) and Telegram-bot reports; the aggregated "Community" list is a different file and is not read. "Non-commercial volunteer project" describes the operator, not a term (read 2026-10-21) | ~137k crypto-drainer, wallet/exchange-lure and fake-shop domains, re-resolved daily by the maintainer; promotes like Phishing.Database. Measured 2026-10-21: ~114k names new to the list after every guard, 0 on Tranco-1M, 0 on the must-resolve and RU legit lists, ~850 under RU/CIS ccTLDs | Keep |
-| **PhishTank** (Cisco Talos) online-valid dump | `https://data.phishtank.com/data/online-valid.csv.gz` without a key, `https://data.phishtank.com/data/<key>/online-valid.csv.gz` with one | FAQ: commercial use of the API — "Yes, it is OK" (read 2026-09-29, 2026-11-03). The key is optional: the developer page lists the keyless download URLs and says that without a key you are limited to "a few downloads per day"; it asks automated users to register and requires a descriptive User-Agent. Registration is closed (2026-11-03), so a key only comes by e-mail. The site's Terms of Use link is the generic Cisco General Terms (v6.0, 2025-09-10), written for purchased Cisco offers; no clause names PhishTank or its data. Nothing says whether a list built from the dump may go to apps (as hashes) and to our DNS service: asked in the drafted key request (`docs/runbooks/outreach-drafts.md` §4, branch `docs/feed-outreach-drafts`, PR #397) | Verified-online phishing URL hosts, **one cached download a day** (`api/services/phishtank_feed.py`), User-Agent `Cleanway-blocklist/1.0 (+https://cleanway.ai)`. A failed keyless pull waits ~12 h before the next try | **Off unless the `BLOCKLIST_PHISHTANK_SOURCE` variable is `true`**; then the keyed URL when the `PHISHTANK_API_KEY` secret exists, the public dump when it does not (below) |
+| **PhishTank** (Cisco Talos) online-valid dump | `https://data.phishtank.com/data/online-valid.csv.gz` without a key, `https://data.phishtank.com/data/<key>/online-valid.csv.gz` with one | FAQ: commercial use of the API — "Yes, it is OK" (read 2026-09-29, 2026-11-03). The key is optional: the developer page lists the keyless download URLs and says that without a key you are limited to "a few downloads per day"; it asks automated users to register and requires a descriptive User-Agent. Registration is closed (2026-11-03), so a key only comes by e-mail. The site's Terms of Use link is the generic Cisco General Terms (v6.0, 2025-09-10), written for purchased Cisco offers; no clause names PhishTank or its data. Nothing says whether a list built from the dump may go to apps (as hashes) and to our DNS service: asked in the drafted key request (`docs/runbooks/outreach-drafts.md` §4, branch `docs/feed-outreach-drafts`, PR #397) | Verified-online phishing URL hosts, **one cached download a day** (`api/services/phishtank_feed.py`), User-Agent `Cleanway-blocklist/1.0 (+https://cleanway.ai)`. A failed keyless pull waits ~12 h before the next try | **Off unless the `BLOCKLIST_PHISHTANK_SOURCE` variable is `true`**; then the keyed URL when the `PHISHTANK_API_KEY` secret exists, the public dump when it does not (below). Not credited on the methodology page yet: that comes before the variable is set (below, "Credit first") |
 | **Cleanway checks** (server-confirmed hosts) | — | Google Safe Browsing / Web Risk verdicts; both bar passing results on (see §2) | Hosts our own checks confirmed dangerous | **Off** (`PUBLISH_CONFIRMED_THREATS`), stays off |
 
 Guards on every source, whatever its terms: the top-100k / top-1M
@@ -105,13 +105,20 @@ Unset (default): PhishTank is not a source; nothing is downloaded. Set to
 * The User-Agent names the product (`Cleanway-blocklist/1.0
   (+https://cleanway.ai)`): the page suggests `phishtank/<username>`, and we
   have no PhishTank account to name.
-* A failed pull (an error, any answer but 200/304 — PhishTank answers 509
-  over its limit and our runs have seen 404 — or an empty dump) falls back
-  on the cached dump for up to 3 days, then the source is down: `FEED
-  DEGRADED`, its names carried by the outage guard, as for any feed.
-  Without a key the next try also waits ~12 h (11 h, so it lands on the
-  second run after the failure) instead of every 6-hourly run asking again.
-  With a key, every run may retry, as before.
+* A failed pull falls back on the cached dump for up to 3 days, then the
+  source is down: `FEED DEGRADED`, its names carried by the outage guard,
+  as for any feed. A failed pull is an error, any answer but 200/304
+  (PhishTank answers 509 over its limit and our runs have seen 404), or a
+  200 that is no readable dump: an HTML page such as "additional security
+  checks", a CSV with only its header, a broken or truncated gzip. Such a
+  200 never replaces the cached dump. Without a key the next try also
+  waits ~12 h (11 h, so it lands on the second run after the failure)
+  instead of every 6-hourly run asking again. With a key, every run may
+  retry, as before.
+* The key never reaches a log: the job logs a failed download by its
+  error's type, replaces the key in any message it passes on, and keeps
+  httpx's request log (one INFO line per request, full URL included) at
+  WARNING — as does `scripts/eval_day_one_coverage.py`.
 * The list grows by ~2.3 % (603,129 → 617,053 names on the 2026-11-03
   snapshot; 0 false positives on the top 10k): no `--force`.
 * Terms: the FAQ allows commercial use, the key is for limits. What the
@@ -123,6 +130,19 @@ Unset (default): PhishTank is not a source; nothing is downloaded. Set to
   before the weekly benchmark labels its PhishTank-sourced catches (the
   follow-up to PR #395), or the public weekly number becomes partly
   self-checking.
+* Credit first. Before the variable is set — and before the job is given
+  a key any other way — PhishTank must be credited on the methodology page
+  (§5): an entry with `id: "PhishTank"` in `PHISHING_SOURCES` in
+  landing/lib/data-sources.ts, and PhishTank named in the
+  `landing.methodology.sources_*` strings in all ten locales. The same PR
+  adds `BLOCKLIST_PHISHTANK_SOURCE` to `_production_env` in
+  tests/test_data_attribution.py, so the page and the build are checked
+  together; set the variable only after that PR is merged. The test reads
+  no GitHub variables, so it cannot catch the switch going on without the
+  credit; while the page does not list PhishTank it only checks that this
+  step is written here. The drafted key request (PR #397 §4) tells
+  PhishTank "We credit PhishTank on our methodology page": that is true
+  only after this step.
 
 ### The held-out problem
 
@@ -780,7 +800,10 @@ builds made before this change have no such row). CC BY 4.0 §3(a)(2) allows
 the credit as a link to a page that carries it. `tests/test_data_attribution.py`
 fails when a feed the blocklist or the model reads is missing from that list,
 and when the list credits a feed neither reads (one the licence switch
-leaves out, such as CSIRT Italia since 2026-10-23, or a retired one);
+leaves out, such as CSIRT Italia since 2026-10-23, or a retired one). It
+reads production's switches from its own `_production_env`, not from
+GitHub, so PhishTank is credited by hand before `BLOCKLIST_PHISHTANK_SOURCE`
+is set (§1, "Credit first");
 `scripts/test-landing-honesty.mjs` holds the CC BY lines to the licences
 `data/top_domains_sources.json` and `data/model_meta.json` record.
 

@@ -289,6 +289,10 @@ async def verify_published(sample_listed: list[str]) -> list[str]:
     return problems
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+# httpx logs every request at INFO with its full URL, and a keyed PhishTank
+# URL carries PHISHTANK_API_KEY: neither client may log below WARNING.
+for _client_log in ("httpx", "httpcore"):
+    logging.getLogger(_client_log).setLevel(logging.WARNING)
 logger = logging.getLogger("dangerous-domains-refresh")
 
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
