@@ -13,6 +13,11 @@ data class LinkAnswer(
     val reasonCodes: List<String>,
     /** Plain-language signals, positionally aligned with [reasonCodes]. */
     val signals: List<String>,
+    /**
+     * The host the phone asked about (LinkCheckRunner sets it). Null when it
+     * is not known; then only the server's `ip_based` code says "an address".
+     */
+    val host: String? = null,
 )
 
 /** What the link guard does once the server has answered about a link that already opened. */
@@ -110,8 +115,24 @@ object LinkVerdictPolicy {
      * address is rare from a real sender, so it is told about: quietly for a
      * caution (BlockNotifier.severityOf), out loud for a "dangerous" that, on
      * an address, now always rests on evidence (IPQS, a brand's favicon).
+     *
+     * Read from the host itself, with the server's `ip_based` as a fallback:
+     * the server does not always send that code. An IPQS phishing hit returns
+     * "dangerous" at 70 in scoring.py's first layer, before the rule that
+     * adds `ip_based` runs.
      */
-    fun isAnAddress(answer: LinkAnswer): Boolean = IP_CODE in answer.reasonCodes
+    fun isAnAddress(answer: LinkAnswer): Boolean = isIpv4Literal(answer.host) || IP_CODE in answer.reasonCodes
+
+    /**
+     * Four dot-separated decimal numbers, each 0–255. IPv4 only: an IPv6
+     * host has ':' in it, which HostNames.normalize turns away before a check.
+     */
+    fun isIpv4Literal(host: String?): Boolean {
+        val parts = host?.split('.') ?: return false
+        return parts.size == 4 && parts.all { part ->
+            part.length in 1..3 && part.all { it in '0'..'9' } && part.toInt() <= 255
+        }
+    }
 
     fun restsOnIntel(answer: LinkAnswer): Boolean {
         if (answer.verdictBasis.isNotEmpty()) return answer.verdictBasis.any { basis(it) in INTEL_BASES }

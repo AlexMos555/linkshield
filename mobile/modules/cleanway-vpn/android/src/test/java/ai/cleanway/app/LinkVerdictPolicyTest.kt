@@ -25,7 +25,8 @@ class LinkVerdictPolicyTest {
         basis: List<String> = emptyList(),
         exists: Boolean? = null,
         signals: List<String> = emptyList(),
-    ) = LinkAnswer(level, exists, basis, codes, signals)
+        host: String? = null,
+    ) = LinkAnswer(level, exists, basis, codes, signals, host)
 
     // ── decide ────────────────────────────────────────────────────────
 
@@ -96,19 +97,20 @@ class LinkVerdictPolicyTest {
     }
 
     @Test
-    fun `a bare IP address warns, never blocks, without the ML model`() {
+    fun `a bare IP address warns without the ML model - only a feed listing blocks`() {
         // Answers of the public check for 64.6.64.6 and 9.9.9.11 after #398:
         // the server no longer asks the model about an address, so its
         // caution carries no ml_high_risk. A link to http://<ip>:<port>/i in
-        // an SMS (the Mozi botnet) must still be told about.
+        // an SMS (the Mozi botnet) must still be told about. No host here:
+        // the server's ip_based alone still says it is an address.
         val unreachable = answer("caution", listOf("ip_based", "unreachable_from_scanner"), basis = listOf("unreachable"))
         val opened = answer("caution", listOf("ip_based", "missing_headers"), basis = listOf("heuristics"))
         assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(unreachable))
         assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(opened))
-        // 'dangerous' on an address now rests on evidence (IPQS here): it warns
-        // even when the scanner could not open the address.
-        val ipqs = answer("dangerous", listOf("ip_based", "ipqs_phishing", "unreachable_from_scanner"), basis = listOf("unreachable"))
-        assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(ipqs))
+        // 'dangerous' on an address rests on evidence: the server's answer for
+        // IPQS's high risk score on an address the scanner could not open.
+        val ipqsHighRisk = answer("dangerous", listOf("ipqs_high_risk", "ip_based", "unreachable_from_scanner"), basis = listOf("unreachable"))
+        assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(ipqsHighRisk))
         // Only a feed listing blocks, for an address as for a name.
         assertEquals(
             LinkAction.WARN_AND_BLOCK,
@@ -117,6 +119,39 @@ class LinkVerdictPolicyTest {
         // A name's caution without the model stays silent (as above).
         assertEquals(LinkAction.NONE, LinkVerdictPolicy.decide(answer("caution", listOf("no_https", "unreachable_from_scanner"), basis = listOf("unreachable"))))
         assertEquals(LinkAction.NONE, LinkVerdictPolicy.decide(answer("safe", listOf("ip_based"))))
+    }
+
+    @Test
+    fun `an address is known by its host, not only by the ip_based code`() {
+        // The server's answer for an IPQS phishing hit on an address its
+        // scanner could not open: IPQS adds 70 in layer 1 and scoring.py
+        // returns "dangerous" before rule 3.3 adds ip_based, so no code says
+        // it is an address. The host does.
+        val ipqs = answer("dangerous", listOf("ipqs_phishing", "unreachable_from_scanner"), basis = listOf("unreachable"), host = "203.0.113.7")
+        assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(ipqs))
+        // The same answer about a name stays silent: a bank that turns away foreign scanners.
+        assertEquals(LinkAction.NONE, LinkVerdictPolicy.decide(ipqs.copy(host = "bank.example")))
+        // A caution about an address warns (quietly) whatever its codes.
+        assertEquals(
+            LinkAction.WARN,
+            LinkVerdictPolicy.decide(answer("caution", listOf("unreachable_from_scanner"), basis = listOf("unreachable"), host = "64.6.64.6")),
+        )
+        // An address the server calls safe, or says does not exist, stays silent.
+        assertEquals(LinkAction.NONE, LinkVerdictPolicy.decide(answer("safe", host = "8.8.8.8")))
+        assertEquals(LinkAction.NONE, LinkVerdictPolicy.decide(answer("dangerous", basis = listOf("unreachable"), exists = false, host = "203.0.113.7")))
+    }
+
+    @Test
+    fun `only four dot-separated numbers 0-255 are an address`() {
+        for (host in listOf("8.8.8.8", "0.0.0.0", "255.255.255.255", "203.0.113.7")) {
+            assertTrue(host, LinkVerdictPolicy.isIpv4Literal(host))
+        }
+        for (host in listOf(
+            null, "", "256.1.1.1", "1.2.3", "1.2.3.4.5", "1.2.3.4.example", "123.com", "example.123",
+            "a.b.c.d", "1..2.3", "1.2.3.", "-1.2.3.4", "1234.1.1.1", "1.2.3.4a", "1.2.3.1e1",
+        )) {
+            assertFalse(host.toString(), LinkVerdictPolicy.isIpv4Literal(host))
+        }
     }
 
     @Test
@@ -182,6 +217,24 @@ class LinkVerdictPolicyTest {
         val limited = Fake(CheckFetch.Failed("http 429"), CheckFetch.Answered(body))
         assertNull(LinkCheckRunner.run("x.tld", limited))
         assertEquals(1, limited.calls)
+    }
+
+    @Test
+    fun `the runner hands decide the host it asked about`() {
+        // The public check's answer of 2026-11-04 for an IPQS phishing hit on
+        // an address the scanner could not open (route and analyzer run
+        // locally on recorded probes; a documentation address here).
+        val ipqs = """{"domain":"203.0.113.7","safe":false,"score":70,"level":"dangerous","confidence":"medium",""" +
+            """"signals":["Identified as phishing by IPQualityScore","Our scanner abroad could not open this site (it did not answer), so the site itself was not checked."],""" +
+            """"reason_codes":["ipqs_phishing","unreachable_from_scanner"],"verdict_basis":"unreachable","exists":null,"checks_incomplete":[]}"""
+        val answer = LinkCheckRunner.run("203.0.113.7", Fake(CheckFetch.Answered(ipqs)))!!
+        assertEquals("203.0.113.7", answer.host)
+        assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(answer))
+        // The host comes from the phone, not from the body: a caution without
+        // ip_based and without `domain` still counts as an address.
+        val bare = """{"level":"caution","score":35,"reason_codes":["unreachable_from_scanner"],"verdict_basis":"unreachable"}"""
+        assertEquals(LinkAction.WARN, LinkVerdictPolicy.decide(LinkCheckRunner.run("64.6.64.6", Fake(CheckFetch.Answered(bare)))!!))
+        assertEquals(LinkAction.NONE, LinkVerdictPolicy.decide(LinkCheckRunner.run("bank.example", Fake(CheckFetch.Answered(bare)))!!))
     }
 
     @Test
