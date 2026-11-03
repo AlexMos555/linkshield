@@ -185,16 +185,17 @@ def test_a_reachable_tenant_says_anyone_can_publish_there(offline_analyzer):
 
 def test_the_llm_judge_does_not_weigh_in(offline_analyzer, monkeypatch):
     """Its features are the probes', which do not count here: a brand
-    caution stays one."""
+    caution stays one. The analyzer asks the judge through opinion_now
+    since #399 (a cached opinion, or a live call left running)."""
     from api.services import llm_judge
 
     asked = []
 
-    async def _judge(signals, score, level):
+    async def _opinion_now(signals, score, level):
         asked.append(signals["domain"])
-        return {"verdict": "safe", "confidence": 0.9, "one_line_reason": "x", "score_shift": -20}
+        return llm_judge.CACHED, {"verdict": "safe", "confidence": 0.9, "one_line_reason": "x", "score_shift": -20}
 
-    monkeypatch.setattr(llm_judge, "judge_ambiguous_verdict", _judge)
+    monkeypatch.setattr(llm_judge, "opinion_now", _opinion_now)
     offline_analyzer(site="reachable")
     result = asyncio.run(analyze_domain("paypal.abc.def.mybluehost.me", budget_s=5.0))
     assert (result.level, result.score) == (RiskLevel.caution, 30)

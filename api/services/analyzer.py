@@ -236,6 +236,7 @@ async def _judge(
     if (measured < total and score < 20) or signals["site_reachable"] is False:
         confidence = _at_most(confidence, ConfidenceLevel.medium)
 
+    judge_reason = None
     if not evidence_only:
         score, level, judge_reason, judge_finished = await _llm_judge_within(signals, score, level, deadline)
         if judge_reason is not None:
