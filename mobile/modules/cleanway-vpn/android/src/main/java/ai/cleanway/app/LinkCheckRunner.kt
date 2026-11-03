@@ -33,7 +33,9 @@ object LinkCheckRunner {
     fun run(host: String, fetcher: CheckFetcher): LinkAnswer? {
         var result = fetcher.fetch(host)
         if (result is CheckFetch.TimedOut) result = fetcher.fetch(host)
-        return (result as? CheckFetch.Answered)?.let { LinkVerdictPolicy.parse(it.body) }
+        // The answer is about the host asked: LinkVerdictPolicy reads "a bare
+        // address" from it (LinkAnswer.host), not from the server's echo.
+        return (result as? CheckFetch.Answered)?.let { LinkVerdictPolicy.parse(it.body) }?.copy(host = host)
     }
 }
 

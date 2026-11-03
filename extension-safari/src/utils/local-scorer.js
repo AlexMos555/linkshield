@@ -367,8 +367,10 @@ function localScore(domain) {
   // 10. Deep subdomains — two or more levels above the registrable domain:
   //     www.shop.co.uk and kvs.gov.spb.ru have one, a.b.evil.com two, and so
   //     does vk.com.msk.ru, whose registered name 'com' reads as a TLD. Either
-  //     form works; decoding never adds or removes a label separator.
-  var levels = rules ? rules.apparentSubdomainLevels(asciiDomain) : 0;
+  //     form works; decoding never adds or removes a label separator. Not on
+  //     an IP literal, as on the server: the dots of 140.82.112.4 are not
+  //     "2 levels" of anything.
+  var levels = rules && !rules.isIpLiteral(asciiDomain) ? rules.apparentSubdomainLevels(asciiDomain) : 0;
   if (levels >= 2) {
     score += 15;
     reasons.push({signal:"deep_subdomains", detail:"Deep subdomain nesting (" + levels + " levels)", weight:15});

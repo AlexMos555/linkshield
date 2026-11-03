@@ -873,6 +873,8 @@
     brandOnHostingTenant: brandOnHostingTenant,
     hasFakeTldInSubdomain: hasFakeTldInSubdomain,
     apparentSubdomainLevels: apparentSubdomainLevels,
+    // public_suffix.is_ip_literal: the scorer skips the nesting rule on one.
+    isIpLiteral: function (asciiDomain) { return isIpLiteral(clean(asciiDomain)); },
     // Exposed for the table tests.
     similarityRatio: similarityRatio,
     editDistanceAtMost: editDistanceAtMost,

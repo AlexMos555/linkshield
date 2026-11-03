@@ -264,7 +264,8 @@ async def _judge(
         exists=exists,
         checks_incomplete=sorted(set(unfinished)),
     )
-    basis = vb.derive_verdict_basis(result, ml_consulted=_ml_available())
+    # The scorer never asks the model about an IP literal (scoring 3.34).
+    basis = vb.derive_verdict_basis(result, ml_consulted=_ml_available() and not is_ip)
     logger.info("analysis_complete", extra={
         "domain": domain, "score": score, "verdict": level.value,
         "confidence": confidence.value, "confidence_pct": confidence_pct,
