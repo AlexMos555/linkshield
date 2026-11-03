@@ -250,10 +250,12 @@ class Settings(BaseSettings):
     # service; past it, cached or template text (api/services/scam_explainer.py).
     explainer_daily_budget: int = 500
 
-    # Wall-clock budget for ONE fresh domain analysis (all sources, the site
-    # probes and the LLM judge). Checks still running at the deadline are cut
-    # off and named in the verdict's `checks_incomplete`. The phone waits 5 s
-    # and the app 6 s, so the verdict must be back well inside that.
+    # Wall-clock budget for ONE fresh domain analysis (all sources and the
+    # site probes). Checks still running at the deadline are cut off and named
+    # in the verdict's `checks_incomplete`. The LLM judge is never waited for:
+    # only its cached opinion counts (api/services/llm_judge.opinion_now). The
+    # extension and the iPhone wait 3 s, the Android app 12 s, so the verdict
+    # must be back well inside that.
     analysis_budget_seconds: float = 3.0
 
     # Load shedding (api/services/load_shedding.py, docs/runbooks/capacity.md).

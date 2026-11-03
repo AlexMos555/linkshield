@@ -23,7 +23,9 @@ consulted: they leave the plan and the total, so an analysis is 13 checks of
 13, not 13 of 19. LICENSED_INTEL=all consults all 19.
 
 A check still running at the deadline is cancelled and named in
-`checks_incomplete`; the LLM judge only gets whatever budget is left. Every
+`checks_incomplete`. The LLM judge is never waited for: only its cached
+opinion counts, and a live call it needs runs on in the background for the
+next check (named `llm_judge` in `checks_incomplete` meanwhile). Every
 check waits for the worker's outbound gate first (load_shedding.OUTBOUND), so
 the source calls open at once stay bounded however many analyses run.
 
@@ -177,8 +179,8 @@ async def _judge(
     outcomes: dict, unfinished: list[str], deadline: Deadline,
     allowlist_withheld: bool = False,
 ) -> DomainResult:
-    """Score the gathered evidence, let the LLM judge use what budget is left,
-    and assemble the result."""
+    """Score the gathered evidence, apply the LLM judge's cached opinion (or
+    start its live call for the next check), and assemble the result."""
     total = TOTAL_CHECKS - len(_not_consulted(domain))
     # The argument only when it says something: wrappers of the old
     # signature (tests/test_licensed_intel.py) see the call they always did.
@@ -605,21 +607,25 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
 async def _llm_judge_within(
     signals: dict, score: int, level: RiskLevel, deadline: Deadline,
 ) -> tuple[int, RiskLevel, Optional[DomainReason], bool]:
-    """Strategy #21 — the LLM judge for caution-band verdicts, inside the budget.
+    """Strategy #21 — the LLM judge for caution-band verdicts, never waited for.
 
     When the rule-based scorer landed in the caution band (no blocklist hit,
     no allowlist short-circuit), Claude weighs in on a domain-FREE feature
     vector and proposes a signed score shift capped at ±20. Returns
-    (score, level, reason or None, finished). `finished` is False when the
-    judge was still running at the deadline — the verdict then stands
-    without it, and says so. The live call itself is not lost: it finishes
-    in the background and fills the judge's cache (llm_judge._live_opinion),
-    so the next domain with the same pattern gets the answer in time.
+    (score, level, reason or None, finished).
+
+    Only an opinion already cached for this pattern is applied. Otherwise
+    the live call is started (llm_judge.opinion_now) and the scorer's
+    verdict goes out at once with `finished` False — the call ends in the
+    background and caches its answer for the next check. Waiting for it
+    held 60 of 63 caution answers past 3 s (2026-11-01), where the extension
+    and the iPhone give up. The cache lookup itself stays inside the budget;
+    a judge that is not asked (no key, the day's budget spent) is finished.
     """
     try:
-        from api.services.llm_judge import judge_ambiguous_verdict
-        judge = await asyncio.wait_for(
-            judge_ambiguous_verdict(signals, score, level.value),
+        from api.services.llm_judge import STARTED, opinion_now
+        state, judge = await asyncio.wait_for(
+            opinion_now(signals, score, level.value),
             timeout=max(MIN_STEP_S, deadline.remaining()),
         )
     except asyncio.TimeoutError:
@@ -629,7 +635,7 @@ async def _llm_judge_within(
         logger.debug("LLM judge wrapper failed", exc_info=True)
         return score, level, None, True
     if judge is None:
-        return score, level, None, True
+        return score, level, None, state != STARTED
     shift = int(judge.get("score_shift", 0))
     if shift != 0:
         score = max(0, min(score + shift, 100))

@@ -12,7 +12,8 @@ How it fits the existing pipeline:
     → 18 parallel checks build `signals`
     → calculate_score() → (score, level, reasons)
     → if level == caution AND no blocklist AND LLM available:
-        judge_ambiguous_verdict(signals, score) → optional shift
+        opinion_now(signals, score) → a cached opinion's shift,
+        or a live call started for the next check
     → DomainResult ships with confidence_pct + an
       "llm_judge" DomainReason if the LLM weighed in.
 
@@ -29,14 +30,17 @@ Privacy invariants (load-bearing):
      same cache entry — that's correct, the answer is about the
      pattern, not the host.
 
-  3. The analyzer waits for the judge only as long as its ~3 s
-     analysis budget allows, so the judge can never stretch the
-     user's wait. A live call still running then is NOT cancelled:
-     it finishes in the background and fills the cache for the next
-     domain with the same pattern (_live_opinion). Live calls are
-     capped per day for the whole service (paid_budget), and at
+  3. The analyzer never waits for a live call (opinion_now): a
+     cached opinion is applied, otherwise the scorer's verdict goes
+     out at once with `llm_judge` in checks_incomplete, and the call
+     finishes in the background and fills the cache for the next
+     check with the same pattern. A live call takes longer than the
+     ~3 s fresh-check budget, and the extension and the iPhone give
+     a lookup 3 s (2026-11-03). Live calls are capped per day for
+     the whole service (paid_budget), and at
      LOAD_SHED_LLM_MAX_INFLIGHT at once per worker (load_shedding):
-     past that the judge is skipped, never queued.
+     past that the judge is skipped, never queued. stop() cancels
+     the calls still running at shutdown.
 
   4. On any LLM failure (network, schema mismatch, rate-limit,
      SDK exception) we silently fall back to the rule-based
@@ -441,7 +445,10 @@ async def _call_claude(features: dict) -> Optional[dict]:
 async def judge_ambiguous_verdict(
     signals: dict, score: int, level: str,
 ) -> Optional[dict]:
-    """Public entry-point — runs the judge when applicable.
+    """Runs the judge when applicable and WAITS for a live call.
+
+    The analyzer does not use this — it never waits (opinion_now). This is
+    the whole call, for a caller that can afford the wait.
 
     Returns a dict with the LLM's verdict OR None if the judge
     did not run (out of band, no LLM, cache miss + LLM failure).
@@ -458,37 +465,13 @@ async def judge_ambiguous_verdict(
     The caller decides whether to APPLY the shift; this function
     only proposes.
     """
-    # Gate 1: rule-based level already certain → skip.
-    if level != "caution":
+    if not _asked(signals, level):
         return None
-
-    # Gate 2: blocklist hits make the verdict for us already.
-    if (signals or {}).get("blocklist_hits", 0) > 0:
-        return None
-
-    # Gate 3: LLM availability.
-    if not _llm_available():
-        return None
-
     features = _extract_judge_features(signals, score)
-
-    # L1: Redis cache. The same feature pattern across domains
-    # hits the same cache entry.
     cache_key = _cache_key(features)
-    redis_client = None
-    try:
-        from api.services.cache import get_redis
-        redis_client = await get_redis()
-        cached_raw = await redis_client.get(cache_key)
-        if cached_raw:
-            try:
-                cached = json.loads(cached_raw)
-                cached["source"] = "cache"
-                return _apply_shift_cap(cached, score)
-            except Exception:
-                pass  # poisoned cache entry — re-call the LLM
-    except Exception:
-        pass
+    redis_client, cached = await _cached(cache_key, score)
+    if cached is not None:
+        return cached
 
     # L2: live LLM call, shared and shielded (see _live_opinion).
     opinion = await _live_opinion(cache_key, features, score, redis_client)
@@ -504,18 +487,102 @@ async def judge_ambiguous_verdict(
     return _apply_shift_cap(result, score)
 
 
-# Live calls in flight, by cache key. The analyzer gives the judge only what
-# is left of its ~3 s budget, and an Opus call usually needs more; a call
-# cancelled there used to be sent (and billed), thrown away and never cached,
-# so the next domain with the same pattern paid for it again. Now the call
-# runs as its own task: a caller that stops waiting leaves it to finish and
-# fill the cache, and callers with the same pattern meanwhile share it.
+# What opinion_now found. Only CACHED comes with an opinion.
+CACHED = "cached"    # the judge's answer for this pattern was in the cache
+STARTED = "started"  # a live call for this pattern is running: its answer is
+                     # cached for the next check, it is not in this one
+SKIPPED = "skipped"  # the judge is not asked: out of band, a blocklist hit, no
+                     # key, the day's budget spent or the worker's LLM slots full
+
+
+async def opinion_now(signals: dict, score: int, level: str) -> tuple[str, Optional[dict]]:
+    """The judge without the wait — what the analyzer asks.
+
+    A live call takes longer than a fresh check's ~3 s budget (34 of 40
+    re-checks ran out of it, 2026-11-01/03), and the extension and the iPhone
+    give a lookup 3 s: a caution answer must not wait for one. So this
+    returns (CACHED, opinion) when this pattern's answer is in the cache,
+    shaped as judge_ambiguous_verdict's. Otherwise it starts the live call —
+    or finds it running — and returns (STARTED, None) at once: the call ends
+    in the background, within the day's budget and the worker's LLM slots,
+    and caches its answer for the next check of the pattern. (SKIPPED, None)
+    when the judge is not asked at all. A failing cache or LLM never raises.
+    """
+    if not _asked(signals, level):
+        return SKIPPED, None
+    features = _extract_judge_features(signals, score)
+    cache_key = _cache_key(features)
+    redis_client, cached = await _cached(cache_key, score)
+    if cached is not None:
+        return CACHED, cached
+    if await _live_task(cache_key, features, score, redis_client) is None:
+        return SKIPPED, None
+    # One loop turn, so the call takes its first step (it is counted and
+    # opened) before the answer goes out — also when the caller's loop ends
+    # with the answer, as a script's does.
+    await asyncio.sleep(0)
+    return STARTED, None
+
+
+def _asked(signals: dict, level: str) -> bool:
+    """Gates 1-3: is the judge asked about this verdict at all?"""
+    # Gate 1: rule-based level already certain → skip.
+    if level != "caution":
+        return False
+    # Gate 2: blocklist hits make the verdict for us already.
+    if (signals or {}).get("blocklist_hits", 0) > 0:
+        return False
+    # Gate 3: LLM availability.
+    return _llm_available()
+
+
+async def _cached(cache_key: str, score: int) -> tuple[object, Optional[dict]]:
+    """L1: the Redis cache — the same feature pattern across domains hits the
+    same entry. (Redis client or None, cached opinion or None); a cache that
+    fails, or holds a poisoned entry, is a miss."""
+    redis_client = None
+    try:
+        from api.services.cache import get_redis
+        redis_client = await get_redis()
+        cached_raw = await redis_client.get(cache_key)
+        if cached_raw:
+            try:
+                cached = json.loads(cached_raw)
+                cached["source"] = "cache"
+                return redis_client, _apply_shift_cap(cached, score)
+            except Exception:
+                pass  # poisoned cache entry — re-call the LLM
+    except Exception:
+        pass
+    return redis_client, None
+
+
+# Live calls in flight, by cache key. Every live call runs as its own task: a
+# caller that stops waiting (or never waits: opinion_now) leaves it to finish
+# and fill the cache, and callers with the same pattern meanwhile share it. A
+# call cut off at the analysis deadline used to be sent (and billed), thrown
+# away and never cached, so the next domain with the same pattern paid for it
+# again. The dict holds each task until it ends, so none is garbage-collected
+# mid-call, and stop() cancels what is left at shutdown.
 _INFLIGHT: dict[str, "asyncio.Task[Optional[dict]]"] = {}
 
 
 async def _live_opinion(
     cache_key: str, features: dict, score: int, redis_client,
 ) -> Optional[dict]:
+    task = await _live_task(cache_key, features, score, redis_client)
+    if task is None:
+        return None
+    # shield: cancelling THIS caller (the analysis deadline) must not cancel
+    # the call itself.
+    return await asyncio.shield(task)
+
+
+async def _live_task(
+    cache_key: str, features: dict, score: int, redis_client,
+) -> "Optional[asyncio.Task[Optional[dict]]]":
+    """This pattern's live call: the one already running, or a new one when
+    the worker's LLM slots and the day's budget allow it; None otherwise."""
     task = _INFLIGHT.get(cache_key)
     if task is None:
         from api.config import get_settings
@@ -534,9 +601,18 @@ async def _live_opinion(
         _INFLIGHT[cache_key] = task
         task.add_done_callback(lambda t: _forget(cache_key, t))
         task.add_done_callback(lambda t: load_shedding.LLM_JUDGE.release())
-    # shield: cancelling THIS caller (the analysis deadline) must not cancel
-    # the call itself.
-    return await asyncio.shield(task)
+    return task
+
+
+async def stop() -> None:
+    """Cancel the live calls still running (shutdown): their answers would be
+    written to a Redis client that is about to close."""
+    loop = asyncio.get_running_loop()
+    running = [t for t in _INFLIGHT.values() if not t.done() and t.get_loop() is loop]
+    for task in running:
+        task.cancel()
+    if running:
+        await asyncio.wait(running, timeout=1.0)
 
 
 def _forget(cache_key: str, task: "asyncio.Task[Optional[dict]]") -> None:
