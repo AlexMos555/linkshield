@@ -807,11 +807,19 @@ https://developers.google.com/search/docs/advanced/security/malware, for
 malware; https://www.google.com/about/company/unwanted-software-policy.html
 for unwanted software), and does not call the page certainly unsafe; that a
 warning built on other data does not carry Google's name; and that a warning
-is shown only while Google's cached answer is valid. So a verdict resting on
-Google is kept by no cache past that answer (`api/services/google_advisory.py`:
-the public and signed-in check caches; the public answer's `advisory_ttl` caps
-the extension's and the app's; the /check page fetches such a verdict live in
-the browser), and is not sent to family members. Where it shows, translated
+is shown only while Google's cached answer is valid. So the server's caches
+keep a verdict resting on Google no longer than that answer
+(`api/services/google_advisory.py`: the public and signed-in check caches),
+and the public answer's `advisory_ttl` caps the extension's and the app's; the
+/check page fetches such a verdict live in the browser and takes it down when
+the window ends. The extension also takes such a warning off the screen then:
+its link badges, and its block page, whose address carries the window's end
+(`x`) — past it the page checks the site again instead of drawing the old
+verdict. Such a verdict is not sent to family members. Not yet bounded: the
+app's check history keeps the level with no time limit, the share texts (the
+app's share message, the /check card's) carry the level with no credit, and
+the webmail banner stays over a message left open past the window
+(`docs/PAID_LAUNCH_SWITCHES.md` §7, "Осталось"). Where it shows, translated
 in all ten languages (`extension.advisory`): the extension's block page, link
 badge tooltips, context-menu check, popup and webmail banner
 (`content/reason-labels.js`); the app's result, share and message-check
