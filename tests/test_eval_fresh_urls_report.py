@@ -553,6 +553,73 @@ async def test_no_published_row_names_google_or_any_other_feed(tmp_path, monkeyp
     assert "names no third-party source" in md
 
 
+@pytest.mark.asyncio
+async def test_no_published_row_names_a_feed_whose_check_was_cut_off(tmp_path, monkeypatch, caplog):
+    """checks_incomplete names the checks the time budget cut off, by the
+    analyzer's names (api/services/analyzer._check_calls). Under
+    LICENSED_INTEL=licensed, the production default, Google Web Risk,
+    PhishTank and PhishStats are the only hard listings asked, so a
+    'threat_intel' row whose checks_incomplete is ["phishstats", "phishtank"]
+    names Google's hit by elimination. So a published row's checks_incomplete
+    names no third-party check either. Our own checks stay in it, and the
+    degraded-answers count still counts every cut-off answer."""
+    eval_module = _load_eval_module()
+    pool = ["https://google-by-elimination.example/", "https://our-checks.example/"]
+    answers = {
+        pool[0]: ("dangerous", 80, "threat_intel", ["safe_browsing", "domain_new"], ["phishstats", "phishtank"]),
+        pool[1]: ("caution", 45, "heuristics", ["domain_new"],
+                  ["alienvault", "ipqs", "llm_judge", "spamhaus", "ssl", "surbl"]),
+    }
+
+    def cleanway(url):
+        level, score, basis, codes, cut = answers.get(url, ("safe", 0, "heuristics", [], ["safe_browsing", "whois"]))
+        verdict = level if level != "caution" else "unknown"
+        return eval_module.Verdict("cleanway", verdict, score=score, detail=level, level=level,
+                                   verdict_basis=basis, reason_codes=list(codes), checks_incomplete=list(cut))
+
+    with caplog.at_level(logging.INFO, logger="eval_fresh_urls"):
+        report, md = await _run_main(eval_module, monkeypatch, tmp_path, pool, {"cleanway": _by_url(cleanway)},
+                                     sample=2)
+    rows = dict(zip(report["raw"]["phishing_urls"], report["raw"]["phishing"]["cleanway"], strict=True))
+    elimination, ours = (rows[u] for u in pool)
+    assert (elimination["checks_incomplete"], elimination["reason_codes"], elimination["score"]) == (
+        [], ["domain_new"], None)
+    assert (elimination["level"], elimination["verdict_basis"]) == ("dangerous", "threat_intel")
+    assert (ours["checks_incomplete"], ours["score"]) == (["llm_judge", "ssl"], 45)
+    assert report["raw"]["safe"]["cleanway"]
+    assert all(row["checks_incomplete"] == ["whois"] for row in report["raw"]["safe"]["cleanway"])
+    # The whole report names PhishTank as a resolver of its own; Cleanway's rows name no feed.
+    published = json.dumps([report["raw"]["phishing"]["cleanway"], report["raw"]["safe"]["cleanway"]])
+    for name in eval_module.THIRD_PARTY_CHECK_NAMES:
+        assert f'"{name}"' not in published, name
+    degraded = [r.getMessage() for r in caplog.records if "degraded" in r.getMessage()]
+    assert len(degraded) == 1 and "phishing 2 answers — checks_incomplete 2 (100.0%)" in degraded[0]
+    assert report["phishing"]["cleanway"]["tp"] == 1           # the counts are untouched
+
+    # cleanway_local answers carry no reason codes; the same row is published the same way.
+    local = eval_module.Verdict("cleanway_local", "dangerous", score=80, level="dangerous",
+                                verdict_basis="threat_intel", checks_incomplete=["phishstats", "phishtank"])
+    (row,) = eval_module._raw_rows("cleanway_local", [local], ["dangerous"])
+    assert (row["checks_incomplete"], row["reason_codes"], row["score"]) == ([], None, None)
+    assert local.checks_incomplete == ["phishstats", "phishtank"]   # the answer itself is untouched
+
+
+def test_the_hidden_check_names_are_every_external_source_the_analyzer_asks():
+    """checks_incomplete uses the analyzer's check names, which are not the
+    reason codes (spamhaus / spamhaus_dbl, alienvault / alienvault_otx, ipqs /
+    ipqs_phishing). A feed added to the analyzer and not here would show per
+    URL when it is cut off."""
+    from api.services import analyzer, licensed_intel
+
+    hidden = _load_eval_module().THIRD_PARTY_CHECK_NAMES
+    calls = analyzer._check_calls("example.com", probes_allowed=True)
+    for call in calls.values():
+        call.close()                                           # never awaited
+    plan = set(calls) | licensed_intel.RESTRICTED_CHECKS
+    assert hidden <= plan                                      # no typo hides nothing
+    assert plan - hidden == {"tranco", "favicon", "watchtower", "whois", "ssl", "headers", "dns", "redirect"}
+
+
 def test_the_hidden_codes_cover_every_external_source_the_server_names():
     """If a feed is added to the server and not here, its name would show per
     URL and make Google's the only unnamed one again."""

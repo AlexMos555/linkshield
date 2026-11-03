@@ -1161,21 +1161,32 @@ _CLEANWAY_FIELDS = ("level", "verdict_basis", "reason_codes", "checks_incomplete
 # row naming none would name Google's by elimination. For the same reason a
 # row that had one loses its score, which the public weights would decode
 # (80 is safe_browsing's). The counts do not use either field.
-# checks_incomplete may still name safe_browsing: a lookup that did not finish
-# in time, so no answer from Google at all.
 THIRD_PARTY_SOURCE_CODES = frozenset({
     "safe_browsing", "phishtank", "urlhaus", "phishstats", "threatfox", "spamhaus_dbl", "surbl",
     "malware_bazaar", "feodo", "alienvault_otx", "alienvault_otx_high", "ipqs_phishing",
     "ipqs_high_risk", "multi_blocklist",
 })
+# The same sources as checks_incomplete names them: the analyzer's check names
+# (api/services/analyzer._check_calls), not the reason codes. Kept there, they
+# name Google by elimination too: under LICENSED_INTEL=licensed only
+# safe_browsing, phishtank and phishstats of the hard listings are asked, so a
+# 'threat_intel' row with ["phishstats", "phishtank"] cut off is a Google hit.
+# The degraded-answers count (degraded_answers) reads the answers, not the rows.
+THIRD_PARTY_CHECK_NAMES = frozenset({
+    "safe_browsing", "phishtank", "urlhaus", "phishstats", "threatfox", "spamhaus", "surbl",
+    "alienvault", "ipqs", "malware_bazaar", "feodo",
+})
 
 
 def _unnamed_sources(row: dict) -> None:
-    """A Cleanway row as published: no third-party source named (THIRD_PARTY_SOURCE_CODES)."""
+    """A Cleanway row as published: no third-party source named
+    (THIRD_PARTY_SOURCE_CODES, THIRD_PARTY_CHECK_NAMES)."""
     codes = row.get("reason_codes")
     named = any(c in THIRD_PARTY_SOURCE_CODES for c in codes or ())
     if codes is not None:
         row["reason_codes"] = [c for c in codes if c not in THIRD_PARTY_SOURCE_CODES]
+    if row.get("checks_incomplete") is not None:
+        row["checks_incomplete"] = [c for c in row["checks_incomplete"] if c not in THIRD_PARTY_CHECK_NAMES]
     if named or row.get("verdict_basis") == "threat_intel":
         row["score"] = None
 
