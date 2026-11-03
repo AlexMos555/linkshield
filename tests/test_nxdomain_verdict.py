@@ -238,18 +238,20 @@ def _failed_doh():
     return resp
 
 
-@pytest.mark.parametrize("response, exists, detail", [
-    (_doh_response(3), False, "nxdomain"),
-    (_doh_response(0, [{"type": 1, "data": "1.2.3.4"}]), True, "noerror"),
-    (_doh_response(0), True, "noerror"),          # the name exists, it has no A record
-    (_doh_response(2), None, "status=2"),         # SERVFAIL: could not tell
-    (_failed_doh(), None, "http=503"),
+@pytest.mark.parametrize("responses, exists, detail", [
+    ((_doh_response(3),), False, "nxdomain"),
+    ((_doh_response(0, [{"type": 1, "data": "1.2.3.4"}]),), True, "noerror"),
+    # The name exists, it has no A record: the AAAA question follows (it has
+    # none either here; the row's count is test_..._asks_aaaa_when_no_a_address_is_public).
+    ((_doh_response(0), _doh_response(0)), True, "noerror"),
+    ((_doh_response(2),), None, "status=2"),      # SERVFAIL: could not tell
+    ((_failed_doh(),), None, "http=503"),
 ], ids=["nxdomain", "resolves", "no-a-record", "servfail", "http-error"])
-def test_benchmark_existence_probe(response, exists, detail):
+def test_benchmark_existence_probe(responses, exists, detail):
     """One question per URL to Cloudflare's unfiltered resolver, whatever the
     resolvers answered: the benchmark's own witness."""
     ev = _eval_module()
-    out = asyncio.run(ev.probe_existence(_client_answering(response), "http://phish.top/login"))
+    out = asyncio.run(ev.probe_existence(_client_answering(*responses), "http://phish.top/login"))
     assert (out.exists, out.detail) == (exists, detail)
 
 
@@ -273,20 +275,57 @@ def _row(out):
 
 def test_benchmark_existence_probe_records_the_addresses():
     """A row was live on any NOERROR. The probe now keeps the A data (raw.existence),
-    and asks AAAA too when every A address is non-public, so a name that
-    leads nowhere a user can reach is told apart (benchmark_method.only_non_public)."""
+    and asks AAAA too when no A address is public, so a name that leads
+    nowhere a user can reach is told apart (benchmark_method.no_public_address)."""
     out, client = _probe(_doh_response(0, [{"type": 5, "data": "edge.cdn.example."},
                                            {"type": 1, "data": "1.2.3.4"}]))
     assert (out.exists, out.detail, out.addresses) == (True, "noerror", ["1.2.3.4"])
     assert client.get.await_count == 1          # a public address: no second question
     assert _row(out) == "resolves"
 
-    out, client = _probe(_doh_response(0))     # NOERROR without an A record: live, as before
-    assert (out.exists, out.addresses) == (True, [])
-    assert client.get.await_count == 1 and _row(out) == "resolves"
+    # This used to say: NOERROR without an A record, one question, live. That
+    # locked in the bug the third review of #395 found (an empty A answer was
+    # never asked AAAA). Now the AAAA question follows, and a public IPv6
+    # address keeps the row live.
+    out, client = _probe(_doh_response(0), _doh_response(0, [{"type": 28, "data": "2606:4700::1"}]))
+    assert (out.exists, out.addresses) == (True, ["2606:4700::1"])
+    assert client.get.await_count == 2 and _row(out) == "resolves"
 
     out, _ = _probe(_doh_response(3))
     assert (out.exists, out.addresses) == (False, None)
+
+
+def test_benchmark_existence_probe_asks_aaaa_when_no_a_address_is_public():
+    """AAAA was asked only when every A address was non-public, and an empty A
+    answer is not that, so a name without an A record counted as live (third
+    review of #395). Of the 200 seed-42 names on 2026-11-03, 4 Allegro names
+    were a CNAME to a Cloudflare tunnel whose only address is fd10:aec2:5dae::
+    (private IPv6: nobody on the internet can reach it) and 5 had neither an A
+    nor an AAAA record. Families scored the CNAME-only answer 'safe' (a
+    Cloudflare miss) and Cleanway's not-found answer counted as a caution."""
+    tunnel = {"type": 5, "data": "66ffe852-0680-4c83-b048-5470ad21cbd0.cfargotunnel.com."}
+    out, client = _probe(_doh_response(0, [tunnel]),
+                         _doh_response(0, [tunnel, {"type": 28, "data": "fd10:aec2:5dae::"}]))
+    assert [c.kwargs["params"] for c in client.get.await_args_list] == [
+        {"name": "phish.top", "type": "A"}, {"name": "phish.top", "type": "AAAA"}]
+    assert (out.exists, out.detail, out.addresses) == (True, "noerror", ["fd10:aec2:5dae::"])
+    assert _row(out) == "non_public"
+
+    # Neither an A nor an AAAA record: nothing a browser can connect to.
+    out, client = _probe(_doh_response(0), _doh_response(0))
+    assert client.get.await_count == 2
+    assert (out.exists, out.detail, out.addresses) == (True, "noerror", []) and _row(out) == "non_public"
+
+    # A and AAAA are judged together: one public address among them is enough.
+    out, _ = _probe(_doh_response(0, [{"type": 1, "data": "0.0.0.0"}]),
+                    _doh_response(0, [{"type": 28, "data": "fd10:aec2:5dae::"},
+                                      {"type": 28, "data": "2606:4700::1"}]))
+    assert out.addresses == ["0.0.0.0", "fd10:aec2:5dae::", "2606:4700::1"] and _row(out) == "resolves"
+
+    # The AAAA question fails: the probe cannot tell, the resolvers decide.
+    out, _ = _probe(_doh_response(0, [tunnel]), _failed_doh())
+    assert (out.exists, out.addresses, out.detail) == (None, [], "noerror aaaa=http=503")
+    assert _eval_module().benchmark_method.row_existence(out.exists, [True], addresses=out.addresses) == "resolves"
 
 
 def test_benchmark_existence_probe_tells_a_takedown_from_a_live_name():

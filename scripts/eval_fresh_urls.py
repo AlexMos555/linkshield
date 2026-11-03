@@ -553,8 +553,9 @@ class Verdict:
     # the answer says nothing about it. The existence probe's decides the row;
     # the resolvers' only when it could not tell (benchmark_method.row_existence).
     exists: Optional[bool] = None
-    # The A (and AAAA) addresses the existence probe got: a name whose every
-    # address is non-public is not live (benchmark_method.only_non_public).
+    # The A (and AAAA) addresses the existence probe got: a name with no
+    # public address among them, none at all included, is not live
+    # (benchmark_method.no_public_address).
     # Only the probe's rows carry them (raw.existence).
     addresses: Optional[list[str]] = None
 
@@ -877,13 +878,15 @@ EXISTENCE_PROBE = "existence"
 async def probe_existence(client: httpx.AsyncClient, url: str) -> Verdict:
     """The benchmark's own existence witness, asked once for every URL at the
     start of the run, whatever the resolvers answered: Cloudflare's unfiltered
-    resolver (_unfiltered_query), an A question, and an AAAA one too when
-    every A address is non-public. An IP address exists without DNS and is
-    its own address. Not a resolver: its Verdict is always 'unknown', its
-    answer is `exists` and `addresses`. It decides the row — not live when
-    every address is non-public, a takedown — and the resolvers' own answers
-    only when `exists` is None, the AAAA question failing included
-    (benchmark_method.row_existence)."""
+    resolver (_unfiltered_query), an A question, and an AAAA one too when no
+    A address is public — no A record at all included: a CNAME to a
+    Cloudflare tunnel has only a private IPv6 address (third review of #395).
+    The A and AAAA addresses are judged together. An IP address exists
+    without DNS and is its own address. Not a resolver: its Verdict is always
+    'unknown', its answer is `exists` and `addresses`. It decides the row —
+    not live when no address is public, none at all included (a takedown, a
+    dead end) — and the resolvers' own answers only when `exists` is None,
+    the AAAA question failing included (benchmark_method.row_existence)."""
     d = domain_of(url)
     if not d:
         return Verdict(EXISTENCE_PROBE, "unknown", detail="bad_domain")
@@ -902,7 +905,7 @@ async def probe_existence(client: httpx.AsyncClient, url: str) -> Verdict:
         return done("nxdomain", False, None)
     if status != 0:
         return done(f"status={status}", None, None)
-    if benchmark_method.only_non_public(addresses):
+    if benchmark_method.no_public_address(addresses):  # none, or only non-public ones
         status6, more, failed6 = await _unfiltered_query(client, d, "AAAA")
         if failed6 or status6 != 0:
             return done(f"noerror aaaa={failed6 or f'status={status6}'}", None, addresses)
@@ -1717,10 +1720,11 @@ async def main() -> int:
             # True (landing/lib/benchmark.ts falsePositiveRateIsPublishable).
             **legit_sources,
             "existence": ("one question per URL to Cloudflare's unfiltered resolver "
-                          f"({CLOUDFLARE_UNFILTERED_DOH}, A record; AAAA too when every A address is "
-                          "non-public) at the start of the run: an NXDOMAIN there is 'not found' for "
-                          "every resolver, and so is an answer whose every address is non-public "
-                          "(0.0.0.0, a private range: a takedown); any other answer is a live row. Only "
+                          f"({CLOUDFLARE_UNFILTERED_DOH}, A record; AAAA too when no A address is "
+                          "public, no A record at all included) at the start of the run: an NXDOMAIN "
+                          "there is 'not found' for every resolver, and so is an answer with no public "
+                          "address in A and AAAA together (neither record, or only non-public ones: "
+                          "0.0.0.0, a private range — a takedown); any other answer is a live row. Only "
                           "when it cannot tell (SERVFAIL, a timeout) do the resolvers' own answers "
                           "decide (Families' control query, Cleanway's `exists`)."),
             "cleanway_api": CLEANWAY_API,

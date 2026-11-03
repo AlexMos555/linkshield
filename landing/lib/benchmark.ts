@@ -95,9 +95,10 @@ export interface ExistenceCounts {
   resolves: number;
   nxdomain: number;
   /**
-   * Answered, but every address is non-public (0.0.0.0, a private range: a
-   * takedown). Not found for every resolver, as nxdomain. Absent in reports
-   * before 2026-11-04.
+   * Answered, but with no public address in A and AAAA together: neither
+   * record, or only non-public ones (0.0.0.0, a private range: a takedown).
+   * Not found for every resolver, as nxdomain. Absent in reports before
+   * 2026-11-04.
    */
   non_public?: number;
   unknown: number;

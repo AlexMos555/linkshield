@@ -33,17 +33,20 @@ Now:
   EXISTS   one fact per row, the same for every resolver (row_existence). The
            benchmark's own probe decides: one A query per URL to Cloudflare's
            unfiltered resolver at the start of the run, and an AAAA query
-           when every A address is non-public. NXDOMAIN: "nxdomain". An answer
-           whose every address is non-public by the server's own rule
-           (only_non_public: 0.0.0.0, a private range — a takedown or a
-           sinkhole, nothing a user can reach): "non_public". Any other answer
-           (an answer without an address included): "resolves". Only when the
-           probe cannot tell (SERVFAIL, a timeout, an HTTP error) do the
-           resolvers' answers decide: any resolved name "resolves", else an
-           NXDOMAIN from Families' control query or Cleanway's `exists: false`
-           "nxdomain". Cleanway's `exists: false` is weaker evidence: its SSRF
-           guard gives the same answer for a name that resolves into a blocked
-           or private network, and its answers may come from its public cache.
+           when no A address is public (no A record at all included); the A
+           and AAAA addresses are judged together. NXDOMAIN: "nxdomain". An
+           answer with no public address by the server's own rule
+           (no_public_address: neither an A nor an AAAA record, or only
+           0.0.0.0 and private ranges — a takedown, a sinkhole, a Cloudflare
+           tunnel's private IPv6, nothing a user can reach): "non_public". Any
+           other answer: "resolves". Only when the probe cannot tell
+           (SERVFAIL, a timeout, an HTTP error, its AAAA question failing) do
+           the resolvers' answers decide: any resolved name "resolves", else
+           an NXDOMAIN from Families' control query or Cleanway's
+           `exists: false` "nxdomain". Cleanway's `exists: false` is weaker
+           evidence: its SSRF guard gives the same answer for a name that
+           resolves into a blocked or private network, and its answers may
+           come from its public cache.
   OUTCOME  per resolver and row (outcome): not_found for an "nxdomain" or a
            "non_public" row, whatever the resolver said; its raw answer stays
            in the JSON.
@@ -260,19 +263,32 @@ def only_non_public(addresses: Optional[Iterable[str]]) -> bool:
     return True
 
 
+def no_public_address(addresses: Optional[Iterable[str]]) -> bool:
+    """The existence probe's rule for a name that answered: True when its
+    addresses (A and AAAA together) hold no public one — none at all, or
+    only_non_public. A name with neither an A nor an AAAA record has nothing
+    a browser can connect to, and on 2026-11-03 four seed-42 names led only
+    to a Cloudflare tunnel's private fd10:aec2:5dae:: (third review of #395).
+    None means nobody recorded the addresses: not this rule's call."""
+    if addresses is None:
+        return False
+    listed = list(addresses)
+    return not listed or only_non_public(listed)
+
+
 def row_existence(
     probe: Optional[bool], others: Iterable[Optional[bool]] = (), addresses: Optional[Iterable[str]] = None,
 ) -> str:
     """The row's existence. `probe` (the benchmark's own lookup) decides when
-    it can tell, with the `addresses` it got: 'non_public' when every one is
-    non-public (only_non_public), else 'resolves'; 'nxdomain' when it found
-    the name missing. Else the resolvers' answers (`others`): 'resolves' when
-    any resolved the name, 'nxdomain' when one found it missing, else
-    'unknown'."""
+    it can tell, with the `addresses` it got (A and AAAA): 'non_public' when
+    none is public, none at all included (no_public_address), else
+    'resolves'; 'nxdomain' when it found the name missing. Else the
+    resolvers' answers (`others`): 'resolves' when any resolved the name,
+    'nxdomain' when one found it missing, else 'unknown'."""
     if probe is not None:
         if not probe:
             return NXDOMAIN
-        return NON_PUBLIC if only_non_public(addresses) else RESOLVES
+        return NON_PUBLIC if no_public_address(addresses) else RESOLVES
     seen = {a for a in others if a is not None}
     if True in seen:
         return RESOLVES
@@ -365,7 +381,7 @@ def render_outcomes_md(report: dict) -> list[str]:
         "## Every answer, by kind",
         "",
         "One row per URL, counted the same way for every resolver: a name that "
-        "does not exist, or leads only to non-public addresses, is 'not found' for "
+        "does not exist, or has no public address (none, or only non-public ones), is 'not found' for "
         "all of them (see Methodology). 'answered' = n − not found − no answer: the "
         "live rows that got an answer. 'warned' = dangerous or caution (only Cleanway has a "
         "caution band). Both rates are over the answered rows, so a resolver that "
@@ -418,11 +434,13 @@ def methodology_md(report: dict) -> list[str]:
         f"however many rows it has. A site is the {sampling['site_rule']}. {sampling['n']} rows from "
         f"{sampling['sites']} sites.{submitted}",
         "- Whether a name exists is the benchmark's own probe: one A query per URL to Cloudflare's "
-        "unfiltered resolver, at the start of the run, and an AAAA query when every A address is "
-        "non-public. NXDOMAIN there makes the row 'not found' for every resolver, whatever it answered "
-        "(Cleanway's blocklist, Cloudflare's 0.0.0.0 and PhishTank's listing included), and so does an "
-        "answer whose every address is non-public by the server's own rule (0.0.0.0, a private range: a "
-        "takedown, nothing a user can reach); any other answer makes it a live row. The resolvers' own "
+        "unfiltered resolver, at the start of the run, and an AAAA query when no A address is public "
+        "(no A record at all included); the A and AAAA addresses are judged together. NXDOMAIN there "
+        "makes the row 'not found' for every resolver, whatever it answered (Cleanway's blocklist, "
+        "Cloudflare's 0.0.0.0 and PhishTank's listing included), and so does an answer with no public "
+        "address by the server's own rule: neither an A nor an AAAA record, or only non-public ones "
+        "(0.0.0.0, a private range such as a Cloudflare tunnel's private IPv6 address: a takedown or "
+        "a dead end, nothing a user can reach); any other answer makes it a live row. The resolvers' own "
         "answers decide only when the "
         "probe cannot tell (SERVFAIL, a timeout, an HTTP error): a name any of them resolved is live, else "
         "an NXDOMAIN from Families' control query or Cleanway's `exists: false` makes it not found. "

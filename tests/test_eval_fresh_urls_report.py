@@ -417,6 +417,55 @@ async def test_a_name_that_leads_only_to_non_public_addresses_is_not_live(tmp_pa
 
 
 @pytest.mark.asyncio
+async def test_a_name_with_no_public_address_at_all_is_not_live(tmp_path, monkeypatch):
+    """Third review of #395: 4 Allegro names of the seed-42 sample (2026-11-03)
+    were a CNAME to a Cloudflare tunnel whose only address is fd10:aec2:5dae::,
+    and 5 names had neither an A nor an AAAA record. All counted as live:
+    Families' CNAME-only answer was a Cloudflare miss, Cleanway's not-found
+    answer a caution. The probe asks AAAA whenever no A address is public
+    (tests/test_nxdomain_verdict.py); here the row it reports is not live for
+    any resolver, and the published text says when AAAA is asked."""
+    eval_module = _load_eval_module()
+    addresses = {"https://tunnel.example/": ["fd10:aec2:5dae::"], "https://bare.example/": [],
+                 "https://live.example/": ["93.184.216.34"]}
+    pool = list(addresses)
+
+    def cleanway(url):
+        if url == "https://live.example/":
+            return eval_module.Verdict("cleanway", "dangerous", level="dangerous", exists=True)
+        return eval_module.Verdict("cleanway", "unknown", detail="not_found", level="caution",
+                                   verdict_basis="not_found", exists=False)
+
+    def families(url):
+        if url == "https://live.example/":
+            return eval_module.Verdict("cloudflare_families", "dangerous", detail="status=0 ip_block=True")
+        return eval_module.Verdict("cloudflare_families", "safe", detail="status=0 ip_block=False", exists=True)
+
+    adapters = {
+        "existence": _by_url(lambda url: eval_module.Verdict(
+            "existence", "unknown", detail="noerror", exists=True,
+            addresses=addresses.get(url, ["93.184.216.34"]))),   # the legit batch: live
+        "cleanway": _by_url(cleanway),
+        "cloudflare_families": _by_url(families),
+    }
+    report, md = await _run_main(eval_module, monkeypatch, tmp_path, pool, adapters, sample=3)
+    urls = report["raw"]["phishing_urls"]
+    assert sorted(urls) == sorted(pool)
+    for url in ("https://tunnel.example/", "https://bare.example/"):
+        row = urls.index(url)
+        assert report["raw"]["existence"]["phishing"][row]["status"] == "non_public", url
+        for name in ("cleanway", "cloudflare_families"):
+            assert report["raw"]["phishing"][name][row]["outcome"] == "not_found", (url, name)
+    assert report["existence"]["phishing"] == {"resolves": 1, "nxdomain": 0, "non_public": 2, "unknown": 0}
+    families_summary, cleanway_summary = report["phishing"]["cloudflare_families"], report["phishing"]["cleanway"]
+    assert (families_summary["tp"], families_summary["fn"]) == (1, 0)
+    assert (cleanway_summary["tp"], cleanway_summary["caution"]) == (1, 0)
+    assert "when no A address is public" in md
+    assert "when no A address is public" in report["sources"]["existence"]
+    assert "every A address" not in md and "every A address" not in report["sources"]["existence"]
+
+
+@pytest.mark.asyncio
 async def test_the_gate_log_says_how_many_cleanway_answers_were_degraded(tmp_path, monkeypatch, caplog):
     """The gate counts only rows with no answer, so a week where Cleanway
     answered "caution" because its checks were cut off (expired keys, open

@@ -247,7 +247,7 @@ def test_row_existence(probe, others, expected):
     (["0.0.0.0", "93.184.216.34"], False),       # one public address: a user can reach it
     (["2606:4700::6810:84e5"], False),
     (["8.8.8.8"], False),
-    ([], False),                                 # NOERROR without an address: nothing says it is down
+    ([], False),                                 # no address at all: not this rule (no_public_address)
     (None, False),
     (["0.0.0.0", "not-an-address"], False),      # what cannot be read proves nothing
 ])
@@ -255,6 +255,21 @@ def test_only_non_public_addresses(addresses, expected):
     """By the server's own rule (api/services/domain_validator.is_public_address,
     what its SSRF guard lets it connect to)."""
     assert _method().only_non_public(addresses) is expected
+
+
+@pytest.mark.parametrize("addresses, expected", [
+    ([], True),                                  # neither an A nor an AAAA record: nothing to connect to
+    (["fd10:aec2:5dae::"], True),                # a Cloudflare tunnel's only address: private IPv6
+    (["0.0.0.0"], True),
+    (["fd10:aec2:5dae::", "2606:4700::1"], False),
+    (["8.8.8.8"], False),
+    (["not-an-address"], False),                 # what cannot be read proves nothing
+    (None, False),                               # nothing was recorded: not this rule's call
+])
+def test_no_public_address(addresses, expected):
+    """The probe's whole rule: the row is not live when the answer has no
+    public address, none at all included (row_existence)."""
+    assert _method().no_public_address(addresses) is expected
 
 
 def test_a_name_whose_every_address_is_non_public_is_not_live():
@@ -266,7 +281,17 @@ def test_a_name_whose_every_address_is_non_public_is_not_live():
     assert method.row_existence(True, [], addresses=["0.0.0.0"]) == "non_public"
     assert method.row_existence(True, [True], addresses=["10.0.0.1", "::1"]) == "non_public"
     assert method.row_existence(True, [], addresses=["0.0.0.0", "8.8.8.8"]) == "resolves"
-    assert method.row_existence(True, [], addresses=[]) == "resolves"
+    # This used to say `addresses=[] -> "resolves"`, which locked in the bug the
+    # third review of #395 found: an empty list then meant only "no A record",
+    # since AAAA was never asked. The probe now asks AAAA whenever no A address
+    # is public, so an empty list means neither an A nor an AAAA record —
+    # nothing a browser can connect to (5 of the 200 seed-42 names on
+    # 2026-11-03; Cleanway answered not found, Families gave no address).
+    assert method.row_existence(True, [], addresses=[]) == "non_public"
+    # A CNAME to a Cloudflare tunnel whose only address is private IPv6 (4
+    # Allegro names of the same sample).
+    assert method.row_existence(True, [False], addresses=["fd10:aec2:5dae::"]) == "non_public"
+    assert method.row_existence(True, [], addresses=["fd10:aec2:5dae::", "2606:4700::1"]) == "resolves"
     assert method.row_existence(False, [], addresses=["0.0.0.0"]) == "nxdomain"
     # The probe could not tell (its AAAA question failed): the resolvers decide, as before.
     assert method.row_existence(None, [True], addresses=["0.0.0.0"]) == "resolves"
