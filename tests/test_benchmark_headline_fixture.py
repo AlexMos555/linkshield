@@ -17,6 +17,7 @@ from __future__ import annotations
 import importlib
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -56,6 +57,33 @@ def test_the_report_is_method_2_with_the_window_the_script_writes():
     assert set(FIXTURE["sampling"]["window"]) == set(window)
     assert FIXTURE["sampling"]["window"]["days"] == method.WINDOW_DAYS
     assert FIXTURE["sampling"]["n"] == FIXTURE["n_phishing"]
+
+
+def test_its_window_is_the_one_the_script_writes_for_its_newest_row_and_clock():
+    """Not only the keys: the window recent_window() writes for a dump whose
+    newest row is the fixture's `end`, downloaded at the fixture's `clock`."""
+    method = _module("benchmark_method")
+    stored = FIXTURE["sampling"]["window"]
+    _, window = method.recent_window([stored["end"]], method.WINDOW_DAYS, now=datetime.fromisoformat(stored["clock"]))
+    assert window == stored
+    assert stored["clock"] >= stored["end"], "no row is newer than the download"
+
+
+def test_its_existence_counts_have_the_keys_the_script_writes():
+    """Since 2026-11-04 a name whose every address is non-public (0.0.0.0, a
+    private range: a takedown) is counted apart (non_public) and is not found
+    for every resolver, as a missing one (benchmark_method.NOT_LIVE)."""
+    method = _module("benchmark_method")
+    for batch in ("phishing", "safe"):
+        counts = FIXTURE["existence"][batch]
+        assert set(counts) == set(method.existence_counts([])), batch
+        assert sum(counts.values()) == FIXTURE[f"n_{batch}"], batch
+        not_live = sum(counts[kind] for kind in method.NOT_LIVE)
+        for name, stats in FIXTURE[batch].items():
+            assert stats["not_found"] == not_live, f"{batch}.{name}"
+    # The site's "not found" holds both kinds: the fixture has both.
+    assert FIXTURE["existence"]["phishing"]["nxdomain"] > 0
+    assert FIXTURE["existence"]["phishing"]["non_public"] > 0
 
 
 def test_the_script_would_publish_it():

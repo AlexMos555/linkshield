@@ -1,5 +1,5 @@
 {
-  "_about": "A method_version 2 report, trimmed to what the site reads (no raw rows). Every resolver's summary is benchmark_method.summarize over the outcome counts in `_outcomes`, plus a latency; tests/test_benchmark_quality_gate.py rebuilds it from those counts and runs the script's gate on it, and scripts/test-landing-honesty.mjs reads the site's headline from it.",
+  "_about": "A method_version 2 report, trimmed to what the site reads (no raw rows). Every resolver's summary is benchmark_method.summarize over the outcome counts in `_outcomes`, plus a latency; tests/test_benchmark_headline_fixture.py rebuilds it from those counts, holds its window and existence counts to the ones the script writes and runs the script's gate on it; scripts/test-landing-honesty.mjs reads the site's headline and false-alarm figures from it.",
   "_outcomes": {
     "phishing": {
       "cleanway": {
@@ -68,7 +68,9 @@
       "days": 7,
       "start": "2026-11-01T14:08:00+00:00",
       "end": "2026-11-08T14:08:00+00:00",
-      "undated_rows": 0
+      "undated_rows": 0,
+      "future_rows": 0,
+      "clock": "2026-11-08T15:17:00+00:00"
     },
     "dump_rows": 50575,
     "site_rule": "registrable domain by api/services/public_suffix.py",
@@ -82,12 +84,14 @@
   "existence": {
     "phishing": {
       "resolves": 124,
-      "nxdomain": 76,
+      "nxdomain": 70,
+      "non_public": 6,
       "unknown": 0
     },
     "safe": {
       "resolves": 196,
       "nxdomain": 4,
+      "non_public": 0,
       "unknown": 0
     }
   },
