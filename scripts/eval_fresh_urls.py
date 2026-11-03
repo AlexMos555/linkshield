@@ -39,10 +39,11 @@ Adapters fail open — if a service errors out we record "unknown"
 and don't count it against recall.
 
 How the phishing sample is drawn and how every answer is counted
-(method_version 2, since 2026-11-03: a fixed-seed sample capped per
-site, and one existence fact per URL, the same for every resolver) is
-scripts/benchmark_method.py. Reports before 2026-11-03 are counted by
-the old rules and are not comparable with later ones.
+(method_version 2, since 2026-11-03: a fixed-seed draw over the sites
+of the dump's last 7 days, at most 2 hosts per site, and one existence
+fact per URL, the same for every resolver) is scripts/benchmark_method.py.
+Reports before 2026-11-03 are counted by the old rules and are not
+comparable with later ones.
 
 This file is INTENTIONALLY long and verbose — the report is the
 moat. Anyone in the world should be able to read this script and
@@ -66,10 +67,9 @@ import statistics
 import sys
 import time
 import uuid
-import zipfile
 from collections import deque
 from contextlib import asynccontextmanager
-from dataclasses import asdict, dataclass, field, replace
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import AsyncIterator, Awaitable, Callable, Optional
 from urllib.parse import urlparse
@@ -546,9 +546,11 @@ class Verdict:
     verdict_basis: Optional[str] = None
     reason_codes: Optional[list[str]] = None
     checks_incomplete: Optional[list[str]] = None
-    # Does the name exist, as far as this answer tells: False = NXDOMAIN,
-    # True = it resolved, None = the answer says nothing about it. Every
-    # resolver's is a witness for the row (benchmark_method.row_existence).
+    # Does the name exist, as far as this answer tells: True = it resolved,
+    # False = NXDOMAIN (for Cleanway: its not-found answer, which its SSRF
+    # guard also gives for a name resolving into a blocked network), None =
+    # the answer says nothing about it. The existence probe's decides the row;
+    # the resolvers' only when it could not tell (benchmark_method.row_existence).
     exists: Optional[bool] = None
 
 
@@ -567,7 +569,11 @@ async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
     analysis, unless its age gate holds a young registration back; then
     Cleanway's own blocklist — 'dangerous' at once, before any existence
     check, so a listed name that no longer resolves is still 'dangerous';
-    then the full analyzer — threat-intel sources (as LICENSED_INTEL
+    then a user-content service host (disk.yandex.ru, onedrive.live.com) —
+    a fixed caution, verdict_basis 'user_content', no analysis; then its
+    public cache — an earlier answer for the domain, kept a day for a full
+    verdict, an hour for a partial one, 15 minutes for a not-found one; and
+    only then the full analyzer — threat-intel sources (as LICENSED_INTEL
     allows), site probes, ML, the LLM judge — inside a ~3 s budget.
 
     The Verdict is 'dangerous' / 'safe' for those levels and 'unknown'
@@ -580,10 +586,16 @@ async def check_cleanway(client: httpx.AsyncClient, url: str) -> Verdict:
                          unreachable, not_found, user_content
       reason_codes       the reasons shown, as codes
       checks_incomplete  checks the time budget cut off
-      exists             false: DNS says no such name; null: not checked
-                         (an allowlist or blocklist answer) or no answer
-    How the row is then counted — a name that resolves nowhere is
-    'not_found' whatever Cleanway said — is benchmark_method.outcome.
+      exists             false: the analyzer's not-found answer — an NXDOMAIN,
+                         or a name that resolves into a blocked or private
+                         network (the SSRF guard gives the same answer on
+                         purpose, so the two cannot be told apart); null: not
+                         checked (an allowlist, blocklist or user-content
+                         answer) or no answer
+    How the row is then counted — the benchmark's own probe says whether the
+    name exists, and a name that does not is 'not_found' whatever Cleanway
+    said; on a live row Cleanway's not-found answer is a 'caution', as a user
+    sees it — is benchmark_method.row_existence and .outcome.
 
     On HTTP 429 the same identity waits (Retry-After, at most 60 s; 25 s
     when the server sent none) and asks once more; a second 429 is
@@ -844,11 +856,12 @@ EXISTENCE_PROBE = "existence"
 
 
 async def probe_existence(client: httpx.AsyncClient, url: str) -> Verdict:
-    """The benchmark's own existence witness, asked once for every URL
-    whatever the resolvers answered: Cloudflare's unfiltered resolver
-    (_unfiltered_lookup). An IP address exists without DNS. Not a resolver:
-    its Verdict is always 'unknown', its answer is `exists`
-    (benchmark_method.row_existence weighs it with the resolvers' own)."""
+    """The benchmark's own existence witness, asked once for every URL at the
+    start of the run, whatever the resolvers answered: Cloudflare's unfiltered
+    resolver (_unfiltered_lookup). An IP address exists without DNS. Not a
+    resolver: its Verdict is always 'unknown', its answer is `exists`. It
+    decides the row; the resolvers' own answers only when it is None
+    (benchmark_method.row_existence)."""
     d = domain_of(url)
     if not d:
         return Verdict(EXISTENCE_PROBE, "unknown", detail="bad_domain")
@@ -880,7 +893,8 @@ async def check_cloudflare_families(client: httpx.AsyncClient, url: str) -> Verd
     answer; the benchmark's own existence probe makes the row 'not_found'
     for every resolver (benchmark_method.outcome). `exists` says what this
     answer learned: True when a resolver answered for the name, False on
-    NXDOMAIN everywhere, None for the sinkhole.
+    NXDOMAIN everywhere, None for the sinkhole or a control query that could
+    not tell. It counts only when the probe could not tell.
     """
     d = domain_of(url)
     if not d:
@@ -1061,13 +1075,13 @@ def outcomes_of(verdicts: list[Verdict], existence: Optional[list[str]] = None) 
     """How each answer is counted (benchmark_method.outcome). `existence` is
     the row's fact, one per verdict; without it, each answer's own `exists`."""
     if existence is None:
-        existence = [benchmark_method.row_existence([v.exists]) for v in verdicts]
+        existence = [benchmark_method.row_existence(None, [v.exists]) for v in verdicts]
     return [benchmark_method.outcome(v.verdict, v.level, e) for v, e in zip(verdicts, existence, strict=True)]
 
 
 def existence_of_rows(probe: list[Verdict], results: dict[str, list[Verdict]]) -> list[str]:
-    """Each row's existence from every witness: the probe and every resolver."""
-    return [benchmark_method.row_existence([p.exists, *(rows[i].exists for rows in results.values())])
+    """Each row's existence: the probe's answer, the resolvers' when it had none."""
+    return [benchmark_method.row_existence(p.exists, [rows[i].exists for rows in results.values()])
             for i, p in enumerate(probe)]
 
 
@@ -1088,7 +1102,15 @@ def _raw_rows(resolver: str, verdicts: list[Verdict], outcomes: list[str]) -> li
 
 
 def _probe_rows(probe: list[Verdict], existence: list[str]) -> list[dict]:
-    return [{"exists": p.exists, "detail": p.detail, "latency_ms": p.latency_ms, "status": status}
+    """The probe's answer per row, the row's existence ("status") and who
+    settled it: the probe, the resolvers (the probe could not tell), or nobody."""
+    def decided_by(p: Verdict, status: str) -> Optional[str]:
+        if p.exists is not None:
+            return "probe"
+        return "resolvers" if status != benchmark_method.UNKNOWN else None
+
+    return [{"exists": p.exists, "detail": p.detail, "latency_ms": p.latency_ms, "status": status,
+             "decided_by": decided_by(p, status)}
             for p, status in zip(probe, existence, strict=True)]
 
 
@@ -1166,10 +1188,9 @@ def render_md(report: dict) -> str:
         lines += benchmark_legit.render_breakdown_md(report["cleanway_on_legit"])
     lines.append("## Methodology")
     lines.append("")
-    lines.append("- Phishing samples are fresh PhishTank entries (online-valid dump; "
-                 "until 2026-10-21 also URLhaus, which then closed anonymous downloads — "
-                 "earlier runs are a different mix); "
-                 "the Cleanway ML model has NOT been trained on these specific URLs.")
+    lines.append("- Phishing samples come from PhishTank's online-valid dump (until 2026-10-21 "
+                 "also URLhaus, which then closed anonymous downloads — earlier runs are a "
+                 "different mix); the Cleanway ML model has NOT been trained on these specific URLs.")
     lines += benchmark_method.methodology_md(report)
     if report.get("sources", {}).get("legit_outside_allowlist"):
         lines.append("- Legit samples are real Russian sites OUTSIDE the top 100,000 the server "
@@ -1198,9 +1219,14 @@ def render_md(report: dict) -> str:
                  "Phishing and legitimate URLs are interleaved, so both batches "
                  f"meet the same budget state.{ran}")
     lines.append("- 'Unknown' = no definitive verdict: Cleanway's caution, a name that does not "
-                 "resolve, or no answer (rate-limited, not indexed, error). 'Unknown' is NOT counted "
-                 "as either correct or incorrect in recall and FPR; 'Every answer, by kind' counts "
-                 "each apart. Intervals are Wilson 95%.")
+                 "exist, or no answer (rate-limited, not indexed, error, timeout). 'Unknown' is NOT "
+                 "counted as either correct or incorrect in recall and FPR; 'Every answer, by kind' "
+                 "counts each apart. Intervals are Wilson 95%.")
+    lines.append(f"- The site (docs/benchmarks/latest.json) moves to a run only when it has at least "
+                 f"{_QG_MIN_PHISHING} phishing rows, {_QG_MIN_RESOLVING_PHISHING} of them live, "
+                 f"{_QG_MIN_CLASSIFIED_PHISHING} Cleanway verdicts on them, and no answer (HTTP 429, an "
+                 f"error, a timeout) on at most {_QG_MAX_NO_ANSWER_RATE:.0%} of the live rows. Dead names "
+                 "and cautions do not hold a run back: they are measurements, not trouble.")
     if "virustotal" in resolvers:
         lines.append("- VirusTotal verdict is 'dangerous' iff ≥2 vendors out of 70+ flag the URL.")
     asked_names = non_commercial_asked(report)
@@ -1250,14 +1276,45 @@ def _log_unknown_rate(resolver: str, batch: str, verdicts: list[Verdict]) -> Non
     )
 
 
-# Minimum sample sizes / maximum unknown rate for a benchmark run to be
+# Minimum sample sizes / maximum no-answer rate for a benchmark run to be
 # considered publishable (i.e. worth flipping latest.json to). These are
 # calibrated so a healthy weekly cron always passes but a rate-limit blown
 # run — like 2026-06-30's 30/50 unknown, FPR=null — is caught and dropped.
+# landing/lib/benchmark.ts recallIsPublishable applies the same numbers
+# (tests/test_benchmark_quality_gate.py holds both to the same cases).
 _QG_MIN_PHISHING = 100
 _QG_MIN_CLASSIFIED_PHISHING = 50
-_QG_MAX_UNKNOWN_RATE = 0.30
+# Live rows (n - not found). The same 50 as the verdicts: a live row is never
+# fewer than Cleanway's verdicts on them, so this holds nothing more back, and
+# checked first it tells the log the sample died, not that Cleanway went quiet.
+# Not 100: 76 of the 200 names of the seed-42 sample on the 2026-11-03 dump
+# were already dead, so a 200-row run has about 124 live rows; 100 would fail
+# the week once more than half the sample is dead and keep the site on an
+# older report, for a reason its "not publishable" text cannot name.
+_QG_MIN_RESOLVING_PHISHING = 50
+# Share of live rows that got no answer at all (HTTP 429, an error, a
+# timeout): the rate-limit signal. Until 2026-11-03 the limit was on
+# "unknown", which since method_version 2 also holds every dead name and
+# every caution — measurements, not trouble — and a fresh week's sample is
+# about half of those. A report without these counts (method_version 1) is
+# still gated on its "unknown".
+_QG_MAX_NO_ANSWER_RATE = 0.30
 NON_COMMERCIAL_GATE = "non_commercial_resolver"
+
+
+def _no_answer_rate(stats: dict) -> tuple[Optional[float], str, bool]:
+    """(share of rows without an answer, how it was counted, method 2?).
+    Method 2: no_answer / resolving, None when nothing resolves. Older
+    reports: unknown / (classified + unknown), as before."""
+    if isinstance(stats.get("no_answer"), int) and isinstance(stats.get("resolving"), int):
+        no_answer, resolving = stats["no_answer"], stats["resolving"]
+        rate = no_answer / resolving if resolving > 0 else None
+        return rate, f"no_answer={no_answer} of resolving={resolving}", True
+    classified = (stats.get("tp", 0) or 0) + (stats.get("fn", 0) or 0) + \
+        (stats.get("tn", 0) or 0) + (stats.get("fp", 0) or 0)
+    unknown = stats.get("unknown", 0) or 0
+    rate = unknown / (classified + unknown) if classified + unknown > 0 else None
+    return rate, f"unknown={unknown} of {classified + unknown}", False
 
 
 @dataclass(frozen=True)
@@ -1302,6 +1359,17 @@ def check_quality_gate(report: dict) -> QualityGateResult:
         )
 
     cleanway_phish = (report.get("phishing") or {}).get("cleanway") or {}
+    phish_rate, phish_counted, method_two = _no_answer_rate(cleanway_phish)
+    if method_two and cleanway_phish["resolving"] < _QG_MIN_RESOLVING_PHISHING:
+        return QualityGateResult(
+            passed=False,
+            failed_gate="phishing_resolving_below_min",
+            detail=(
+                f"cleanway phishing resolving={cleanway_phish['resolving']} < {_QG_MIN_RESOLVING_PHISHING} "
+                f"(not_found={cleanway_phish.get('not_found')} of n={cleanway_phish.get('n')})"
+            ),
+        )
+
     tp = cleanway_phish.get("tp", 0) or 0
     fn = cleanway_phish.get("fn", 0) or 0
     unknown_phish = cleanway_phish.get("unknown", 0) or 0
@@ -1316,18 +1384,15 @@ def check_quality_gate(report: dict) -> QualityGateResult:
             ),
         )
 
-    denom_phish = classified_phish + unknown_phish
-    if denom_phish > 0:
-        rate_phish = unknown_phish / denom_phish
-        if rate_phish > _QG_MAX_UNKNOWN_RATE:
-            return QualityGateResult(
-                passed=False,
-                failed_gate="phishing_unknown_rate_too_high",
-                detail=(
-                    f"cleanway phishing unknown_rate={rate_phish:.1%} "
-                    f"> {_QG_MAX_UNKNOWN_RATE:.0%}"
-                ),
-            )
+    if phish_rate is not None and phish_rate > _QG_MAX_NO_ANSWER_RATE:
+        return QualityGateResult(
+            passed=False,
+            failed_gate="phishing_no_answer_rate_too_high" if method_two else "phishing_unknown_rate_too_high",
+            detail=(
+                f"cleanway phishing {'no_answer' if method_two else 'unknown'}_rate={phish_rate:.1%} "
+                f"> {_QG_MAX_NO_ANSWER_RATE:.0%} ({phish_counted})"
+            ),
+        )
 
     if cleanway_phish.get("recall") is None:
         return QualityGateResult(
@@ -1336,14 +1401,14 @@ def check_quality_gate(report: dict) -> QualityGateResult:
             detail="cleanway phishing recall is null (no classified samples)",
         )
 
-    # Safe batch: allow either a real FPR or a low unknown rate. If we got
-    # rate-limited on the safe batch (unknown-heavy) but the FPR came out
-    # non-null anyway, that's fine — we just can't trust an all-unknown
-    # safe batch with no FPR to represent our false-positive rate.
+    # Safe batch: allow either a real FPR or a low no-answer rate. If we got
+    # rate-limited on the safe batch but the FPR came out non-null anyway,
+    # that's fine — we just can't trust a safe batch with no FPR and mostly
+    # no answer to represent our false-positive rate. Cautions on real sites
+    # are answers (the report counts them apart), not rate-limit trouble.
     cleanway_safe = (report.get("safe") or {}).get("cleanway") or {}
     fpr = cleanway_safe.get("fpr")
     n_safe = report.get("n_safe", 0) or 0
-    unknown_safe = cleanway_safe.get("unknown", 0) or 0
     if fpr is None:
         if n_safe <= 0:
             return QualityGateResult(
@@ -1351,14 +1416,18 @@ def check_quality_gate(report: dict) -> QualityGateResult:
                 failed_gate="safe_fpr_null_no_samples",
                 detail="cleanway safe fpr is null and no safe samples were fetched",
             )
-        rate_safe = unknown_safe / n_safe
-        if rate_safe > _QG_MAX_UNKNOWN_RATE:
+        safe_rate, safe_counted, safe_two = _no_answer_rate(cleanway_safe)
+        if not safe_two:  # method 1: as before, every unknown over the batch
+            safe_rate = (cleanway_safe.get("unknown", 0) or 0) / n_safe
+            safe_counted = f"unknown={cleanway_safe.get('unknown', 0) or 0} of n_safe={n_safe}"
+        if safe_rate is None or safe_rate > _QG_MAX_NO_ANSWER_RATE:
             return QualityGateResult(
                 passed=False,
-                failed_gate="safe_unknown_rate_too_high",
+                failed_gate="safe_no_answer_rate_too_high" if safe_two else "safe_unknown_rate_too_high",
                 detail=(
-                    f"cleanway safe fpr=None and unknown_rate={rate_safe:.1%} "
-                    f"> {_QG_MAX_UNKNOWN_RATE:.0%}"
+                    f"cleanway safe fpr=None and {'no_answer' if safe_two else 'unknown'}_rate="
+                    f"{'n/a' if safe_rate is None else f'{safe_rate:.1%}'} "
+                    f"> {_QG_MAX_NO_ANSWER_RATE:.0%} ({safe_counted})"
                 ),
             )
 
@@ -1413,6 +1482,10 @@ async def main() -> int:
     p.add_argument("--seed", type=int, default=benchmark_method.PHISHING_SAMPLE_SEED,
                    help="Seed of the random phishing sample drawn from PhishTank's dump "
                         f"(default {benchmark_method.PHISHING_SAMPLE_SEED}; recorded in the report).")
+    p.add_argument("--window-days", type=int, default=benchmark_method.WINDOW_DAYS,
+                   help="Draw the phishing sample from the rows submitted in this many days "
+                        f"before the dump's newest row (default {benchmark_method.WINDOW_DAYS}; "
+                        "recorded in the report). 0 = the whole dump, links of any age.")
     p.add_argument("--out-tag", default=None,
                    help="Tag appended to output filename. Default: timestamp.")
     p.add_argument("--virustotal", action=argparse.BooleanOptionalAction, default=False,
@@ -1452,6 +1525,8 @@ async def main() -> int:
                    help="Where the dated JSON+MD (and, if the gate passes, latest.json) "
                         "go. Default docs/benchmarks; point a local smoke run elsewhere.")
     args = p.parse_args()
+    if args.window_days < 0:
+        p.error("--window-days must be 0 (the whole dump) or more")
 
     if args.verify_legit_sample:
         return await benchmark_legit.verify_legit_sample()
@@ -1466,17 +1541,25 @@ async def main() -> int:
         log.error("PhishTank fetch failed: %s", exc)
         dump = PhishtankDump([])
     site_of, site_rule = benchmark_method.site_rule()
+    pool, window = benchmark_method.recent_window(
+        dump.submitted if dump.submitted is not None else [None] * len(dump.urls), args.window_days)
+    if dump.urls and not pool:
+        log.error("PhishTank: no row of %d has a readable submission_time, so none is known to be "
+                  "from the last %d days — no phishing sample", len(dump.urls), args.window_days)
     picked, sampling = benchmark_method.sample_phishing(
-        dump.urls, args.sample, seed=args.seed, host_of=domain_of, site_of=site_of)
+        dump.urls, args.sample, seed=args.seed, host_of=domain_of, site_of=site_of, pool=pool)
     phishing_urls = [dump.urls[i] for i in picked]
     sampling.update({
+        "window": window,
+        "dump_rows": len(dump.urls),
         "site_rule": site_rule,
         "dump_sha256": dump.sha256 or None,
         "submitted": (benchmark_method.submitted_span(dump.submitted[i] for i in picked)
                       if dump.submitted else None),
     })
-    log.info("phishing sample: %d rows from %d sites (seed=%d, of %d rows on %d sites)",
-             sampling["n"], sampling["sites"], args.seed, sampling["pool_rows"], sampling["pool_sites"])
+    log.info("phishing sample: %d rows from %d sites (seed=%d; of %d rows on %d sites, %s – %s)",
+             sampling["n"], sampling["sites"], args.seed, sampling["pool_rows"], sampling["pool_sites"],
+             window["start"] or "the oldest row", window["end"] or "the newest")
     legit_urls, legit_sites, legit_sources = pick_legit(args.legit_source, args.sample)
 
     if not phishing_urls or not legit_urls:
@@ -1551,18 +1634,21 @@ async def main() -> int:
         "n_phishing": len(phishing_urls),
         "n_safe": len(legit_urls),
         "sources": {
-            "phishing": (f"PhishTank online-valid ({len(dump.urls)} URLs), a random sample "
-                         f"(seed={args.seed}) of its hosts: each host once, at most "
-                         f"{sampling['max_per_site']} per site, a site being a registrable domain "
-                         "or a hosting platform's tenant (details: `sampling`)."),
+            "phishing": (f"PhishTank online-valid ({len(dump.urls)} URLs): {sampling['n']} "
+                         + (f"of the {sampling['pool_rows']} submitted in the {window['days']} days before "
+                            "its newest row" if window["start"] else "of all its rows, links of any age")
+                         + f", a random sample (seed={args.seed}) of their sites, each site equally "
+                         f"likely: each host once, at most {sampling['max_per_site']} per site, a site "
+                         "being a registrable domain or a hosting platform's tenant (details: `sampling`)."),
             # `legit` and `legit_outside_allowlist`: see pick_legit. The
             # landing publishes a false-positive rate only when the latter is
             # True (landing/lib/benchmark.ts falsePositiveRateIsPublishable).
             **legit_sources,
             "existence": ("one question per URL to Cloudflare's unfiltered resolver "
-                          f"({CLOUDFLARE_UNFILTERED_DOH}, A record), beside every resolver's own "
-                          "answer: a name some witness found missing and none resolved is "
-                          "'not found' for every resolver."),
+                          f"({CLOUDFLARE_UNFILTERED_DOH}, A record) at the start of the run: an NXDOMAIN "
+                          "there is 'not found' for every resolver, an answer there a live row. Only "
+                          "when it cannot tell (SERVFAIL, a timeout) do the resolvers' own answers "
+                          "decide (Families' control query, Cleanway's `exists`)."),
             "cleanway_api": CLEANWAY_API,
             "cleanway_identity": cleanway_identity_note(),
             **local_lookup,

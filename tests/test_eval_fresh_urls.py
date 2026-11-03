@@ -21,6 +21,11 @@ from types import ModuleType
 import pytest
 
 
+# A stub dump's submission time: the sample is drawn from the week before the
+# dump's newest row (benchmark_method.recent_window).
+_SUBMITTED = "2026-11-03T14:00:00+00:00"
+
+
 def _load_eval_module() -> ModuleType:
     """Import scripts/eval_fresh_urls.py as a module without making
     `scripts/` a package (no __init__.py). Pytest's pythonpath = ["."]
@@ -573,7 +578,7 @@ async def test_a_run_checks_resolvers_side_by_side_and_records_when_cleanway_ran
     calls: list[str] = []
 
     async def fake_feed():
-        return eval_module.PhishtankDump(phishing)
+        return eval_module.PhishtankDump(phishing, submitted=[_SUBMITTED] * len(phishing))
 
     def fake_adapter(name):
         async def _check(_client, url):
@@ -623,7 +628,7 @@ async def test_the_report_names_phishtank_as_the_phishing_source(tmp_path, monke
     eval_module = _load_eval_module()
 
     async def fake_feed():
-        return eval_module.PhishtankDump(["https://phish0.example/login"])
+        return eval_module.PhishtankDump(["https://phish0.example/login"], submitted=[_SUBMITTED])
 
     async def _check(_client, url):
         return eval_module.Verdict("x", "dangerous" if "phish" in url else "safe")
@@ -640,7 +645,9 @@ async def test_the_report_names_phishtank_as_the_phishing_source(tmp_path, monke
     assert report["sources"]["phishing"].startswith("PhishTank online-valid (1 URLs)")
     assert "URLhaus" not in report["sources"]["phishing"]
     md = (tmp_path / "t-fresh-urls.md").read_text(encoding="utf-8")
-    assert "Phishing samples are fresh PhishTank entries" in md
+    # Since 2026-11-03 the sample's age is the window the report states
+    # (benchmark_method.methodology_md), not a bare "fresh" a stale draw contradicted.
+    assert "Phishing samples come from PhishTank's online-valid dump" in md
 
 
 @pytest.mark.asyncio
@@ -701,7 +708,7 @@ async def _stub_run(eval_module, monkeypatch, tmp_path, *flags: str) -> tuple[di
     calls: list[str] = []
 
     async def fake_feed():
-        return eval_module.PhishtankDump(["https://phish0.example/login"])
+        return eval_module.PhishtankDump(["https://phish0.example/login"], submitted=[_SUBMITTED])
 
     def stub(name):
         async def _check(_client, url):

@@ -10,6 +10,12 @@ Until 2026-11-03 the published run (method_version 1):
     Cleanway's blocklist or Cloudflare's 0.0.0.0 sinkhole — both answer
     before any existence check — but not when Cleanway found the name dead;
   * had one "unknown" for a caution, a dead name and no answer alike.
+
+The first draft of method_version 2 drew over the whole dump instead. The dump
+is newest-first and goes back to 2012, so the sample was mostly years old
+(seed 42 on the 2026-11-03 dump: 5 of 200 rows from the last 7 days, 102
+older than a year) while the report still called it fresh, and a host's
+chance grew with its row count (qrco.de, docs.google.com: in every sample).
 """
 from __future__ import annotations
 
@@ -67,24 +73,82 @@ def _pool(n: int) -> list[str]:
     return [f"https://site{i}.example/login" for i in range(n)]
 
 
-def _sample(urls, limit, seed=7, max_per_site=2):
+def _sample(urls, limit, seed=7, max_per_site=2, pool=None):
     method = _method()
     site_of, _rule = method.site_rule()
     return method.sample_phishing(urls, limit, seed=seed, host_of=_host, site_of=site_of,
-                                  max_per_site=max_per_site)
+                                  max_per_site=max_per_site, pool=pool)
 
 
-def test_the_sample_is_a_fixed_seed_draw_from_the_whole_dump_not_its_top():
+def _times(ages_in_hours: list[float]) -> list[str]:
+    """Submission times `ages_in_hours` before 2026-11-03 14:00 UTC, as the dump writes them."""
+    from datetime import datetime, timedelta, timezone
+
+    newest = datetime(2026, 11, 3, 14, 0, tzinfo=timezone.utc)
+    return [(newest - timedelta(hours=h)).isoformat() for h in ages_in_hours]
+
+
+def test_the_pool_is_the_window_before_the_dumps_newest_row():
+    """PhishTank's dump is newest-first and goes back to 2012: a draw over all
+    of it measures links years old. The pool is the rows submitted in the
+    `days` before the newest row, so the dump alone fixes it."""
+    method = _method()
+    submitted = _times([0, 30, 7 * 24, 7 * 24 + 0.01, 400 * 24])
+    pool, window = method.recent_window(submitted, days=7)
+    assert pool == [0, 1, 2]                     # the start itself is in, a second older is out
+    assert window == {"days": 7, "start": "2026-10-27T14:00:00+00:00",
+                      "end": "2026-11-03T14:00:00+00:00", "undated_rows": 0}
+
+
+def test_the_window_skips_undated_rows_and_reads_a_time_without_zone_as_utc():
+    method = _method()
+    pool, window = method.recent_window(["2026-11-03T12:00:00", "", None, "not a time",
+                                         "2026-11-03T13:00:00+00:00"], days=7)
+    assert pool == [0, 4]
+    assert window["undated_rows"] == 3 and window["end"] == "2026-11-03T13:00:00+00:00"
+
+
+def test_no_window_means_the_whole_dump_and_no_dates_mean_no_pool():
+    method = _method()
+    pool, window = method.recent_window(_times([0, 9000]), days=0)
+    assert pool == [0, 1] and window == {"days": 0, "start": None, "end": None, "undated_rows": 0}
+    # A dump without a single readable time cannot say what is fresh: no sample,
+    # and the run stops, rather than drawing stale links unnoticed.
+    pool, window = method.recent_window(["", "x"], days=7)
+    assert pool == [] and (window["start"], window["end"], window["undated_rows"]) == (None, None, 2)
+
+
+def test_the_sample_is_a_fixed_seed_draw_from_the_window_not_its_top():
     urls = _pool(1000)
-    picked, stats = _sample(urls, 10)
-    again, _ = _sample(urls, 10)
-    other, _ = _sample(urls, 10, seed=8)
+    submitted = _times([i / 10 for i in range(300)] + [400 * 24] * 700)   # 300 fresh, 700 a year old
+    pool, _window = _method().recent_window(submitted, days=7)
+    picked, stats = _sample(urls, 10, pool=pool)
+    again, _ = _sample(urls, 10, pool=pool)
+    other, _ = _sample(urls, 10, seed=8, pool=pool)
     assert picked == again                     # reproducible from the dump and the seed
     assert picked != other
-    assert picked != list(range(10))           # not the dump's first ten rows
-    assert max(picked) > 100                   # drawn from the whole dump
+    assert picked != list(range(10))           # not the window's first ten rows
+    assert all(i < 300 for i in picked)        # never outside the window
+    assert max(picked) > 100                   # drawn from the whole window
     assert picked == sorted(picked)            # kept in the dump's order
-    assert stats["seed"] == 7 and stats["pool_rows"] == 1000 and stats["n"] == 10
+    assert stats["seed"] == 7 and stats["pool_rows"] == 300 and stats["n"] == 10
+
+
+def test_the_draw_is_uniform_over_sites_not_over_rows():
+    """A host with thousands of rows (qrco.de, docs.google.com on the real dump)
+    was in every sample: the rows were shuffled, so its chance grew with its
+    row count. Sites are shuffled now, then hosts are picked from them."""
+    urls = ["https://big.example/x"] * 2000 + [f"https://s{i}.example/" for i in range(99)]
+    seeds = range(200)
+    hits = sum(1 for seed in seeds
+               if any(urls[i] == "https://big.example/x" for i in _sample(urls, 10, seed=seed)[0]))
+    assert 0.03 <= hits / len(seeds) <= 0.2    # 10 of 100 sites: about 10%, not ~100%
+
+
+def test_a_host_is_drawn_once_at_its_first_row_in_the_dump():
+    urls = ["https://a.example/new", "https://b.example/", "https://a.example/old"]
+    picked, stats = _sample(urls, 5)
+    assert picked == [0, 1] and stats["pool_hosts"] == 2
 
 
 def test_one_site_never_gives_more_than_max_per_site_rows_and_a_host_counts_once():
@@ -110,15 +174,22 @@ def test_an_unparsable_row_is_skipped():
 
 # ── One existence fact per row, the same for every resolver ──
 
-@pytest.mark.parametrize("answers, expected", [
-    ([None, True, False], "resolves"),   # one resolver resolved it: it exists somewhere
-    ([False, None], "nxdomain"),
-    ([False, False], "nxdomain"),
-    ([None, None], "unknown"),
-    ([], "unknown"),
+@pytest.mark.parametrize("probe, others, expected", [
+    # The probe decides whenever it can tell. Cleanway's `exists: false` also
+    # covers a name that resolves into a blocked network (its SSRF guard gives
+    # the same answer), and its "it exists" may come from a day-old cache.
+    (True, [False, False], "resolves"),
+    (False, [True, None], "nxdomain"),
+    (True, [], "resolves"),
+    (False, [], "nxdomain"),
+    # Only when it could not (SERVFAIL, a timeout): the resolvers' own answers.
+    (None, [None, True, False], "resolves"),
+    (None, [False, None], "nxdomain"),
+    (None, [None, None], "unknown"),
+    (None, [], "unknown"),
 ])
-def test_row_existence(answers, expected):
-    assert _method().row_existence(answers) == expected
+def test_row_existence(probe, others, expected):
+    assert _method().row_existence(probe, others) == expected
 
 
 @pytest.mark.parametrize("verdict, level, existence, expected", [
@@ -162,10 +233,13 @@ def test_the_phishing_summary_counts_every_kind_of_answer():
     s = method.summarize(outcomes, "dangerous")
     assert (s["n"], s["dangerous"], s["caution"], s["safe"], s["not_found"], s["no_answer"]) == (11, 6, 2, 1, 1, 1)
     assert s["resolving"] == 10
-    assert s["dangerous_rate_all"] == pytest.approx(6 / 11)
-    assert s["dangerous_rate_resolving"] == pytest.approx(6 / 10)
-    assert s["dangerous_rate_resolving_wilson95"] == method.wilson95(6, 10)
-    assert s["dangerous_rate_all_wilson95"] == method.wilson95(6, 11)
+    # answered = n - not found - no answer: a rate never counts a row nobody judged.
+    assert s["answered"] == 9
+    assert s["dangerous_rate_answered"] == pytest.approx(6 / 9)
+    assert s["dangerous_rate_answered_wilson95"] == method.wilson95(6, 9)
+    assert s["warned_rate_answered"] == pytest.approx(8 / 9)          # dangerous or caution
+    assert s["warned_rate_answered_wilson95"] == method.wilson95(8, 9)
+    assert not {"dangerous_rate_all", "dangerous_rate_resolving"} & set(s)
     # The fields landing/lib/benchmark.ts reads, as before: caution, dead names
     # and no answer are all "unknown", recall is tp / (tp + fn).
     assert (s["tp"], s["fn"], s["fp"], s["tn"], s["unknown"]) == (6, 1, 0, 0, 4)
@@ -175,27 +249,45 @@ def test_the_phishing_summary_counts_every_kind_of_answer():
 
 
 def test_the_legit_summary_counts_a_dangerous_answer_as_a_false_positive():
-    s = _method().summarize(["safe"] * 8 + ["dangerous"] + ["caution"] + ["not_found"], "safe")
-    assert (s["fp"], s["tn"], s["tp"], s["fn"], s["unknown"]) == (1, 8, 0, 0, 2)
+    s = _method().summarize(["safe"] * 8 + ["dangerous"] + ["caution"] + ["not_found"] + ["no_answer"], "safe")
+    assert (s["fp"], s["tn"], s["tp"], s["fn"], s["unknown"]) == (1, 8, 0, 0, 3)
     assert s["fpr"] == pytest.approx(1 / 9)
-    assert s["dangerous_rate_resolving"] == pytest.approx(1 / 10)
+    assert s["answered"] == 10
+    assert s["dangerous_rate_answered"] == pytest.approx(1 / 10)
+    # A caution on a real bank's site is a warning its users see too.
+    assert s["warned_rate_answered"] == pytest.approx(2 / 10)
     assert s["recall"] is None and s["recall_wilson95"] is None
+
+
+def test_a_rate_limited_resolver_is_not_shown_missing_what_it_never_judged():
+    """PhishTank answered 429 on 174 of 200 rows on 2026-11-01. Over every
+    live row its catches would read 13%, as if the 174 were misses."""
+    s = _method().summarize(["dangerous"] * 26 + ["no_answer"] * 174, "dangerous")
+    assert (s["answered"], s["dangerous_rate_answered"]) == (26, 1.0)
 
 
 def test_an_empty_batch_has_no_rates():
     s = _method().summarize([], "dangerous")
-    assert s["n"] == 0 and s["dangerous_rate_all"] is None and s["dangerous_rate_resolving"] is None
-    assert s["dangerous_rate_resolving_wilson95"] is None
+    assert s["n"] == 0 and s["answered"] == 0
+    assert s["dangerous_rate_answered"] is None and s["warned_rate_answered"] is None
+    assert s["dangerous_rate_answered_wilson95"] is None and s["warned_rate_answered_wilson95"] is None
 
 
 def test_the_answer_table_says_what_every_resolver_answered():
     method = _method()
     report = {
-        "phishing": {"cleanway": method.summarize(["dangerous", "caution", "not_found", "safe"], "dangerous")},
-        "safe": {"cleanway": method.summarize(["safe", "safe"], "safe")},
+        "phishing": {"cleanway": method.summarize(["dangerous", "caution", "not_found", "safe", "no_answer"],
+                                                  "dangerous")},
+        "safe": {"cleanway": method.summarize(["safe", "safe", "caution", "dangerous"], "safe")},
     }
     md = "\n".join(method.render_outcomes_md(report))
-    assert "| phishing | cleanway | 1 | 1 | 1 | 1 | 0 | 25.0% | 33.3% (" in md
-    assert "| legit | cleanway | 0 | 0 | 2 | 0 | 0 | 0.0% | 0.0% (" in md
+    # n | dangerous | caution | safe | not found | no answer | answered | dangerous / answered | warned / answered
+    assert "| phishing | cleanway | 5 | 1 | 1 | 1 | 1 | 1 | 3 | 33.3% (" in md
+    assert "| legit | cleanway | 4 | 1 | 1 | 2 | 0 | 0 | 4 | 25.0% (" in md
+    assert "| 50.0% (" in md                   # legit: warned = dangerous or caution, 2 of 4
+    assert "dangerous / answered (95% CI)" in md and "warned / answered (95% CI)" in md
+    # It called "dangerous / resolving" the false-alarm rate on the legit batch,
+    # while it left Cleanway's cautions (63 of 200 real sites on 2026-11-01) out.
+    assert "false-alarm" not in md and "false alarm" not in md
     # A report written before the fields existed renders no table.
     assert method.render_outcomes_md({"phishing": {"cleanway": {"tp": 1}}, "safe": {}}) == []

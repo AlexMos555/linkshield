@@ -30,12 +30,16 @@ def _answer(name: str, verdict: str, **fields):
     return _check
 
 
+NOW = "2026-11-03T14:00:00+00:00"
+
+
 async def _run_main(eval_module, monkeypatch, tmp_path, pool, adapters, *flags,
                     sample: int = 2, dump: dict | None = None) -> tuple[dict, str]:
-    """main() offline over `pool` as PhishTank's dump: every adapter a stub
-    (`adapters[name]`, else "safe" and nothing else)."""
+    """main() offline over `pool` as PhishTank's dump, every row submitted at
+    NOW unless `dump` says otherwise: every adapter a stub (`adapters[name]`,
+    else "safe" and nothing else)."""
     async def fake_feed():
-        return eval_module.PhishtankDump(pool, **(dump or {}))
+        return eval_module.PhishtankDump(pool, **{"submitted": [NOW] * len(pool), **(dump or {})})
 
     monkeypatch.setattr(eval_module, "fetch_phishtank_dump", fake_feed)
     monkeypatch.setattr(eval_module, "VT_KEY", None)
@@ -151,7 +155,7 @@ async def test_a_name_that_resolves_nowhere_counts_for_no_resolver(tmp_path, mon
     for name in ("cleanway", "cloudflare_families", "phishtank"):
         stats = report["phishing"][name]
         assert (stats["tp"], stats["dangerous"], stats["not_found"], stats["resolving"]) == (1, 1, 1, 1), name
-        assert stats["dangerous_rate_all"] == 0.5 and stats["dangerous_rate_resolving"] == 1.0, name
+        assert (stats["answered"], stats["dangerous_rate_answered"]) == (1, 1.0), name
         assert report["raw"]["phishing"][name][dead]["verdict"] == "dangerous", name  # the raw answer
         assert report["raw"]["phishing"][name][dead]["outcome"] == "not_found", name
     assert report["existence"]["phishing"] == {"resolves": 1, "nxdomain": 1, "unknown": 0}
@@ -187,7 +191,7 @@ async def test_caution_and_a_dead_name_are_counted_apart(tmp_path, monkeypatch):
     assert (ours["caution"], ours["not_found"], ours["dangerous"], ours["unknown"]) == (1, 1, 0, 2)
     cf = report["phishing"]["cloudflare_families"]
     assert (cf["dangerous"], cf["not_found"], cf["tp"]) == (1, 1, 1)
-    assert "| phishing | cleanway | 0 | 1 | 0 | 1 | 0 |" in md
+    assert "| phishing | cleanway | 2 | 0 | 1 | 0 | 1 | 0 | 1 |" in md
 
 
 @pytest.mark.asyncio
@@ -209,6 +213,9 @@ async def test_the_phishing_sample_is_a_fixed_seed_draw_capped_per_site(tmp_path
     sampling = report["sampling"]
     assert sampling["seed"] == seed
     assert (sampling["pool_rows"], sampling["pool_sites"], sampling["max_per_site"]) == (35, 6, 2)
+    assert sampling["dump_rows"] == 35
+    assert sampling["window"] == {"days": 7, "start": "2026-10-27T00:00:00+00:00",
+                                  "end": "2026-11-03T00:00:00+00:00", "undated_rows": 0}
     assert sampling["dump_sha256"] == "feed-sha"
     assert sampling["submitted"]["oldest"] <= sampling["submitted"]["median"] <= sampling["submitted"]["newest"]
     assert "registrable domain" in sampling["site_rule"]
@@ -248,3 +255,96 @@ async def test_the_whole_dump_is_read_and_fingerprinted():
     assert dump.urls[:2] == ["https://p0.example/x", "https://p1.example/x"]
     assert dump.submitted[1] == "2026-11-02T00:00:00+00:00"
     assert dump.sha256 == hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+@pytest.mark.asyncio
+async def test_the_sample_is_drawn_from_the_last_week_of_the_dump_and_says_so(tmp_path, monkeypatch):
+    """The dump is newest-first and goes back to 2012. A draw over all of it
+    (the first draft of method_version 2) measured links years old, while the
+    report said "fresh PhishTank entries". The pool is the rows submitted in
+    the 7 days before the newest one, and the report says which days."""
+    eval_module = _load_eval_module()
+    fresh = [f"https://new{i}.example/" for i in range(6)]
+    stale = [f"https://old{i}.example/" for i in range(30)]
+    dump = {"submitted": ["2026-11-03T13:55:30+00:00"] * 3 + ["2026-10-28T08:00:00+00:00"] * 3
+            + ["2025-10-13T10:00:00+00:00"] * 30}
+    report, md = await _run_main(eval_module, monkeypatch, tmp_path, fresh + stale, {}, sample=10, dump=dump)
+    assert sorted(report["raw"]["phishing_urls"]) == sorted(fresh)
+    sampling = report["sampling"]
+    assert sampling["window"]["start"] == "2026-10-27T13:55:30+00:00"
+    assert sampling["window"]["end"] == "2026-11-03T13:55:30+00:00"
+    assert (sampling["dump_rows"], sampling["pool_rows"], sampling["pool_sites"], sampling["sites"]) == (36, 6, 6, 6)
+    assert sampling["submitted"]["oldest"].startswith("2026-10-28")
+    assert "6 submitted in the 7 days before its newest row" in report["sources"]["phishing"]
+    assert "submitted 2026-10-27 13:55 – 2026-11-03 13:55 UTC" in md
+    # The age is stated as the window, never as a bare "fresh" that a stale draw could contradict.
+    assert "fresh PhishTank" not in md
+
+    # --window-days 0: the whole dump, and the report claims nothing fresh.
+    report, md = await _run_main(eval_module, monkeypatch, tmp_path, fresh + stale, {}, "--window-days", "0",
+                                 sample=10, dump=dump)
+    assert report["sampling"]["window"] == {"days": 0, "start": None, "end": None, "undated_rows": 0}
+    assert report["sampling"]["pool_rows"] == 36
+    assert "fresh PhishTank" not in md and "any age" in md and "of all its rows" in report["sources"]["phishing"]
+
+
+@pytest.mark.asyncio
+async def test_a_dump_without_submission_times_stops_the_run(tmp_path, monkeypatch):
+    """Without a time on any row nothing says what is fresh: no sample is
+    drawn and the run fails, rather than measure stale links unnoticed."""
+    eval_module = _load_eval_module()
+
+    async def fake_feed():
+        return eval_module.PhishtankDump(["https://phish0.example/"], submitted=[""])
+
+    monkeypatch.setattr(eval_module, "fetch_phishtank_dump", fake_feed)
+    monkeypatch.setattr(sys, "argv", ["eval_fresh_urls.py", "--sample", "1", "--out-tag", "t",
+                                      "--out-dir", str(tmp_path)])
+    assert await eval_module.main() == 1
+    assert not (tmp_path / "t-fresh-urls.json").exists()
+
+
+@pytest.mark.asyncio
+async def test_the_probe_decides_whether_a_name_exists(tmp_path, monkeypatch):
+    """Cleanway's `exists: false` also answers a name that resolves into a
+    blocked network (the SSRF guard gives the same answer), and its answer
+    may come from its cache. The probe, asked once per URL at the start,
+    decides; the resolvers' own answers only when it could not tell."""
+    eval_module = _load_eval_module()
+    pool = ["https://guarded.example/", "https://cached.example/", "https://servfail.example/"]
+    probe = {"guarded": True, "cached": False, "servfail": None}
+
+    def cleanway(url):
+        if "guarded" in url:   # resolves into a blocked network: Cleanway's not-found answer
+            return eval_module.Verdict("cleanway", "unknown", detail="not_found", level="caution",
+                                       verdict_basis="not_found", exists=False)
+        if "cached" in url:    # a day-old verdict from the public cache
+            return eval_module.Verdict("cleanway", "dangerous", level="dangerous", exists=True)
+        if "servfail" in url:
+            return eval_module.Verdict("cleanway", "unknown", detail="not_found", level="caution", exists=False)
+        return eval_module.Verdict("cleanway", "safe", level="safe", exists=True)
+
+    def existence(url):
+        key = next((k for k in probe if k in url), None)
+        return eval_module.Verdict("existence", "unknown", exists=probe[key] if key else True)
+
+    adapters = {
+        "existence": _by_url(existence),
+        "cleanway": _by_url(cleanway),
+        "cloudflare_families": _by_url(lambda url: eval_module.Verdict(
+            "cloudflare_families", "dangerous" if url in pool else "safe")),
+    }
+    report, md = await _run_main(eval_module, monkeypatch, tmp_path, pool, adapters, sample=3)
+    urls = report["raw"]["phishing_urls"]
+    rows = {u.split("//")[1].split(".")[0]: i for i, u in enumerate(urls)}
+    status = report["raw"]["existence"]["phishing"]
+    assert status[rows["guarded"]]["status"] == "resolves" and status[rows["guarded"]]["decided_by"] == "probe"
+    assert status[rows["cached"]]["status"] == "nxdomain" and status[rows["cached"]]["decided_by"] == "probe"
+    assert status[rows["servfail"]]["status"] == "nxdomain" and status[rows["servfail"]]["decided_by"] == "resolvers"
+    ours = report["raw"]["phishing"]["cleanway"]
+    # On a row the probe resolved, Cleanway's not-found answer is what a user
+    # sees: a caution.
+    assert ours[rows["guarded"]]["outcome"] == "caution"
+    assert ours[rows["cached"]]["outcome"] == "not_found"
+    assert report["phishing"]["cloudflare_families"]["tp"] == 1      # the guarded row, live
+    assert "only when the probe cannot tell" in md and "blocked network" in md
