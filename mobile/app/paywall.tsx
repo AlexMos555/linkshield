@@ -24,8 +24,10 @@
  *     sign-in first (paywallSaleOff); Settings and Account have no entry to
  *     this sheet there (paidPlansVisible) — the same for a Play build made
  *     without its RevenueCat key;
- *   • Russia → phone-balance billing is not merged yet: "coming soon" (the
- *     Play build does not mention other ways to pay).
+ *   • Russia (the phone's region) → in the site APK and RuStore phone-balance
+ *     billing is not merged yet: "coming soon". The Google Play and App Store
+ *     builds are published without Russia, so there the store decides: a
+ *     storefront without the plan shows "not available in your country".
  * Coming back to the sheet re-reads the plan; once it is paid, it says so,
  * where it was paid, and (store plans) offers "Manage subscription".
  */
