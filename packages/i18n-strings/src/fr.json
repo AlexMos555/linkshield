@@ -3695,6 +3695,7 @@
       "sign_out": "Se déconnecter",
       "sign_out_confirm_title": "Se déconnecter ?",
       "sign_out_confirm_body": "Les vérifications et l'historique restent sur ce téléphone. Les paramètres ne se synchronisent plus jusqu'à votre prochaine connexion.",
+      "sign_out_confirm_body_appstore": "Les vérifications et l'historique restent sur ce téléphone. Les paramètres ne se synchronisent plus jusqu'à votre prochaine connexion. L'abonnement reste dans votre compte : reconnectez-vous pour l'utiliser sur cet iPhone.",
       "plan": "Offre",
       "plan_desc": "La protection sur ce téléphone est gratuite",
       "upgrade": "Passer à l'offre supérieure",
@@ -4090,7 +4091,16 @@
       "err_already_owned_appstore": "Cet identifiant Apple a déjà l'abonnement. Touchez Restaurer pour le transférer sur ce compte.",
       "err_network_appstore": "Pas de connexion à l'App Store. Vérifiez Internet et réessayez.",
       "err_not_allowed_appstore": "Les achats sont désactivés sur cet iPhone (par exemple dans Temps d'écran).",
-      "err_store_appstore": "L'App Store n'a pas pu finaliser l'achat. Veuillez réessayer."
+      "err_store_appstore": "L'App Store n'a pas pu finaliser l'achat. Veuillez réessayer.",
+      "note_restore_none_appstore": "Aucun abonnement actif sur cet identifiant Apple.",
+      "sync_offer": "Actif sur cet iPhone. La connexion est facultative : elle permet d'utiliser le même abonnement dans l'app Cleanway pour Android et dans l'extension de navigateur, sur {{n}} appareils maximum.",
+      "note_restore_here_appstore": "L'abonnement acheté sur cet iPhone n'est pas encore dans votre compte. Touchez Restaurer pour l'ajouter.",
+      "sign_in_account": "Vous avez un compte Cleanway ? Se connecter",
+      "note_restore_none_signed_out_appstore": "Aucun abonnement actif sur cet identifiant Apple. Si vous payez déjà Cleanway sur un autre appareil, connectez-vous à votre compte.",
+      "without_account_title": "Continuer sans vous connecter ?",
+      "without_account_body": "Quelqu'un s'est déjà connecté sur cet iPhone. Si cet identifiant Apple paie déjà Cleanway dans un compte, continuer sans connexion déplace l'abonnement sur cet iPhone uniquement : il cesse de fonctionner dans ce compte, sur Android et dans l'extension de navigateur jusqu'à ce que vous vous connectiez et touchiez Restaurer.",
+      "without_account_continue": "Continuer sans connexion",
+      "sync_offer_back": "Actif sur cet iPhone. Si cet abonnement était dans votre compte Cleanway, il ne fonctionne plus que sur cet iPhone : connectez-vous et touchez Restaurer pour l'utiliser de nouveau sur Android et dans l'extension de navigateur."
     },
     "ios_sms": {
       "line_ready": "Range les SMS d'arnaque d'expéditeurs inconnus dans Indésirables, directement sur cet iPhone. Fonctionne une fois activé dans Réglages.",

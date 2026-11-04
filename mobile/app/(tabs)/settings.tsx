@@ -21,7 +21,7 @@ import {
 } from "../../modules/cleanway-vpn";
 import { paidPlansVisible } from "../../src/utils/freemium";
 import { FREEMIUM, PAID_PLANS_OFFERED } from "../../src/services/freemium";
-import { storeBillingOn } from "../../src/services/store-billing";
+import { STORE_PURCHASE_WITHOUT_ACCOUNT, storeBillingOn } from "../../src/services/store-billing";
 import { linkGuardSettingShown } from "../../src/utils/platform-features";
 import { DATA_SOURCES_URL, PRIVACY_POLICY_URL, TERMS_URL } from "../../src/utils/legal-urls";
 
@@ -213,7 +213,11 @@ export default function SettingsScreen() {
   }
 
   function confirmSignOut(): void {
-    Alert.alert(t("mobile.settings.sign_out_confirm_title"), t("mobile.settings.sign_out_confirm_body"), [
+    // The iPhone app adds that a subscription stays in the account: sign in again to use it here.
+    const body = STORE_PURCHASE_WITHOUT_ACCOUNT
+      ? t("mobile.settings.sign_out_confirm_body_appstore")
+      : t("mobile.settings.sign_out_confirm_body");
+    Alert.alert(t("mobile.settings.sign_out_confirm_title"), body, [
       { text: t("mobile.settings.clear_cancel"), style: "cancel" },
       {
         text: t("mobile.settings.sign_out"),

@@ -9,17 +9,25 @@
  * stops: sites on the scam list are blocked paid or not.
  *
  * Paying (src/utils/freemium.ts purchaseAction):
- *   • not signed in → sign in first (a plan belongs to an account), then
- *     the purchase continues by itself on return;
+ *   • not signed in, on Android → sign in first (a plan belongs to an
+ *     account), then the purchase continues by itself on return;
  *   • the APK from our site → the site's checkout, in the browser;
  *   • the Google Play build → Google Play billing (src/services/store-billing.ts):
  *     monthly / yearly with the store's own prices, then our server confirms;
  *     never a link to the web checkout, never a price typed into the app;
  *   • the iPhone app → the App Store, the same way (App Review 3.1.1: no
  *     web checkout, no other store); Terms of Use and Privacy Policy links
- *     under the button (3.1.2); without EXPO_PUBLIC_REVENUECAT_IOS_KEY the
- *     build has no paid plans at all (PAID_PLANS_OFFERED): nothing opens
- *     this sheet, and a stray link to it lands on home;
+ *     under the button (3.1.2). No account needed (5.1.1; STORE_PURCHASE_
+ *     WITHOUT_ACCOUNT): buying and "Restore" work signed out, the phone
+ *     counts its own plan, and the paid sheet then offers signing in — only
+ *     to use the plan on Android and in the browser extension. Signing in
+ *     stays one tap away (someone paying on another device must not buy
+ *     twice), and on a phone where someone signed in before, a signed-out
+ *     purchase or restore first says it would move a subscription this
+ *     Apple ID pays in that account to this phone only. Without
+ *     EXPO_PUBLIC_REVENUECAT_IOS_KEY the build has no paid plans at all
+ *     (PAID_PLANS_OFFERED): nothing opens this sheet, and a stray link to it
+ *     lands on home;
  *   • RuStore → not built yet: "coming soon" up front, the button off and no
  *     sign-in first (paywallSaleOff); Settings and Account have no entry to
  *     this sheet there (paidPlansVisible) — the same for a Play build made
@@ -31,7 +39,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, Linking, AppState, ActivityIndicator, Platform,
+  View, Text, StyleSheet, ScrollView, Pressable, Linking, AppState, ActivityIndicator, Platform, Alert,
 } from "react-native";
 import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -43,16 +51,18 @@ import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius } from "../src/utils/theme";
 import { getSessionState } from "../src/services/auth";
 import { getEntitlement, type EntitlementResponse } from "../src/services/api";
-import { FREEMIUM, PAID_PLANS_OFFERED, applyEntitlement, isPaid } from "../src/services/freemium";
+import { FREEMIUM, PAID_PLANS_OFFERED, applyEntitlement, devicePlanPaid, isPaid } from "../src/services/freemium";
 import {
-  BILLING_STORE, loadStorePlans, restoreStorePurchases, startStorePurchase, storeBillingOn,
+  BILLING_STORE, STORE_PURCHASE_WITHOUT_ACCOUNT, loadStorePlans, restoreStorePurchases, startStorePurchase,
+  storeBillingOn, storeHadAccount, storeRestoreSuggested,
 } from "../src/services/store-billing";
 import {
-  PRICES, WEB_CHECKOUT_URL, marketFor, paywallBenefits, paywallSaleOff, priceDisplay, purchaseAction,
-  revenueCatStore, webCheckoutAllowed, type PaywallBenefit,
+  PRICES, WEB_CHECKOUT_URL, isPaidEntitlement, marketFor, paywallBenefits, paywallSaleOff, priceDisplay,
+  purchaseAction, revenueCatStore, webCheckoutAllowed, type PaywallBenefit,
 } from "../src/utils/freemium";
 import {
-  manageSubscriptionUrl, storeCopyKeys, storeErrorNoteKey, type PlanPeriod,
+  APP_STORE_SUBSCRIPTIONS_URL, manageSubscriptionUrl, storeCopyKeys, storeErrorNoteKey, warnBeforeWithoutAccount,
+  type PlanPeriod,
 } from "../src/utils/store-billing";
 import { sourceKey } from "../src/utils/account-session";
 import { PRIVACY_POLICY_URL, TERMS_URL } from "../src/utils/legal-urls";
@@ -79,16 +89,23 @@ const STORE = revenueCatStore(FREEMIUM.distribution);
 const COPY = storeCopyKeys(BILLING_STORE);
 
 /** A note under the button after an attempt: what happened, in words. */
-type Note = null | "store_soon" | "restore_none" | "restore_failed" | "web_opened" | "processing" | "restored";
+type Note =
+  | null | "store_soon" | "restore_none" | "restore_none_signed_out" | "restore_failed" | "web_opened" | "processing"
+  | "restored" | "restore_here";
 
-// Literal keys, so scripts/check-mobile-i18n.py can see every one.
+// Literal keys, so scripts/check-mobile-i18n.py can see every one (the
+// store-named one is literal in utils/store-billing.ts storeCopyKeys).
 const NOTE_KEYS: Record<Exclude<Note, null>, string> = {
   store_soon: "mobile.paywall.note_store_soon",
-  restore_none: "mobile.paywall.note_restore_none",
+  restore_none: COPY.restoreNone,
+  // The iPhone app signed out: nothing on this Apple ID — sign in if paying on another device.
+  restore_none_signed_out: "mobile.paywall.note_restore_none_signed_out_appstore",
   restore_failed: "mobile.paywall.note_restore_failed",
   web_opened: "mobile.paywall.note_web_opened",
   processing: "mobile.paywall.note_processing",
   restored: "mobile.paywall.note_restored",
+  // Signed in on the iPhone, and the plan bought here signed out did not follow the account.
+  restore_here: "mobile.paywall.note_restore_here_appstore",
 };
 
 interface Account {
@@ -120,6 +137,8 @@ function PaywallScreen() {
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [plans, setPlans] = useState<StorePlansState>({ kind: "loading" });
   const [selected, setSelected] = useState<PlanPeriod>("month");
+  /** The iPhone app signed out: someone signed in on this phone before (storeHadAccount). */
+  const [hadAccount, setHadAccount] = useState(false);
   /** Sent to sign in from the button: buy when back. */
   const continueAfterSignIn = useRef(false);
 
@@ -137,19 +156,27 @@ function PaywallScreen() {
     else router.replace("/(tabs)");
   }, [router]);
 
-  /** Who is here and whether the plan is paid now — after sign-in, a checkout, a restore. */
+  /**
+   * Who is here and whether the plan is paid now — after sign-in, a
+   * checkout, a restore. In the iPhone app this phone's own App Store plan
+   * counts too, signed out or not (devicePlanPaid; false everywhere else).
+   */
   const reload = useCallback(async (): Promise<Account> => {
     const st = await getSessionState();
     if (st.kind === "none") {
-      const next = { signedIn: false, paid: false, ent: null };
+      setHadAccount(await storeHadAccount());
+      const next = { signedIn: false, paid: await devicePlanPaid(true), ent: null };
       setAcct(next);
       return next;
     }
     const { data } = await getEntitlement();
     const next = data
-      ? { signedIn: true, paid: await applyEntitlement(data), ent: data }
+      ? { signedIn: true, paid: (await applyEntitlement(data)) || (await devicePlanPaid(true)), ent: data }
       : { signedIn: true, paid: await isPaid(false), ent: null };
     setAcct(next);
+    // The phone may still count the plan it paid for (paid) while the
+    // account does not have it: Restore moves it there.
+    if (!isPaidEntitlement(next.ent) && (await storeRestoreSuggested())) setNote((n) => n ?? "restore_here");
     return next;
   }, []);
 
@@ -179,6 +206,39 @@ function PaywallScreen() {
 
   function showStoreError(kind: Parameters<typeof storeErrorNoteKey>[0]): void {
     setErrorKey(storeErrorNoteKey(kind, BILLING_STORE));
+  }
+
+  /**
+   * Signed out in the iPhone app, where someone signed in before
+   * (warnBeforeWithoutAccount): buying or restoring without an account
+   * would move a subscription this Apple ID pays in that account to this
+   * phone only (RevenueCat "Transfer to new App User ID"). Signing in is
+   * offered first; going on stays possible (App Review 5.1.1). True: go on.
+   */
+  function goOnWithoutAccount(then: "buy" | "restore"): Promise<boolean> {
+    if (!warnBeforeWithoutAccount({ withoutAccount: STORE_PURCHASE_WITHOUT_ACCOUNT, signedIn, hadAccount })) {
+      return Promise.resolve(true);
+    }
+    return new Promise((resolve) => {
+      Alert.alert(
+        t("mobile.paywall.without_account_title"),
+        t("mobile.paywall.without_account_body"),
+        [
+          { text: t("mobile.settings.clear_cancel"), style: "cancel", onPress: () => resolve(false) },
+          {
+            text: t("mobile.settings.sign_in"),
+            onPress: () => {
+              // Back signed in: a purchase carries on (unless the account pays already).
+              continueAfterSignIn.current = then === "buy";
+              router.push("/auth");
+              resolve(false);
+            },
+          },
+          { text: t("mobile.paywall.without_account_continue"), onPress: () => resolve(true) },
+        ],
+        { cancelable: true, onDismiss: () => resolve(false) },
+      );
+    });
   }
 
   async function buyFromStore(): Promise<void> {
@@ -237,7 +297,7 @@ function PaywallScreen() {
       setNote("web_opened");
       return;
     }
-    if (action === "store") await buyFromStore();
+    if (action === "store" && (await goOnWithoutAccount("buy"))) await buyFromStore();
   }
 
   // Signed in on the way here from the button: carry on with the purchase —
@@ -259,10 +319,12 @@ function PaywallScreen() {
   async function restore(): Promise<void> {
     setNote(null);
     setErrorKey(null);
-    if (!signedIn) {
+    // The iPhone app restores signed out too (App Review 3.1.1 / 5.1.1).
+    if (!signedIn && !STORE_PURCHASE_WITHOUT_ACCOUNT) {
       router.push("/auth");
       return;
     }
+    if (!(await goOnWithoutAccount("restore"))) return;
     setBusy(true);
     try {
       if (storeOn) {
@@ -271,7 +333,7 @@ function PaywallScreen() {
           await reload();
           setNote("restored");
         } else if (r.kind === "processing") setNote("processing");
-        else if (r.kind === "none") setNote("restore_none");
+        else if (r.kind === "none") setNote(signedIn ? "restore_none" : "restore_none_signed_out");
         else if (r.kind === "signed_out") router.push("/auth");
         else if (r.kind === "error") showStoreError(r.error);
         else setNote("restore_failed");
@@ -305,8 +367,18 @@ function PaywallScreen() {
     : saleOff ? "mobile.paywall.note_store_soon"
     : STORE ? COPY.fine
     : "mobile.paywall.fine_cancel";
-  const manageUrl = manageSubscriptionUrl(acct?.ent, FREEMIUM.distribution, ANDROID_PACKAGE);
-  const paidSource = sourceKey(acct?.ent?.source);
+  // Paid by this iPhone's own App Store plan alone (signed out, or the account
+  // not caught up yet): say so, and link Apple's page where it is cancelled.
+  const paidOnThisPhone = paid && STORE_PURCHASE_WITHOUT_ACCOUNT && !isPaidEntitlement(acct?.ent);
+  const manageUrl = paidOnThisPhone
+    ? APP_STORE_SUBSCRIPTIONS_URL
+    : manageSubscriptionUrl(acct?.ent, FREEMIUM.distribution, ANDROID_PACKAGE);
+  const paidSource = paidOnThisPhone ? sourceKey("app_store") : sourceKey(acct?.ent?.source);
+  // Signing in is offered after the purchase, never required before it.
+  const offerSignIn = paidOnThisPhone && !signedIn;
+  // Before paying, signed out in the iPhone app: an account paid on another
+  // device signs in instead of buying twice (5.1.1 forbids requiring it, not offering it).
+  const offerSignInFirst = STORE_PURCHASE_WITHOUT_ACCOUNT && !signedIn && acct !== null;
   const leadKey = params.from === "upgrade" ? "mobile.paywall.lead_upgrade" : "mobile.paywall.lead";
 
   return (
@@ -362,6 +434,19 @@ function PaywallScreen() {
               <Text style={s.ctaLabel}>{t("mobile.paywall.done")}</Text>
             </Pressable>
             {note && <Text style={s.fine} accessibilityLiveRegion="polite">{t(NOTE_KEYS[note])}</Text>}
+            {offerSignIn && (
+              // Optional, after the purchase (App Review 5.1.1): an account
+              // only adds the other platforms and the device list.
+              <>
+                <Text style={s.fine}>
+                  {/* Signed in here before: the plan may have just left that account. */}
+                  {hadAccount ? t("mobile.paywall.sync_offer_back") : t("mobile.paywall.sync_offer", { n: devices })}
+                </Text>
+                <Pressable onPress={() => router.push("/auth")} style={s.restore} accessibilityRole="button">
+                  <Text style={s.restoreLabel}>{t("mobile.settings.sign_in")}</Text>
+                </Pressable>
+              </>
+            )}
             {manageUrl && (
               <Pressable
                 onPress={() => void Linking.openURL(manageUrl).catch(() => undefined)}
@@ -391,9 +476,14 @@ function PaywallScreen() {
 
             <Pressable onPress={() => void restore()} style={s.restore} disabled={busy} accessibilityRole="button">
               <Text style={s.restoreLabel}>
-                {t(signedIn ? "mobile.paywall.restore" : "mobile.paywall.restore_sign_in")}
+                {t(signedIn || STORE_PURCHASE_WITHOUT_ACCOUNT ? "mobile.paywall.restore" : "mobile.paywall.restore_sign_in")}
               </Text>
             </Pressable>
+            {offerSignInFirst && (
+              <Pressable onPress={() => router.push("/auth")} style={s.restore} disabled={busy} accessibilityRole="button">
+                <Text style={s.restoreLabel}>{t("mobile.paywall.sign_in_account")}</Text>
+              </Pressable>
+            )}
           </>
         )}
 

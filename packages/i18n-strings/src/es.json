@@ -3635,6 +3635,7 @@
       "sign_out": "Cerrar sesión",
       "sign_out_confirm_title": "¿Cerrar sesión?",
       "sign_out_confirm_body": "Las verificaciones y el historial se quedan en este teléfono. Los ajustes dejan de sincronizarse hasta que vuelvas a iniciar sesión.",
+      "sign_out_confirm_body_appstore": "Las verificaciones y el historial se quedan en este teléfono. Los ajustes dejan de sincronizarse hasta que vuelvas a iniciar sesión. La suscripción se queda en tu cuenta: vuelve a iniciar sesión para usarla en este iPhone.",
       "plan": "Plan",
       "plan_desc": "La protección en este teléfono es gratuita",
       "upgrade": "Mejorar plan",
@@ -4030,7 +4031,16 @@
       "err_already_owned_appstore": "Este Apple ID ya tiene la suscripción. Toca Restaurar para pasarla a esta cuenta.",
       "err_network_appstore": "Sin conexión con el App Store. Revisa internet e inténtalo de nuevo.",
       "err_not_allowed_appstore": "Las compras están desactivadas en este iPhone (por ejemplo, en Tiempo de uso).",
-      "err_store_appstore": "El App Store no pudo completar la compra. Inténtalo de nuevo."
+      "err_store_appstore": "El App Store no pudo completar la compra. Inténtalo de nuevo.",
+      "note_restore_none_appstore": "Este Apple ID no tiene ninguna suscripción activa.",
+      "sync_offer": "Activa en este iPhone. Iniciar sesión es opcional: así la misma suscripción funciona en la app de Cleanway para Android y en la extensión del navegador, en hasta {{n}} dispositivos.",
+      "note_restore_here_appstore": "La suscripción comprada en este iPhone aún no está en tu cuenta. Toca Restaurar para añadirla.",
+      "sign_in_account": "¿Tienes una cuenta de Cleanway? Inicia sesión",
+      "note_restore_none_signed_out_appstore": "Este Apple ID no tiene ninguna suscripción activa. Si ya pagas Cleanway en otro dispositivo, inicia sesión en tu cuenta.",
+      "without_account_title": "¿Continuar sin iniciar sesión?",
+      "without_account_body": "Ya se inició sesión en este iPhone antes. Si este Apple ID ya paga Cleanway en una cuenta, al continuar sin iniciar sesión la suscripción pasa solo a este iPhone: deja de funcionar en esa cuenta, en Android y en la extensión del navegador hasta que inicies sesión y toques Restaurar.",
+      "without_account_continue": "Continuar sin iniciar sesión",
+      "sync_offer_back": "Activa en este iPhone. Si esta suscripción estaba en tu cuenta de Cleanway, ahora funciona solo en este iPhone: inicia sesión y toca Restaurar para volver a usarla en Android y en la extensión del navegador."
     },
     "ios_sms": {
       "line_ready": "Mueve los SMS de estafa de remitentes desconocidos a No deseado, en tu propio iPhone. Funciona cuando lo activas en Ajustes.",

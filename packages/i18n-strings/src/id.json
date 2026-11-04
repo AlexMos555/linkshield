@@ -3695,6 +3695,7 @@
       "sign_out": "Keluar",
       "sign_out_confirm_title": "Keluar dari akun?",
       "sign_out_confirm_body": "Pemeriksaan dan riwayat tetap ada di ponsel ini. Pengaturan berhenti disinkronkan sampai Anda masuk lagi.",
+      "sign_out_confirm_body_appstore": "Pemeriksaan dan riwayat tetap ada di ponsel ini. Pengaturan berhenti disinkronkan sampai Anda masuk lagi. Langganan tetap ada di akun Anda: masuk lagi untuk memakainya di iPhone ini.",
       "plan": "Paket",
       "plan_desc": "Perlindungan di HP ini gratis",
       "upgrade": "Upgrade",
@@ -4090,7 +4091,16 @@
       "err_already_owned_appstore": "Apple ID ini sudah memiliki langganan. Ketuk Pulihkan untuk memindahkannya ke akun ini.",
       "err_network_appstore": "Tidak ada koneksi ke App Store. Periksa internet lalu coba lagi.",
       "err_not_allowed_appstore": "Pembelian dinonaktifkan di iPhone ini (misalnya di Durasi Layar).",
-      "err_store_appstore": "App Store tidak dapat menyelesaikan pembelian. Silakan coba lagi."
+      "err_store_appstore": "App Store tidak dapat menyelesaikan pembelian. Silakan coba lagi.",
+      "note_restore_none_appstore": "Tidak ada langganan aktif di Apple ID ini.",
+      "sync_offer": "Aktif di iPhone ini. Masuk bersifat opsional: dengan masuk, langganan yang sama berfungsi di aplikasi Cleanway untuk Android dan ekstensi browser, hingga {{n}} perangkat.",
+      "note_restore_here_appstore": "Langganan yang dibeli di iPhone ini belum ada di akun Anda. Ketuk Pulihkan untuk menambahkannya.",
+      "sign_in_account": "Punya akun Cleanway? Masuk",
+      "note_restore_none_signed_out_appstore": "Tidak ada langganan aktif di Apple ID ini. Jika Anda sudah membayar Cleanway di perangkat lain, masuk ke akun Anda.",
+      "without_account_title": "Lanjutkan tanpa masuk?",
+      "without_account_body": "Seseorang pernah masuk ke akun di iPhone ini. Jika Apple ID ini sudah membayar Cleanway di sebuah akun, melanjutkan tanpa masuk akan memindahkan langganan hanya ke iPhone ini: langganan berhenti berfungsi di akun itu, di Android, dan di ekstensi browser sampai Anda masuk dan mengetuk Pulihkan.",
+      "without_account_continue": "Lanjutkan tanpa masuk",
+      "sync_offer_back": "Aktif di iPhone ini. Jika langganan ini ada di akun Cleanway Anda, sekarang langganan hanya berfungsi di iPhone ini: masuk dan ketuk Pulihkan agar bisa dipakai lagi di Android dan ekstensi browser."
     },
     "ios_sms": {
       "line_ready": "Memindahkan SMS penipuan dari pengirim tak dikenal ke Sampah, langsung di iPhone ini. Berfungsi setelah Anda menyalakannya di Pengaturan.",
