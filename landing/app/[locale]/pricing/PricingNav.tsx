@@ -14,7 +14,7 @@ export default function PricingNav({ locale }: { locale: string }) {
           <a href={`${localePath(locale, "/")}#features`} className="text-sm text-slate-400 hover:text-white transition">{nav("features")}</a>
           <a href={localePath(locale, "/pricing")} className="text-sm text-white font-semibold">{nav("pricing")}</a>
           <a href={localePath(locale, "/support")} className="text-sm text-slate-400 hover:text-white transition">{nav("support")}</a>
-          <PrimaryInstallLink androidLabel={nav("install_android")} className="bg-green-500 text-green-950 px-5 py-2 rounded-lg text-sm font-bold hover:bg-green-400 transition">
+          <PrimaryInstallLink androidLabel={nav("install_android")} iosLabel={nav("install_ios")} className="bg-green-500 text-green-950 px-5 py-2 rounded-lg text-sm font-bold hover:bg-green-400 transition">
             {nav("install")}
           </PrimaryInstallLink>
         </div>

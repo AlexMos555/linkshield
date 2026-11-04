@@ -182,7 +182,7 @@ export default async function CheckPage({ params }: Props) {
   // What people read: президент.рф, not xn--d1abbgf6aiiy.xn--p1ai (lib/display-host.ts).
   const shownDomain = displayHost(decodedDomain);
   const t = await getTranslations({ locale: safeLocale, namespace: "Check" });
-  // Android-only labels for the primary install CTA (see PrimaryInstallLink).
+  // Android- and iPhone-only labels for the primary install CTA (see PrimaryInstallLink).
   const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
   const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
   const reasons = await getTranslations({ locale: safeLocale, namespace: "Reasons" });
@@ -253,6 +253,7 @@ export default async function CheckPage({ params }: Props) {
           </a>
           <PrimaryInstallLink
             androidLabel={nav("install_android")}
+            iosLabel={nav("install_ios")}
             style={{
               background: "#22c55e",
               color: "#052e16",
@@ -363,6 +364,7 @@ export default async function CheckPage({ params }: Props) {
           <p style={{ fontSize: 14, color: "#94a3b8", marginBottom: 16 }}>{t("cta_body")}</p>
           <PrimaryInstallLink
             androidLabel={hero("cta_android")}
+            iosLabel={nav("install_ios")}
             style={{
               display: "inline-block",
               background: "#22c55e",

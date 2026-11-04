@@ -4,6 +4,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { InstallButtons } from "@/components/InstallButtons";
 import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
+import { PLATFORMS } from "@/lib/install-urls";
 import { loadLiveRecall } from "@/lib/live-recall";
 import { localePath } from "@/lib/locale-path";
 import { OPERATOR } from "@/lib/operator";
@@ -152,14 +153,14 @@ export default async function Home({ params }: HomeProps) {
             <a href="#privacy" className="text-sm text-slate-400 hover:text-white transition">{nav("privacy")}</a>
             <a href={href("/support")} className="text-sm text-slate-400 hover:text-white transition">{nav("support")}</a>
             <LanguageSwitcher />
-            <PrimaryInstallLink data-testid="primary-install-nav" androidLabel={nav("install_android")} className="bg-green-500 text-green-950 px-5 py-2 rounded-lg text-sm font-bold hover:bg-green-400 transition">
+            <PrimaryInstallLink data-testid="primary-install-nav" androidLabel={nav("install_android")} iosLabel={nav("install_ios")} className="bg-green-500 text-green-950 px-5 py-2 rounded-lg text-sm font-bold hover:bg-green-400 transition">
               {nav("install")}
             </PrimaryInstallLink>
           </div>
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center gap-2">
             <LanguageSwitcher />
-            <PrimaryInstallLink data-testid="primary-install-nav-mobile" androidLabel={nav("install_android_short")} className="bg-green-500 text-green-950 px-4 py-2 rounded-lg text-sm font-bold">
+            <PrimaryInstallLink data-testid="primary-install-nav-mobile" androidLabel={nav("install_android_short")} iosLabel={nav("install_ios_short")} className="bg-green-500 text-green-950 px-4 py-2 rounded-lg text-sm font-bold">
               {nav("install_short")}
             </PrimaryInstallLink>
           </div>
@@ -187,7 +188,7 @@ export default async function Home({ params }: HomeProps) {
           </h1>
           <p className="text-lg text-slate-400 mb-8 max-w-2xl mx-auto">{hero("subtitle")}</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <PrimaryInstallLink data-testid="primary-install-hero" androidLabel={hero("cta_android")} className="bg-green-500 text-green-950 px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition glow-hover">
+            <PrimaryInstallLink data-testid="primary-install-hero" androidLabel={hero("cta_android")} iosLabel={nav("install_ios")} className="bg-green-500 text-green-950 px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition glow-hover">
               {hero("cta_primary")}
             </PrimaryInstallLink>
             <a href="#how" className="border border-slate-600 text-slate-300 px-8 py-4 rounded-xl text-lg font-semibold hover:border-slate-400 transition">
@@ -316,7 +317,7 @@ export default async function Home({ params }: HomeProps) {
         <h2 className="text-3xl font-extrabold text-white mb-4">{cta("title")}</h2>
         <p className="text-lg text-slate-400 mb-8">{cta("subtitle")}</p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <PrimaryInstallLink data-testid="primary-install-final" androidLabel={hero("cta_android")} className="bg-green-500 text-green-950 px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition glow-hover">
+          <PrimaryInstallLink data-testid="primary-install-final" androidLabel={hero("cta_android")} iosLabel={nav("install_ios")} className="bg-green-500 text-green-950 px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition glow-hover">
             {cta("cta_primary")}
           </PrimaryInstallLink>
           <a href={href("/business")} className="border border-slate-600 text-slate-300 px-8 py-4 rounded-xl text-lg font-semibold hover:border-slate-400 transition">
@@ -363,11 +364,7 @@ export default async function Home({ params }: HomeProps) {
                 },
               },
               {
-                // The Android app — the only thing that can be installed today
-                // (lib/install-urls.ts). Its page is the install URL.
-                // TODO(founder): when the iOS app is live on the App Store, add a
-                // second MobileApplication with operatingSystem "iOS" and
-                // installUrl = the apps.apple.com listing URL.
+                // The Android app (lib/install-urls.ts). Its page is the install URL.
                 "@type": "MobileApplication",
                 "@id": `${SITE_URL}#android-app`,
                 name: "Cleanway",
@@ -384,6 +381,26 @@ export default async function Home({ params }: HomeProps) {
                 },
                 description: meta("description"),
                 url: localeUrl(locale, "/android"),
+              },
+              {
+                // The iPhone app: its App Store listing is both the install URL
+                // and the app's page (lib/install-urls.ts).
+                "@type": "MobileApplication",
+                "@id": `${SITE_URL}#ios-app`,
+                name: "Cleanway",
+                applicationCategory: "SecurityApplication",
+                operatingSystem: "iOS",
+                inLanguage: locale,
+                installUrl: PLATFORMS.ios.href,
+                publisher: { "@id": `${SITE_URL}#organization` },
+                offers: {
+                  "@type": "Offer",
+                  price: "0",
+                  priceCurrency: "USD",
+                  availability: "https://schema.org/InStock",
+                },
+                description: meta("description"),
+                url: PLATFORMS.ios.href,
               },
               {
                 "@type": "FAQPage",
