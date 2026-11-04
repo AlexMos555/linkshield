@@ -11,7 +11,9 @@
  * Paying (src/utils/freemium.ts purchaseAction):
  *   • not signed in → sign in first (a plan belongs to an account), then
  *     the purchase continues by itself on return;
- *   • the APK from our site → the site's checkout, in the browser;
+ *   • the APK from our site → the site's checkout, in the browser; its price
+ *     comes from the server (GET /api/v1/pricing/for-country) — none is typed
+ *     into the app, and none is shown until the server answers;
  *   • the Google Play build → Google Play billing (src/services/store-billing.ts):
  *     monthly / yearly with the store's own prices, then our server confirms;
  *     never a link to the web checkout, never a price typed into the app;
@@ -42,14 +44,14 @@ import { useTranslation } from "react-i18next";
 
 import { colors, type as typo, space, radius } from "../src/utils/theme";
 import { getSessionState } from "../src/services/auth";
-import { getEntitlement, type EntitlementResponse } from "../src/services/api";
+import { getEntitlement, getPricingForCountry, type EntitlementResponse } from "../src/services/api";
 import { FREEMIUM, PAID_PLANS_OFFERED, applyEntitlement, isPaid } from "../src/services/freemium";
 import {
   BILLING_STORE, loadStorePlans, restoreStorePurchases, startStorePurchase, storeBillingOn,
 } from "../src/services/store-billing";
 import {
   PRICES, WEB_CHECKOUT_URL, marketFor, paywallBenefits, paywallSaleOff, priceDisplay, purchaseAction,
-  revenueCatStore, webCheckoutAllowed, type PaywallBenefit,
+  revenueCatStore, webCheckoutAllowed, type PaywallBenefit, type WebPricingLike,
 } from "../src/utils/freemium";
 import {
   manageSubscriptionUrl, storeCopyKeys, storeErrorNoteKey, type PlanPeriod,
@@ -120,12 +122,16 @@ function PaywallScreen() {
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [plans, setPlans] = useState<StorePlansState>({ kind: "loading" });
   const [selected, setSelected] = useState<PlanPeriod>("month");
+  /** The site APK's price, from the server; null until (unless) it answers. */
+  const [webPricing, setWebPricing] = useState<WebPricingLike | null>(null);
   /** Sent to sign in from the button: buy when back. */
   const continueAfterSignIn = useRef(false);
 
   const storeOn = STORE && storeBillingOn();
-  const market = marketFor(i18n.language, Localization.getLocales()[0]?.regionCode);
-  const price = priceDisplay(market, FREEMIUM.distribution);
+  const region = Localization.getLocales()[0]?.regionCode ?? null;
+  const market = marketFor(i18n.language, region);
+  const price = priceDisplay(market, FREEMIUM.distribution, webPricing);
+  const wantsWebPrice = market === "world" && webCheckoutAllowed(FREEMIUM.distribution);
   const devices = PRICES[market].devices;
   const signedIn = acct?.signedIn === true;
   const paid = acct?.paid === true;
@@ -176,6 +182,19 @@ function PaywallScreen() {
   useEffect(() => {
     if (showStorePlans) void loadPlans();
   }, [showStorePlans, loadPlans]);
+
+  // The site APK: the price the web checkout charges in this country.
+  useEffect(() => {
+    if (!wantsWebPrice) return;
+    let alive = true;
+    void getPricingForCountry(region).then(
+      (r) => { if (alive && r.data) setWebPricing(r.data); },
+      () => undefined,
+    );
+    return () => {
+      alive = false;
+    };
+  }, [wantsWebPrice, region]);
 
   function showStoreError(kind: Parameters<typeof storeErrorNoteKey>[0]): void {
     setErrorKey(storeErrorNoteKey(kind, BILLING_STORE));

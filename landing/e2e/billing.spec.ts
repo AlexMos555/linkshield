@@ -79,10 +79,10 @@ test.describe("billing flag on — the operator-billed subscription", () => {
     await expect(plan).toContainText("99 ₽ в месяц");
     await expect(plan).toContainText("за 3 устройства в одном аккаунте");
     await expect(page.getByTestId("operator-extra-device")).toContainText("+29 ₽ в месяц");
-    // Basic protection: list blocking with nothing to pay, 3 detailed checks a day.
+    // Basic protection: list blocking with nothing to pay, 5 detailed checks a month.
     const basic = page.getByTestId("plan-card-basic");
     await expect(basic).toContainText("Без оплаты");
-    await expect(basic).toContainText("3 подробные проверки в день");
+    await expect(basic).toContainText("5 подробных проверок в месяц");
     await expect(page.getByTestId("operator-trial")).toContainText("7 дней");
     // The retired one-, three- and five-phone plans are gone.
     await expect(page.getByTestId("plan-card-family5")).toHaveCount(0);

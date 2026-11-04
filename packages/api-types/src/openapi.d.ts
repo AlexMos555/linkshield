@@ -2279,13 +2279,19 @@ export interface components {
              */
             list_blocking_unlimited: boolean;
             /**
-             * Detailed Checks Per Day
-             * @description Detailed checks (verdict, reasons, the scheme explained) a day without a plan.
+             * Manual Checks
+             * @description Manual site checks (a site typed, pasted or shared into the app, with the verdict, the reasons and the scheme explained) per period without a plan. FREE_MANUAL_CHECKS_PER_MONTH; the app enforces this number.
              */
-            detailed_checks_per_day: number;
+            manual_checks: number;
+            /**
+             * Manual Checks Period
+             * @description The counting period: a calendar month on the phone's clock (resets on the 1st).
+             * @constant
+             */
+            manual_checks_period: "month";
             /**
              * Unlimited Days After Install
-             * @description Days after install with everything unlimited, no card.
+             * @description Days after install with everything unlocked, no card (FREE_UNLIMITED_DAYS_AFTER_INSTALL).
              */
             unlimited_days_after_install: number;
         };

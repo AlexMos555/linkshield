@@ -37,7 +37,7 @@ export interface WorldPricing {
   readonly extraDevice: Readonly<Record<Interval, Price>>;
   /** Free trial on an account's first web subscription. */
   readonly trialDays: number;
-  readonly freeChecksPerDay: number;
+  readonly freeChecksPerMonth: number;
   readonly freeUnlimitedDays: number;
 }
 
@@ -47,15 +47,15 @@ export const DEFAULT_PRICING: WorldPricing = {
   tier: 2,
   includedDevices: 3,
   price: {
-    monthly: { amount: 0.99, monthlyEquivalent: 0.99 },
-    yearly: { amount: 9.99, monthlyEquivalent: 0.83 },
+    monthly: { amount: 1.99, monthlyEquivalent: 1.99 },
+    yearly: { amount: 19.99, monthlyEquivalent: 1.67 },
   },
   extraDevice: {
     monthly: { amount: 0.49, monthlyEquivalent: 0.49 },
     yearly: { amount: 4.99, monthlyEquivalent: 0.42 },
   },
   trialDays: 14,
-  freeChecksPerDay: 3,
+  freeChecksPerMonth: 5,
   freeUnlimitedDays: 7,
 };
 
@@ -101,18 +101,20 @@ export function normalizePricing(data: unknown): WorldPricing | null {
   const extraDevice = readIntervals(plan.extra_device);
   const includedDevices = wholeNumber(plan.included_devices);
   const trialDays = wholeNumber(plan.trial_days);
-  const freeChecksPerDay = wholeNumber(free.detailed_checks_per_day);
+  // Manual checks a calendar month (2026-11-04); an API still sending the
+  // per-day numbers is not this page's shape — the base tier is shown instead.
+  const freeChecksPerMonth = free.manual_checks_period === "month" ? wholeNumber(free.manual_checks) : null;
   const freeUnlimitedDays = wholeNumber(free.unlimited_days_after_install);
   const tier = data.tier;
   if (
     !price || !extraDevice || !includedDevices || trialDays === null
-    || freeChecksPerDay === null || freeUnlimitedDays === null
+    || freeChecksPerMonth === null || freeUnlimitedDays === null
     || (tier !== 1 && tier !== 2 && tier !== 3 && tier !== 4)
   ) {
     return null;
   }
   const country = typeof data.country === "string" && /^[A-Z]{2}$/.test(data.country) ? data.country : null;
-  return { country, tier, includedDevices, price, extraDevice, trialDays, freeChecksPerDay, freeUnlimitedDays };
+  return { country, tier, includedDevices, price, extraDevice, trialDays, freeChecksPerMonth, freeUnlimitedDays };
 }
 
 /**
