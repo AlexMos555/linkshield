@@ -268,3 +268,113 @@ def test_the_judge_is_not_told_of_reports_the_scorer_does_not_count():
     assert hostname["alienvault_pulse_count"] == 0
     assert domain["alienvault_pulse_count"] == 22 and fresh["alienvault_pulse_count"] == 22
     assert "alienvault_indicator" not in hostname    # not a judge feature
+
+
+# ── The boundaries of "old reports about a hostname" (review of #404) ──
+# scoring.otx_reports_are_history: more than five distinct reports about a
+# hostname whose newest is _OTX_STALE_DAYS (90) days old or more count
+# nowhere; one to five old ones stay a weak +30. So the sixth old report
+# takes the five's +30 away — a cliff on purpose (the comment in scoring
+# says why).
+
+_HOST = "pdfjs-viewer-example.github.io"
+
+
+def _otx_scored(host: str, indicator: str, pulses: int, newest: int | None,
+                distinct: int | None = None) -> dict[str, int]:
+    """The OTX reasons calculate_score gives `host` for these OTX signals
+    (the analyzer's alienvault_* keys), nothing else known about it."""
+    from api.services.scoring import calculate_score
+    signals = {"domain": host, "raw_url": host, "alienvault_indicator": indicator,
+               "alienvault_pulse_count": pulses,
+               "alienvault_distinct_pulses": pulses if distinct is None else distinct,
+               "alienvault_newest_report_days": newest}
+    _, _, reasons = calculate_score(signals)
+    return {r.signal: r.weight for r in reasons if r.signal.startswith("alienvault")}
+
+
+@pytest.mark.parametrize("pulses, newest, distinct, history, otx", [
+    # 5 vs 6 old reports: five are a weak +30, six are history
+    (5, 400, None, False, {"alienvault_otx": 30}),
+    (6, 400, None, True, {}),
+    # 89 vs 90 days: six reports, the newest made 89 days ago, are current
+    (6, 89, None, False, {"alienvault_otx_high": 60}),
+    (6, 90, None, True, {}),
+    # many pulses, few distinct (clones): the distinct ones are what counts
+    (50, 400, 3, False, {"alienvault_otx": 30}),
+    (50, 400, 6, True, {}),
+    # an unknown age counts as current, however many reports
+    (6, None, None, False, {"alienvault_otx_high": 60}),
+    (22, None, None, False, {"alienvault_otx_high": 60}),
+])
+def test_old_hostname_reports_at_the_boundaries(pulses, newest, distinct, history, otx):
+    from api.services.scoring import otx_reports_are_history
+    signals = {"alienvault_indicator": "hostname", "alienvault_pulse_count": pulses,
+               "alienvault_distinct_pulses": pulses if distinct is None else distinct,
+               "alienvault_newest_report_days": newest}
+    assert otx_reports_are_history(signals) is history
+    assert _otx_scored(_HOST, "hostname", pulses, newest, distinct) == otx
+
+
+def test_five_old_hostname_reports_are_weak():
+    """The five's +30 is a weak signal (calculate_score's weak_here): with
+    only weak signals beside it (here 30 + 15 + 15) the verdict stops at the
+    top of caution."""
+    from api.services.scoring import DANGEROUS_ABOVE, calculate_score
+    host = "my-bakery.netlify.app"
+    signals = {"domain": host, "raw_url": host, "alienvault_indicator": "hostname",
+               "alienvault_pulse_count": 5, "alienvault_distinct_pulses": 5,
+               "alienvault_newest_report_days": 400, "dns_ttl": 30,
+               "missing_security_headers": ["strict-transport-security", "content-security-policy",
+                                            "x-frame-options", "x-content-type-options"]}
+    score, level, reasons = calculate_score(signals)
+    weights = {r.signal: r.weight for r in reasons}
+    assert weights == {"alienvault_otx": 30, "missing_headers": 15, "low_dns_ttl": 15}
+    assert (score, level.value) == (DANGEROUS_ABOVE, "caution")
+
+
+@pytest.mark.parametrize("pulses, newest", [(6, 400), (6, 90), (50, 1000)])
+def test_old_reports_about_a_registrable_domain_are_never_history(pulses, newest):
+    """Only a hostname's old reports are dropped: a registrable domain can
+    carry a rank of its own, and the popularity waiver is what keeps old
+    victim references off a popular one."""
+    from api.services.scoring import otx_reports_are_history
+    signals = {"alienvault_indicator": "domain", "alienvault_pulse_count": pulses,
+               "alienvault_distinct_pulses": pulses, "alienvault_newest_report_days": newest}
+    assert otx_reports_are_history(signals) is False
+    assert _otx_scored("old-reports-example.com", "domain", pulses, newest) == {"alienvault_otx_high": 60}
+
+
+def _clones(originals: int, copies: int, age: int) -> list[dict]:
+    """`originals` separate reports made `age` days ago and more, and `copies`
+    recent clones of the first one. As OTX answers: every pulse carries
+    `cloned_from`, null on an original."""
+    return [{**p, "cloned_from": None} for p in _pulses(originals, prefix="orig", age=age)] + [
+        {"id": f"copy{i}", "name": f"test clone {i}", "cloned_from": "orig0",
+         "tags": [], "indicator_count": 100, "created": _days_ago(i % 30)} for i in range(copies)]
+
+
+def test_clones_of_old_reports_are_not_more_reports(otx_files, analyse):
+    """50 pulses about the host: three reports made 400+ days ago and 47
+    recent clones of the first. Three old reports, a weak +30 — not history
+    (that takes more than five) and not current (a clone is as old as its
+    original)."""
+    files, _ = otx_files
+    files[("hostname", _HOST)] = _clones(3, 47, age=400)
+    result, signals = analyse(_HOST, registrable_rank=29)
+    assert signals["alienvault_pulse_count"] == 50 and signals["alienvault_distinct_pulses"] == 3
+    assert signals["alienvault_newest_report_days"] == 400
+    assert _otx_reasons(result) == {"alienvault_otx": 30}
+    otx = next(r for r in result.reasons if r.signal == "alienvault_otx")
+    assert "3 distinct, the rest are copies" in otx.detail and "400 days old" in otx.detail
+
+
+def test_hostname_reports_of_unknown_age_count_as_current(otx_files, analyse):
+    """Six reports OTX lists without a date: their age is not known, so they
+    are not history (+60, a blocklist hit)."""
+    files, _ = otx_files
+    files[("hostname", _HOST)] = [{k: v for k, v in p.items() if k != "created"} for p in _pulses(6, age=400)]
+    result, signals = analyse(_HOST, registrable_rank=29)
+    assert signals["alienvault_distinct_pulses"] == 6 and signals["alienvault_newest_report_days"] is None
+    assert _otx_reasons(result) == {"alienvault_otx_high": 60}
+    assert signals["blocklist_hits"] == 1
