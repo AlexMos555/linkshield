@@ -23,9 +23,11 @@ consulted: they leave the plan and the total, so an analysis is 13 checks of
 13, not 13 of 19. LICENSED_INTEL=all consults all 19.
 
 A check still running at the deadline is cancelled and named in
-`checks_incomplete`. The LLM judge is never waited for: only its cached
-opinion counts, and a live call it needs runs on in the background for the
-next check (named `llm_judge` in `checks_incomplete` meanwhile). Its
+`checks_incomplete`, and so is a source its own time limit ended
+(SOURCE_TIMEOUT_S, below the budget). The LLM judge is never waited for:
+only its cached opinion counts, and a live call it needs runs on in the
+background for the next check (named `llm_judge` in `checks_incomplete`
+meanwhile). Its
 opinion moves the score inside caution only, never the level. Every
 check waits for the worker's outbound gate first (load_shedding.OUTBOUND), so
 the source calls open at once stay bounded however many analyses run.
@@ -36,6 +38,7 @@ Privacy: only domain names processed — never full URLs or user data.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import logging
 from datetime import date, datetime, timezone
 from typing import Any, Optional
@@ -99,11 +102,19 @@ TOTAL_CHECKS = 19
 _SITE_PROBES = frozenset({"favicon", "ssl", "headers", "redirect"})
 # Cap for the SSRF resolution step inside the overall budget.
 RESOLUTION_TIMEOUT_S = 1.5
-# Every external source gives up BELOW the analysis budget (3 s), so a source
-# that hangs raises — and its circuit breaker counts the failure and opens —
-# instead of being silently cancelled at the deadline on every single check.
-# (PhishStats hung like that, holding each fresh check to the full budget.)
-SOURCE_TIMEOUT_S = 2.5
+# Every external source gives up BELOW the analysis budget
+# (config.analysis_budget_seconds), so a source that hangs raises — and its
+# circuit breaker counts the failure and opens — instead of being silently
+# cancelled at the deadline on every single check. (PhishStats hung like
+# that, holding each fresh check to the full budget; since 2026-11-04 it
+# hangs again.) Below the budget counted from when sources start: the
+# existence and SSRF lookups before them take ~0.3 s (p50, 2026-11-04).
+SOURCE_TIMEOUT_S = 2.0
+# The sources whose own time limit (above) ended them in THIS analysis
+# (_within_source_timeout): they did not finish in time, as surely as one the
+# deadline cut, and are named in `checks_incomplete` with those — the answer
+# says it is partial, and the public cache keeps it for an hour, not a day.
+_TIMED_OUT: contextvars.ContextVar[Optional[set]] = contextvars.ContextVar("analyzer_timed_out", default=None)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -167,9 +178,15 @@ async def analyze_domain(
             await security_alerts.record("ssrf_blocked")
         return vb.not_found_result(domain)
 
-    outcomes, unfinished = await run_within_budget(
-        _check_calls(domain, probes_allowed), deadline.remaining(),
-    )
+    timed_out: set[str] = set()
+    token = _TIMED_OUT.set(timed_out)
+    try:
+        outcomes, unfinished = await run_within_budget(
+            _check_calls(domain, probes_allowed), deadline.remaining(),
+        )
+    finally:
+        _TIMED_OUT.reset(token)
+    unfinished = unfinished + sorted(timed_out.difference(unfinished))
     if not probes_allowed:
         unfinished = unfinished + sorted(_SITE_PROBES)
     return await _judge(domain, raw_url, is_ip, exists, outcomes, unfinished, deadline, allowlist_withheld)
@@ -377,7 +394,8 @@ def _check_calls(domain: str, probes_allowed: bool) -> dict[str, Any]:
         "redirect": (redirect_breaker, check_redirect_chain),
     }
     return {
-        name: breaker.call(_through_outbound_gate(fn if name in _SITE_PROBES else _within_source_timeout(fn)), domain)
+        name: breaker.call(_through_outbound_gate(fn if name in _SITE_PROBES else _within_source_timeout(fn, name)),
+                           domain)
         for name, (breaker, fn) in plan.items()
         if (probes_allowed or name not in _SITE_PROBES) and name not in skipped
     }
@@ -415,7 +433,7 @@ def _through_outbound_gate(fn: Any) -> Any:
     return _call
 
 
-def _within_source_timeout(fn: Any) -> Any:
+def _within_source_timeout(fn: Any, name: Optional[str] = None) -> Any:
     """`fn` with a TOTAL time limit that raises inside the breaker.
 
     httpx's timeout is per phase (connect, then each read), so a source that
@@ -425,9 +443,21 @@ def _within_source_timeout(fn: Any) -> Any:
     an Exception). This limit fires first, as a failure the breaker counts.
     The site probes keep their own limits: one slow SITE must not open a
     breaker that skips the probe for everyone.
+
+    A source ended by this limit, or by one of httpx's per-phase limits, is
+    recorded as `name` in the analysis's _TIMED_OUT: it did not finish in
+    time. Any other failure (an error answer, a 429, a page that is not
+    JSON) is not — it would be untrue to call it late, and an hour later the
+    answer would not be better.
     """
     async def _call(domain: str) -> Any:
-        return await asyncio.wait_for(fn(domain), timeout=SOURCE_TIMEOUT_S)
+        try:
+            return await asyncio.wait_for(fn(domain), timeout=SOURCE_TIMEOUT_S)
+        except (asyncio.TimeoutError, httpx.TimeoutException):
+            timed_out = _TIMED_OUT.get()
+            if timed_out is not None and name:
+                timed_out.add(name)
+            raise
     return _call
 
 

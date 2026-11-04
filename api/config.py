@@ -254,11 +254,18 @@ class Settings(BaseSettings):
     # site probes). Checks still running at the deadline are cut off and named
     # in the verdict's `checks_incomplete`. The LLM judge is never waited for:
     # only its cached opinion counts (api/services/llm_judge.opinion_now). The
-    # browser extension waits 3 s (LOOKUP_TIMEOUT_MS in background/
-    # public-check.js; Safari's on the iPhone is the same code), the app 12 s.
-    # This budget equals the extension's wait, so an answer whose checks run
-    # to the deadline can still miss it, once the transfer is counted.
-    analysis_budget_seconds: float = 3.0
+    # browser extension waits 3 s for the whole round trip (LOOKUP_TIMEOUT_MS
+    # in background/public-check.js; Safari's on the iPhone is the same code),
+    # the app 12 s. Until 2026-11-04 this budget was those same 3 s, so an
+    # answer whose checks ran to the deadline arrived after the extension had
+    # given up (3.2-3.7 s from Dubai) and it used its offline verdict. 2.3 s
+    # leaves the network its share: a new connection from Dubai took 0.44-0.68
+    # s (p50 0.54), a kept-alive one 0.26-0.35 s. Replayed over 235 live
+    # analyses (2026-11-04): server p95 3.02 -> 2.32 s, no phishing site lost
+    # 'dangerous'. Lowering it further also needs analyzer.SOURCE_TIMEOUT_S
+    # and the site probes' limits (site_probes) lowered with it:
+    # tests/test_budget_fits_client_wait.py holds the arithmetic.
+    analysis_budget_seconds: float = 2.3
 
     # Load shedding (api/services/load_shedding.py, docs/runbooks/capacity.md).
     # Every limit is PER WORKER PROCESS (WEB_CONCURRENCY=2: twice per
@@ -285,8 +292,8 @@ class Settings(BaseSettings):
     # Fresh analyses running at once (the full fan-out of /check and the fresh
     # path of /public/check); past it /public/check answers 503. One /check
     # runs at most a quarter of them; the rest of its batch waits its turn.
-    # 32: a fresh analysis takes up to the 3 s budget (p50 1.4 s in the
-    # 2026-08-17 benchmark), so ~10-20 fresh analyses/s per worker. Not
+    # 32: a fresh analysis takes up to the budget above (it was 3 s then; p50
+    # 1.4 s in the 2026-08-17 benchmark), so ~10-20 fresh analyses/s per worker. Not
     # measured against prod latency yet (the local run used stub sources of
     # 40-400 ms) — see docs/runbooks/capacity.md before lowering it.
     load_shed_fresh_analysis_max_inflight: int = 32

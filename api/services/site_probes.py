@@ -64,12 +64,20 @@ from api.services.pinned_http import pinned_client
 logger = logging.getLogger("cleanway.site_probes")
 
 # Per connection phase (connect, read, …), below the analysis budget
-# (config.analysis_budget_seconds, 3 s), so a site that never answers is
-# reported as unreachable, not merely cut off.
-SITE_PROBE_TIMEOUT_S = 2.0
+# (config.analysis_budget_seconds, 2.3 s) counted from when the probes start
+# (~0.3 s in), so a site that never answers is reported as unreachable, not
+# merely cut off: only "unreachable" keeps the floor for a name nothing
+# vouches for. A probe that times out reports 0.13 s (p50), at most 0.5 s,
+# after this limit (its own name lookup, the TLS probe's thread), so 2.0 s,
+# the limit under the old 3 s budget, ended 2.0-2.5 s in and the 2.3 s
+# deadline cut a hidden phishing site to 'safe' (2026-11-04,
+# tests/test_budget_fits_client_wait.py). 1.5 s still outlasts one lost SYN
+# (resent after 1 s): side by side on 232 sites, one was reached at 2.0 s
+# and not at 1.5 s, one the other way round.
+SITE_PROBE_TIMEOUT_S = 1.5
 # Whole probe, all phases and hops together: httpx's timeout is per phase, so
 # a server that trickles a byte a second would otherwise never time out.
-SITE_PROBE_TOTAL_S = 2.5
+SITE_PROBE_TOTAL_S = 2.0
 
 _SECURITY_HEADERS = (
     "strict-transport-security", "content-security-policy",

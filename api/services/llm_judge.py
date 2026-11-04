@@ -38,8 +38,8 @@ Privacy invariants (load-bearing):
      out at once with `llm_judge` in checks_incomplete, and the call
      finishes in the background and fills the cache for the next
      check with the same pattern. A live call takes longer than the
-     ~3 s fresh-check budget, and the browser extension (Safari's
-     on the iPhone too) gives a lookup 3 s (2026-11-03). Live calls are capped per day for
+     fresh-check budget (config.analysis_budget_seconds), and the browser
+     extension (Safari's on the iPhone too) gives a lookup 3 s (2026-11-03). Live calls are capped per day for
      the whole service (paid_budget), and at
      LOAD_SHED_LLM_MAX_INFLIGHT at once per worker (load_shedding):
      past that the judge is skipped, never queued. stop() cancels

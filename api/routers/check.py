@@ -43,8 +43,8 @@ from api.services.domain_validator import validate_domain, normalize_domain, Dom
 
 router = APIRouter(prefix="/api/v1", tags=["check"])
 
-# A batch may start analyses for this many analysis budgets (6 s at the
-# default 3 s), each while at least half a budget is left.
+# A batch may start analyses for this many analysis budgets (4.6 s at the
+# default 2.3 s), each while at least half a budget is left.
 _BATCH_WINDOW_BUDGETS = 2
 
 
