@@ -476,6 +476,11 @@ permission in `app.json` (`blockedPermissions`) before uploading.
         then test on the internal track — `docs/runbooks/revenuecat.md` §1–3, §5.3.
         Data safety (Purchase history) and the content rating (digital purchases)
         are answered for it above.
+12a. [ ] **Production → Countries / regions: every available country except
+        Russia** (decision 2026-11-04: worldwide without Russia; Play Billing
+        does not work there anyway). Set the same list on the testing tracks
+        that are open to the public. Subscriptions follow the app's countries;
+        their base-plan prices are set per country in Monetize → Subscriptions.
 13. [ ] After approval: add Google Play to `landing/lib/install-urls.ts` and drop
         the "Google Play" rule in `scripts/check-landing-claims.py` (scope
         `landing.android`).
