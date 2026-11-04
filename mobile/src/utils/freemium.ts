@@ -265,9 +265,11 @@ export function marketFor(language: string, region: string | null | undefined): 
 /**
  * Show "Upgrade", the Plan row and "Add a device"? Not where the paywall can
  * only say "coming soon":
- *   • the "ru" market (purchaseAction "soon") — Stripe and Google Play cannot
- *     take Russian cards, phone-balance billing is not merged; the old upgrade
- *     screen led there to a page in dollars no one could pay, report #15;
+ *   • the "ru" market in the site APK and RuStore (purchaseAction "soon") —
+ *     Stripe cannot take Russian cards, phone-balance billing is not merged;
+ *     the old upgrade screen led there to a page in dollars no one could pay,
+ *     report #15. A Google Play / App Store build is not hidden by region: the
+ *     store sells only where the app is published (not in Russia);
  *   • a build that cannot take a payment at all (paywallSaleOff) — RuStore,
  *     or a store build whose billing SDK is not there. Its paywall only says
  *     "coming soon"; an Upgrade row there was a sign-in detour to that note.
@@ -356,13 +358,20 @@ export function selfUpdateAllowed(distribution: Distribution): boolean {
  *   web_checkout — the site's checkout (site APK, world prices);
  *   store        — the build's own store billing (startStorePurchase) — only
  *                  when paywallSaleOff says the build can take it;
- *   soon         — no way to pay here yet (Russia: phone-balance billing is not merged).
+ *   soon         — no way to pay here yet (Russia in the site APK and RuStore:
+ *                  phone-balance billing is not merged; store builds leave the
+ *                  country to the store).
  */
 export type PurchaseAction = "sign_in" | "web_checkout" | "store" | "soon";
 
 export function purchaseAction(input: { signedIn: boolean; market: Market; distribution: Distribution }): PurchaseAction {
   const { signedIn, market, distribution } = input;
-  if (market === "ru") return "soon";
+  // Google Play and the App Store are published without Russia (founder,
+  // 2026-11-04), so a store build was installed from a storefront outside it:
+  // the store, not the phone's region, decides whether the plan is sold there.
+  // A phone set to region RU abroad can pay; a storefront without the product
+  // gets the paywall's "not available in your country" (prices_empty).
+  if (market === "ru" && !revenueCatStore(distribution)) return "soon";
   if (!signedIn) return "sign_in";
   return webCheckoutAllowed(distribution) ? "web_checkout" : "store";
 }
