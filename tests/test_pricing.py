@@ -65,30 +65,26 @@ def test_country_code_is_case_insensitive():
 # ═══════════════════════════════════════════════════════════════
 
 def test_base_tier_is_the_founders_world_price():
-    """$0.99 a month or $9.99 a year, +$0.49 a month per extra device."""
-    assert get_price(2, "monthly").amount_cents == 99
-    assert get_price(2, "yearly").amount_cents == 999
+    """Founder, 2026-11-04: $1.99 a month in every country; +$0.49 a month per extra device."""
+    assert get_price(2, "monthly").amount_cents == 199
+    assert get_price(2, "yearly").amount_cents == 1999
     assert get_extra_device_price(2, "monthly").amount_cents == 49
 
 
-def test_premium_tier_pays_the_base_price():
-    """No +20% on $0.99 — tier 1 is the headline price."""
-    assert TIER_PRICES[1] == TIER_PRICES[2]
-
-
 @pytest.mark.parametrize("tier", [1, 2, 3, 4])
-def test_monthly_is_the_payment_floor_everywhere(tier):
-    """Below $0.99 the fixed $0.30 payment fee eats the price, so the
-    regional discount lives in the yearly price, not the monthly one."""
-    assert get_price(tier, "monthly").amount_cents == 99
+def test_the_plan_costs_the_same_in_every_country(tier):
+    """One price everywhere: $1.99 a month, $19.99 a year — no tier discount on the plan."""
+    assert get_price(tier, "monthly").amount_cents == 199
+    assert get_price(tier, "yearly").amount_cents == 1999
     assert get_extra_device_price(tier, "monthly").amount_cents == 49
 
 
-def test_yearly_gets_cheaper_down_the_tiers():
-    yearly = [get_price(tier, "yearly").amount_cents for tier in (1, 2, 3, 4)]
-    assert yearly[0] == yearly[1] > yearly[2] > yearly[3]
+def test_only_the_extra_device_yearly_still_follows_the_tier():
+    """Not part of the 2026-11-04 decision (the extra device is not sold in the app yet): unchanged."""
+    plan = {get_price(tier, "yearly").amount_cents for tier in (1, 2, 3, 4)}
+    assert plan == {1999}
     extra = [get_extra_device_price(tier, "yearly").amount_cents for tier in (1, 2, 3, 4)]
-    assert extra[0] == extra[1] > extra[2] > extra[3]
+    assert extra == [499, 499, 349, 249]
 
 
 @pytest.mark.parametrize("tier", [1, 2, 3, 4])
@@ -100,20 +96,55 @@ def test_yearly_always_beats_twelve_months(tier):
 
 
 def test_base_yearly_is_about_two_months_free():
-    """"≈ 2 months free" on the site: $9.99 vs 12 × $0.99 = $11.88."""
-    saved_months = (12 * 99 - 999) / 99
+    """"≈ 2 months free" on the site: $19.99 vs 12 × $1.99 = $23.88."""
+    saved_months = (12 * 199 - 1999) / 199
     assert round(saved_months) == 2
 
 
 def test_monthly_equivalent_of_yearly():
-    assert get_price(2, "yearly").monthly_equivalent_usd == 0.83  # 9.99 / 12
-    assert get_price(2, "monthly").monthly_equivalent_usd == 0.99
+    assert get_price(2, "yearly").monthly_equivalent_usd == 1.67  # 19.99 / 12
+    assert get_price(2, "monthly").monthly_equivalent_usd == 1.99
 
 
 def test_amounts_are_exact_usd():
-    """Cents → USD without float drift (9.99, not 9.990000000000002)."""
-    assert get_price(2, "yearly").amount_usd == 9.99
+    """Cents → USD without float drift (19.99, not 19.990000000000002)."""
+    assert get_price(2, "yearly").amount_usd == 19.99
     assert get_extra_device_price(3, "yearly").amount_usd == 3.49
+
+
+def test_free_tier_defaults_are_five_manual_checks_a_month_and_seven_days():
+    """Founder, 2026-11-04: free = 5 manual site checks a MONTH, after a 7-day trial with
+    everything unlocked. Server settings, so they change without an app release."""
+    from api.config import Settings
+
+    s = Settings()
+    assert s.free_manual_checks_per_month == 5
+    assert s.free_unlimited_days_after_install == 7
+
+
+def test_free_tier_follows_the_settings(client, monkeypatch):
+    """The app and the site read the limit from here — an env change, no new build."""
+    from api.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "free_manual_checks_per_month", 12)
+    monkeypatch.setattr(get_settings(), "free_unlimited_days_after_install", 0)
+    free = client.get("/api/v1/pricing/for-country").json()["free"]
+    assert free["manual_checks"] == 12
+    assert free["manual_checks_period"] == "month"
+    assert free["unlimited_days_after_install"] == 0
+
+
+@pytest.mark.parametrize("field,value", [
+    ("free_manual_checks_per_month", -1),
+    ("free_unlimited_days_after_install", -1),
+])
+def test_free_tier_settings_refuse_negative_numbers(field, value):
+    from pydantic import ValidationError
+
+    from api.config import Settings
+
+    with pytest.raises(ValidationError):
+        Settings(**{field: value})
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -187,7 +218,7 @@ def test_is_extra_device_price():
 def test_quote_for_country_none_is_base_tier():
     quote = get_quote_for_country(None)
     assert quote.tier == 2
-    assert quote.plan["monthly"].amount_cents == 99
+    assert quote.plan["monthly"].amount_cents == 199
     assert quote.extra_device["yearly"].amount_cents == 499
 
 
@@ -205,8 +236,8 @@ def test_stripe_script_prices_come_from_the_service():
     specs = list(module.all_specs())
     assert len(specs) == 16
     by_env = {s.env_var: s.cents for s in specs}
-    assert by_env["STRIPE_PRICE_DEVICES_T2_MONTHLY"] == 99
-    assert by_env["STRIPE_PRICE_DEVICES_T2_YEARLY"] == 999
+    assert by_env["STRIPE_PRICE_DEVICES_T2_MONTHLY"] == 199
+    assert by_env["STRIPE_PRICE_DEVICES_T2_YEARLY"] == 1999
     assert by_env["STRIPE_PRICE_EXTRA_DEVICE_T2_MONTHLY"] == 49
     assert by_env["STRIPE_PRICE_DEVICES_T4_YEARLY"] == TIER_PRICES[4].plan_yearly
     # The env names are the ones the service reads.
@@ -233,15 +264,16 @@ def test_pricing_for_country_us(client):
     plan = body["plan"]
     assert plan["id"] == "devices"
     assert plan["included_devices"] == 3
-    assert plan["price"]["monthly"]["amount"] == 0.99
-    assert plan["price"]["yearly"]["amount"] == 9.99
-    assert plan["price"]["yearly"]["monthly_equivalent"] == 0.83
+    assert plan["price"]["monthly"]["amount"] == 1.99
+    assert plan["price"]["yearly"]["amount"] == 19.99
+    assert plan["price"]["yearly"]["monthly_equivalent"] == 1.67
     assert plan["extra_device"]["monthly"]["amount"] == 0.49
     assert plan["extra_device"]["yearly"]["interval"] == "yearly"
     assert plan["trial_days"] == 14
     assert body["free"] == {
         "list_blocking_unlimited": True,
-        "detailed_checks_per_day": 3,
+        "manual_checks": 5,
+        "manual_checks_period": "month",
         "unlimited_days_after_install": 7,
     }
     assert body["messaging"]["blocking_is_free_forever"] is True
@@ -260,15 +292,15 @@ def test_paid_unlocks_names_no_feature_we_do_not_ship(client):
 def test_pricing_for_country_india(client):
     body = client.get("/api/v1/pricing/for-country?cc=IN").json()
     assert body["tier"] == 4
-    assert body["plan"]["price"]["monthly"]["amount"] == 0.99
-    assert body["plan"]["price"]["yearly"]["amount"] == 4.99
+    assert body["plan"]["price"]["monthly"]["amount"] == 1.99
+    assert body["plan"]["price"]["yearly"]["amount"] == 19.99
 
 
 def test_pricing_for_country_default(client):
     body = client.get("/api/v1/pricing/for-country").json()
     assert body["tier"] == 2
     assert body["country"] is None
-    assert body["plan"]["price"]["yearly"]["amount"] == 9.99
+    assert body["plan"]["price"]["yearly"]["amount"] == 19.99
 
 
 def test_pricing_for_country_unknown_defaults_to_base(client):
@@ -293,9 +325,11 @@ def test_pricing_tiers_reference(client):
     assert set(body["tiers"].keys()) == {"1", "2", "3", "4"}
     assert "US" in body["tiers"]["1"]["countries"]
     assert "IN" in body["tiers"]["4"]["countries"]
-    assert body["tiers"]["2"]["monthly_usd"] == 0.99
-    assert body["tiers"]["2"]["yearly_usd"] == 9.99
+    assert body["tiers"]["2"]["monthly_usd"] == 1.99
+    assert body["tiers"]["2"]["yearly_usd"] == 19.99
     assert body["tiers"]["2"]["extra_device_monthly_usd"] == 0.49
     assert body["included_devices"] == 3
     # The old note claimed the tier came from the Stripe billing country; it never did.
     assert "Stripe Checkout" not in " ".join(body["notes"].values())
+    # The notes describe today's prices, not the retired $0.99 floor.
+    assert "0.99" not in " ".join(body["notes"].values())

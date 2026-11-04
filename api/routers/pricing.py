@@ -23,8 +23,7 @@ from api.services.pricing import (
     _TIER_1_COUNTRIES,
     _TIER_3_COUNTRIES,
     _TIER_4_COUNTRIES,
-    FREE_DETAILED_CHECKS_PER_DAY,
-    FREE_UNLIMITED_DAYS_AFTER_INSTALL,
+    FREE_CHECKS_PERIOD,
     PLAN_ID,
     STRIPE_TRIAL_DAYS,
     TIER_EXAMPLES,
@@ -32,6 +31,8 @@ from api.services.pricing import (
     TIER_PRICES,
     TIERS,
     PriceQuote,
+    free_manual_checks,
+    free_unlimited_days,
     get_quote_for_country,
     included_devices,
 )
@@ -76,11 +77,17 @@ class FreeTier(BaseModel):
     list_blocking_unlimited: bool = Field(
         ..., description="Blocking known scam sites from the list never needs payment. Always true."
     )
-    detailed_checks_per_day: int = Field(
-        ..., description="Detailed checks (verdict, reasons, the scheme explained) a day without a plan."
+    manual_checks: int = Field(
+        ...,
+        description="Manual site checks (a site typed, pasted or shared into the app, with the verdict, "
+                    "the reasons and the scheme explained) per period without a plan. "
+                    "FREE_MANUAL_CHECKS_PER_MONTH; the app enforces this number.",
+    )
+    manual_checks_period: Literal["month"] = Field(
+        ..., description="The counting period: a calendar month on the phone's clock (resets on the 1st)."
     )
     unlimited_days_after_install: int = Field(
-        ..., description="Days after install with everything unlimited, no card."
+        ..., description="Days after install with everything unlocked, no card (FREE_UNLIMITED_DAYS_AFTER_INSTALL)."
     )
 
 
@@ -171,8 +178,9 @@ async def prices_for_country(
         ),
         free=FreeTier(
             list_blocking_unlimited=True,
-            detailed_checks_per_day=FREE_DETAILED_CHECKS_PER_DAY,
-            unlimited_days_after_install=FREE_UNLIMITED_DAYS_AFTER_INSTALL,
+            manual_checks=free_manual_checks(),
+            manual_checks_period=FREE_CHECKS_PERIOD,
+            unlimited_days_after_install=free_unlimited_days(),
         ),
         messaging=PricingMessaging(
             blocking_is_free_forever=True,
@@ -218,8 +226,8 @@ async def pricing_tiers() -> PricingTiersResponse:
         notes={
             "country": "The tier follows the `cc` the caller sends (the site uses the visitor's IP country). "
                        "Checkout takes the same country, so the price charged is the price shown.",
-            "monthly_floor": "Monthly is $0.99 in every tier: below it the fixed payment fee eats the price. "
-                             "The regional discount is in the yearly price.",
+            "one_price": "The plan is $1.99 a month or $19.99 a year in every tier. "
+                         "Only the extra device's yearly price still follows the tier.",
             "currency": "USD on backend; Stripe can display local currency at checkout.",
             "russia": "Russia is sold by the operator-billed subscription (api/billing), in rubles.",
         },
