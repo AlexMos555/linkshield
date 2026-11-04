@@ -58,7 +58,7 @@ async def _warm_ml_model() -> None:
 
     Loaded lazily, the model was loaded by the FIRST fresh check after every
     deploy — ~7 s of onnxruntime start-up measured locally, synchronously on
-    the event loop, so that check blew its 3 s budget and every other request
+    the event loop, so that check blew its analysis budget and every other request
     stalled behind it. Failure is logged, never fatal: scoring runs without ML.
     """
     try:

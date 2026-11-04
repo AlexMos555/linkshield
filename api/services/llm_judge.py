@@ -38,8 +38,8 @@ Privacy invariants (load-bearing):
      out at once with `llm_judge` in checks_incomplete, and the call
      finishes in the background and fills the cache for the next
      check with the same pattern. A live call takes longer than the
-     ~3 s fresh-check budget, and the browser extension (Safari's
-     on the iPhone too) gives a lookup 3 s (2026-11-03). Live calls are capped per day for
+     fresh-check budget (config.analysis_budget_seconds), and the browser
+     extension (Safari's on the iPhone too) gives a lookup 3 s (2026-11-03). Live calls are capped per day for
      the whole service (paid_budget), and at
      LOAD_SHED_LLM_MAX_INFLIGHT at once per worker (load_shedding):
      past that the judge is skipped, never queued. stop() cancels
@@ -519,8 +519,9 @@ SKIPPED = "skipped"  # the judge is not asked: out of band, a blocklist hit, no
 async def opinion_now(signals: dict, score: int, level: str) -> tuple[str, Optional[dict]]:
     """The judge without the wait — what the analyzer asks.
 
-    A live call takes longer than a fresh check's ~3 s budget (34 of 40
-    re-checks ran out of it, 2026-11-01/03), and the browser extension
+    A live call takes longer than a fresh check's budget (34 of 40
+    re-checks ran out of its 3 s, 2026-11-01/03; /public/check has 2.3 s
+    since 2026-11-04), and the browser extension
     (Safari's on the iPhone too) gives a lookup 3 s: a caution answer must not
     wait for one. So this
     returns (CACHED, opinion) when this pattern's answer is in the cache,

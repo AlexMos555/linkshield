@@ -155,7 +155,9 @@ async def public_check(domain: str, request: Request):
     """Public domain safety check. No auth required.
 
     Runs the full analyzer (threat-intel fan-out, site probes, ML, LLM judge)
-    inside a ~3 s budget, behind these short-circuits and defenses:
+    inside a 2.3 s budget (config.analysis_budget_seconds: the browser
+    extension waits 3 s for the whole round trip), behind these
+    short-circuits and defenses:
 
       1. Top-domain allowlist (instant safe for popular sites that are not
          shared platforms — no API calls).

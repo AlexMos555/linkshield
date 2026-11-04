@@ -23,9 +23,13 @@ consulted: they leave the plan and the total, so an analysis is 13 checks of
 13, not 13 of 19. LICENSED_INTEL=all consults all 19.
 
 A check still running at the deadline is cancelled and named in
-`checks_incomplete`. The LLM judge is never waited for: only its cached
-opinion counts, and a live call it needs runs on in the background for the
-next check (named `llm_judge` in `checks_incomplete` meanwhile). Its
+`checks_incomplete`, and so is a source its own time limit ended
+(SOURCE_TIMEOUT_S, below the budget). A source whose breaker is open is not
+asked at all: it is down, nothing was cut, so it is named only in the
+machine-readable `sources_down`. The LLM judge is never waited for:
+only its cached opinion counts, and a live call it needs runs on in the
+background for the next check (named `llm_judge` in `checks_incomplete`
+meanwhile). Its
 opinion moves the score inside caution only, never the level. Every
 check waits for the worker's outbound gate first (load_shedding.OUTBOUND), so
 the source calls open at once stay bounded however many analyses run.
@@ -36,9 +40,10 @@ Privacy: only domain names processed — never full URLs or user data.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import logging
 from datetime import date, datetime, timezone
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 import httpx
 
@@ -99,11 +104,33 @@ TOTAL_CHECKS = 19
 _SITE_PROBES = frozenset({"favicon", "ssl", "headers", "redirect"})
 # Cap for the SSRF resolution step inside the overall budget.
 RESOLUTION_TIMEOUT_S = 1.5
-# Every external source gives up BELOW the analysis budget (3 s), so a source
-# that hangs raises — and its circuit breaker counts the failure and opens —
-# instead of being silently cancelled at the deadline on every single check.
-# (PhishStats hung like that, holding each fresh check to the full budget.)
-SOURCE_TIMEOUT_S = 2.5
+# Every external source gives up BELOW the analysis budget
+# (config.analysis_budget_seconds), so a source that hangs raises — and its
+# circuit breaker counts the failure and opens — instead of being silently
+# cancelled at the deadline on every single check. (PhishStats hung like
+# that, holding each fresh check to the full budget; since 2026-11-04 it
+# hangs again.) Half a second below the 2.3 s budget: the existence and SSRF
+# lookups before the sources took up to 0.5 s in 194 of 235 analyses through
+# a home router and 172 of 232 through 1.1.1.1 (2026-11-04). From a later
+# start the deadline cancels a hang first, which a closed breaker never sees
+# (with 2.0 s it saw only those that started within 0.3 s: 178 and 71); a
+# half-open one opens again for its cooldown (circuit_breaker
+# ._on_probe_cancelled), so the next check does not wait for it again. Of the
+# 235 recorded analyses' source calls, one ended between 1.8 and 2.0 s — a
+# keyless PhishTank error at 1.86 s; RDAP at 1.71 s still fits, and those
+# past 2.0 s (DNS 2.11 s three times, RDAP 2.40, OTX 2.76 and 2.85) were cut
+# at 2.0 s already.
+SOURCE_TIMEOUT_S = 1.8
+# The sources whose own time limit (above) ended them in THIS analysis
+# (_within_source_timeout): they did not finish in time, as surely as one the
+# deadline cut, and are named in `checks_incomplete` with those — the answer
+# says it is partial, and the public cache keeps it for an hour, not a day.
+_TIMED_OUT: contextvars.ContextVar[Optional[set]] = contextvars.ContextVar("analyzer_timed_out", default=None)
+# The checks whose breaker did not let them run in THIS analysis (_consult):
+# open, or half-open with its one probe already out. Down, not cut off.
+_DOWN: contextvars.ContextVar[Optional[set]] = contextvars.ContextVar("analyzer_sources_down", default=None)
+# The probes that tell whether the site answered (site_probes.site_reachability).
+_REACHABILITY_PROBES = frozenset({"ssl", "headers", "redirect"})
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -167,21 +194,31 @@ async def analyze_domain(
             await security_alerts.record("ssrf_blocked")
         return vb.not_found_result(domain)
 
-    outcomes, unfinished = await run_within_budget(
-        _check_calls(domain, probes_allowed), deadline.remaining(),
-    )
+    timed_out: set[str] = set()
+    down: set[str] = set()
+    tokens = _TIMED_OUT.set(timed_out), _DOWN.set(down)
+    try:
+        outcomes, unfinished = await run_within_budget(
+            _check_calls(domain, probes_allowed), deadline.remaining(),
+        )
+    finally:
+        _TIMED_OUT.reset(tokens[0])
+        _DOWN.reset(tokens[1])
+    unfinished = unfinished + sorted(timed_out.difference(unfinished))
     if not probes_allowed:
         unfinished = unfinished + sorted(_SITE_PROBES)
-    return await _judge(domain, raw_url, is_ip, exists, outcomes, unfinished, deadline, allowlist_withheld)
+    return await _judge(domain, raw_url, is_ip, exists, outcomes, unfinished, deadline, allowlist_withheld,
+                        sources_down=sorted(down))
 
 
 async def _judge(
     domain: str, raw_url: str, is_ip: bool, exists: Optional[bool],
     outcomes: dict, unfinished: list[str], deadline: Deadline,
-    allowlist_withheld: bool = False,
+    allowlist_withheld: bool = False, sources_down: Sequence[str] = (),
 ) -> DomainResult:
     """Score the gathered evidence, apply the LLM judge's cached opinion (or
-    start its live call for the next check), and assemble the result."""
+    start its live call for the next check), and assemble the result.
+    `sources_down`: the checks their breakers skipped (_DOWN)."""
     total = TOTAL_CHECKS - len(_not_consulted(domain))
     # The argument only when it says something: wrappers of the old
     # signature (tests/test_licensed_intel.py) see the call they always did.
@@ -201,7 +238,8 @@ async def _judge(
         gated_score, gated_level, _ = calculate_score(gated)
         # The unreachable-site floor below, as "on" would apply it: a
         # withheld rank vouches for nothing but a government zone.
-        if gated["site_reachable"] is False and gated_level == RiskLevel.safe and not _government_name(domain):
+        if ((gated["site_reachable"] is False or _site_unseen(gated, unfinished))
+                and gated_level == RiskLevel.safe and not _government_name(domain)):
             gated_score, gated_level = max(gated_score, vb.CANNOT_VOUCH_SCORE), RiskLevel.caution
         logger.info("popularity_age_gate_shadow", extra={
             "domain": domain, "rank": signals["young_rank"], "age_days": whois_age,
@@ -223,17 +261,22 @@ async def _judge(
     # Not under an evidence-only zone (scoring.EVIDENCE_ONLY_TENANT_ZONES):
     # there no probe judges the site, an unreachable one included, and
     # neither does the LLM judge below, whose features are the probes'.
+    #
+    # Nor a site no probe could see in time (_site_unseen): the deadline that
+    # cut its probes would otherwise clear the same hidden site the floor
+    # holds when they say "unreachable" — bradesco.biajuridicopj.app went
+    # from caution to 'safe' that way in the replay of 2026-11-04.
     evidence_only = is_evidence_only_tenant(domain)
     vouched = True
-    if signals["site_reachable"] is False and not evidence_only:
+    if (signals["site_reachable"] is False or _site_unseen(signals, unfinished)) and not evidence_only:
         vouched = await _name_is_vouched_for(domain, signals, deadline)
         if not vouched and level == RiskLevel.safe:
             score = max(score, vb.CANNOT_VOUCH_SCORE)
             level = RiskLevel.caution
 
-    # A verdict on a site we could not open, or on partial data near 'safe',
-    # is never 'high' confidence.
-    if (measured < total and score < 20) or signals["site_reachable"] is False:
+    # A verdict on a site we could not open (or see in time), or on partial
+    # data near 'safe', is never 'high' confidence.
+    if (measured < total and score < 20) or signals["site_reachable"] is False or _site_unseen(signals, unfinished):
         confidence = _at_most(confidence, ConfidenceLevel.medium)
 
     judge_reason = None
@@ -269,6 +312,7 @@ async def _judge(
         ssl_issuer=_value(outcomes, "ssl", {}).get("issuer"),
         exists=exists,
         checks_incomplete=sorted(set(unfinished)),
+        sources_down=sorted(set(sources_down)),
     )
     # The model judges nothing under an evidence-only zone (scoring._evidence_only_verdict).
     basis = vb.derive_verdict_basis(result, ml_consulted=_ml_available() and not evidence_only)
@@ -276,6 +320,7 @@ async def _judge(
         "domain": domain, "score": score, "verdict": level.value,
         "confidence": confidence.value, "confidence_pct": confidence_pct,
         "checks": measured, "basis": basis, "incomplete": result.checks_incomplete,
+        "sources_down": result.sources_down,
         # The LLM judge's applied shift (None: not applied), so where its
         # opinions land against the scorer's lines can be counted.
         "judge_shift": judge_reason.weight if judge_reason is not None else None,
@@ -377,10 +422,31 @@ def _check_calls(domain: str, probes_allowed: bool) -> dict[str, Any]:
         "redirect": (redirect_breaker, check_redirect_chain),
     }
     return {
-        name: breaker.call(_through_outbound_gate(fn if name in _SITE_PROBES else _within_source_timeout(fn)), domain)
+        name: _consult(name, breaker, _through_outbound_gate(
+            fn if name in _SITE_PROBES else _within_source_timeout(fn, name)), domain)
         for name, (breaker, fn) in plan.items()
         if (probes_allowed or name not in _SITE_PROBES) and name not in skipped
     }
+
+
+async def _consult(name: str, breaker: Any, fn: Any, domain: str) -> tuple[Any, bool]:
+    """`breaker.call(fn, domain)`, noting in the analysis's _DOWN when the
+    breaker did not let `fn` run: open, or half-open with its probe out. Such
+    a check returns its fallback at once and is not counted as measured, as
+    before — it is just not "cut off" either: nothing could have finished."""
+    asked = False
+
+    async def _asked(d: str) -> Any:
+        nonlocal asked
+        asked = True
+        return await fn(d)
+
+    outcome = await breaker.call(_asked, domain)
+    if not asked:
+        down = _DOWN.get()
+        if down is not None:
+            down.add(name)
+    return outcome
 
 
 # Checks that cannot look up an IP literal, which the analyzer accepts as a
@@ -415,7 +481,7 @@ def _through_outbound_gate(fn: Any) -> Any:
     return _call
 
 
-def _within_source_timeout(fn: Any) -> Any:
+def _within_source_timeout(fn: Any, name: Optional[str] = None) -> Any:
     """`fn` with a TOTAL time limit that raises inside the breaker.
 
     httpx's timeout is per phase (connect, then each read), so a source that
@@ -425,9 +491,21 @@ def _within_source_timeout(fn: Any) -> Any:
     an Exception). This limit fires first, as a failure the breaker counts.
     The site probes keep their own limits: one slow SITE must not open a
     breaker that skips the probe for everyone.
+
+    A source ended by this limit, or by one of httpx's per-phase limits, is
+    recorded as `name` in the analysis's _TIMED_OUT: it did not finish in
+    time. Any other failure (an error answer, a 429, a page that is not
+    JSON) is not — it would be untrue to call it late, and an hour later the
+    answer would not be better.
     """
     async def _call(domain: str) -> Any:
-        return await asyncio.wait_for(fn(domain), timeout=SOURCE_TIMEOUT_S)
+        try:
+            return await asyncio.wait_for(fn(domain), timeout=SOURCE_TIMEOUT_S)
+        except (asyncio.TimeoutError, httpx.TimeoutException):
+            timed_out = _TIMED_OUT.get()
+            if timed_out is not None and name:
+                timed_out.add(name)
+            raise
     return _call
 
 
@@ -731,6 +809,13 @@ def _government_name(domain: str) -> bool:
     # FreeDNS's govt.hu and mil.nf, ChangeIP's gob.li, RCS&RDS's go.ro — an
     # unreachable paypal-login.go.ro stayed 'safe' here (2026-10-31).
     return zone not in CCTLD_OPEN_ZONES
+
+
+def _site_unseen(signals: dict, unfinished: list[str]) -> bool:
+    """No probe could tell in time whether the site answers: every one that
+    decides it was cut off by the deadline, or skipped because the SSRF
+    lookup did not finish (analyze_domain names those incomplete too)."""
+    return signals.get("site_reachable") is None and _REACHABILITY_PROBES <= set(unfinished)
 
 
 async def _name_is_vouched_for(domain: str, signals: dict, deadline: Deadline) -> bool:
