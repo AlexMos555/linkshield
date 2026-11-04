@@ -1982,10 +1982,11 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
         )
         reasons.append(DomainReason(signal="brand_subdomain_abuse", weight=30, detail=detail))
         # A brand as an organisation's whole tenant name is how the brand's
-        # own tenant is named (barclays.sharepoint.com is Barclays'): weak.
-        # A brand next to a lure word (tenant_brand: paypal-login) is not an
+        # own tenant is named (barclays.sharepoint.com is Barclays',
+        # tele2.sharepoint.com Tele2's): weak, whichever rule found it. A
+        # brand next to a lure word (tenant_brand: paypal-login) is not an
         # organisation's name and stays strong.
-        if brand_sub and organization_tenant:
+        if organization_tenant and (brand_sub or tenant_brand) == ascii_domain.split(".", 1)[0].replace("-", ""):
             weak_here.append(reasons[-1])
 
     # ── 3.5b A name on a free dynamic-DNS service ──

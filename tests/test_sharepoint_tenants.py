@@ -68,6 +68,9 @@ def _score(host: str, **signals) -> tuple[int, str, dict[str, int]]:
     # the brand as the tenant's whole name
     ("barclays.sharepoint.com", None, HYGIENE, ("brand_subdomain_abuse", 30)),
     ("stripe.sharepoint.com", None, HYGIENE, ("brand_subdomain_abuse", 30)),
+    # a Russian-list brand as the whole name: Tele2 AB's tenant (tele2.com and
+    # tele2.se are verified in the tenant behind tele2.onmicrosoft.com)
+    ("tele2.sharepoint.com", None, HYGIENE, ("brand_subdomain_abuse", 30)),
     # a brand word in the name lifted the weak-signal cap
     ("paypal-my.sharepoint.com", None, MORE_HYGIENE, ("cross_domain_redirect", 20)),
     # Microsoft's pre-release ring: 'dangerous 86' by name on 2026-11-04
@@ -99,6 +102,8 @@ def test_the_same_names_elsewhere_are_judged_as_before(model, host, opinion, ext
     "paypal-login.sharepoint.com",
     "microsoft-account-verify.sharepoint.com",
     "secure-paypal-my.sharepoint.com",
+    "sberbank-online.sharepoint.com",
+    "tele2-bonus.sharepoint.com",
 ])
 def test_a_brand_next_to_a_lure_word_on_a_tenant_is_still_brand_abuse(model, host):
     score, level, reasons = _score(host, **HYGIENE)
