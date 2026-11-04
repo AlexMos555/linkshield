@@ -109,8 +109,9 @@ jobs:
       - name: Check the legitimate sample
         # Every listed site still resolves and none is auto-trusted. A red
         # step here is a to-do (prune the list), not a reason to skip the
-        # week: a lapsed site scores `not_found`, which counts as no answer,
-        # and an auto-trusted one is dropped by the run itself.
+        # week: a lapsed site is 'not found' for every resolver and left out
+        # of the rates (scripts/benchmark_method.py), and an auto-trusted one
+        # is dropped by the run itself.
         continue-on-error: true
         run: python scripts/eval_fresh_urls.py --verify-legit-sample
 
@@ -172,7 +173,7 @@ jobs:
         id: regression
         run: |
           python3 <<'PY'
-          import json, glob, os, sys
+          import json, glob, math, os, sys
           # Only the fresh-URL runs eval_fresh_urls.py writes: other dated
           # reports share the folder (2026-10-04-ml-eval.json has no
           # 'phishing' key) and a KeyError here skipped "Commit results".
@@ -184,14 +185,64 @@ jobs:
               today = json.load(f)
           with open(files[-2]) as f:
               prior = json.load(f)
+          # Two runs counted by different rules are not comparable: since
+          # 2026-11-03 (method_version 2, scripts/benchmark_method.py) the
+          # sample and the count changed, and a drop across that line is the
+          # method, not Cleanway. A report without the key is method 1.
+          today_method = today.get('method_version', 1)
+          prior_method = prior.get('method_version', 1)
+          if today_method != prior_method:
+              print(f"::notice::Regression check skipped: {files[-1]} is method_version {today_method}, "
+                    f"{files[-2]} is method_version {prior_method}; their recalls are counted "
+                    "differently and are not comparable.")
+              print("regression=false", file=open(os.environ['GITHUB_OUTPUT'], 'a'))
+              sys.exit(0)
+          # A drop is a regression only when it is more than the noise of the
+          # sample. Since method_version 2 a week has about 100 Cleanway
+          # verdicts, not about 156: two weeks at the same recall (0.88) then
+          # differ by more than 5 points in about 15% of weeks, and the old
+          # "> 5 points" rule opened a false "recall regression" PR each time.
+          # Now the 95% Wilson intervals of the two recalls are compared, and
+          # only a week whose whole interval lies below the previous one's is
+          # flagged. The interval is the report's own recall_wilson95
+          # (scripts/benchmark_method.py wilson95 of tp and fn, the same
+          # rounding); every fresh-URL report has tp and fn. A report without
+          # them is compared by the old 5-point rule, with a warning.
+          Z95 = 1.959963984540054
+          def wilson95(k, n):
+              p = k / n
+              denom = 1 + Z95 ** 2 / n
+              centre = (p + Z95 ** 2 / (2 * n)) / denom
+              half = Z95 * math.sqrt(p * (1 - p) / n + Z95 ** 2 / (4 * n * n)) / denom
+              return [round(max(0.0, centre - half), 4), round(min(1.0, centre + half), 4)]
+          def counted(report):
+              c = report['phishing'].get('cleanway', {})
+              tp, fn = c.get('tp'), c.get('fn')
+              if isinstance(tp, int) and isinstance(fn, int) and tp + fn > 0:
+                  return tp + fn, wilson95(tp, tp + fn)
+              return None, None
+          def shown(recall, n, ci):
+              return f"{recall:.1%} (95% CI {ci[0] * 100:.1f}–{ci[1] * 100:.1f}%, {n} verdicts)"
           today_recall = today['phishing'].get('cleanway', {}).get('recall')
           prior_recall = prior['phishing'].get('cleanway', {}).get('recall')
           regressed = False
           if today_recall is not None and prior_recall is not None:
-              drop = prior_recall - today_recall
-              if drop > 0.05:  # >5pp drop is regression
-                  regressed = True
-                  print(f"::warning::Recall dropped from {prior_recall:.1%} to {today_recall:.1%}")
+              today_n, today_ci = counted(today)
+              prior_n, prior_ci = counted(prior)
+              if today_ci and prior_ci:
+                  print(f"::notice::Cleanway recall {shown(prior_recall, prior_n, prior_ci)} in {files[-2]}, "
+                        f"{shown(today_recall, today_n, today_ci)} in {files[-1]}")
+                  if today_ci[1] < prior_ci[0]:
+                      regressed = True
+                      print(f"::warning::Recall dropped from {shown(prior_recall, prior_n, prior_ci)} to "
+                            f"{shown(today_recall, today_n, today_ci)}: this week's whole 95% interval "
+                            "lies below the previous week's")
+              else:
+                  print("::warning::Regression check: a report has no tp/fn counts, so no interval; "
+                        "compared by the old rule (a drop of more than 5 points)")
+                  if prior_recall - today_recall > 0.05:
+                      regressed = True
+                      print(f"::warning::Recall dropped from {prior_recall:.1%} to {today_recall:.1%}")
           print(f"regression={'true' if regressed else 'false'}", file=open(os.environ['GITHUB_OUTPUT'], 'a'))
           PY
 
@@ -220,7 +271,10 @@ jobs:
           title: '🚨 Weekly benchmark: recall regression detected'
           body: |
             The weekly fresh-URL benchmark shows the Cleanway public
-            endpoint dropped >5pp in recall against fresh PhishTank URLs.
+            endpoint's recall on fresh PhishTank URLs dropped by more than
+            the noise of the sample: this week's whole 95% interval lies
+            below the previous week's (the "Detect recall regression" step's
+            log has both).
 
             **Possible causes:**
             - One of the 16 threat-intel sources is failing (check

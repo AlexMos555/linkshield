@@ -21,6 +21,11 @@ from types import ModuleType
 import pytest
 
 
+# A stub dump's submission time: the sample is drawn from the week before the
+# dump's newest row (benchmark_method.recent_window).
+_SUBMITTED = "2026-11-03T14:00:00+00:00"
+
+
 def _load_eval_module() -> ModuleType:
     """Import scripts/eval_fresh_urls.py as a module without making
     `scripts/` a package (no __init__.py). Pytest's pythonpath = ["."]
@@ -414,10 +419,11 @@ def test_cleanway_answers_are_broken_down_by_slice():
         legit.LegitSite("b.ru", "city", "reachable-abroad", "Wikidata Q2 P856", "b"),
         legit.LegitSite("c.ru", "bank", "reachable-abroad", "Wikidata Q3 P856", "c"),
     ]
+    method = importlib.import_module("benchmark_method")
     outcomes = [
-        legit.cleanway_outcome("dangerous", "dangerous"),
-        legit.cleanway_outcome("unknown", "caution"),
-        legit.cleanway_outcome("unknown", "rate_limited"),
+        method.outcome("dangerous", "dangerous", "resolves"),
+        method.outcome("unknown", "caution", "resolves"),
+        method.outcome("unknown", None, "resolves"),  # rate-limited
     ]
     assert outcomes == ["dangerous", "caution", "no_answer"]
     out = legit.legit_breakdown(outcomes, sites)
@@ -571,8 +577,8 @@ async def test_a_run_checks_resolvers_side_by_side_and_records_when_cleanway_ran
     phishing = [f"https://phish{i}.example/login" for i in range(3)]
     calls: list[str] = []
 
-    async def fake_feed(_limit):
-        return phishing
+    async def fake_feed():
+        return eval_module.PhishtankDump(phishing, submitted=[_SUBMITTED] * len(phishing))
 
     def fake_adapter(name):
         async def _check(_client, url):
@@ -581,9 +587,9 @@ async def test_a_run_checks_resolvers_side_by_side_and_records_when_cleanway_ran
             return eval_module.Verdict(name, "dangerous" if "phish" in url else "safe", detail=url)
         return _check
 
-    monkeypatch.setattr(eval_module, "fetch_phishtank_recent", fake_feed)
+    monkeypatch.setattr(eval_module, "fetch_phishtank_dump", fake_feed)
     monkeypatch.setattr(eval_module, "VT_KEY", "stub")
-    for name in ("cleanway", "gsb", "phishtank", "cloudflare_families", "virustotal"):
+    for name in ("cleanway", "gsb", "phishtank", "cloudflare_families", "virustotal", "existence"):
         monkeypatch.setitem(eval_module.ADAPTERS, name, fake_adapter(name))
         monkeypatch.setitem(eval_module.MIN_INTERVAL_S, name, 0.0)
     monkeypatch.setattr(sys, "argv", ["eval_fresh_urls.py", "--sample", "3", "--out-tag", "t",
@@ -621,15 +627,15 @@ def test_the_phishing_sample_is_phishtank_only_since_urlhaus_retired():
 async def test_the_report_names_phishtank_as_the_phishing_source(tmp_path, monkeypatch):
     eval_module = _load_eval_module()
 
-    async def fake_feed(_limit):
-        return ["https://phish0.example/login"]
+    async def fake_feed():
+        return eval_module.PhishtankDump(["https://phish0.example/login"], submitted=[_SUBMITTED])
 
     async def _check(_client, url):
         return eval_module.Verdict("x", "dangerous" if "phish" in url else "safe")
 
-    monkeypatch.setattr(eval_module, "fetch_phishtank_recent", fake_feed)
+    monkeypatch.setattr(eval_module, "fetch_phishtank_dump", fake_feed)
     monkeypatch.setattr(eval_module, "VT_KEY", None)
-    for name in ("cleanway", "gsb", "phishtank", "cloudflare_families"):
+    for name in ("cleanway", "gsb", "phishtank", "cloudflare_families", "existence"):
         monkeypatch.setitem(eval_module.ADAPTERS, name, _check)
         monkeypatch.setitem(eval_module.MIN_INTERVAL_S, name, 0.0)
     monkeypatch.setattr(sys, "argv", ["eval_fresh_urls.py", "--sample", "1", "--out-tag", "t",
@@ -639,7 +645,9 @@ async def test_the_report_names_phishtank_as_the_phishing_source(tmp_path, monke
     assert report["sources"]["phishing"].startswith("PhishTank online-valid (1 URLs)")
     assert "URLhaus" not in report["sources"]["phishing"]
     md = (tmp_path / "t-fresh-urls.md").read_text(encoding="utf-8")
-    assert "Phishing samples are fresh PhishTank entries" in md
+    # Since 2026-11-03 the sample's age is the window the report states
+    # (benchmark_method.methodology_md), not a bare "fresh" a stale draw contradicted.
+    assert "Phishing samples come from PhishTank's online-valid dump" in md
 
 
 @pytest.mark.asyncio
@@ -699,8 +707,8 @@ async def _stub_run(eval_module, monkeypatch, tmp_path, *flags: str) -> tuple[di
     them. Returns (report, markdown, the resolvers that were called)."""
     calls: list[str] = []
 
-    async def fake_feed(_limit):
-        return ["https://phish0.example/login"]
+    async def fake_feed():
+        return eval_module.PhishtankDump(["https://phish0.example/login"], submitted=[_SUBMITTED])
 
     def stub(name):
         async def _check(_client, url):
@@ -708,7 +716,7 @@ async def _stub_run(eval_module, monkeypatch, tmp_path, *flags: str) -> tuple[di
             return eval_module.Verdict(name, "dangerous" if "phish" in url else "safe")
         return _check
 
-    monkeypatch.setattr(eval_module, "fetch_phishtank_recent", fake_feed)
+    monkeypatch.setattr(eval_module, "fetch_phishtank_dump", fake_feed)
     monkeypatch.setattr(eval_module, "VT_KEY", "stub")
     monkeypatch.setattr(eval_module, "GSB_KEY", "stub")
     for name in list(eval_module.ADAPTERS):

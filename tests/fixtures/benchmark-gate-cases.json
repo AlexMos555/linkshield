@@ -1,0 +1,65 @@
+{
+  "_about": "Phishing halves of weekly benchmark reports and whether the site may quote Cleanway's recall from them. Both gates read this file: scripts/eval_fresh_urls.check_quality_gate (tests/test_benchmark_quality_gate.py) and landing/lib/benchmark.ts recallIsPublishable (scripts/test-landing-honesty.mjs), so the script and the site cannot disagree. A report with no_answer and resolving (method_version 2, since 2026-11-03) is gated on the share of live rows without an answer; an older one on its 'unknown'.",
+  "cases": [
+    {
+      "name": "method 1 snapshot, healthy",
+      "n_phishing": 200,
+      "cleanway": {"tp": 150, "fn": 30, "fp": 0, "tn": 0, "unknown": 20, "recall": 0.8333},
+      "publishable": true
+    },
+    {
+      "name": "method 1 snapshot, rate-limited (unknown above 30%)",
+      "n_phishing": 200,
+      "cleanway": {"tp": 60, "fn": 5, "fp": 0, "tn": 0, "unknown": 135, "recall": 0.9231},
+      "publishable": false
+    },
+    {
+      "name": "method 2, fresh sample: a third of the names dead and many cautions, every live link answered",
+      "n_phishing": 200,
+      "cleanway": {"tp": 100, "fn": 10, "fp": 0, "tn": 0, "unknown": 90, "recall": 0.9091,
+                   "n": 200, "dangerous": 100, "caution": 25, "safe": 10, "not_found": 65, "no_answer": 0,
+                   "resolving": 135, "answered": 135},
+      "publishable": true
+    },
+    {
+      "name": "method 2, at the limit: 30% of the live links without an answer",
+      "n_phishing": 200,
+      "cleanway": {"tp": 80, "fn": 10, "fp": 0, "tn": 0, "unknown": 110, "recall": 0.8889,
+                   "n": 200, "dangerous": 80, "caution": 15, "safe": 10, "not_found": 50, "no_answer": 45,
+                   "resolving": 150, "answered": 105},
+      "publishable": true
+    },
+    {
+      "name": "method 2, rate-limited: 32% of the live links without an answer",
+      "n_phishing": 200,
+      "cleanway": {"tp": 80, "fn": 10, "fp": 0, "tn": 0, "unknown": 110, "recall": 0.8889,
+                   "n": 200, "dangerous": 80, "caution": 15, "safe": 10, "not_found": 45, "no_answer": 50,
+                   "resolving": 155, "answered": 105},
+      "publishable": false
+    },
+    {
+      "name": "method 2, too few verdicts on the live links",
+      "n_phishing": 200,
+      "cleanway": {"tp": 40, "fn": 5, "fp": 0, "tn": 0, "unknown": 155, "recall": 0.8889,
+                   "n": 200, "dangerous": 40, "caution": 30, "safe": 5, "not_found": 120, "no_answer": 5,
+                   "resolving": 80, "answered": 75},
+      "publishable": false
+    },
+    {
+      "name": "method 2, most names dead: fewer than 50 live links",
+      "n_phishing": 200,
+      "cleanway": {"tp": 30, "fn": 5, "fp": 0, "tn": 0, "unknown": 165, "recall": 0.8571,
+                   "n": 200, "dangerous": 30, "caution": 5, "safe": 5, "not_found": 158, "no_answer": 2,
+                   "resolving": 42, "answered": 40},
+      "publishable": false
+    },
+    {
+      "name": "method 2, a small run",
+      "n_phishing": 80,
+      "cleanway": {"tp": 55, "fn": 5, "fp": 0, "tn": 0, "unknown": 20, "recall": 0.9167,
+                   "n": 80, "dangerous": 55, "caution": 10, "safe": 5, "not_found": 10, "no_answer": 0,
+                   "resolving": 70, "answered": 70},
+      "publishable": false
+    }
+  ]
+}
