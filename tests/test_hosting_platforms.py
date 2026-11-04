@@ -48,11 +48,11 @@ def test_data_file_is_well_formed():
     with open(DATA) as f:
         data = json.load(f)
     assert set(data) == {"_meta", "tenant_suffixes", "user_content_hosts", "operator_hosts", "operator_zones",
-                         "dynamic_dns_services"}
+                         "dynamic_dns_services", "tenant_suffixes_not_in_model"}
     assert hp.TENANT_SUFFIXES and hp.USER_CONTENT_HOSTS and hp.OPERATOR_HOSTS and hp.DYNAMIC_DNS_SUFFIXES
-    assert hp.OPERATOR_ZONES
+    assert hp.OPERATOR_ZONES and hp.TENANT_SUFFIXES_NOT_IN_MODEL
     for name in (hp.TENANT_SUFFIXES | hp.USER_CONTENT_HOSTS | hp.OPERATOR_HOSTS | hp.DYNAMIC_DNS_SUFFIXES
-                 | hp.OPERATOR_ZONES):
+                 | hp.OPERATOR_ZONES | hp.TENANT_SUFFIXES_NOT_IN_MODEL):
         assert name == name.lower().strip(".") and "." in name, name
         assert " " not in name and "/" not in name, name
 
