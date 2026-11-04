@@ -354,6 +354,12 @@ EAS creates these on the first `eas build` if you let it log in; to do it by han
    (the paywall links them too). Support URL `https://cleanway.ai`.
 4. Account deletion: in the app (Settings → Delete account, and Account →
    Delete account). Mention it in review notes.
+5. **Pricing and Availability → Countries or Regions: every territory except
+   Russia and France.** Decision 2026-11-04: worldwide launch without Russia.
+   France is off since 2026-10-24 (encryption declaration, §2 table). Check
+   the list before every submission: on 2026-10-24 174 territories were on,
+   Russia most likely among them. The subscriptions (§3.4) follow the app's
+   availability, so no separate country setting is needed for them.
 
 ### 3.4 In-app purchases (Subscriptions)
 

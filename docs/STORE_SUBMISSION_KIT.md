@@ -328,7 +328,7 @@ First release on Google Play: blocks known scam sites in every app, checks a sus
 </ru-RU>
 ```
 
-Дальше — `docs/STORES.md` §6.10, пункты 10–13 (проверка на телефоне из Play, подписки в RevenueCat, страны: все доступные; в России Play Billing не работает — приложение там просто бесплатное).
+Дальше — `docs/STORES.md` §6.10, пункты 10–13 (проверка на телефоне из Play, подписки в RevenueCat, страны: все доступные, **кроме России** — решение основателя 2026-11-04, `docs/STORES.md` §6.10 п. 12a).
 
 ---
 
