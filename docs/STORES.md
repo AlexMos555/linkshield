@@ -302,11 +302,14 @@ Google's PEPK tool) keeps one signature everywhere.
       site and RuStore APKs.
 - [ ] **Pricing line** in the listing (`docs/STORE_SUBMISSION_KIT.md` §1.2–1.3): the copy says only "Basic
       protection is free." Once the subscriptions are live in Play Console, add
-      (confirm numbers first; Play shows its own localised prices in the app): "Blocking known scam sites is free with no limit. 3
-      detailed checks a day are free, and everything is unlimited for the first
-      7 days. Optional subscription: $0.99 a month or $9.99 a year for 3 devices
-      (phone, tablet, or browser with the extension); each extra device $0.49 a
-      month." Russian: see `docs/RUSTORE_SUBMISSION.md` §7.0 (99 ₽ / +29 ₽).
+      (confirm numbers first; Play shows its own localised prices in the app): "Blocking known scam sites is free with no limit.
+      Everything is unlocked for the first 7 days, then 5 manual site checks a
+      month are free. Optional subscription: $1.99 a month for unlimited checks
+      on 3 devices (phone, tablet, or browser with the extension)."
+      Numbers: founder decision 2026-11-04 (server settings
+      FREE_MANUAL_CHECKS_PER_MONTH / FREE_UNLIMITED_DAYS_AFTER_INSTALL — if they
+      change, change the line). Add "or $19.99 a year" only if the yearly plan is
+      created. The extra device is not sold in the app — not in the line. Russian: see `docs/RUSTORE_SUBMISSION.md` §7.0 (99 ₽ / +29 ₽).
 - [x] **Screenshots and feature graphic** — EN and RU, 1080×1920, from 1.0.4
       (`mobile/assets/store/google-play/`, README there); feature graphic
       1024×500 per language; icon `mobile/assets/store/icon-512.png`.

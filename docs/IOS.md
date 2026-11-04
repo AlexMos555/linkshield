@@ -365,6 +365,28 @@ The server already knows these ids (`api/services/store_products.py`):
 | `Cleanway` | `cleanway.devices.yearly` | 1 year | Personal plan |
 | `Cleanway devices` (separate group) | `cleanway.extra_device.monthly` / `.yearly` | — | +1 device (not sold in the app yet) |
 
+**Prices (founder decision 2026-11-04: US$1.99 a month in every country).**
+Apple no longer has numbered "price tiers"; it has price points. For each
+subscription: App Store Connect → the app → Subscriptions → group `Cleanway` →
+the product → Subscription Prices → Add Subscription Price → base country
+**United States**, price **USD 1.99** → Next: Apple fills every other storefront
+with its equalized local price for the same point (keep them, do not edit
+countries by hand — "the same price everywhere" is exactly Apple's
+equalization) → Confirm.
+
+| Product | Base price (United States) | Note |
+|---|---|---|
+| `cleanway.devices.monthly` | USD 1.99 | the founder's price |
+| `cleanway.devices.yearly` | USD 19.99 | proposed (≈ 2 months free); if the founder drops the yearly plan, do not create it — the paywall shows only what the `default` offering has |
+| `cleanway.extra_device.*` | — | not sold in the app yet: no need to create before it is |
+
+Introductory offer (free trial): do **not** add one unless the founder says so —
+the app already gives 7 days with everything unlocked, then 5 free manual checks
+a month (server settings), and a store trial on top would double it. The app never types a
+price: it shows StoreKit's own string (RevenueCat `priceString`), so a price change
+here needs no new build. Apple's price changes for existing subscribers follow
+Apple's rules (notice, consent for an increase) — irrelevant before the first sale.
+
 Then in RevenueCat (runbook §3, §9): add the App Store app, upload the
 In-App Purchase key (`.p8`), set App Store Server Notifications V2 to
 RevenueCat's URL, attach both plan products to the `unlimited` entitlement and
