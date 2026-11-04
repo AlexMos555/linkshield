@@ -7,10 +7,11 @@
  * runs under real React 18 here, with the list, the server, History and the
  * haptics stubbed. Two bugs found in review are pinned:
  *
- *  1. A second link shared to the OPEN /shared screen. Expo Router reuses the
- *     screen and changes only its params (pinned below with the real
- *     @react-navigation StackRouter, as in test-message-handoff.mjs), so the
- *     hook sees a new domain while it stays mounted. The old version saved
+ *  1. A second link shared to the OPEN /shared screen. The share router
+ *     navigates there, so Expo Router reuses the screen and changes only its
+ *     params (pinned below with expo-router's own stack router, as in
+ *     test-message-handoff.mjs), and the hook sees a new domain while it
+ *     stays mounted. The old version saved
  *     the previous site's verdict under the new name — sberbank.ru went into
  *     History as «Опасно — сайт из списка мошеннических» after a listed scam,
  *     a scam after sberbank.ru was never recorded and buzzed "success", and
@@ -167,33 +168,51 @@ async function openScreen(domain, record = true, deep = true) {
 const history = () => rows.map((r) => [r.domain, r.level, r.score, r.source ?? "server"]);
 
 /**
- * Two pushes of /shared while it is on top, dispatched the way expo-router 4
- * dispatches router.push (a NAVIGATE with a fresh __EXPO_ROUTER_key), to a
- * <Stack.Screen name="shared" options={…}/> whose props leave getId undefined.
+ * Two shares of a link while /shared is on top, dispatched the way expo-router
+ * 58 dispatches them: router.navigate is a NAVIGATE and router.push a PUSH
+ * (getNavigateAction in expo-router/build/global-state), to a
+ * <Stack.Screen name="shared"/> without dangerouslySingular, i.e. no getId.
+ * Since Expo SDK 56 expo-router carries its own fork of React Navigation; this
+ * is the stack router it runs.
  */
-function secondShareReusesTheScreen(StackRouter) {
+function secondShare(type) {
   const router = StackRouter({});
-  const options = { routeNames: ["(tabs)", "shared"], routeParamList: {}, routeGetIdList: { shared: undefined } };
-  let state = router.getInitialState(options);
-  const push = (url) => ({
-    type: "NAVIGATE",
-    target: state.key,
-    payload: { name: "shared", params: { url, __EXPO_ROUTER_key: `k-${Math.random()}` } },
-  });
-  state = router.getStateForAction(state, push("https://scam-pochta.ru/track"), options);
+  const config = { routeNames: ["(tabs)", "shared"], routeGetIdList: { shared: undefined } };
+  let state = createInitialState({ routeNames: config.routeNames, initialRouteName: "(tabs)", parentChain: "root" });
+  const share = (url) => ({ type, target: state.key, payload: { singular: undefined, name: "shared", params: { url } } });
+  state = router.getStateForAction(state, share("https://scam-pochta.ru/track"), config).state;
   const first = state.routes.at(-1).key;
-  state = router.getStateForAction(state, push("https://sberbank.ru/"), options);
+  state = router.getStateForAction(state, share("https://sberbank.ru/"), config).state;
   const top = state.routes.at(-1);
   return { sameScreen: top.key === first, url: top.params.url, depth: state.routes.length };
 }
 
-const { StackRouter } = await import(pathToFileURL(appRequire.resolve("@react-navigation/routers")).href);
+const { StackRouter } = appRequire("expo-router/build/react-navigation/routers/index.js");
+const { createInitialState } = appRequire("expo-router/build/react-navigation/core/createInitialState.js");
+
+/** The share router's calls to /shared, from app/_layout.tsx (ShareIntentRouter). */
+function shareRouterCalls() {
+  const layout = readFileSync(join(root, "app/_layout.tsx"), "utf8");
+  const body = layout.slice(layout.indexOf("function ShareIntentRouter()"));
+  const calls = [...body.slice(0, body.indexOf("\n}\n")).matchAll(/router\.(\w+)\(\{ pathname: "\/shared"/g)];
+  return calls.map((m) => m[1]);
+}
 
 const CASES = [
   [
-    "the router gives the OPEN /shared screen the second link — no new screen",
-    async () => secondShareReusesTheScreen(StackRouter),
+    "router.navigate (what the share router calls) gives the OPEN /shared screen the second link — no new screen",
+    async () => secondShare("NAVIGATE"),
     { sameScreen: true, url: "https://sberbank.ru/", depth: 2 },
+  ],
+  [
+    "router.push would stack a second /shared screen since Expo SDK 58 — why the share router navigates",
+    async () => secondShare("PUSH"),
+    { sameScreen: false, url: "https://sberbank.ru/", depth: 3 },
+  ],
+  [
+    "the share router reaches /shared with router.navigate only",
+    async () => shareRouterCalls(),
+    ["navigate", "navigate"],
   ],
   [
     "listed scam, then sberbank.ru to the same screen: each saved under its own name, with its own buzz",

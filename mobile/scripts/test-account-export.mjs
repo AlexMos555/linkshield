@@ -15,7 +15,9 @@
  *   • the hourly limit (429) has its own sentence; every other failure the
  *     generic one, under the same title;
  *   • the export goes to the share sheet as cleanway-data-YYYY-MM-DD.json
- *     (UTC date), the server's JSON pretty-printed, overwriting the last one;
+ *     (UTC date), the server's JSON pretty-printed, overwriting the last one —
+ *     and only once the file is written: File.write() is async since Expo
+ *     SDK 58, so the stub's write lands a tick later, like the real one;
  *   • no sharing on this device, a build without expo-sharing /
  *     expo-file-system, or a file step that throws: the text itself goes
  *     to the system share sheet instead — never a crash, never nothing;
@@ -70,7 +72,8 @@ function stubs() {
       isAvailableAsync: async () => world.sharingAvailable,
       shareAsync: async (uri, options) => {
         if (world.failFileShare) throw new Error("no activity");
-        world.fileShares.push([uri, options]);
+        // What the file holds at the moment the share sheet gets it.
+        world.fileShares.push([uri, options, world.files.find((f) => f.uri === uri)?.text ?? null]);
       },
     },
     "expo-file-system": {
@@ -84,7 +87,10 @@ function stubs() {
         create(options) {
           this.created = options;
         }
-        write(text) {
+        // expo-file-system 58 (Expo SDK 58): write() returns a Promise, and the
+        // file has its content only once it resolves.
+        async write(text) {
+          await new Promise((done) => setTimeout(done, 0));
           if (world.failWrite) throw new Error("disk full");
           this.text = text;
         }
@@ -125,7 +131,7 @@ async function press(setup = () => {}) {
   return {
     alerts: world.alerts,
     textShares: world.textShares,
-    fileShares: world.fileShares.map(([uri, options]) => ({ uri, ...options })),
+    fileShares: world.fileShares.map(([uri, options, text]) => ({ uri, ...options, text })),
     files: world.files.map((f) => ({ name: f.name, created: f.created ?? null, text: f.text ?? null })),
   };
 }
@@ -172,7 +178,7 @@ const CASES = [
     },
   ]),
   [
-    "success: a JSON file in the cache, overwritten, handed to the share sheet",
+    "success: a JSON file in the cache, overwritten, handed to the share sheet once it is written",
     () => press(),
     {
       alerts: [],
@@ -182,6 +188,7 @@ const CASES = [
         mimeType: "application/json",
         UTI: "public.json",
         dialogTitle: "t(mobile.account.export_share_title)",
+        text: TEXT,
       }],
       files: [{ name: today(), created: { overwrite: true }, text: TEXT }],
     },

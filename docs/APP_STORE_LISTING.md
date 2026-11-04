@@ -63,8 +63,13 @@ Terms: cleanway.ai/terms
 
 <!-- field: en.whats_new max=4000 -->
 ```text
-First release for iPhone: DNS protection against scam sites, a scam-text filter, a Safari extension and link checks.
+A new foundation: Cleanway now runs on an up-to-date version of the platform it is built on, so it can keep getting updates. Everything you use keeps working, and your settings stay as they were.
+• Needs iOS 16.4 or later (was 15.1).
+• In Arabic and Italian, a few lines showed a note for translators instead of the text (in Arabic, the time of each check in History). Fixed.
+• Signing in will keep working after a planned change to our sign-in service.
 ```
+
+Версия 1.1.0 (iOS build 7). Для 1.0.x (первая версия на iPhone, 1.0.4–1.0.6) здесь было: «First release for iPhone: DNS protection against scam sites, a scam-text filter, a Safari extension and link checks.»
 
 ## Русский
 
@@ -120,8 +125,18 @@ Cleanway защищает iPhone от мошенников. Не даёт отк
 
 <!-- field: ru.whats_new max=4000 -->
 ```text
-Первая версия для iPhone: защита DNS от мошеннических сайтов, фильтр мошеннических SMS, расширение для Safari и проверка ссылок.
+Новая основа: Cleanway перешёл на свежую версию платформы, на которой он построен, и сможет дальше получать обновления. Всё, чем вы пользуетесь, продолжает работать, а ваши настройки остаются прежними.
+• Нужна iOS 16.4 или новее (было 15.1).
+• На арабском и итальянском несколько строк показывали заметку для переводчика вместо текста (на арабском — время каждой проверки в «Истории»). Исправлено.
+• Вход в аккаунт продолжит работать после запланированного изменения в нашей службе входа.
 ```
+
+Версия 1.1.0 (iOS build 7). Для 1.0.x (первая версия на iPhone, 1.0.4–1.0.6) здесь было: «Первая версия для iPhone: защита DNS от мошеннических сайтов, фильтр мошеннических SMS, расширение для Safari и проверка ссылок.»
+
+**Откуда «Что нового» 1.1.0 и что проверить перед вставкой.** Источник — `CHANGELOG.md` → App 1.1.0: на iPhone человек замечает новую основу (Expo SDK 58; без неё с апреля 2027 обновления для iPhone не выпустить), минимум iOS 16.4 (было 15.1) и то, что впервые приходит на iPhone из `main` — строки на арабском и итальянском вместо заметок переводчику (#310, #350: на арабском — «N минут/часов/дней назад» в «Истории», на итальянском — результат проверки утёкшего пароля; на этот экран в интерфейсе нет кнопки, `app/breach.tsx` открывается только по ссылке, поэтому в тексте «несколько строк», без названия экрана) и publishable-ключ Supabase (#333). Остальное из CHANGELOG человек на iPhone не видит: перенос DNS-защиты в модуль `CleanwayDns` и вынос из iPhone-сборки того, что в защите Android называет VPN, — её нативного модуля, четырёх строк про VPN, `BIND_VPN_SERVICE` и имён иконок «vpn-…» (#386–#389; общий JS защиты и остальные её тексты в iPhone-бандле остаются, без этого слова — `docs/IOS.md` §3.6), react-i18next 17, «Скачать мои данные» и «Поделиться» ведут себя как в 1.0.6. Перед вставкой:
+- «Signing in will keep working» / «Вход продолжит работать» верно, только если проверка бандла build 7 (`docs/IOS.md` §1.1) печатает `publishable key ok`. Иначе — пересобрать с ключом, а не вставлять;
+- «keeps working … settings stay as they were» / «продолжает работать … настройки остаются прежними» — критерий приёмки проверки на телефонах (`docs/EXPO_UPGRADE_PLAN.md` §6.2, iPhone). Если она найдёт разницу, которую человек заметит, переписать. Не «проверки как раньше»: расширение для Safari в build 7 проверяет иначе, чем в 1.0.6 (6), — см. следующий пункт.
+- Не в CHANGELOG, но приходит на iPhone впервые: расширение для Safari в build 7 собрано из `main` после #355, #357 и #368 (build 6 собран 2026-10-25, до них). Если App 1.1.0 в CHANGELOG их получит, добавить строку — en: «• Safari extension: the warning about a sign-in form that sends your password to another site now also works on sites under endings like .co.uk or .com.br.»; ru: «• Расширение для Safari: предупреждение о форме входа, которая отправляет пароль на чужой сайт, теперь работает и на сайтах с окончаниями вроде .co.uk или .com.br.»
 
 ## Прочие поля App Store Connect
 
@@ -135,6 +150,6 @@ Cleanway защищает iPhone от мошенников. Не даёт отк
 | Copyright | 2026 [юридическое название компании] — после перевода аккаунта (`docs/runbooks/company-accounts.md`) |
 | Скриншоты (6,9″) | `mobile/assets/store/app-store/{en,ru}/01…05.png`, порядок и правила — README там же |
 | App Privacy | `docs/IOS.md` §3.5. После переезда инфраструктуры 2026-10 ответы те же: Railway (сервер, ЕС — Амстердам), Supabase, Resend (коды входа, ЕС — Ирландия), Cloudflare (DNS cleanway.ai, пересылка почты, Turnstile на странице сайта, зашифрованные копии базы в ЕС) и GitHub (задание копирования) — подрядчики, работающие по нашему поручению, а не «третьи стороны» для отслеживания. Все они названы в политике (§9, §14). **Капча — уже внутри приложения:** с 1.0.6 (сборка 5) проверка «я не робот» (Turnstile на `cleanway.ai/auth/captcha`) открывается на iPhone в окне поверх приложения (`ASWebAuthenticationSession`, без общих cookie Safari), а не в браузере, — прежнее «открывается в браузере, а не в приложении» для этого бинарника неверно. Пока капча в Supabase выключена, приложение эту страницу не открывает и ответы прежние; **до её включения** решить запись в App Privacy (IP-адрес и признаки браузера, которые видит Cloudflare) — `docs/IOS.md` §3.5, `docs/MOBILE_AUTH.md` (порядок включения капчи, шаг 4) |
-| Заметки для проверки (App Review Information → Notes) | текст из `docs/IOS.md` §3.6 — в нём сказано, как войти: Настройки → Sign in → `review@cleanway.ai` → поле пароля (только для этого адреса). Текст как есть — для сборки **без** `EXPO_PUBLIC_REVENUECAT_IOS_KEY` (так собраны все сборки, 1.0.6 (6) тоже): в ней нет покупок, экрана подписки и «Восстановить покупки». Фразу про In-App Purchase и «Restore purchases» подставлять только для сборки с ключом `appl_…` и с подписками, прикреплёнными к версии (там же, §3.6) |
+| Заметки для проверки (App Review Information → Notes) | текст из `docs/IOS.md` §3.6: для 1.1.0 (build 7) и новее — первый блок как есть, его последний абзац «VPN (2.1)» — для build 7+ (3 808 из 4 000 знаков); абзац, вставленный для 1.0.6 (6), там же как история — не вставлять. В тексте сказано, как войти: Настройки → Sign in → `review@cleanway.ai` → поле пароля (только для этого адреса). Текст как есть — для сборки **без** `EXPO_PUBLIC_REVENUECAT_IOS_KEY` (так собраны все сборки, 1.0.6 (6) тоже): в ней нет покупок, экрана подписки и «Восстановить покупки». Фразу про In-App Purchase и «Restore purchases» подставлять только для сборки с ключом `appl_…` и с подписками, прикреплёнными к версии (там же, §3.6) |
 | In-App Purchases (страница версии) | Для сборки без `appl_…` — ничего не прикреплять: в ней нечего купить (`docs/IOS.md` §3.4, §3.6). Есть ли ключ в сборке — проверка бандла в `docs/IOS.md` §1.1 |
 | Sign-In Information (App Review Information → включить **Sign-in required**) | User name `review@cleanway.ai`, Password — из связки ключей: `security find-generic-password -s 'Cleanway app review account' -a review@cleanway.ai -w \| tr -d '\n' \| pbcopy` (на экран не выводится). Аккаунт и пароль создаёт `python3 scripts/create_review_account.py`; после каждой смены пароля обновить здесь, в Play и в RuStore — `docs/runbooks/app-review-account.md`. Поле пароля есть только в сборках с `EXPO_PUBLIC_REVIEW_EMAILS` (с первой после 2026-10-23); код из письма проверяющий получить не может |

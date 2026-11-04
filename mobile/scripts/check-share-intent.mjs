@@ -15,29 +15,30 @@
  * exported, and an explicit intent skips intent filters, so any app on the
  * phone could do it: no permission, nothing for the person to tap.
  *
- * Upstream fixed it in 8.0.1 (achorein/expo-share-intent#221). SDK 54 keeps
- * us on 5.1.1, so mobile/patches/expo-share-intent+5.1.1.patch is that fix,
- * byte for byte, and scripts/apply-patches.js applies it on every install
- * (the monorepo's and the mirror's).
+ * Upstream fixed it in 8.0.1 (achorein/expo-share-intent#221); 9.0.0 has the
+ * same file. 1.0.6 (Expo SDK 54) carried that fix as a patch for 5.1.1
+ * (#318). Since Expo SDK 58 (1.1.0) the app installs expo-share-intent
+ * ^9.0.0, which has the fix itself, and the patch is gone: patch-package would
+ * find a forgotten one "already applied" and only warn about the version.
  *
  * Checked:
  *  1. the installed Kotlin copies into the cache only under the name cut to
  *     its last path component, and only once its canonical path is inside
  *     cacheDir; File(context.cacheDir, fileName) is gone;
- *  2. below 8.0.1, the patch for the installed version is there and applied
- *     cleanly: the installed file is exactly the patch's result, which is
- *     upstream 8.0.1's file. From 8.0.1 on, no expo-share-intent patch is left;
+ *  2. the installed version is 8.0.1 or newer (Expo SDK 58: ^9.0.0), and no
+ *     expo-share-intent patch is left in mobile/patches/;
  *  3. defence in depth: the share sheet offers Cleanway for text/plain only,
- *     the one type 5.1.1 reads as text without copying a file. Checked on
- *     the manifest the plugin itself generates from app.json. Not enough on
+ *     the one type the module reads as text without copying a file. Checked
+ *     on the manifest the plugin itself generates from app.json. Not enough on
  *     its own (an explicit intent ignores filters), hence 1 and 2.
  *  4. with --manifest=<android/app/src/main/AndroidManifest.xml>: the same
  *     filter in the manifest a build actually uses. Release builds run the
  *     check this way before compiling (plugins/withShareIntentGuard.js), so
  *     an android/ generated before the filter was narrowed fails as well.
  *
- * --package-dir=<dir> points checks 1 and 2 at another copy of the package;
- * plugins.test.js uses it to show that this check fails when it should.
+ * --package-dir=<dir> points checks 1 and 2 at another copy of the package,
+ * --patches-dir=<dir> check 2 at another patches folder; plugins.test.js uses
+ * them to show that this check fails when it should.
  */
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -53,13 +54,12 @@ const PKG = "expo-share-intent";
 const KT = "android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt";
 const FIXED_IN = [8, 0, 1];
 /**
- * Git blob ids (`git hash-object`) of upstream's ExpoShareIntentModule.kt.
- * UNPATCHED: npm 5.1.1; the file stayed the same up to 8.0.0. FIXED: npm
- * 8.0.1, i.e. #221's single hunk; 9.0.0 has the same file. To re-check one:
- *   gh api "repos/achorein/expo-share-intent/contents/<KT>?ref=v8.0.1" \
+ * Git blob id (`git hash-object`) of upstream's fixed ExpoShareIntentModule.kt:
+ * npm 8.0.1 (#221's single hunk) and 9.0.0. Informational only: a later 9.0.x
+ * may change the file, and check 1 is what decides. To re-check:
+ *   gh api "repos/achorein/expo-share-intent/contents/<KT>?ref=v9.0.0" \
  *     --jq .content | base64 -d | git hash-object --stdin
  */
-const UPSTREAM_UNPATCHED = "0153c89c7e2ce4fa20351bc2d5e7b1c6cd341dbe";
 const UPSTREAM_FIXED = "ff5b1001e7bb3443482727cec48c22579465c73b";
 /** The share types Cleanway reads: ShareIntentRouter (app/_layout.tsx) uses `text` and `webUrl` only. */
 const SHARE_TYPES = ["text/plain"];
@@ -72,7 +72,7 @@ const arg = (name) => {
 };
 const pkgDir = arg("package-dir") ?? dirname(require.resolve(`${PKG}/package.json`));
 const manifestPath = arg("manifest");
-const patchesDir = join(mobile, "patches");
+const patchesDir = arg("patches-dir") ?? join(mobile, "patches");
 
 const ok = [];
 const failures = [];
@@ -132,47 +132,21 @@ const where = `${PKG} ${version} ${KT}`;
   }
 }
 
-// 2. The patch: there below 8.0.1, applied cleanly, gone from 8.0.1 on.
+// 2. The version: 8.0.1+ carries the fix itself, and no patch is left behind.
 {
   const patches = existsSync(patchesDir)
     ? readdirSync(patchesDir).filter((f) => f.startsWith(`${PKG}+`) && f.endsWith(".patch"))
     : [];
-  if (!olderThan(version, FIXED_IN)) {
-    if (patches.length) {
-      failures.push(`${PKG} ${version} carries the fix itself (8.0.1+): delete ${patches.map((p) => `mobile/patches/${p}`).join(", ")}`);
-    } else {
-      ok.push(`${PKG} ${version} carries the fix itself; no patch left behind`);
-    }
+  if (olderThan(version, FIXED_IN)) {
+    failures.push(`${PKG} ${version} has the hole (fixed upstream in 8.0.1); Expo SDK 58 takes ^9.0.0: run npm install in mobile/`);
   } else {
-    const want = `${PKG}+${version}.patch`;
-    for (const p of patches.filter((p) => p !== want)) {
-      failures.push(`mobile/patches/${p} is for another version than the installed ${version} (patch-package only warns about that)`);
-    }
-    if (!patches.includes(want)) {
-      failures.push(`${PKG} ${version} has the hole and mobile/patches/${want} is missing`);
-    } else {
-      const text = readFileSync(join(patchesDir, want), "utf8");
-      const files = [...text.matchAll(/^diff --git a\/\S+ b\/(\S+)$/gm)].map((m) => m[1]);
-      const index = text.match(/^index ([0-9a-f]{40})\.\.([0-9a-f]{40}) /m);
-      const got = gitBlobId(bytes);
-      if (!isDeepStrictEqual(files, [`node_modules/${PKG}/${KT}`])) {
-        failures.push(`mobile/patches/${want} must change ${KT} and nothing else; it changes ${files.join(", ") || "nothing"}`);
-      } else if (!index) {
-        failures.push(`mobile/patches/${want} lost its full "index <before>..<after>" line (git diff --full-index)`);
-      } else if (index[1] !== UPSTREAM_UNPATCHED || index[2] !== UPSTREAM_FIXED) {
-        failures.push(
-          `mobile/patches/${want} is not upstream's fix: it maps ${index[1]} -> ${index[2]}, ` +
-            `expected ${UPSTREAM_UNPATCHED} (5.1.1) -> ${UPSTREAM_FIXED} (8.0.1)`,
-        );
-      } else if (got === UPSTREAM_UNPATCHED) {
-        failures.push(`mobile/patches/${want} did not apply: ${KT} is still upstream ${version}'s (npm install --ignore-scripts skips postinstall)`);
-      } else if (got !== UPSTREAM_FIXED) {
-        failures.push(`${where} is neither upstream 5.1.1's nor the patched file (git blob ${got}): edited by hand, or patched twice`);
-      } else {
-        ok.push(`mobile/patches/${want} applied cleanly: ${KT} is byte for byte upstream 8.0.1's (git blob ${got.slice(0, 7)})`);
-      }
-    }
+    const same = gitBlobId(bytes) === UPSTREAM_FIXED ? ` (${KT} is byte for byte upstream 8.0.1's, git blob ${UPSTREAM_FIXED.slice(0, 7)})` : "";
+    ok.push(`${PKG} ${version} carries the fix itself${same}`);
   }
+  for (const p of patches) {
+    failures.push(`mobile/patches/${p} is left behind: ${PKG} ${version} has the fix itself, and patch-package only warns about a patch for another version. Delete it`);
+  }
+  if (patches.length === 0) ok.push(`no ${PKG} patch in ${patchesDir === join(mobile, "patches") ? "mobile/patches/" : patchesDir}`);
 }
 
 // 3. The share filter Android gets, as the plugin itself writes it from app.json.

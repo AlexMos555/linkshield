@@ -224,12 +224,15 @@ async function request<T>(
     });
   } catch (e: unknown) {
     clearTimeout(timer);
-    // An aborted fetch rejects with a DOMException in browsers/Node but a plain
-    // Error in Hermes (React Native) — where `DOMException` is not even a global,
-    // so `e instanceof DOMException` throws a ReferenceError and crashes the call.
-    // Check the error name directly so this works on every runtime.
+    // A timeout is our own timer firing, whatever the rejection looks like: a
+    // DOMException AbortError in browsers/Node, a plain Error named
+    // "AbortError" in Hermes (where `DOMException` is not even a global, so
+    // `e instanceof DOMException` would throw), and since Expo SDK 56 expo/fetch's
+    // FetchError, named "Error" ("fetch failed: The operation was aborted.").
+    // The name check stays for a fetchImpl that aborts on its own signal.
     const isAbort =
-      typeof e === "object" && e !== null && (e as { name?: string }).name === "AbortError";
+      controller.signal.aborted ||
+      (typeof e === "object" && e !== null && (e as { name?: string }).name === "AbortError");
     return {
       data: null,
       error: {

@@ -187,13 +187,6 @@ jobs:
       - name: Expo config plugins (release signing + ABI filters)
         run: node mobile/plugins/__tests__/plugins.test.js
 
-      - name: decode-uri-component 0.2.2 patch (GHSA-qr28-fpjm-wq7f)
-        # 0.5.1's linear decoder, backported to the 0.2.2 that query-string@7
-        # require()s (docs/EXPO_UPGRADE_PLAN.md §1.2): the installed copy is
-        # the patched one, 0.2.2's and 0.5.1's vectors hold, and the
-        # advisory's PoC (30 s unpatched) finishes in under a second.
-        run: node mobile/scripts/test-decode-uri-component.mjs
-
       - name: Build mirror lock matches mobile/package.json
         # Store builds install from mobile/package-lock.json in a mirror outside
         # the monorepo (docs/RUSTORE_SUBMISSION.md §2), not from the root lock

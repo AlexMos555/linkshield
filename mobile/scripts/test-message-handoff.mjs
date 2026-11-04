@@ -6,20 +6,22 @@
  * screen open, share a NEW scam message to Cleanway — and read "no signs of
  * fraud" about the OLD one; the new message never reached History.
  *
- * Why: the share router pushes "/message" again, and Expo Router 4 (with the
- * Stack.Screen options this app sets) does not mount a second screen — it
- * gives the open one new params. The params were `{from: "share"}` both
+ * Why: the share router sends "/message" again, and Expo Router 4–6 (with
+ * the Stack.Screen options this app sets) did not mount a second screen — it
+ * gave the open one new params. The params were `{from: "share"}` both
  * times, the screen took its text once on mount, and never looked again.
+ * Since Expo SDK 58 router.push always stacks a new screen; the share router
+ * calls router.navigate, which still hands the open screen the new params.
  *
  * Pinned here, in two layers:
- *  1. the navigation fact itself, with the real @react-navigation StackRouter
- *     and the action expo-router dispatches for a push — so if a future
- *     router does mount a fresh screen, this test says so;
+ *  1. the navigation fact itself, with expo-router's own stack router and
+ *     the actions it dispatches for router.navigate and router.push — so if a
+ *     future router does something else, this test says so;
  *  2. src/services/message-handoff.ts: each share gets its own id, and the
  *     open screen's takeForScreen() hands over the NEW text exactly once.
  */
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -32,25 +34,29 @@ const src = resolve(root, "src/services/message-handoff.ts");
 const out = mkdtempSync(join(tmpdir(), "cleanway-handoff-"));
 
 /**
- * Two shares while /message is on top, dispatched the way expo-router 4.0
- * dispatches router.push (a NAVIGATE with a fresh __EXPO_ROUTER_key), to a
- * <Stack.Screen name="message" options={…}/> — whose props override the
- * route's getId with undefined, so the key is never used as an id.
+ * Two shares while /message is on top, dispatched the way expo-router 58
+ * dispatches them: router.navigate is a NAVIGATE and router.push a PUSH
+ * (getNavigateAction in expo-router/build/global-state), to a
+ * <Stack.Screen name="message"/> without dangerouslySingular, i.e. no getId.
  */
-function secondShareReusesTheScreen(StackRouter) {
+function secondShare(type, { StackRouter, createInitialState }) {
   const router = StackRouter({});
-  const options = { routeNames: ["(tabs)", "message"], routeParamList: {}, routeGetIdList: { message: undefined } };
-  let state = router.getInitialState(options);
-  const push = (params) => ({
-    type: "NAVIGATE",
-    target: state.key,
-    payload: { name: "message", params: { ...params, __EXPO_ROUTER_key: `k-${Math.random()}` } },
-  });
-  state = router.getStateForAction(state, push({ from: "share", handoff: "a" }), options);
+  const config = { routeNames: ["(tabs)", "message"], routeGetIdList: { message: undefined } };
+  let state = createInitialState({ routeNames: config.routeNames, initialRouteName: "(tabs)", parentChain: "root" });
+  const share = (params) => ({ type, target: state.key, payload: { singular: undefined, name: "message", params } });
+  state = router.getStateForAction(state, share({ from: "share", handoff: "a" }), config).state;
   const first = state.routes.at(-1).key;
-  state = router.getStateForAction(state, push({ from: "share", handoff: "b" }), options);
+  state = router.getStateForAction(state, share({ from: "share", handoff: "b" }), config).state;
   const top = state.routes.at(-1);
-  return { sameScreen: top.key === first, handoff: top.params.handoff };
+  return { sameScreen: top.key === first, handoff: top.params.handoff, depth: state.routes.length };
+}
+
+/** The share router's calls to /message, from app/_layout.tsx (ShareIntentRouter). */
+function shareRouterCalls() {
+  const layout = readFileSync(join(root, "app/_layout.tsx"), "utf8");
+  const body = layout.slice(layout.indexOf("function ShareIntentRouter()"));
+  const calls = [...body.slice(0, body.indexOf("\n}\n")).matchAll(/router\.(\w+)\(\{ pathname: "\/message"/g)];
+  return calls.map((m) => m[1]);
 }
 
 try {
@@ -63,9 +69,11 @@ try {
     { cwd: root, stdio: "inherit" },
   );
   const m = await import(pathToFileURL(join(out, "src/services/message-handoff.js")).href);
-  const { StackRouter } = await import(
-    pathToFileURL(createRequire(join(root, "package.json")).resolve("@react-navigation/routers")).href
-  );
+  const appRequire = createRequire(join(root, "package.json"));
+  const nav = {
+    StackRouter: appRequire("expo-router/build/react-navigation/routers/index.js").StackRouter,
+    createInitialState: appRequire("expo-router/build/react-navigation/core/createInitialState.js").createInitialState,
+  };
 
   // An open message screen: its ref, and what it checked, in order.
   const screen = () => {
@@ -82,9 +90,19 @@ try {
 
   const CASES = [
     [
-      "the router gives the OPEN screen the second share's params — no new screen",
-      () => secondShareReusesTheScreen(StackRouter),
-      { sameScreen: true, handoff: "b" },
+      "router.navigate (what the share router calls) gives the OPEN screen the second share's params — no new screen",
+      () => secondShare("NAVIGATE", nav),
+      { sameScreen: true, handoff: "b", depth: 2 },
+    ],
+    [
+      "router.push would stack a second message screen since Expo SDK 58 — why the share router navigates",
+      () => secondShare("PUSH", nav),
+      { sameScreen: false, handoff: "b", depth: 3 },
+    ],
+    [
+      "the share router reaches /message with router.navigate only",
+      () => shareRouterCalls(),
+      ["navigate"],
     ],
     [
       "a second share to the open screen is checked — the new text, once",
