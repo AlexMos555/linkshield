@@ -1480,7 +1480,7 @@ def _certificate_is_a_renewal(signals: dict) -> bool:
     renewal apart directly — crt.sh lists the previous, still valid
     certificate for 13 of the 15 real sites it answered for — but on
     2026-10-26 it took 7.2 s at the median, and 31 of 96 queries failed
-    (502s, timeouts): far past the 3 s analysis budget.)"""
+    (502s, timeouts): far past the analysis budget, 3 s then.)"""
     host = (signals.get("domain") or "").lower().strip(".")
     if signals.get("cert_wildcard") and host and _platform_tenant_site(host) == host:
         return True

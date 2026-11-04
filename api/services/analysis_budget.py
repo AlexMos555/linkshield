@@ -8,7 +8,8 @@ unfinished answer was then cached for everyone else.
 
 Now the whole analysis gets one deadline (config.analysis_budget_seconds,
 2.3 s since 2026-11-04: the browser extension waits 3 s for the whole round
-trip). Checks still running when it passes are cancelled and NAMED in the
+trip; the app's /check keeps 3 s, config.check_analysis_budget_seconds).
+Checks still running when it passes are cancelled and NAMED in the
 verdict (`checks_incomplete`), so a partial verdict says it is partial
 instead of pretending to be complete.
 """

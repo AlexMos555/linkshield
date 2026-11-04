@@ -6,8 +6,8 @@ scorer. The analysis budget was those same 3 s, so an answer whose checks ran
 to the deadline came back after the client had given up: 3.2-3.7 s measured
 from Dubai on 2026-11-04. Since PhishStats stopped answering (its API accepts
 the connection and never replies), every fresh check with its breaker closed
-ran to PhishStats' own limit — and at low traffic every check is the
-breaker's half-open probe.
+ran to PhishStats' own limit — and at low traffic every check was the
+breaker's half-open probe (no longer: tests/test_dead_sources.py).
 
 The budget now leaves the network its share of the client's wait, every
 source still gives up inside the budget (so a hang is a failure its breaker
@@ -15,7 +15,7 @@ counts), a site that never answers is still found unreachable inside it (the
 probes' connection limit came down with it), and a source ended by its own
 time limit is named in `checks_incomplete` like one the deadline cut: the
 answer says it is partial and the public cache keeps it for an hour, not a
-day.
+day. The app's /check, which waits 12 s, keeps the old 3 s.
 """
 from __future__ import annotations
 
@@ -32,8 +32,9 @@ from api import config
 from api.services import analyzer, favicon_hash, site_probes
 
 ROOT = Path(__file__).resolve().parent.parent
-# Every build of the extension asks the same way: Chrome, Firefox, Safari.
-EXTENSION_COPIES = ("extension", "extension-firefox", "extension-safari")
+# Every build of the extension asks the same way: Chrome, Firefox, Safari —
+# and the one source scripts/build-extensions.sh copies into all three.
+EXTENSION_COPIES = ("packages/extension-core", "extension", "extension-firefox", "extension-safari")
 # Measured 2026-11-04 from Dubai to api.cleanway.ai/health (10 + 10 requests):
 # a new connection (TCP + TLS + request) took 0.44-0.68 s, p50 0.54 s; a
 # kept-alive one 0.26-0.35 s, p50 0.27 s. The budget is sized for the new one.
@@ -41,11 +42,15 @@ NETWORK_NEW_CONNECTION_S = 0.54
 # What the analysis does after its deadline (scoring, the judge's cache
 # lookup, the response): at most 0.03 s in the replay of 2026-11-04.
 AFTER_DEADLINE_S = 0.05
-# The existence and SSRF lookups before any source starts: p50 0.19 s, p75
-# 0.30 s over 235 analyses in the same measurement. A source's own limit
-# must end before the deadline from there, or a hang is cancelled instead
-# of counted.
+# The existence and SSRF lookups before any check starts: p50 0.19 s, p75
+# 0.30 s over 235 analyses through a home router; p50 0.41, p75 0.51 s over
+# 232 through 1.1.1.1 (2026-11-04).
 TYPICAL_START_S = 0.3
+# What a source's own limit leaves before the deadline. A hang that the
+# deadline cancels first is invisible to its breaker, which then never
+# opens; 0.5 s covers the start of 194 of 235 analyses through the home
+# router and 172 of 232 through 1.1.1.1 (0.3 s: 178 and 71).
+SOURCE_START_ALLOWANCE_S = 0.5
 # A site probe that timed out reported p50 0.13 s, p90 0.26-0.29 s after its
 # connection limit (its own name lookup, the TLS probe's thread), at most
 # 0.5 s (the whole-probe limit): 55 sites that never answered from abroad,
@@ -84,7 +89,7 @@ def phishstats_breaker(monkeypatch):
 
 def test_every_extension_build_still_waits_3_s():
     """The fix is on the server: the extension's wait is not raised."""
-    assert {_extension_timeout_s(c) for c in EXTENSION_COPIES} == {3.0}
+    assert {c: _extension_timeout_s(c) for c in EXTENSION_COPIES} == {c: 3.0 for c in EXTENSION_COPIES}
 
 
 def test_the_budget_leaves_the_network_its_share_of_the_extensions_wait():
@@ -100,18 +105,21 @@ def test_the_running_config_uses_that_budget():
 
 def test_a_source_gives_up_inside_the_budget_from_a_normal_start():
     """Below the budget is not enough: a source starts once existence and the
-    SSRF lookup are done. From the usual start its own limit must still end
-    first, so a hang is a failure its breaker counts (and opens on)."""
-    assert analyzer.SOURCE_TIMEOUT_S + TYPICAL_START_S <= _default_budget()
+    SSRF lookup are done. From most starts its own limit must still end
+    first, so a hang is a failure its breaker counts (and opens on). With
+    2.0 s of 2.3 only a start within 0.3 s left it that (review of #407)."""
+    assert round(_default_budget() - analyzer.SOURCE_TIMEOUT_S, 3) >= SOURCE_START_ALLOWANCE_S
 
 
 def test_an_unreachable_site_is_still_measured_unreachable_inside_the_budget():
     """A site that never answers is 'unreachable' when its probe's connection
     limit ends first, 'cut off' when the deadline does — and only
-    'unreachable' keeps the floor for a name nothing vouches for: cut off,
-    a hidden phishing site came back 'safe' (sirimaneproperties.com, replay
-    of 2026-11-04). The probe resolves the name itself and the TLS one runs
-    in a thread, so it reports PROBE_OVERHEAD_S after its connection limit."""
+    'unreachable' says why the site was not checked, and with the old 2.0 s
+    limit a hidden phishing site came back 'safe' when the deadline cut its
+    probes (bradesco.biajuridicopj.app, replay of 2026-11-04; since then a
+    site no probe saw in time keeps the floor too: test_cut_probes_floor).
+    The probe resolves the name itself and the TLS one runs in a thread, so
+    it reports PROBE_OVERHEAD_S after its connection limit."""
     budget = _default_budget()
     for limit in (site_probes.SITE_PROBE_TIMEOUT_S, favicon_hash.FAVICON_FETCH_TIMEOUT):
         assert limit + TYPICAL_START_S + PROBE_OVERHEAD_S <= budget, limit
@@ -232,7 +240,8 @@ def test_a_site_that_never_answers_is_found_unreachable_inside_the_default_budge
     """The case the replay of 2026-11-04 caught: with the probes' old 2.0 s
     connection limit, a hidden site's probes ended after the 2.3 s deadline,
     the verdict lost 'unreachable' and with it the floor for an unvouched
-    name — a phishing host went from caution to 'safe'."""
+    name — bradesco.biajuridicopj.app, a phishing host, went from caution to
+    'safe'."""
     import socket
 
     from api.services import domain_validator
@@ -284,3 +293,35 @@ def test_the_public_cache_keeps_an_answer_with_a_timed_out_source_for_an_hour(
     assert "checks_incomplete" in body["reason_codes"]
     key = public_router._PUBLIC_CACHE_PREFIX + "obscure-shop.ru"
     assert fake_redis._ttls[key] == public_router._PARTIAL_CACHE_TTL_SECONDS
+
+
+# ── The app's /check ──
+
+def test_the_apps_check_keeps_the_old_3_s_budget(monkeypatch):
+    """The app waits 12 s for /check (the browser extension 3 s for
+    /public/check): a shorter budget would only cut its checks."""
+    from api.routers import check as check_router
+
+    assert config.Settings.model_fields["check_analysis_budget_seconds"].default == 3.0
+    assert config.get_settings().check_analysis_budget_seconds == 3.0
+    budgets = []
+
+    async def _analyze(domain, *a, budget_s=None, **k):
+        budgets.append(budget_s)
+        return analyzer.rule_only_result(domain)
+
+    monkeypatch.setattr(check_router, "analyze_domain", _analyze)
+    asyncio.run(check_router._analyse_batch(["first-shop.ru"], 1))
+    assert budgets == [3.0]
+
+
+def test_a_late_start_is_cut_for_the_extension_but_not_for_the_app(offline_analyzer):
+    """Existence and the SSRF lookup took 0.6 s (p84 through 1.1.1.1), the
+    TLS probe 1.9 s after that: past the 2.3 s deadline, inside 3 s."""
+    from api.routers import check as check_router
+
+    offline_analyzer(site="reachable", delays={"exists": 0.6, "resolution": 0.6, "check_ssl": 1.9})
+    (app,) = asyncio.run(check_router._analyse_batch(["late-shop.ru"], 1))
+    assert app.checks_incomplete == []
+    public = asyncio.run(analyzer.analyze_domain("late-shop.ru"))
+    assert public.checks_incomplete == ["ssl"]

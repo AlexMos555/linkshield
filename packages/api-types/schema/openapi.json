@@ -5115,6 +5115,13 @@
             },
             "type": "array",
             "title": "Checks Incomplete"
+          },
+          "sources_down": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources Down"
           }
         },
         "type": "object",

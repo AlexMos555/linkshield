@@ -251,21 +251,30 @@ class Settings(BaseSettings):
     explainer_daily_budget: int = 500
 
     # Wall-clock budget for ONE fresh domain analysis (all sources and the
-    # site probes). Checks still running at the deadline are cut off and named
-    # in the verdict's `checks_incomplete`. The LLM judge is never waited for:
-    # only its cached opinion counts (api/services/llm_judge.opinion_now). The
+    # site probes) of /public/check, and the default of analyze_domain().
+    # Checks still running at the deadline are cut off and named in the
+    # verdict's `checks_incomplete`. The LLM judge is never waited for: only
+    # its cached opinion counts (api/services/llm_judge.opinion_now). The
     # browser extension waits 3 s for the whole round trip (LOOKUP_TIMEOUT_MS
-    # in background/public-check.js; Safari's on the iPhone is the same code),
-    # the app 12 s. Until 2026-11-04 this budget was those same 3 s, so an
-    # answer whose checks ran to the deadline arrived after the extension had
-    # given up (3.2-3.7 s from Dubai) and it used its offline verdict. 2.3 s
-    # leaves the network its share: a new connection from Dubai took 0.44-0.68
-    # s (p50 0.54), a kept-alive one 0.26-0.35 s. Replayed over 235 live
-    # analyses (2026-11-04): server p95 3.02 -> 2.32 s, no phishing site lost
-    # 'dangerous'. Lowering it further also needs analyzer.SOURCE_TIMEOUT_S
-    # and the site probes' limits (site_probes) lowered with it:
-    # tests/test_budget_fits_client_wait.py holds the arithmetic.
+    # in background/public-check.js; Safari's on the iPhone is the same code).
+    # Until 2026-11-04 this budget was those same 3 s, so an answer whose
+    # checks ran to the deadline arrived after the extension had given up
+    # (3.2-3.7 s from Dubai) and it used its offline verdict. 2.3 s leaves
+    # the network its share: a new connection from Dubai took 0.44-0.68 s
+    # (p50 0.54), a kept-alive one 0.26-0.35 s, so the client sees ~2.86 s at
+    # p95 on a median new connection and ~3.0 s on the slowest (2-8 of 232
+    # replayed answers still late there): the margin rests on the users being
+    # closer to EU West than Dubai is. Replayed over 235 live analyses
+    # (2026-11-04): server p95 3.02 -> 2.32 s, and no phishing site lost
+    # 'dangerous' — on heuristics and the ML model; Web Risk and IPQS ran
+    # without keys and OTX answered live for 23 hosts only. Lowering it
+    # further also needs analyzer.SOURCE_TIMEOUT_S and the site probes'
+    # limits (site_probes) lowered with it: tests/test_budget_fits_client_wait.py
+    # holds the arithmetic.
     analysis_budget_seconds: float = 2.3
+    # The same for the app's /check (routers/check.py), which waits 12 s: a
+    # budget cut to the extension's wait would only cut its checks.
+    check_analysis_budget_seconds: float = 3.0
 
     # Load shedding (api/services/load_shedding.py, docs/runbooks/capacity.md).
     # Every limit is PER WORKER PROCESS (WEB_CONCURRENCY=2: twice per

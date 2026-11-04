@@ -2150,6 +2150,8 @@ export interface components {
             exists?: boolean | null;
             /** Checks Incomplete */
             checks_incomplete?: string[];
+            /** Sources Down */
+            sources_down?: string[];
         };
         /**
          * EffectiveSkillResponse

@@ -6,8 +6,10 @@ RDAP) are down. Three states:
 
   CLOSED  → Normal operation. Requests go through.
   OPEN    → After N consecutive failures. Skip calls for cooldown period.
-  HALF_OPEN → After cooldown. One probe request allowed.
-              Success → CLOSED. Failure → OPEN again.
+  HALF_OPEN → After cooldown. One probe request allowed; the calls that
+              come while it is out are skipped as if OPEN.
+              Success → CLOSED. Failure → OPEN again — for twice as long,
+              up to max_cooldown_seconds, on a breaker that has one.
 """
 
 from __future__ import annotations
@@ -16,7 +18,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Coroutine, TypeVar
+from typing import Any, Callable, Coroutine, Optional, TypeVar
 
 logger = logging.getLogger("cleanway.circuit_breaker")
 
@@ -45,18 +47,28 @@ class CircuitBreaker:
     failure_threshold: int = 3       # Consecutive failures to open circuit
     cooldown_seconds: float = 60.0   # How long to stay open before half-open probe
     fallback: Any = None             # Value to return when circuit is open
+    # A probe that fails doubles the next cooldown, up to this; a success
+    # resets it. None: the cooldown never grows. For a source that stays dead
+    # for days: with a fixed 60 s every check at low traffic was the probe
+    # (PhishStats, 2026-11-04).
+    max_cooldown_seconds: Optional[float] = None
 
     # Internal state
     _state: CircuitState = field(default=CircuitState.CLOSED, init=False)
     _failure_count: int = field(default=0, init=False)
     _last_failure_time: float = field(default=0.0, init=False)
     _last_success_time: float = field(default=0.0, init=False)
+    _cooldown: float = field(default=0.0, init=False)  # the current one; set in __post_init__
+    _probing: bool = field(default=False, init=False)  # a half-open probe is out
+
+    def __post_init__(self) -> None:
+        self._cooldown = self.cooldown_seconds
 
     @property
     def state(self) -> CircuitState:
         """Get current state, transitioning OPEN → HALF_OPEN if cooldown elapsed."""
         if self._state == CircuitState.OPEN:
-            if time.monotonic() - self._last_failure_time >= self.cooldown_seconds:
+            if time.monotonic() - self._last_failure_time >= self._cooldown:
                 self._state = CircuitState.HALF_OPEN
                 logger.info(
                     "circuit_half_open",
@@ -74,12 +86,17 @@ class CircuitBreaker:
         """
         current_state = self.state
 
-        # OPEN → return fallback immediately
-        if current_state == CircuitState.OPEN:
+        # OPEN, or HALF_OPEN with the probe already out → fallback at once:
+        # a dead source is asked once per cooldown, not by every check that
+        # arrives while the probe waits out its time limit.
+        if current_state == CircuitState.OPEN or (current_state == CircuitState.HALF_OPEN and self._probing):
             logger.debug("circuit_open_skip", extra={"breaker": self.name})
             return self.fallback, False
 
         # CLOSED or HALF_OPEN → attempt the call
+        probe = current_state == CircuitState.HALF_OPEN
+        if probe:
+            self._probing = True
         try:
             result = await func(*args, **kwargs)
             self._on_success()
@@ -87,6 +104,11 @@ class CircuitBreaker:
         except Exception as e:
             self._on_failure(e)
             return self.fallback, False
+        finally:
+            # Also when the probe is cancelled (the analysis deadline): no
+            # verdict on the source, so the next call probes again.
+            if probe:
+                self._probing = False
 
     def _on_success(self) -> None:
         """Record a successful call."""
@@ -94,12 +116,22 @@ class CircuitBreaker:
             logger.info("circuit_closed", extra={"breaker": self.name})
         self._state = CircuitState.CLOSED
         self._failure_count = 0
+        self._cooldown = self.cooldown_seconds
         self._last_success_time = time.monotonic()
 
     def _on_failure(self, error: Exception) -> None:
         """Record a failed call."""
         self._failure_count += 1
         self._last_failure_time = time.monotonic()
+
+        if self._state == CircuitState.HALF_OPEN:
+            # The probe failed: the source is still down. Wait longer before
+            # the next one, on a breaker that allows it.
+            cap = self.max_cooldown_seconds
+            if cap is not None:
+                self._cooldown = min(max(cap, self.cooldown_seconds), self._cooldown * 2)
+        elif self._state == CircuitState.CLOSED:
+            self._cooldown = self.cooldown_seconds
 
         if self._failure_count >= self.failure_threshold:
             self._state = CircuitState.OPEN
@@ -139,11 +171,22 @@ safe_browsing_breaker = CircuitBreaker(
     fallback=False,  # If circuit open, assume not in blacklist
 )
 
+# The two keyless community feeds back off to one probe an hour while they
+# stay down: on 2026-11-04 PhishStats had answered 0 of 235 calls (its API
+# hangs; phishstats.info answers 502) and keyless PhishTank's answer was not
+# JSON 235 times of 235. A probe of a hanging source holds that one answer to
+# the source's limit and is named in its checks_incomplete; replayed at one
+# fresh check every 5 minutes, a 30 min cap still made 53 of 232 answers such
+# probes. Each feed is asked again within the hour of its recovery. The other
+# breakers keep their fixed cooldown.
+_DEAD_FEED_MAX_COOLDOWN_S = 60 * 60
+
 phishtank_breaker = CircuitBreaker(
     name="phishtank",
     failure_threshold=3,
     cooldown_seconds=60,
     fallback=False,
+    max_cooldown_seconds=_DEAD_FEED_MAX_COOLDOWN_S,
 )
 
 whois_breaker = CircuitBreaker(
@@ -190,7 +233,8 @@ redirect_breaker = CircuitBreaker(
 )
 
 
-phishstats_breaker = CircuitBreaker(name="phishstats", failure_threshold=3, cooldown_seconds=60, fallback=False)
+phishstats_breaker = CircuitBreaker(name="phishstats", failure_threshold=3, cooldown_seconds=60, fallback=False,
+                                    max_cooldown_seconds=_DEAD_FEED_MAX_COOLDOWN_S)
 threatfox_breaker = CircuitBreaker(name="threatfox", failure_threshold=3, cooldown_seconds=60, fallback=False)
 spamhaus_breaker = CircuitBreaker(name="spamhaus_dbl", failure_threshold=5, cooldown_seconds=120, fallback=False)
 surbl_breaker = CircuitBreaker(name="surbl", failure_threshold=5, cooldown_seconds=120, fallback=False)
