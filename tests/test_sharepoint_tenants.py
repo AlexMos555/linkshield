@@ -19,14 +19,21 @@ paypal, wellsfargo, barclays, stripe, shopify …) were 'dangerous', 5 by the
 model and 6 by the brand as the whole label. None of 60 other real tenants
 (30 from Tranco's subdomain list, 30 from Common Crawl) was 'dangerous', nor
 any of the 19 PhishTank-verified phishing tenants — all compromised
-organisations' OneDrives, which none of these name rules ever caught.
+organisations' OneDrives, whose names say nothing.
 
-So on a tenant site (scoring.is_organization_tenant_site) those three are
-weak, as scoring.WEAK_SIGNALS are: they still count, but with only weak
-signals beside them the verdict stops at caution. Everything else is as
-on every other platform: listings and OTX reports about the tenant count in
-full, and a brand next to a lure word (paypal-login) — not how anyone names
-an organisation — is still brand abuse.
+So on a tenant named exactly after a brand (scoring.organization_tenant_brand:
+the label without Microsoft's own '-my' / '-admin' suffix, hyphens removed,
+is a brand word) those three are weak, as scoring.WEAK_SIGNALS are: they
+still count, but with only weak signals beside them the verdict stops at
+caution. Only there: a brand with something added or misspelt is a name
+somebody else picked (review 2026-11-04: micosoft-my, 0ffice365, docusignus,
+barclaysdocs … exist, and none is the brand's own Entra tenant), and so is
+a name with no brand at all — two Phishing.Database phishing tenants
+(appriver3651007637-my, appriver3651009905-my) were 'dangerous' by the
+model alone. On those the model counts in full, as on main. Everything else
+is as on every other platform: listings and OTX reports about the tenant
+count in full, and a brand next to a lure word (paypal-login) — not how
+anyone names an organisation — is still brand abuse.
 """
 from __future__ import annotations
 
@@ -65,6 +72,13 @@ def _score(host: str, **signals) -> tuple[int, str, dict[str, int]]:
     ("microsoft-my.sharepoint.com", 0.95, HYGIENE, ("ml_high_risk", 35)),
     ("wellsfargo-my.sharepoint.com", 0.95, HYGIENE, ("ml_high_risk", 35)),
     ("spotify-my.sharepoint.com", 0.7, HYGIENE, ("ml_suspicious", 20)),
+    # <org>-admin.sharepoint.com: the tenant's SharePoint admin centre,
+    # created by Microsoft for every tenant (review 2026-11-04: microsoft-admin
+    # 61, facebook-admin 66 'dangerous' by the model on main)
+    ("microsoft-admin.sharepoint.com", 0.95, HYGIENE, ("ml_high_risk", 35)),
+    ("barclays-admin.sharepoint.com", 0.95, HYGIENE, ("ml_high_risk", 35)),
+    ("wellsfargo-admin.sharepoint.com", 0.95, HYGIENE, ("ml_high_risk", 35)),
+    ("facebook-admin.sharepoint.com", 0.7, HYGIENE, ("ml_suspicious", 20)),
     # the brand as the tenant's whole name
     ("barclays.sharepoint.com", None, HYGIENE, ("brand_subdomain_abuse", 30)),
     ("stripe.sharepoint.com", None, HYGIENE, ("brand_subdomain_abuse", 30)),
@@ -83,6 +97,78 @@ def test_a_tenant_s_name_alone_makes_a_caution_not_dangerous(model, host, opinio
     signal, weight = name_reason
     assert reasons[signal] == weight            # still shown, still counted
     assert sum(w for w in reasons.values() if w > 0) > scoring.DANGEROUS_ABOVE
+
+
+@pytest.mark.parametrize("host, opinion, signal", [
+    # a brand misspelt (each exists in DNS; review 2026-11-04: none is the
+    # brand's own Entra tenant; main 60-75 'dangerous' by the model)
+    ("micosoft-my.sharepoint.com", 0.95, "ml_high_risk"),
+    ("mircosoft-my.sharepoint.com", 0.95, "ml_high_risk"),
+    ("mircosoft.sharepoint.com", 0.95, "ml_high_risk"),
+    ("0ffice365.sharepoint.com", 0.95, "ml_high_risk"),
+    ("0ffice365-my.sharepoint.com", 0.95, "ml_high_risk"),
+    # a brand with a word added
+    ("microsoftteams.sharepoint.com", 0.95, "ml_high_risk"),
+    ("microsoftteams-my.sharepoint.com", 0.95, "ml_high_risk"),
+    ("outlook365.sharepoint.com", 0.95, "ml_high_risk"),
+    ("docusignus-my.sharepoint.com", 0.95, "ml_high_risk"),
+    ("barclaysdocs.sharepoint.com", 0.95, "ml_high_risk"),
+    ("sberbankcloud-my.sharepoint.com", 0.95, "ml_high_risk"),
+    ("microsoftdocuments-my.sharepoint.com", 0.95, "ml_high_risk"),
+    ("microsoft365-my.sharepoint.com", 0.7, "ml_suspicious"),
+    ("microsoftsharing-my.sharepoint.com", 0.7, "ml_suspicious"),
+    # no brand at all: phishing tenants in the Phishing.Database snapshot
+    ("appriver3651007637-my.sharepoint.com", 0.95, "ml_high_risk"),
+    ("appriver3651009905-my.sharepoint.com", 0.7, "ml_suspicious"),
+])
+def test_on_a_tenant_not_named_exactly_after_a_brand_the_model_counts_in_full(model, host, opinion, signal):
+    """Only a tenant named exactly after a brand is how the brand's own tenant
+    looks; on any other name the model's opinion is as strong as on main."""
+    model(None)
+    assert _score(host, **HYGIENE)[1] != "dangerous"      # the name's shape and hygiene alone: no
+    model(opinion)
+    score, level, reasons = _score(host, **HYGIENE)
+    assert level == "dangerous" and score > scoring.DANGEROUS_ABOVE
+    assert reasons[signal] == {"ml_high_risk": 35, "ml_suspicious": 20}[signal]
+
+
+@pytest.mark.parametrize("host", [
+    "paypal-docs.sharepoint.com",
+    "microsoft-docs.sharepoint.com",
+    "docusign-us.sharepoint.com",
+])
+def test_a_brand_word_beside_another_word_still_lifts_the_weak_signal_cap(model, host):
+    """A brand as one word of a longer name (_tenant_brand_word) lets weak
+    signals add up past caution, as on every hosting platform: that is not
+    how a brand's own tenant is named."""
+    score, level, reasons = _score(host, **MORE_HYGIENE)
+    assert "brand_subdomain_abuse" not in reasons
+    assert level == "dangerous" and score > scoring.DANGEROUS_ABOVE
+
+
+@pytest.mark.parametrize("host, brand", [
+    ("microsoft-my.sharepoint.com", "microsoft"),       # OneDrive for Business
+    ("microsoft-admin.sharepoint.com", "microsoft"),    # the SharePoint admin centre
+    ("barclays.sharepoint.com", "barclays"),
+    ("BARCLAYS-MY.SharePoint.com.", "barclays"),
+    ("tele2.sharepoint.com", "tele2"),                  # a Russian-list brand of 4+ letters
+    ("pay-pal.sharepoint.com", "paypal"),
+    ("microsoft.sharepoint-df.com", "microsoft"),
+    ("wellsfargo-my.sharepoint.cn", "wellsfargo"),
+    ("micosoft-my.sharepoint.com", None),               # misspelt
+    ("microsoft365-my.sharepoint.com", None),           # a brand with something added
+    ("barclaysdocs.sharepoint.com", None),
+    ("paypal-docs.sharepoint.com", None),
+    ("microsoft-my-my.sharepoint.com", None),           # only Microsoft's own suffix, once
+    ("appriver3651007637-my.sharepoint.com", None),
+    ("contoso-my.sharepoint.com", None),
+    ("my.sharepoint.com", None),
+    ("x.microsoft-my.sharepoint.com", None),            # not a tenant's own site
+    ("microsoft.sharepoint.com", None),                 # the operator's host: allowlisted
+    ("microsoft-my.vercel.app", None),                  # not a Microsoft 365 tenant
+])
+def test_which_tenants_are_named_exactly_after_a_brand(host, brand):
+    assert scoring.organization_tenant_brand(host) == brand
 
 
 @pytest.mark.parametrize("host, opinion, extra", [
@@ -125,11 +211,17 @@ def test_evidence_about_a_tenant_counts_in_full(model, evidence, signal):
     assert level == "dangerous" and signal in reasons
 
 
-def test_fresh_otx_reports_beside_the_name_make_it_dangerous(model):
+@pytest.mark.parametrize("host", [
+    "contoso-my.sharepoint.com",
+    # named exactly after a brand: the model's opinion is weak there, the
+    # reports are what makes it 'dangerous'
+    "microsoft-my.sharepoint.com",
+])
+def test_fresh_otx_reports_beside_the_name_make_it_dangerous(model, host):
     """One to five fresh OTX reports are strong (not WEAK_SIGNALS): with the
     model's opinion and hygiene they still make 'dangerous'."""
     model(0.95)
-    _, level, reasons = _score("contoso-my.sharepoint.com", **HYGIENE, alienvault_indicator="hostname",
+    _, level, reasons = _score(host, **HYGIENE, alienvault_indicator="hostname",
                                alienvault_pulse_count=2, alienvault_distinct_pulses=2,
                                alienvault_newest_report_days=5)
     assert reasons["alienvault_otx"] == 30 and level == "dangerous"
