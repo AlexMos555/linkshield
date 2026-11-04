@@ -21,11 +21,16 @@ model and 6 by the brand as the whole label. None of 60 other real tenants
 any of the 19 PhishTank-verified phishing tenants — all compromised
 organisations' OneDrives, whose names say nothing.
 
-So on a tenant named exactly after a brand (scoring.organization_tenant_brand:
-the label without Microsoft's own '-my' / '-admin' suffix, hyphens removed,
-is a brand word) those three are weak, as scoring.WEAK_SIGNALS are: they
-still count, but with only weak signals beside them the verdict stops at
-caution. Only there: a brand with something added or misspelt is a name
+So on a tenant verified as the brand's own (scoring.organization_tenant_brand:
+the label without Microsoft's own '-my' / '-admin' suffix is a name in
+data/organization_tenants.json) those three are weak, as scoring.WEAK_SIGNALS
+are: they still count, but with only weak signals beside them the verdict
+stops at caution. A name exactly equal to a brand is not enough (review
+2026-11-04): 16 brand words have no Entra tenant at all — telegram, binance,
+tinkoff … anyone can sign up as <brand>.onmicrosoft.com and get
+<brand>-my.sharepoint.com — and many others belong to tenants nobody has
+tied to the brand (facebook, lloyds, ozon …). Those are judged as on main.
+Only there: a brand with something added or misspelt is a name
 somebody else picked (review 2026-11-04: micosoft-my, 0ffice365, docusignus,
 barclaysdocs … exist, and none is the brand's own Entra tenant), and so is
 a name with no brand at all — two Phishing.Database phishing tenants
@@ -78,7 +83,7 @@ def _score(host: str, **signals) -> tuple[int, str, dict[str, int]]:
     ("microsoft-admin.sharepoint.com", 0.95, HYGIENE, ("ml_high_risk", 35)),
     ("barclays-admin.sharepoint.com", 0.95, HYGIENE, ("ml_high_risk", 35)),
     ("wellsfargo-admin.sharepoint.com", 0.95, HYGIENE, ("ml_high_risk", 35)),
-    ("facebook-admin.sharepoint.com", 0.7, HYGIENE, ("ml_suspicious", 20)),
+    ("netflix-admin.sharepoint.com", 0.7, HYGIENE, ("ml_suspicious", 20)),
     # the brand as the tenant's whole name
     ("barclays.sharepoint.com", None, HYGIENE, ("brand_subdomain_abuse", 30)),
     ("stripe.sharepoint.com", None, HYGIENE, ("brand_subdomain_abuse", 30)),
@@ -87,8 +92,6 @@ def _score(host: str, **signals) -> tuple[int, str, dict[str, int]]:
     ("tele2.sharepoint.com", None, HYGIENE, ("brand_subdomain_abuse", 30)),
     # a brand word in the name lifted the weak-signal cap
     ("paypal-my.sharepoint.com", None, MORE_HYGIENE, ("cross_domain_redirect", 20)),
-    # Microsoft's pre-release ring: 'dangerous 86' by name on 2026-11-04
-    ("microsoft.sharepoint-df.com", 0.95, HYGIENE, ("brand_subdomain_abuse", 30)),
 ])
 def test_a_tenant_s_name_alone_makes_a_caution_not_dangerous(model, host, opinion, extra, name_reason):
     model(opinion)
@@ -97,6 +100,52 @@ def test_a_tenant_s_name_alone_makes_a_caution_not_dangerous(model, host, opinio
     signal, weight = name_reason
     assert reasons[signal] == weight            # still shown, still counted
     assert sum(w for w in reasons.values() if w > 0) > scoring.DANGEROUS_ABOVE
+
+
+@pytest.mark.parametrize("host, opinion, extra", [
+    # no Entra tenant by that name on 2026-11-04 (AADSTS90002): free for anyone
+    ("telegram-my.sharepoint.com", 0.95, HYGIENE),
+    ("sovcombank-my.sharepoint.com", 0.95, HYGIENE),
+    ("binance-my.sharepoint.com", 0.95, HYGIENE),
+    ("kucoin-my.sharepoint.com", 0.95, HYGIENE),
+    ("tinkoff-my.sharepoint.com", 0.95, HYGIENE),
+    ("telegram-admin.sharepoint.com", 0.95, HYGIENE),
+    ("aliexpress.sharepoint.com", None, HYGIENE),
+    ("binance.sharepoint.com", None, HYGIENE),
+    ("gitlab.sharepoint.com", None, HYGIENE),
+    ("mbway.sharepoint.com", None, HYGIENE),
+    ("pochtabank.sharepoint.com", None, HYGIENE),
+    # a tenant by that name exists but is not the one behind the brand's
+    # domain (measured 2026-11-04: facebook-my, lloyds-my, socialsecurity-my;
+    # ozon and tbank are Russian-list brands)
+    ("facebook-my.sharepoint.com", 0.95, HYGIENE),
+    ("facebook-admin.sharepoint.com", 0.95, HYGIENE),
+    ("socialsecurity-my.sharepoint.com", 0.95, HYGIENE),
+    ("whatsapp-my.sharepoint.com", 0.95, HYGIENE),
+    ("lloyds-my.sharepoint.com", 0.95, HYGIENE),
+    ("ozon.sharepoint.com", None, HYGIENE),
+    ("tbank.sharepoint.com", None, HYGIENE),
+    # a brand-named tenant measured but not as the brand's (allegro, santander)
+    ("allegro-my.sharepoint.com", 0.95, HYGIENE),
+    ("santander-my.sharepoint.com", 0.95, HYGIENE),
+    # a verified brand's word, but in another cloud: no brand-owned tenant
+    # measured there (wellsfargo, binance .partner.onmschina.cn do not exist)
+    ("wellsfargo-my.sharepoint.cn", 0.95, HYGIENE),
+    ("binance-my.sharepoint.cn", 0.95, HYGIENE),
+    ("microsoft.sharepoint-df.com", 0.95, HYGIENE),
+    # a verified brand with a hyphen inserted: not the tenant's name
+    ("pay-pal-my.sharepoint.com", 0.95, HYGIENE),
+])
+def test_a_brand_named_tenant_not_verified_as_the_brand_s_is_judged_as_on_main(model, host, opinion, extra):
+    """Only the tenants in data/organization_tenants.json get the weak name
+    signals: a brand word as a tenant's whole name is a name anyone can take
+    where the brand has no tenant by it (review 2026-11-04: telegram-my on
+    the previous head was caution 50, on main dangerous 70)."""
+    assert scoring.organization_tenant_brand(host) is None
+    model(opinion)
+    score, level, reasons = _score(host, **extra)
+    assert level == "dangerous" and score > scoring.DANGEROUS_ABOVE
+    assert reasons.get("ml_high_risk") == 35 or reasons.get("brand_subdomain_abuse") == 30
 
 
 @pytest.mark.parametrize("host, opinion, signal", [
@@ -152,9 +201,15 @@ def test_a_brand_word_beside_another_word_still_lifts_the_weak_signal_cap(model,
     ("barclays.sharepoint.com", "barclays"),
     ("BARCLAYS-MY.SharePoint.com.", "barclays"),
     ("tele2.sharepoint.com", "tele2"),                  # a Russian-list brand of 4+ letters
-    ("pay-pal.sharepoint.com", "paypal"),
-    ("microsoft.sharepoint-df.com", "microsoft"),
-    ("wellsfargo-my.sharepoint.cn", "wellsfargo"),
+    ("royalmail.sharepoint.com", "royalmail"),          # a site, no OneDrive: the same tenant
+    ("royalmail-admin.sharepoint.com", "royalmail"),
+    ("pay-pal.sharepoint.com", None),                   # hyphens are not removed
+    ("microsoft.sharepoint-df.com", None),              # other clouds: none verified
+    ("wellsfargo-my.sharepoint.cn", None),
+    ("telegram-my.sharepoint.com", None),               # a brand word, no tenant of the brand's
+    ("facebook-my.sharepoint.com", None),               # a tenant, not the one behind facebook.com
+    ("ozon.sharepoint.com", None),
+    ("allegro-my.sharepoint.com", None),
     ("micosoft-my.sharepoint.com", None),               # misspelt
     ("microsoft365-my.sharepoint.com", None),           # a brand with something added
     ("barclaysdocs.sharepoint.com", None),
@@ -231,8 +286,8 @@ def test_fresh_otx_reports_beside_the_name_make_it_dangerous(model, host):
     ("contoso.sharepoint.com", True),
     ("contoso-my.sharepoint.com", True),
     ("CONTOSO-MY.SharePoint.com.", True),
-    ("contoso-my.sharepoint.cn", True),         # 21Vianet's SharePoint (China)
-    ("microsoft.sharepoint-df.com", True),      # Microsoft's own pre-release ring
+    ("contoso-my.sharepoint.cn", False),        # 21Vianet's SharePoint (China): no verified tenant
+    ("microsoft.sharepoint-df.com", False),     # Microsoft's pre-release ring: none verified
     ("microsoft.sharepoint.com", False),        # an operator host: Microsoft's own, allowlisted
     ("www.sharepoint.com", False),
     ("sharepoint.com", False),
@@ -250,3 +305,37 @@ def test_the_operator_s_own_tenant_stays_allowlisted(model):
     model(0.95)
     assert scoring.is_trusted_top_domain("microsoft.sharepoint.com")
     assert _score("microsoft.sharepoint.com", **HYGIENE)[1] == "safe"
+
+
+def test_the_verified_tenant_list_is_checked_data():
+    """data/organization_tenants.json: each name is a brand word the scorer
+    knows, with the brand's domain and the Entra tenant both resolve to."""
+    import json
+    import os
+    import re
+    path = os.path.join(os.path.dirname(scoring.__file__), "..", "..", "data", "organization_tenants.json")
+    with open(path) as f:
+        doc = json.load(f)
+    assert doc["checked"] == "2026-11-04"
+    tenants = doc["tenants"]
+    assert len(tenants) == 37
+    assert set(tenants) == set(scoring.VERIFIED_ORGANIZATION_TENANTS)
+    for name, entry in tenants.items():
+        assert name in scoring._TENANT_BRAND_WORDS, name
+        assert re.fullmatch(r"[a-z0-9]+", name), name
+        assert re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", entry["entra_tenant"]), name
+        assert "." in entry["domain"], name
+    # the names of the review's no-tenant and other-owner cases are not in it
+    for name in ("telegram", "binance", "tinkoff", "kucoin", "sovcombank", "pochtabank", "aliexpress",
+                 "facebook", "lloyds", "socialsecurity", "whatsapp", "ozon", "tbank", "allegro", "santander"):
+        assert name not in tenants, name
+
+
+def test_no_list_means_no_tenant_is_trusted(tmp_path, monkeypatch):
+    """A missing or broken file fails closed: every tenant is judged as on main."""
+    monkeypatch.setattr(scoring, "_DATA_DIR", str(tmp_path))
+    assert scoring._load_verified_organization_tenants() == frozenset()
+    (tmp_path / "organization_tenants.json").write_text("{not json")
+    assert scoring._load_verified_organization_tenants() == frozenset()
+    (tmp_path / "organization_tenants.json").write_text('{"tenants": {"telegram": {}, "Bad-Name": {}}}')
+    assert scoring._load_verified_organization_tenants() == frozenset({"telegram"})

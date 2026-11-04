@@ -1335,72 +1335,77 @@ def _not_in_model_tenant_site(domain: str) -> Optional[str]:
     return ".".join(d.split(".")[-(zone.count(".") + 2):])
 
 
-# Tenant suffixes where the tenant's label is an ORGANISATION's name, not a
-# site name someone picked in a minute: Microsoft 365 — <org>.sharepoint.com
-# is an organisation's SharePoint Online, <org>-my.sharepoint.com its
-# OneDrive for Business, and <org> its Microsoft 365 tenant name, chosen
-# once at sign-up. A company's tenant carries the company's name, brand
-# included: on 2026-11-04, of the 55 brands of data/typosquat_targets.json
-# with a <brand>.sharepoint.com or <brand>-my.sharepoint.com tenant, 36 were
-# the brand's own (the Entra tenant behind <brand>.onmicrosoft.com is the
-# one that verified the brand's domain: paypal, wellsfargo, barclays,
-# stripe …), and with no intel the full analysis called 11 of those 'dangerous'
-# on the name and site hygiene alone (microsoft-my.sharepoint.com 60 by the
-# model, barclays.sharepoint.com 55 by the brand as the whole name).
-# On a tenant named exactly after a brand (organization_tenant_brand), what
-# the name alone says is weak (calculate_score): the brand as the whole
-# name, the ML model's opinion of the name, a brand word in it. Not on any
-# other tenant name: a brand misspelt or with a word added is a name
-# somebody else picked (micosoft-my, 0ffice365, docusignus, barclaysdocs
-# exist, and on 2026-11-04 none was the brand's own Entra tenant), and the
-# model is evidence there — as it is on phishing tenants with no brand in
-# the name (appriver3651007637-my.sharepoint.com, Phishing.Database: 61 by
-# the model). Listings, OTX reports and a brand next to a lure word count in
-# full on every tenant.
-# The same SharePoint in Microsoft's other clouds: sharepoint.cn (operated
-# by 21Vianet in China) and sharepoint-df.com, Microsoft's own pre-release
-# ring (registered 2016 through Com Laude, on Azure DNS's PPE name servers;
-# microsoft.sharepoint-df.com was 'dangerous 86' by name on 2026-11-04).
-# Not the US government clouds (sharepoint.us, sharepoint-mil.us): no tenant
-# of theirs was found to measure.
-# A scorer list, not a model input: the tenant suffixes themselves
-# (hosting_platforms tenant_suffixes) stay as the model learned them, and
-# sharepoint.cn / sharepoint-df.com stay out of them.
-_ORGANIZATION_TENANT_SUFFIXES: frozenset[str] = frozenset({"sharepoint.com", "sharepoint.cn", "sharepoint-df.com"})
+# <org>.sharepoint.com is an organisation's SharePoint Online,
+# <org>-my.sharepoint.com its OneDrive for Business, <org>-admin.sharepoint.com
+# its SharePoint admin centre, and <org> its Microsoft 365 tenant name, chosen
+# once at sign-up. A brand's own tenant carries the brand's name, and the name
+# rules read it as a free site's name: on 2026-11-04, with no intel, the full
+# analysis called 11 of the brands' own tenants 'dangerous' on the name and
+# site hygiene alone (microsoft-my.sharepoint.com 60 by the model,
+# barclays.sharepoint.com 55 by the brand as the whole name,
+# microsoft-admin.sharepoint.com 61 by the model).
+# On a tenant verified as the brand's own (VERIFIED_ORGANIZATION_TENANTS,
+# organization_tenant_brand) what the name alone says is weak
+# (calculate_score): the brand as the whole name, the ML model's opinion of
+# the name, a brand word in it. A brand word as the whole tenant name is not
+# enough (review 2026-11-04): 16 brand words had no Entra tenant at all
+# (telegram, binance, tinkoff … — anyone signing up for Microsoft 365 can
+# take <brand>-my.sharepoint.com), and 89 more belong to tenants nobody has
+# tied to the brand. Those, a brand misspelt or with a word added (micosoft-my,
+# 0ffice365, docusignus) and names with no brand (the appriver…-my phishing
+# tenants of Phishing.Database, 61 by the model) are judged as any hosting
+# customer: the model counts. Listings, OTX reports and a brand next to a
+# lure word count in full on every tenant.
+# sharepoint.com only: no brand-owned tenant was measured in Microsoft's other
+# clouds (sharepoint.cn of 21Vianet, sharepoint-df.com), whose names the
+# scorer reads as on main. A scorer list, not a model input: the tenant
+# suffixes themselves (hosting_platforms tenant_suffixes) stay as the model
+# learned them.
+_ORGANIZATION_TENANT_SUFFIX = "sharepoint.com"
 
 
 def is_organization_tenant_site(domain: str) -> bool:
-    """`domain` is an organisation's own site on a Microsoft 365 tenant
-    suffix (_ORGANIZATION_TENANT_SUFFIXES): one label directly under it,
-    contoso.sharepoint.com, contoso-my.sharepoint.com. Not a name below a
-    tenant's site, not the suffix itself, not the operator's own hosts
-    (microsoft.sharepoint.com, www.sharepoint.com — hosting_platforms
-    OPERATOR_HOSTS: allowlisted)."""
+    """`domain` is an organisation's own SharePoint Online site: one label
+    directly under sharepoint.com, contoso.sharepoint.com,
+    contoso-my.sharepoint.com. Not a name below a tenant's site, not the
+    suffix itself, not the operator's own hosts (microsoft.sharepoint.com,
+    www.sharepoint.com — hosting_platforms OPERATOR_HOSTS: allowlisted)."""
     d = (domain or "").lower().strip(".")
     label, _, suffix = d.partition(".")
-    if not label or suffix not in _ORGANIZATION_TENANT_SUFFIXES:
+    if not label or suffix != _ORGANIZATION_TENANT_SUFFIX:
         return False
     return label != "www" and d not in OPERATOR_HOSTS
 
 
+def _load_verified_organization_tenants() -> frozenset[str]:
+    """The tenant names of data/organization_tenants.json (each verified as
+    the brand's own; the file says how). A missing or broken file trusts no
+    tenant: every name is then judged as on any hosting platform."""
+    tenants = _load_json_dict("organization_tenants.json").get("tenants")
+    if not isinstance(tenants, dict):
+        logger.warning("organization_tenants.json missing or malformed: no tenant is trusted")
+        return frozenset()
+    return frozenset(n for n in tenants if isinstance(n, str) and n.isascii() and n.isalnum() and n.islower())
+
+
+VERIFIED_ORGANIZATION_TENANTS: frozenset[str] = _load_verified_organization_tenants()
+
 # The sites Microsoft makes for every tenant next to <org>.sharepoint.com:
 # <org>-my, its OneDrive for Business, and <org>-admin, its SharePoint admin
-# centre (microsoft-admin.sharepoint.com was 'dangerous 61' by the model on
-# 2026-11-04).
+# centre.
 _ORGANIZATION_TENANT_SITE_SUFFIXES = ("-my", "-admin")
 
 
 def organization_tenant_brand(domain: str) -> Optional[str]:
-    """The brand (_TENANT_BRAND_WORDS) an organisation's Microsoft 365 site
-    (is_organization_tenant_site) is named after exactly, else None.
+    """The brand whose own Microsoft 365 tenant `domain` is a site of
+    (is_organization_tenant_site; VERIFIED_ORGANIZATION_TENANTS), else None.
 
     The tenant's name is the label without Microsoft's own '-my' or '-admin'
-    suffix (once), hyphens removed: microsoft.sharepoint.com,
-    microsoft-my.sharepoint.com and microsoft-admin.sharepoint.com are all
-    the tenant 'microsoft'. That name being a brand is how a brand's own
-    tenant is named. A brand with anything added or changed is not
-    (micosoft-my, microsoft365-my, barclaysdocs: None), nor is a name with no
-    brand in it."""
+    suffix (once): microsoft.sharepoint.com, microsoft-my.sharepoint.com and
+    microsoft-admin.sharepoint.com are all the tenant 'microsoft'. Only a
+    verified tenant: telegram-my (no such tenant of Telegram's),
+    facebook-my (a tenant, not the one behind facebook.com), micosoft-my,
+    pay-pal and microsoft365-my are None."""
     if not is_organization_tenant_site(domain):
         return None
     label = (domain or "").lower().strip(".").split(".", 1)[0]
@@ -1408,8 +1413,7 @@ def organization_tenant_brand(domain: str) -> Optional[str]:
         if label.endswith(suffix):
             label = label[: -len(suffix)]
             break
-    stem = label.replace("-", "")
-    return stem if stem in _TENANT_BRAND_WORDS else None
+    return label if label in VERIFIED_ORGANIZATION_TENANTS and label in _TENANT_BRAND_WORDS else None
 
 
 def popularity_rank(signals: dict, domain: Optional[str] = None) -> Optional[int]:
@@ -1447,10 +1451,9 @@ def popularity_rank(signals: dict, domain: Optional[str] = None) -> Optional[int
 # 2026-10-26 fell from 'dangerous' to caution 50 (portal-canalbradesco.digital
 # 74, kucoindeep.com 68). Only one to five reports whose newest is
 # _OTX_STALE_DAYS or more old are weak — calculate_score marks that one.
-# It marks one more case: on an organisation's Microsoft 365 tenant named
-# exactly after a brand (organization_tenant_brand) the brand as the whole
-# name and the ML model's opinion are weak too — that is how the brand's own
-# tenant is named.
+# It marks one more case: on a brand's own verified Microsoft 365 tenant
+# (organization_tenant_brand) the brand as the whole name and the ML model's
+# opinion of the name are weak too.
 WEAK_SIGNALS: frozenset[str] = frozenset({
     # what the probes saw on the site: hygiene, not intent
     "missing_headers", "no_mx_record", "new_certificate", "multiple_redirects",
@@ -1676,10 +1679,9 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     tenant_label = _tenant_label(ascii_domain)
     if tenant_label is not None:
         domain_name = _decode_idn(tenant_label)
-    # An organisation's Microsoft 365 site named exactly after a brand
-    # (microsoft-my.sharepoint.com, barclays.sharepoint.com): how the brand's
-    # own tenant is named, so what the name alone says is weak here
-    # (_ORGANIZATION_TENANT_SUFFIXES). None on every other name.
+    # A site of a brand's own Microsoft 365 tenant (microsoft-my.sharepoint.com,
+    # barclays.sharepoint.com; VERIFIED_ORGANIZATION_TENANTS): what the name
+    # alone says is weak here. None on every other name.
     organization_brand = organization_tenant_brand(ascii_domain)
 
     # ════════════════════════════════════════════
@@ -2017,11 +2019,10 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
             f"anyone can publish to"
         )
         reasons.append(DomainReason(signal="brand_subdomain_abuse", weight=30, detail=detail))
-        # A brand as an organisation's whole tenant name is how the brand's
-        # own tenant is named (barclays.sharepoint.com is Barclays',
-        # tele2.sharepoint.com Tele2's): weak, whichever rule found it. A
-        # brand next to a lure word (tenant_brand: paypal-login) is not an
-        # organisation's name and stays strong.
+        # The brand as the whole name of the brand's own verified tenant
+        # (barclays.sharepoint.com is Barclays', tele2.sharepoint.com Tele2
+        # AB's): weak, whichever rule found it. A brand next to a lure word
+        # (tenant_brand: paypal-login) is not a tenant's name and stays strong.
         if organization_brand and (brand_sub or tenant_brand) == organization_brand:
             weak_here.append(reasons[-1])
 
@@ -2569,9 +2570,9 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
                     signal="ml_high_risk", weight=35,
                     detail=f"ML model: {ml_prob*100:.0f}% phishing probability (confidence: {ml_confidence*100:.0f}%)",
                 ))
-                # The model reads the name only, and a tenant named exactly
-                # after a brand is how the brand's own is named (microsoft-my:
-                # 0.95). On a look-alike tenant (micosoft-my) it counts.
+                # The model reads the name only, and on the brand's own
+                # verified tenant the name is the brand's (microsoft-my: 0.95).
+                # On any other tenant (micosoft-my, telegram-my) it counts.
                 if organization_brand:
                     weak_here.append(reasons[-1])
             elif ml_prob > 0.6:
@@ -2600,9 +2601,8 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # Every reason stays in the list, so the person sees what was found; only
     # the verdict stops at the top of the caution band. Not on a hosting
     # customer's site that names a brand (_tenant_brand_word): there a pile
-    # of weak signals is how fresh phishing looks. An organisation's tenant
-    # named exactly after a brand is how the brand's own tenant looks
-    # (paypal-my, organization_tenant_brand), so there the cap holds.
+    # of weak signals is how fresh phishing looks. On the brand's own
+    # verified tenant (paypal-my, organization_tenant_brand) the cap holds.
     if score > DANGEROUS_ABOVE and not any(
         r.weight > 0 and r.signal not in WEAK_SIGNALS and not any(r is w for w in weak_here)
         for r in reasons
