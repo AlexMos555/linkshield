@@ -112,8 +112,10 @@ RESOLUTION_TIMEOUT_S = 1.5
 # hangs again.) Half a second below the 2.3 s budget: the existence and SSRF
 # lookups before the sources took up to 0.5 s in 194 of 235 analyses through
 # a home router and 172 of 232 through 1.1.1.1 (2026-11-04). From a later
-# start the deadline cancels a hang first, which its breaker never sees (with
-# 2.0 s it saw only those that started within 0.3 s: 178 and 71). Of the
+# start the deadline cancels a hang first, which a closed breaker never sees
+# (with 2.0 s it saw only those that started within 0.3 s: 178 and 71); a
+# half-open one opens again for its cooldown (circuit_breaker
+# ._on_probe_cancelled), so the next check does not wait for it again. Of the
 # 235 recorded analyses' source calls, one ended between 1.8 and 2.0 s — a
 # keyless PhishTank error at 1.86 s; RDAP at 1.71 s still fits, and those
 # past 2.0 s (DNS 2.11 s three times, RDAP 2.40, OTX 2.76 and 2.85) were cut

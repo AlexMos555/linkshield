@@ -262,7 +262,7 @@ class Settings(BaseSettings):
     # (3.2-3.7 s from Dubai) and it used its offline verdict. 2.3 s leaves
     # the network its share: a new connection from Dubai took 0.44-0.68 s
     # (p50 0.54), a kept-alive one 0.26-0.35 s, so the client sees ~2.86 s at
-    # p95 on a median new connection and ~3.0 s on the slowest (2-8 of 232
+    # p95 on a median new connection and ~3.0 s on the slowest (0-2 of 232
     # replayed answers still late there): the margin rests on the users being
     # closer to EU West than Dubai is. Replayed over 235 live analyses
     # (2026-11-04): server p95 3.02 -> 2.32 s, and no phishing site lost

@@ -19,6 +19,9 @@ Now:
     to max_cooldown_seconds (PhishStats and PhishTank: 1 h), so a source
     that stays dead is asked about once an hour, not on every check;
   * a source that WAS asked and ran out of time is still named, as before;
+  * a probe the deadline cancels sends the breaker back to open for the same
+    wait: it brought no news that the source is back, and left half-open the
+    next check was the probe again;
   * a hanging source still opens its breaker from a slow start: its own limit
     (analyzer.SOURCE_TIMEOUT_S) ends half a second before the deadline.
 """
@@ -168,21 +171,34 @@ def test_without_a_cap_the_wait_stays_the_same():
         assert getattr(cb, name).max_cooldown_seconds is None, name
 
 
-def test_a_cancelled_probe_frees_the_half_open_slot():
-    """The deadline cancels a probe without a verdict: the next check probes."""
-    breaker = CircuitBreaker(name="t", failure_threshold=1, cooldown_seconds=60)
+def test_a_cancelled_probe_opens_the_breaker_again_for_the_same_wait():
+    """The deadline cancels a probe without a verdict: no news that the
+    source is back. Left half-open, the next check was the probe again, so a
+    dead source whose probe started late was asked by check after check
+    (review of #407). Now it is open again for the same wait — not longer:
+    it did not fail either — and the probe slot is free for the next probe."""
+    breaker = CircuitBreaker(name="t", failure_threshold=1, cooldown_seconds=60, max_cooldown_seconds=240)
     _open(breaker)
     _age(breaker, 61)
+    asked = []
 
-    async def _run():
+    async def _answer():
+        asked.append("asked")
+        return "answer"
+
+    async def _cancelled_probe():
         probe = asyncio.ensure_future(breaker.call(asyncio.sleep, 30))
         await asyncio.sleep(0)
         probe.cancel()
         with pytest.raises(asyncio.CancelledError):
             await probe
-        return await breaker.call(_ok)
 
-    assert asyncio.run(_run()) == ("answer", True)
+    asyncio.run(_cancelled_probe())
+    assert breaker.state is CircuitState.OPEN
+    assert asyncio.run(breaker.call(_answer)) == (None, False) and asked == []
+    _age(breaker, 61)  # the same 60 s, not doubled
+    assert breaker.state is CircuitState.HALF_OPEN
+    assert asyncio.run(breaker.call(_answer)) == ("answer", True) and asked == ["asked"]
     assert breaker.state is CircuitState.CLOSED
 
 
@@ -257,6 +273,27 @@ def test_a_half_open_probe_that_runs_out_of_time_is_named(offline_analyzer, monk
     assert result.checks_incomplete == ["phishstats"]
     assert result.sources_down == []
     assert phishstats.state is CircuitState.OPEN
+
+
+def test_a_probe_the_deadline_cut_is_named_and_the_next_check_skips_the_source(
+        offline_analyzer, monkeypatch, phishstats):
+    """A probe that started late: the deadline cuts it before its own limit
+    (SOURCE_TIMEOUT_S, 1.8 s, past this 0.6 s budget). That answer was held
+    for it and says so; the next one is not held — before, the deadline only
+    freed the probe slot, and the next check was the probe again."""
+    offline_analyzer(site="reachable")
+    calls = _counting(monkeypatch, "check_phishstats", 30)
+    _open(phishstats)
+    _age(phishstats, phishstats.cooldown_seconds + 1)
+
+    cut = asyncio.run(analyzer.analyze_domain("probe-shop.ru", budget_s=0.6))
+    assert cut.checks_incomplete == ["phishstats"] and cut.sources_down == []
+    assert phishstats.state is CircuitState.OPEN
+
+    result, elapsed = _timed(analyzer.analyze_domain("next-shop.ru", budget_s=0.6))
+    assert calls == ["probe-shop.ru"]
+    assert result.checks_incomplete == [] and result.sources_down == ["phishstats"]
+    assert elapsed < 0.5 + SLACK
 
 
 def test_while_the_probe_is_out_other_analyses_skip_the_source(offline_analyzer, monkeypatch, phishstats):

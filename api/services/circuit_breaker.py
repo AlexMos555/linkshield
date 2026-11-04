@@ -10,10 +10,13 @@ RDAP) are down. Three states:
               come while it is out are skipped as if OPEN.
               Success → CLOSED. Failure → OPEN again — for twice as long,
               up to max_cooldown_seconds, on a breaker that has one.
+              Cancelled (the analysis deadline) → OPEN again for the same
+              cooldown: no news that the source is back.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
@@ -101,12 +104,16 @@ class CircuitBreaker:
             result = await func(*args, **kwargs)
             self._on_success()
             return result, True
+        except asyncio.CancelledError:
+            if probe:
+                self._on_probe_cancelled()
+            raise
         except Exception as e:
             self._on_failure(e)
             return self.fallback, False
         finally:
-            # Also when the probe is cancelled (the analysis deadline): no
-            # verdict on the source, so the next call probes again.
+            # Also when the probe is cancelled: the probe after the next
+            # cooldown must be able to run.
             if probe:
                 self._probing = False
 
@@ -118,6 +125,19 @@ class CircuitBreaker:
         self._failure_count = 0
         self._cooldown = self.cooldown_seconds
         self._last_success_time = time.monotonic()
+
+    def _on_probe_cancelled(self) -> None:
+        """The half-open probe was cancelled before it answered — the analysis
+        deadline cut it, a late start leaving it less than its own limit. No
+        news that the source is back, so OPEN again for the same cooldown.
+        Not longer and not a failure: it did not fail either. Left half-open,
+        the next call was the probe again, and a dead source whose probes
+        started late held check after check to the deadline (review of #407,
+        2026-11-04)."""
+        if self._state == CircuitState.HALF_OPEN:
+            self._state = CircuitState.OPEN
+            self._last_failure_time = time.monotonic()
+            logger.info("circuit_probe_cancelled", extra={"breaker": self.name})
 
     def _on_failure(self, error: Exception) -> None:
         """Record a failed call."""
@@ -176,8 +196,8 @@ safe_browsing_breaker = CircuitBreaker(
 # hangs; phishstats.info answers 502) and keyless PhishTank's answer was not
 # JSON 235 times of 235. A probe of a hanging source holds that one answer to
 # the source's limit and is named in its checks_incomplete; replayed at one
-# fresh check every 5 minutes, a 30 min cap still made 53 of 232 answers such
-# probes. Each feed is asked again within the hour of its recovery. The other
+# fresh check every 5 minutes, a 30 min cap still made 46 of 232 answers such
+# probes, 1 h made 29. Each feed is asked again within the hour of its recovery. The other
 # breakers keep their fixed cooldown.
 _DEAD_FEED_MAX_COOLDOWN_S = 60 * 60
 
