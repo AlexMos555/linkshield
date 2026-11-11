@@ -32,7 +32,7 @@ import {
   type AuthSheet,
 } from "../src/services/captcha";
 import { createOtpRequester } from "../src/utils/otp-request";
-import { PRIVACY_POLICY_URL, TERMS_URL } from "../src/utils/legal-urls";
+import { privacyPolicyUrl, termsUrl } from "../src/utils/legal-urls";
 import { authSessionAvailable, cancelAuthSession, openAuthSession } from "../modules/cleanway-safari";
 
 // iPhone: the captcha page opens in an in-app sheet, not in Safari (App
@@ -84,7 +84,7 @@ const RESEND_COOLDOWN_S = 62;
 
 export default function AuthScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -323,14 +323,14 @@ export default function AuthScreen() {
                 here too (GDPR Art. 13), not only in Settings. */}
             <View style={styles.legalRow}>
               <TouchableOpacity
-                onPress={() => void Linking.openURL(PRIVACY_POLICY_URL).catch(() => undefined)}
+                onPress={() => void Linking.openURL(privacyPolicyUrl(i18n.language)).catch(() => undefined)}
                 style={styles.legal}
                 accessibilityRole="link"
               >
                 <Text style={styles.legalLabel}>{t("mobile.settings.privacy_policy")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => void Linking.openURL(TERMS_URL).catch(() => undefined)}
+                onPress={() => void Linking.openURL(termsUrl(i18n.language)).catch(() => undefined)}
                 style={styles.legal}
                 accessibilityRole="link"
               >

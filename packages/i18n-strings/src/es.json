@@ -3375,7 +3375,8 @@
       "result": "Resultado",
       "scanner": "Escanear un código QR",
       "shared": "Revisión de enlace",
-      "upgrade": "Mejorar plan"
+      "upgrade": "Mejorar plan",
+      "back": "Atrás"
     },
     "check": {
       "title": "Revisar un enlace",
@@ -3708,7 +3709,9 @@
       "sign_out_confirm_body_appstore": "Las verificaciones y el historial se quedan en este teléfono. Los ajustes dejan de sincronizarse hasta que vuelvas a iniciar sesión. La suscripción se queda en tu cuenta: vuelve a iniciar sesión para usarla en este iPhone.",
       "plan": "Plan",
       "plan_desc": "La protección en este teléfono es gratuita",
+      "plan_desc_paid": "Comprobaciones ilimitadas: suscripción activa",
       "upgrade": "Mejorar plan",
+      "plan_manage": "Gestionar",
       "report": "Informe semanal",
       "report_desc": "Un resumen de los enlaces que revisaste",
       "family": "Espacio Familiar",
@@ -3757,6 +3760,8 @@
       "language_note": "Elige el idioma de la app.",
       "language_reload_title": "Se necesita reiniciar",
       "language_reload_body": "Cierra y vuelve a abrir la app para terminar de cambiar la dirección del texto.",
+      "language_restart_body": "La app se reiniciará para cambiar la dirección del texto.",
+      "language_restart_action": "Reiniciar",
       "linkguard": "Comprobación de enlaces",
       "linkguard_note": "Si está activado, los enlaces que tocas en la mayoría de las apps pasan primero por Cleanway; los navegadores integrados de Telegram y MAX abren los enlaces por su cuenta, sin revisión. Los sitios fraudulentos conocidos no se abren. Los demás se abren al instante mientras revisamos el sitio, y te avisamos si la revisión encuentra un peligro; a veces tarda hasta medio minuto.",
       "linkguard_on": "Cleanway comprueba tus enlaces",

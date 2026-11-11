@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius, sectionHeader } from "../src/utils/theme";
 import { getRecentChecks, MESSAGE_CHECK_SOURCE } from "../src/services/database";
 import { toCheckableHost } from "../src/utils/host";
+import { CHECK_EXAMPLES } from "../src/utils/check-examples";
 import { ChecksLeftHint } from "../src/components/paywall/LockedDetails";
 import { useAccess } from "../src/hooks/useFreemium";
 
@@ -99,7 +100,7 @@ export default function CheckScreen() {
 
       <Text style={s.sectionTitle}>{t("mobile.check.try")}</Text>
       <View style={s.chipGrid}>
-        {["google.com", "paypa1-verify.tk", "pay-pal.com", "evil.netlify.app"].map(d => (
+        {CHECK_EXAMPLES.map(d => (
           <TouchableOpacity key={d} style={s.tryChip} onPress={() => quickCheck(d)} activeOpacity={0.85} hitSlop={{ top: 4, bottom: 4 }} accessibilityRole="button">
             <Text style={s.tryText}>{d}</Text>
           </TouchableOpacity>

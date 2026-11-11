@@ -359,6 +359,20 @@ export function paidPlansVisible(input: {
  * site APK the server's (webPlanPrice), so a price change is a console or
  * server change, never a new build.
  */
+/**
+ * Settings → Plan: what the row says and the word on its button. Paid: the
+ * subscription is active and the button manages it; free: the old "Upgrade".
+ * Unknown (not read yet): the bare row — never "free" over a plan that may
+ * be paid. The row opens the paywall either way; paid, that screen says
+ * where the plan was bought and links its "Manage subscription".
+ */
+export function settingsPlanRow(paid: boolean | null): { descKey: string | null; actionKey: string | null } {
+  if (paid === null) return { descKey: null, actionKey: null };
+  return paid
+    ? { descKey: "mobile.settings.plan_desc_paid", actionKey: "mobile.settings.plan_manage" }
+    : { descKey: "mobile.settings.plan_desc", actionKey: "mobile.settings.upgrade" };
+}
+
 export const PRICES = {
   ru: { month: "99 ₽", devices: 3 },
   world: { devices: 3 },

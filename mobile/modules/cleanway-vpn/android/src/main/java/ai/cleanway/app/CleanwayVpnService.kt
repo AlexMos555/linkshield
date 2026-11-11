@@ -166,6 +166,12 @@ class CleanwayVpnService : VpnService() {
             if (running) pauseUntil(0L)
             return START_STICKY
         }
+        if (intent?.action == ACTION_REFRESH_NOTIFICATION) {
+            // The app's language changed: the ongoing notification is rebuilt
+            // in it (LocalizedContext), paused or not. The tunnel is untouched.
+            if (running) refreshForeground()
+            return START_STICKY
+        }
         if (intent?.action == ACTION_STOP) {
             // Explicit user request: forget the intent so we do not come back
             // on the next boot.
@@ -1095,6 +1101,8 @@ class CleanwayVpnService : VpnService() {
         const val EXTRA_PAUSE_UNTIL = "pause_until_ms"
         /** End a pause now (the app, or the notification's "turn back on"). */
         const val ACTION_RESUME = "ai.cleanway.VPN_RESUME"
+        /** Re-post the ongoing notification (the app's language changed). */
+        const val ACTION_REFRESH_NOTIFICATION = "ai.cleanway.VPN_REFRESH_NOTIFICATION"
         /** Broadcast when the pause begins, ends or moves; carries [EXTRA_PAUSE_UNTIL] (0 = not paused). */
         const val ACTION_PAUSE_CHANGED = "ai.cleanway.PAUSE_CHANGED"
         /** Broadcast when the list the DNS path blocks from is swapped (loaded, synced, revoked). */

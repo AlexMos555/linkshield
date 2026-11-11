@@ -3435,7 +3435,8 @@
       "result": "Ergebnis",
       "scanner": "QR-Code scannen",
       "shared": "Link-Prüfung",
-      "upgrade": "Upgrade"
+      "upgrade": "Upgrade",
+      "back": "Zurück"
     },
     "check": {
       "title": "Link prüfen",
@@ -3768,7 +3769,9 @@
       "sign_out_confirm_body_appstore": "Prüfungen und Verlauf bleiben auf diesem Handy. Die Einstellungen werden nicht mehr synchronisiert, bis Sie sich wieder anmelden. Das Abo bleibt in Ihrem Konto: Melden Sie sich wieder an, um es auf diesem iPhone zu nutzen.",
       "plan": "Tarif",
       "plan_desc": "Der Schutz auf diesem Handy ist kostenlos",
+      "plan_desc_paid": "Unbegrenzte Prüfungen – Abo aktiv",
       "upgrade": "Upgrade",
+      "plan_manage": "Verwalten",
       "report": "Wochenbericht",
       "report_desc": "Eine Übersicht der Links, die du geprüft hast",
       "family": "Familienbereich",
@@ -3817,6 +3820,8 @@
       "language_note": "Wähle die Sprache der App.",
       "language_reload_title": "Neustart nötig",
       "language_reload_body": "Schließe die App und öffne sie erneut, um die Textrichtung umzustellen.",
+      "language_restart_body": "Die App startet neu, um die Textrichtung zu ändern.",
+      "language_restart_action": "Neu starten",
       "linkguard": "Link-Prüfung",
       "linkguard_note": "Wenn aktiv, landen Links, die du in den meisten Apps antippst, zuerst bei Cleanway; die eingebauten Browser von Telegram und MAX öffnen Links selbst, ohne Prüfung. Bekannte Betrugsseiten öffnen sich nicht. Andere öffnen sich sofort, während wir die Seite prüfen, und du bekommst eine Warnung, wenn die Prüfung eine Gefahr findet – manchmal dauert das bis zu einer halben Minute.",
       "linkguard_on": "Cleanway prüft deine Links",
