@@ -355,11 +355,14 @@ EAS creates these on the first `eas build` if you let it log in; to do it by han
 4. Account deletion: in the app (Settings → Delete account, and Account →
    Delete account). Mention it in review notes.
 5. **Pricing and Availability → Countries or Regions: every territory except
-   Russia and France.** Decision 2026-11-04: worldwide launch without Russia.
-   France is off since 2026-10-24 (encryption declaration, §2 table). Check
-   the list before every submission: on 2026-10-24 174 territories were on,
-   Russia most likely among them. The subscriptions (§3.4) follow the app's
-   availability, so no separate country setting is needed for them.
+   France. Russia stays on the list.** Decision 2026-11-04: worldwide launch
+   that does not wait for Russia; founder's clarification 2026-11-11: the app
+   stays available in Russia, paid plans are simply not expected to sell there
+   (App Store payments mostly do not work in Russia). France is off since
+   2026-10-24 (encryption declaration, §2 table). Check the list before every
+   submission (174 territories were on on 2026-10-24). The subscriptions
+   (§3.4) follow the app's availability, so no separate country setting is
+   needed for them.
 
 ### 3.4 In-app purchases (Subscriptions)
 
