@@ -73,11 +73,11 @@ HOW IT WORKS, HONESTLY
 • Your phone finds all other sites as usual, through your mobile operator or Wi-Fi, and if they do not answer, through the public services Cloudflare or Quad9.
 • Android runs only one VPN at a time. If you already use another VPN, you will have to choose between it and Cleanway's protection.
 • Message text is checked on your phone and is never sent anywhere. Only the site names from links in a message can go to our server, three at most.
-• When you check a link, only the site name (for example, example.com) goes to Cleanway's server, never the rest of the address. The server checks it against sources that include outside lists of dangerous sites such as Google Safe Browsing.
+• When you check a link, only the site name (for example, example.com) goes to Cleanway's server, never the rest of the address. The server checks it against sources that include outside lists of dangerous sites such as Google Web Risk.
 • No ads, and we don't sell data.
 
 WHAT CLEANWAY DOESN'T PROMISE
-New scam sites and messages appear every day, and no app catches them all. If in doubt, don't open the link, never share codes from text messages, and call your bank on the number printed on your card.
+New scam sites and messages appear every day, and no app catches them all. Now and then a safe site may also be flagged by mistake. If in doubt, don't open the link, never share codes from text messages, and call your bank on the number printed on your card.
 
 PRICE
 Basic protection is free.
@@ -140,11 +140,11 @@ Cleanway — защита от мошенников в телефоне. Не д
 • Остальные сайты телефон находит как обычно — через вашего оператора или Wi-Fi, а если они не отвечают — через общедоступные сервисы Cloudflare или Quad9.
 • На Android одновременно может работать только один VPN. Если у вас уже включён другой VPN, придётся выбрать: он или защита Cleanway.
 • Текст СМС проверяется на телефоне и никуда не отправляется. На наш сервер могут уйти только имена сайтов из ссылок в сообщении — не больше трёх.
-• Когда вы проверяете ссылку, на сервер Cleanway уходит только имя сайта (например, example.ru), без остальной части адреса. Сервер сверяет его в том числе с внешними базами опасных сайтов, например Google Safe Browsing.
+• Когда вы проверяете ссылку, на сервер Cleanway уходит только имя сайта (например, example.ru), без остальной части адреса. Сервер сверяет его в том числе с внешними базами опасных сайтов, например Google Web Risk.
 • Мы не показываем рекламу и не продаём данные.
 
 ЧЕГО CLEANWAY НЕ ОБЕЩАЕТ
-Новые мошеннические сайты и сообщения появляются каждый день, и ни одна программа не ловит их все. Если сомневаетесь — не переходите по ссылке, никому не называйте коды из СМС и перезвоните в банк по номеру на обратной стороне карты.
+Новые мошеннические сайты и сообщения появляются каждый день, и ни одна программа не ловит их все. Бывает и наоборот: изредка безопасный сайт помечается по ошибке. Если сомневаетесь — не переходите по ссылке, никому не называйте коды из СМС и перезвоните в банк по номеру на обратной стороне карты.
 
 СКОЛЬКО СТОИТ
 Основная защита — бесплатно.
@@ -256,7 +256,7 @@ Sign-in is optional: every protection feature works without an account. To revie
 
 Всё остальное (местоположение, контакты, сообщения SMS/MMS, фото, аудио, файлы, календарь, здоровье, активность в приложении, установленные приложения, рекламный ID) — **не отмечать**: текст сообщений проверяется на телефоне и никуда не уходит, камера читает QR-код на устройстве.
 
-Как это сходится с iOS (App Privacy, `docs/IOS.md` §3.5): email, ID пользователя, ID устройства и история покупок — «связаны с пользователем, для работы приложения»; имена проверенных сайтов и отчёты о сбоях — «не связаны»; отслеживания и рекламы нет. В Play нет понятия «связано», поэтому там это выражено целями. «Shared» у истории браузинга — осторожный ответ: сервер отправляет голое имя сайта, без пользователя, сервисам проверки угроз (Google Safe Browsing и др., политика §5). Обоснование — `docs/STORES.md` §6.3.
+Как это сходится с iOS (App Privacy, `docs/IOS.md` §3.5): email, ID пользователя, ID устройства и история покупок — «связаны с пользователем, для работы приложения»; имена проверенных сайтов и отчёты о сбоях — «не связаны»; отслеживания и рекламы нет. В Play нет понятия «связано», поэтому там это выражено целями. «Shared» у истории браузинга — осторожный ответ: сервер отправляет голое имя сайта, без пользователя, сервисам проверки угроз (Google Web Risk и др., политика §5). Обоснование — `docs/STORES.md` §6.3.
 
 Инфраструктура после переезда 2026-10 ответов **не меняет**: по правилам Play передача подрядчику, который обрабатывает данные по нашему поручению, — не «sharing». Это Railway (сервер и Redis, ЕС — Амстердам), Supabase (аккаунты), Resend (коды входа и служебные письма, ЕС — Ирландия: email и текст письма), Cloudflare (DNS cleanway.ai, пересылка почты, капча Turnstile на сайте — IP и признаки браузера, зашифрованные ночные копии базы в R2, ЕС, 35 дней) и GitHub (задание резервного копирования; копия шифруется до того, как покинет его машину). Капча Turnstile работает на странице сайта в браузере, а не в приложении, поэтому в анкете приложения отдельного типа данных не даёт. «Encrypted in transit» остаётся «Yes». Политика (§9, §11, §14, §15, §18) называет всех их; `docs/PRIVACY.md` → «Infrastructure».
 
@@ -353,7 +353,7 @@ WHAT IT DOES
 - Family: with an account, family members can send each other end-to-end encrypted warnings about dangerous sites.
 
 WHAT LEAVES YOUR BROWSER, HONESTLY
-- Site names. To check a site, Cleanway sends only its name (for example, example.com) to our server, never the full address, the page content or your history. This happens for the page you open and for links on it, except well-known official sites the extension recognises on its own. The server checks the name, including with outside lists of dangerous sites such as Google Safe Browsing.
+- Site names. To check a site, Cleanway sends only its name (for example, example.com) to our server, never the full address, the page content or your history. This happens for the page you open and for links on it, except well-known official sites the extension recognises on its own. The server checks the name, including with outside lists of dangerous sites such as Google Web Risk.
 - Emails, only if you switch the email check on. It is off until you turn on "Scan emails I open in Gmail, Outlook and Yahoo for phishing" in Settings. While it is on, for each email you open in Gmail, Outlook or Yahoo Mail, Cleanway sends its subject, the sender's name and address, the reply-to address, the text, and the address and text of each link (not the email's HTML) to our server to check it for scams. The email is checked and not stored. Switch it off any time and the checks stop at once.
 - Password leak check. When you leave a password field, Cleanway sends only a short scrambled piece of it (the first 5 characters of its SHA-1 hash), never the password itself. The match is made in your browser.
 - Your check history and counters stay in your browser; history is deleted after 30 days.
@@ -361,7 +361,7 @@ WHAT LEAVES YOUR BROWSER, HONESTLY
 - No ads, no analytics inside the extension, and we don't sell data.
 
 WHAT CLEANWAY DOESN'T PROMISE
-New scam sites appear every day, and no tool catches them all. If something feels wrong, don't enter your details.
+New scam sites appear every day, and no tool catches them all. Now and then a safe site may also be flagged by mistake. If something feels wrong, don't enter your details.
 
 PRICE
 Free.
@@ -398,7 +398,7 @@ Cleanway предупреждает о мошеннических и фишин�
 - Семья: с аккаунтом члены семьи могут присылать друг другу зашифрованные сквозным шифрованием предупреждения об опасных сайтах.
 
 ЧТО УХОДИТ ИЗ БРАУЗЕРА — ЧЕСТНО
-- Имена сайтов. Чтобы проверить сайт, Cleanway отправляет на наш сервер только его имя (например, example.com) — не полный адрес, не содержимое страницы и не вашу историю. Так проверяются открытая страница и ссылки на ней, кроме известных официальных сайтов, которые расширение узнаёт само. Сервер проверяет имя, в том числе по внешним спискам опасных сайтов, например Google Safe Browsing.
+- Имена сайтов. Чтобы проверить сайт, Cleanway отправляет на наш сервер только его имя (например, example.com) — не полный адрес, не содержимое страницы и не вашу историю. Так проверяются открытая страница и ссылки на ней, кроме известных официальных сайтов, которые расширение узнаёт само. Сервер проверяет имя, в том числе по внешним спискам опасных сайтов, например Google Web Risk.
 - Письма — только если вы включили проверку почты. Она выключена, пока вы не включите в настройках «Проверять на фишинг письма, которые я открываю в Gmail, Outlook и Yahoo». Пока она включена, для каждого письма, которое вы открываете в Gmail, Outlook или Yahoo Mail, Cleanway отправляет на наш сервер тему, имя и адрес отправителя, адрес для ответа, текст, а также адрес и текст каждой ссылки (не HTML письма), чтобы проверить его на мошенничество. Письмо проверяется и не сохраняется. Выключите проверку в любой момент — и она сразу прекратится.
 - Проверка пароля на утечки. Когда вы уходите из поля пароля, Cleanway отправляет только короткий фрагмент его хеша (первые 5 символов SHA-1), а не сам пароль. Сравнение идёт в вашем браузере.
 - История проверок и счётчики остаются в браузере; история удаляется через 30 дней.
@@ -406,7 +406,7 @@ Cleanway предупреждает о мошеннических и фишин�
 - Без рекламы и аналитики внутри расширения, и мы не продаём данные.
 
 ЧЕГО CLEANWAY НЕ ОБЕЩАЕТ
-Новые мошеннические сайты появляются каждый день, и ни один инструмент не ловит их все. Если что-то кажется странным — не вводите свои данные.
+Новые мошеннические сайты появляются каждый день, и ни один инструмент не ловит их все. Бывает и наоборот: изредка безопасный сайт помечается по ошибке. Если что-то кажется странным — не вводите свои данные.
 
 ЦЕНА
 Бесплатно.

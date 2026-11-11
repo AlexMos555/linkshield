@@ -115,7 +115,7 @@
       "Tu dirección IP, para limitar cuántas comprobaciones puede hacer una conexión; para eso se guarda tal cual durante una hora como máximo",
       "Tu correo y tu plan, solo si creas una cuenta"
     ],
-    "server_note": "Para valorar un sitio, nuestro servidor puede consultar su nombre a servicios como Google Safe Browsing: solo el nombre, nunca quién eres.",
+    "server_note": "Para valorar un sitio, nuestro servidor puede consultar su nombre a servicios como Google Web Risk: solo el nombre, nunca quién eres.",
     "device_heading": "Qué se queda en tu teléfono",
     "device_items": [
       "La lista de sitios fraudulentos con la que compara la protección",
@@ -152,7 +152,7 @@
     "items": [
       {
         "q": "¿Qué sabe Cleanway de mí?",
-        "a": "Los sitios se comparan con la lista directamente en tu teléfono. Cuando un sitio necesita una revisión más a fondo, solo su nombre (como example.com) llega a nuestro servidor, que puede consultar ese nombre a servicios como Google Safe Browsing. No recibimos enlaces completos, contenido de páginas ni textos de mensajes, y no llevamos un registro de los sitios que abres. Los detalles están en nuestra política de privacidad."
+        "a": "Los sitios se comparan con la lista directamente en tu teléfono. Cuando un sitio necesita una revisión más a fondo, solo su nombre (como example.com) llega a nuestro servidor, que puede consultar ese nombre a servicios como Google Web Risk. No recibimos enlaces completos, contenido de páginas ni textos de mensajes, y no llevamos un registro de los sitios que abres. Los detalles están en nuestra política de privacidad."
       },
       {
         "q": "¿Hará más lento mi teléfono?",
@@ -163,8 +163,8 @@
         "a": "No a la vez. La protección de Cleanway usa el mecanismo de VPN de Android solo para los nombres de los sitios: el teléfono compara cada nombre con la lista y busca los que no están en ella como lo haría sin Cleanway, en el DNS de tu red o, si no responde, en Cloudflare o Quad9. El resto de tu tráfico va como siempre, ni a través de Cleanway ni de otro país. Android solo ejecuta un servicio así cada vez, así que si activas otra VPN, la protección de Cleanway se apaga. Cuando termines, abre Cleanway y vuelve a activar la protección. Comprobar a mano un sitio o un mensaje en la app sigue funcionando en cualquier caso."
       },
       {
-        "q": "¿En qué se diferencia de Google Safe Browsing?",
-        "a": "Google Safe Browsing es una de las fuentes que usamos. Cleanway además bloquea sitios fraudulentos conocidos en todas las aplicaciones del teléfono, no solo en el navegador, comprueba mensajes sospechosos en el propio teléfono y explica sus veredictos con palabras sencillas. Cuando preguntamos a Google por un sitio, solo enviamos su nombre, no quién eres."
+        "q": "¿En qué se diferencia de los avisos del navegador?",
+        "a": "Chrome, Firefox y Safari avisan por su cuenta de parte de los sitios peligrosos, con listas de Google. Nosotros también consultamos a Google, a través de Google Web Risk, y usamos otras fuentes. Además, Cleanway bloquea sitios fraudulentos conocidos en todas las aplicaciones del teléfono, no solo en el navegador, comprueba mensajes sospechosos en el propio teléfono y explica sus veredictos con palabras sencillas. Cuando preguntamos a Google por un sitio, solo enviamos su nombre, no quién eres."
       },
       {
         "q": "¿Es gratis?",
@@ -566,7 +566,6 @@
     "caveat_endpoint": "Cleanway se mide a través de su comprobación pública de sitios, el mismo camino anónimo que usa un visitante, no uno privilegiado. Mide la respuesta de nuestro servidor, no el bloqueo en el teléfono: la protección del teléfono solo bloquea al instante los sitios de su lista, así que esta cifra no dice cuántos de estos enlaces bloquearía un teléfono.",
     "caveat_rate_limit": "Ahora mismo la ejecución semanal se ralentiza por el límite de peticiones de esa comprobación, así que muchos enlaces quedan sin veredicto y la mayoría de las mediciones son demasiado pequeñas para publicarlas.",
     "caveat_phishtank": "La consulta gratuita de PhishTank suele responder «no indexado» a los enlaces recientes porque su base va unas horas por detrás, por eso su columna muestra a menudo «—».",
-    "caveat_gsb": "Google Safe Browsing necesita una clave de API; si no está configurada para la ejecución, su columna muestra «—».",
     "caveat_nxdomain": "Un dominio que ya no existe también recibe NXDOMAIN de Cloudflare y se cuenta como bloqueo de Cloudflare, lo que favorece a Cloudflare con dominios de phishing que ya se han dado de baja.",
     "caveat_latency": "Los tiempos de respuesta se miden desde la máquina que ejecuta el script (un servidor en la nube en EE. UU. o la UE); desde otras regiones serán distintos.",
     "caveat_allowlist": "Nuestro servidor considera seguros, sin analizarlos, los sitios del top 100.000 de Tranco, y la muestra de sitios reales de arriba sale de ese mismo rango. Por eso no puede mostrar con qué frecuencia Cleanway califica por error de peligroso un sitio real menos conocido, y no publicamos ninguna tasa de falsas alarmas basada en ella. Lo haremos cuando la muestra incluya sitios reales fuera de esa lista.",
@@ -685,6 +684,7 @@
     "verdict_caution": "{domain} tiene algunas señales sospechosas. Ten cuidado.",
     "verdict_dangerous": "{domain} muestra señales claras de ser un sitio de phishing o fraude. No introduzcas datos personales.",
     "check_failed": "Ahora mismo no hemos podido comprobar {domain}. Inténtalo de nuevo en unos minutos.",
+    "checking": "Comprobando {domain}…",
     "signals_heading": "Por qué",
     "low_confidence": "Es una comprobación rápida con datos limitados.",
     "cta_title": "Protege todas las apps de tu teléfono",
@@ -832,7 +832,7 @@
     "meta_description": "Qué recibe Cleanway, qué se queda en tu teléfono o en tu navegador, quién más ve qué y cuánto tiempo se guarda todo.",
     "back": "Volver a Cleanway",
     "title": "Política de privacidad",
-    "updated": "Última actualización: 22 de octubre de 2026",
+    "updated": "Última actualización: 4 de noviembre de 2026",
     "intro": "Esta política explica con palabras sencillas qué datos trata Cleanway, por qué y quién más los ve. Describe el servicio tal como funciona hoy. Si algo de aquí no coincide con lo que Cleanway hace realmente, es un error y queremos saberlo.",
     "contact_live": "Preguntas y solicitudes sobre tus datos:",
     "contact_not_live": "Nuestro buzón de soporte no funciona temporalmente, así que ahora no podemos recibir correos. En esta sección volverá a aparecer la dirección en cuanto funcione.",
@@ -875,7 +875,7 @@
           "Para decidir si el sitio es peligroso, nuestro servidor puede:"
         ],
         "items": [
-          "consultar el nombre a servicios de comprobación externos: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX e IPQualityScore, y averiguar cuándo se registró el sitio preguntando por RDAP al registro de su zona de dominio (para .com, Verisign). Solo reciben el nombre del sitio, no quién eres;",
+          "consultar el nombre a servicios de comprobación externos: Google Web Risk, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX e IPQualityScore, y averiguar cuándo se registró el sitio preguntando por RDAP al registro de su zona de dominio (para .com, Verisign). Solo reciben el nombre del sitio, no quién eres;",
           "comparar su respuesta con la del filtro DNS de Cloudflare (1.1.1.1 for Families), que recibe el nombre del sitio en una consulta DNS normal;",
           "revisar el propio sitio (su dirección, certificado y configuración) desde nuestro servidor, no desde tu teléfono;",
           "en casos dudosos, pedir una segunda opinión a un modelo de IA de Anthropic. Solo recibe señales abstractas, sin el nombre del sitio."
@@ -1311,7 +1311,7 @@
     }
   },
   "Reasons": {
-    "flagged_dangerous": "Google marca este sitio como peligroso",
+    "flagged_dangerous": "Google advierte que este sitio puede ser peligroso",
     "flagged_phishing": "Reportado como phishing",
     "on_blocklists": "En listas fiables de estafas y spam",
     "threat_reports": "Mencionado en informes de amenazas",
@@ -1346,5 +1346,12 @@
     "checks_incomplete": "Algunas revisiones no terminaron, así que el resultado es menos seguro",
     "user_content_platform": "Cualquiera puede crear una página en este servicio, también los estafadores",
     "on_device_list": "Está en la lista de sitios fraudulentos de tu teléfono"
+  },
+  "Advisory": {
+    "google": "Aviso proporcionado por Google",
+    "learn_more": "Más información:",
+    "learn_phishing": "phishing",
+    "learn_malware": "malware",
+    "learn_unwanted": "software no deseado"
   }
 }

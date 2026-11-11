@@ -265,7 +265,9 @@ async def analyze_email(
                     Finding(
                         category="url_reputation",
                         severity=50,
-                        message=f"Known-dangerous domain: {link.domain}",
+                        # The router's checker is Google Web Risk: a suspicion,
+                        # never a certainty (Web Risk's rules for warnings).
+                        message=f"Link to a suspected dangerous site: {link.domain}",
                         evidence=link.url,
                         code="known_dangerous_link",
                     )

@@ -115,7 +115,7 @@
       "Your IP address, to limit how many checks one connection can make — kept as is for up to an hour, only for that",
       "Your email and plan — only if you create an account"
     ],
-    "server_note": "To judge a site, our server may ask services such as Google Safe Browsing about its name — only the name, never who you are.",
+    "server_note": "To judge a site, our server may ask services such as Google Web Risk about its name — only the name, never who you are.",
     "device_heading": "What stays on your phone",
     "device_items": [
       "The list of scam sites that protection checks against",
@@ -152,7 +152,7 @@
     "items": [
       {
         "q": "What does Cleanway learn about me?",
-        "a": "Sites are checked against the list right on your phone. When a site needs a closer look, only its name (like example.com) goes to our server, which may ask services such as Google Safe Browsing about that name. We don't receive full links, page contents or message texts, and we don't keep a record of which sites you open. The details are in our privacy policy."
+        "a": "Sites are checked against the list right on your phone. When a site needs a closer look, only its name (like example.com) goes to our server, which may ask services such as Google Web Risk about that name. We don't receive full links, page contents or message texts, and we don't keep a record of which sites you open. The details are in our privacy policy."
       },
       {
         "q": "Will it slow my phone down?",
@@ -163,8 +163,8 @@
         "a": "Not at the same time. Cleanway's protection uses Android's VPN mechanism only for site names: the phone checks each name against the list and looks up the ones that aren't on it as it would without Cleanway — through your network's DNS, or through Cloudflare or Quad9 if that doesn't answer. The rest of your traffic goes as usual — not through Cleanway and not through another country. Android runs only one such service at a time, so if you turn on another VPN, Cleanway's protection switches off. When you are done, open Cleanway and turn protection back on. Checking a site or a message by hand in the app keeps working either way."
       },
       {
-        "q": "How is this different from Google Safe Browsing?",
-        "a": "Google Safe Browsing is one of the sources we use. Cleanway also blocks known scam sites in every app on the phone, not only in the browser, checks suspicious messages on the phone, and explains its verdicts in plain words. When we ask Google about a site, we send only its name — not who you are."
+        "q": "How is this different from the warnings in my browser?",
+        "a": "Chrome, Firefox and Safari warn about some dangerous sites on their own, using Google's lists. We ask Google too, through Google Web Risk, and use other sources as well. On top of that, Cleanway blocks known scam sites in every app on the phone, not only in the browser, checks suspicious messages on the phone, and explains its verdicts in plain words. When we ask Google about a site, we send only its name — not who you are."
       },
       {
         "q": "Is it free?",
@@ -560,7 +560,6 @@
     "caveat_endpoint": "Cleanway is measured through its public site-check endpoint — the same anonymous path a visitor uses — not through a privileged one. It measures our server's verdict, not blocking on the phone: the phone's protection blocks straight away only the sites on its list, so this number does not say how many of these links a phone would block.",
     "caveat_rate_limit": "Right now the weekly run is slowed down by that endpoint's rate limit, so many links get no verdict and most runs are too small to publish.",
     "caveat_phishtank": "PhishTank's free lookup often answers \"not indexed\" for fresh links because its database lags by a few hours, so its column often shows \"—\".",
-    "caveat_gsb": "Google Safe Browsing needs an API key; when none is configured for the run, its column shows \"—\".",
     "caveat_nxdomain": "A domain that no longer exists also gets NXDOMAIN from Cloudflare and is counted as a Cloudflare block, which flatters Cloudflare on phishing domains that have already been taken down.",
     "caveat_latency": "Response times are measured from the machine that runs the script (a cloud runner in the US or EU); from other regions they will differ.",
     "caveat_allowlist": "Our server treats sites in the Tranco top 100,000 as safe without analysing them, and the sample of real sites above comes from that same range. So it cannot show how often Cleanway wrongly calls a less famous real site dangerous, and we publish no false-alarm rate from it. We will once the sample includes real sites outside that list.",
@@ -685,6 +684,7 @@
     "verdict_caution": "{domain} has some suspicious signs. Be careful.",
     "verdict_dangerous": "{domain} shows strong signs of a phishing or scam site. Do not enter personal information.",
     "check_failed": "We couldn't check {domain} right now. Please try again in a few minutes.",
+    "checking": "Checking {domain} now…",
     "signals_heading": "Why",
     "low_confidence": "This is a quick check with limited data.",
     "cta_title": "Protect every app on your phone",
@@ -832,7 +832,7 @@
     "meta_description": "What Cleanway receives, what stays on your phone or in your browser, who else sees what, and how long anything is kept.",
     "back": "Back to Cleanway",
     "title": "Privacy policy",
-    "updated": "Last updated: October 22, 2026",
+    "updated": "Last updated: November 4, 2026",
     "intro": "This policy explains in plain words what data Cleanway handles, why, and who else sees it. It describes the service as it works today. If something here does not match what Cleanway actually does, that is a mistake and we want to hear about it.",
     "contact_live": "Questions and requests about your data:",
     "contact_not_live": "Our support mailbox is temporarily not working, so we cannot receive email right now. This section will show the address again as soon as it works.",
@@ -875,7 +875,7 @@
           "To decide whether the site is dangerous, our server may:"
         ],
         "items": [
-          "ask external checking services about the name: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX and IPQualityScore, and ask the registry of the site's domain zone over RDAP when the site was registered (for .com that is Verisign). They receive only the site name, not who you are;",
+          "ask external checking services about the name: Google Web Risk, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX and IPQualityScore, and ask the registry of the site's domain zone over RDAP when the site was registered (for .com that is Verisign). They receive only the site name, not who you are;",
           "compare its answer with Cloudflare's DNS filter (1.1.1.1 for Families), which receives the site name in an ordinary DNS query;",
           "look at the site itself (its address, certificate and settings) — from our server, not from your phone;",
           "in borderline cases, ask an AI model made by Anthropic for a second opinion. It receives only abstract signals, without the site name."
@@ -1311,7 +1311,7 @@
     }
   },
   "Reasons": {
-    "flagged_dangerous": "Google flags this site as dangerous",
+    "flagged_dangerous": "Google warns this site may be dangerous",
     "flagged_phishing": "Reported as phishing",
     "on_blocklists": "On trusted scam and spam blocklists",
     "threat_reports": "Mentioned in threat-intelligence reports",
@@ -1346,5 +1346,12 @@
     "checks_incomplete": "Some checks didn't finish, so the verdict is less certain",
     "user_content_platform": "Anyone can make a page on this service — scammers too",
     "on_device_list": "On the list of scam sites on your phone"
+  },
+  "Advisory": {
+    "google": "Advisory provided by Google",
+    "learn_more": "Learn more:",
+    "learn_phishing": "phishing",
+    "learn_malware": "malware",
+    "learn_unwanted": "unwanted software"
   }
 }

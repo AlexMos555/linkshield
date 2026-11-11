@@ -1690,9 +1690,13 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
 
     if signals.get("safe_browsing_hit"):
         score += 80
+        # Google Web Risk in production since 2026-11-03 (Safe Browsing v4
+        # without WEB_RISK_API_KEY); the code stays safe_browsing. Web Risk's
+        # rules for warnings: a hit is a suspicion, never a certainty
+        # (docs.cloud.google.com/web-risk/docs/user-warnings).
         reasons.append(DomainReason(
             signal="safe_browsing", weight=80,
-            detail="Flagged by Google Safe Browsing as dangerous",
+            detail="Google lists this site as possibly unsafe",
         ))
 
     if signals.get("phishtank_hit"):

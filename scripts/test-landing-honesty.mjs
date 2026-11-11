@@ -50,10 +50,24 @@
  *  21. A free account on /account is offered plans only where /pricing sells
  *      one to its country, and the home page's link to plans promises none
  *      in a country /pricing has none for.
+ *  22. A /check verdict whose reasons include Google's (`safe_browsing`, the
+ *      code a Google Web Risk hit has) shows "Advisory provided by Google"
+ *      linked to the Web Risk Advisory, with the learn-more links — the same
+ *      addresses as the app and the extension — and one built on other
+ *      sources does not; the texts that name the service say Google Web Risk
+ *      (production since 2026-11-03), never Safe Browsing, in every language.
+ *  23. A /check verdict resting on Google is never served from the cached
+ *      page: Web Risk allows a warning only while Google's answer is valid
+ *      (at most an hour), and the page is regenerated in the background, so
+ *      a stale copy could be served at any age. Such a verdict is fetched
+ *      live in the browser, kept no longer than the API's advisory_ttl, and
+ *      left out of the cached HTML, its JSON-LD and the share images. The
+ *      privacy policy, changed for Google Web Risk, carries a new date.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
+import vm from "node:vm";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -102,6 +116,7 @@ import {
 } from "../landing/lib/billing.ts";
 import { paidPlansOffered } from "../landing/lib/paid-plans.ts";
 import { REASON_CODE_TO_KEY, reasonLabelKey, reasonLines } from "../landing/lib/reason-label.ts";
+import { GOOGLE_ADVISORY_LINKS, hasGoogleAdvisory } from "../landing/lib/google-advisory.ts";
 import { safeJsonLd } from "../landing/lib/json-ld.ts";
 import { scrubSitePaths } from "../landing/lib/sentry-scrub.ts";
 import { switchLocaleHref } from "../landing/lib/switch-locale.ts";
@@ -1167,6 +1182,100 @@ console.log("\ndata sources (the credit CC BY asks for)");
     assert.match(report, /#\$\{DATA_SOURCES_ANCHOR\}/);
   });
 }
+
+console.log("Google's credit on a Google verdict (Web Risk's rules for warnings)");
+// The server asks Web Risk about UNWANTED_SOFTWARE too (api/services/
+// web_risk.py), and every warning must let people learn more about its
+// threat type: unwanted software has its own page, Google's policy.
+const EXPECTED_GOOGLE_LINKS = {
+  advisory: "https://docs.cloud.google.com/web-risk/docs/advisory",
+  phishing: "https://www.antiphishing.org/",
+  malware: "https://developers.google.com/search/docs/advanced/security/malware",
+  unwanted: "https://www.google.com/about/company/unwanted-software-policy.html",
+};
+check("a verdict with Google's reason code gets the credit; one built on other sources does not", () => {
+  assert.equal(hasGoogleAdvisory(["domain_new", "safe_browsing"]), true);
+  assert.equal(hasGoogleAdvisory(["phishtank", "multi_blocklist", "urlhaus"]), false);
+  assert.equal(hasGoogleAdvisory([]), false);
+  assert.equal(hasGoogleAdvisory(undefined), false);
+  assert.equal(hasGoogleAdvisory(["toString"]), false);
+});
+check("the site, the app and the extension link the same four pages", () => {
+  assert.deepEqual({ ...GOOGLE_ADVISORY_LINKS }, EXPECTED_GOOGLE_LINKS);
+  const mobile = fs.readFileSync(path.join(ROOT, "mobile", "src", "utils", "google-advisory.ts"), "utf-8");
+  for (const url of Object.values(EXPECTED_GOOGLE_LINKS)) assert.ok(mobile.includes(`"${url}"`), `the app lacks ${url}`);
+  const window = {};
+  vm.runInContext(
+    fs.readFileSync(path.join(ROOT, "packages", "extension-core", "src", "content", "reason-labels.js"), "utf-8"),
+    vm.createContext({ window, chrome: { i18n: { getMessage: () => "" } } }),
+  );
+  assert.deepEqual({ ...window.__cleanwayReasons.googleLinks }, EXPECTED_GOOGLE_LINKS);
+});
+// The verdict card lives in components/CheckResultCard.tsx now: the page and
+// the live check in the browser draw the same one.
+const CHECK_PAGE = path.join(ROOT, "landing", "app", "[locale]", "check", "[domain]");
+const checkSource = (...parts) => fs.readFileSync(path.join(...parts), "utf-8");
+check("the /check page draws the credit from its reason codes, with the links", () => {
+  const page = checkSource(CHECK_PAGE, "page.tsx") + checkSource(ROOT, "landing", "components", "CheckResultCard.tsx")
+    + checkSource(ROOT, "landing", "lib", "check-card.ts");
+  assert.match(page, /hasGoogleAdvisory\(result\.reason_codes\)/);
+  for (const key of ["advisory", "phishing", "malware", "unwanted"]) assert.match(page, new RegExp(`GOOGLE_ADVISORY_LINKS\\.${key}`));
+  assert.match(page, /data-testid="google-advisory"/);
+});
+check("a Google verdict is never served from the cached /check page, its JSON-LD or its share images", () => {
+  const page = checkSource(CHECK_PAGE, "page.tsx");
+  // The cached render hands a Google verdict to the live check, and keeps none of it.
+  assert.match(page, /google \? \(\s*<LiveCheckResult\b/, "page.tsx renders a Google verdict into the cached HTML");
+  assert.match(page, /const jsonLd = level && !google/, "the JSON-LD Review states a Google verdict");
+  const live = checkSource(ROOT, "landing", "components", "LiveCheckResult.tsx");
+  assert.match(live, /^"use client";/, "LiveCheckResult runs on the server");
+  assert.match(live, /cache: "no-store"/, "the live check may be answered from a cache");
+  assert.match(live, /credentials: "omit"/, "the live check sends cookies to the API");
+  assert.match(live, /advisory_ttl/, "the live check ignores how long Google's answer stays valid");
+  // advisory_ttl 0: valid when the API replied, for how long nobody could
+  // read. Shown for 30 s and asked again, like the extension — not left up.
+  assert.match(live, /const ZERO_WINDOW_MS = 30_000;/, "no short window for an advisory_ttl of 0");
+  assert.match(live, /left > 0 \? left \* 1000 : ZERO_WINDOW_MS/, "a Google verdict with advisory_ttl 0 stays on the page for good");
+  for (const image of ["opengraph-image.tsx", "twitter-image.tsx"]) {
+    const src = checkSource(CHECK_PAGE, image);
+    if (!/fetch\(/.test(src)) continue; // re-exports the other one
+    assert.match(src, /hasGoogleAdvisory\(/, `${image} draws a Google verdict into a cached image`);
+  }
+});
+check("the privacy policy changed for Google Web Risk carries a new date", () => {
+  assert.equal(landingSource("en").privacy_policy.updated, "Last updated: November 4, 2026");
+  for (const locale of LOCALES) {
+    const updated = landingSource(locale).privacy_policy.updated;
+    assert.ok(!/\b22\b/.test(updated), `${locale}: the policy still says it was last changed on 22 October: ${updated}`);
+    assert.match(updated, /\b4\b/, `${locale}: ${updated}`);
+  }
+});
+check("the credit's words reach the site in every language", () => {
+  for (const locale of LOCALES) {
+    const messages = JSON.parse(fs.readFileSync(path.join(ROOT, "landing", "messages", `${locale}.json`), "utf-8"));
+    const advisory = messages.Advisory || {};
+    for (const key of ["google", "learn_more", "learn_phishing", "learn_malware", "learn_unwanted"]) {
+      assert.equal(typeof advisory[key], "string", `${locale}: Advisory.${key} missing`);
+      assert.ok(advisory[key].trim(), `${locale}: Advisory.${key} empty`);
+    }
+    assert.match(advisory.google, /Google/, `${locale}: the credit does not name Google`);
+  }
+});
+check("the policy, the privacy note and the FAQ name Google Web Risk, never Safe Browsing", () => {
+  for (const locale of LOCALES) {
+    const landing = landingSource(locale);
+    const texts = [
+      ["privacy_policy §5", JSON.stringify(landing.privacy_policy.sections[4])],
+      ["privacy.server_note", landing.privacy.server_note],
+      ["faq", JSON.stringify(landing.faq.items)],
+    ];
+    for (const [where, text] of texts) {
+      assert.doesNotMatch(text, /Safe Browsing/, `${locale} ${where} still names Safe Browsing`);
+    }
+    assert.match(texts[0][1], /Google Web Risk/, `${locale}: the policy does not name Google Web Risk`);
+    assert.match(texts[1][1], /Google Web Risk/, `${locale}: the privacy note does not name Google Web Risk`);
+  }
+});
 
 if (failures > 0) {
   console.log(`\n${failures} check(s) failed`);

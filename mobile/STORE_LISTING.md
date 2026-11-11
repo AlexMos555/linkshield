@@ -4,7 +4,7 @@
 > code does. Verified egress: the app contacts `api.cleanway.ai` and
 > `cleanway.ai`, plus Sentry for crash logs and Supabase for the optional
 > account. Link checks send **only the site name (host)**, which the server may
-> check with outside sources such as Google Safe Browsing. Message text is
+> check with outside sources such as Google Web Risk. Message text is
 > checked **on the phone** and never sent. The shield uses Android's VpnService
 > **locally**: blocked names are answered on the phone; every other DNS lookup
 > goes to the network's own resolver (operator / Wi-Fi), falling back to

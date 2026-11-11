@@ -625,7 +625,8 @@ export interface paths {
          *          onedrive.live.com, disk.yandex.kz): a fixed "real service, we cannot
          *          vouch for the page" caution (verdict_basis 'user_content'), no analysis.
          *       4. Per-endpoint Redis cache, in its own namespace: a day for a full
-         *          verdict, less for a not-found or partial one.
+         *          verdict, less for a not-found or partial one, and one resting on
+         *          Google only while Google's answer is valid.
          *       5. A fresh-analysis cap per minute — per IP, or per install when the
          *          app sends X-Cleanway-Install (CGNAT: one IP, thousands of phones).
          *       6. SINGLEFLIGHT coalescing: N concurrent requests for the same fresh
@@ -635,6 +636,10 @@ export interface paths {
          *     'threat_intel' are evidence a client may block on; everything else is
          *     advice. `exists` is false for a domain that does not exist, and
          *     `checks_incomplete` names checks the time budget cut off.
+         *     `advisory_ttl` (seconds, null when no reason is Google's) is how long a
+         *     verdict resting on Google may still be shown from a cache: Web Risk allows
+         *     a warning only while Google's answer is valid. 0: show it now, keep it
+         *     nowhere.
          */
         get: operations["public_check_api_v1_public_check__domain__get"];
         put?: never;

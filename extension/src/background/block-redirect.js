@@ -27,6 +27,7 @@
  */
 
 import "../utils/blocked-url.js"; // sets self.cleanwayBlockedUrl (classic UMD file)
+import { VERDICT_TTL_MS } from "./verdict-cache.js";
 
 const blockedUrl = self.cleanwayBlockedUrl;
 
@@ -109,17 +110,25 @@ export function pageSender(sender) {
   return { tabId: sender.tab.id, host: u.hostname.toLowerCase(), url: sender.url };
 }
 
-/** The verdict the block page shows: only the fields it renders. */
-export function verdictFor(host, cached, reported) {
+/**
+ * The verdict the block page shows: only the fields it renders, and the end
+ * of Google's window for one resting on Google's lists (the block page takes
+ * the warning down then, blocked/blocked.js) — never more than the verdict
+ * cache's hour ahead, whoever says so.
+ */
+export function verdictFor(host, cached, reported, nowMs = Date.now()) {
   const pick = cached && cached.level === "dangerous" ? cached
     : reported && reported.level === "dangerous" ? reported : null;
   if (!pick) return null;
-  return {
+  const out = {
     domain: host,
     level: "dangerous",
     confidence_pct: pick.confidence_pct,
     reasons: Array.isArray(pick.reasons) ? pick.reasons : [],
   };
+  const until = pick.advisory_until;
+  if (typeof until === "number" && Number.isFinite(until)) out.advisory_until = Math.min(until, nowMs + VERDICT_TTL_MS);
+  return out;
 }
 
 /**
