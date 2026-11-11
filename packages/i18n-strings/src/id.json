@@ -3435,7 +3435,8 @@
       "result": "Hasil",
       "scanner": "Scan kode QR",
       "shared": "Cek link",
-      "upgrade": "Upgrade"
+      "upgrade": "Upgrade",
+      "back": "Kembali"
     },
     "check": {
       "title": "Cek link",
@@ -3768,7 +3769,9 @@
       "sign_out_confirm_body_appstore": "Pemeriksaan dan riwayat tetap ada di ponsel ini. Pengaturan berhenti disinkronkan sampai Anda masuk lagi. Langganan tetap ada di akun Anda: masuk lagi untuk memakainya di iPhone ini.",
       "plan": "Paket",
       "plan_desc": "Perlindungan di HP ini gratis",
+      "plan_desc_paid": "Pemeriksaan tanpa batas — langganan aktif",
       "upgrade": "Upgrade",
+      "plan_manage": "Kelola",
       "report": "Laporan mingguan",
       "report_desc": "Ringkasan link yang Anda cek",
       "family": "Ruang Keluarga",
@@ -3817,6 +3820,8 @@
       "language_note": "Pilih bahasa aplikasi.",
       "language_reload_title": "Perlu mulai ulang",
       "language_reload_body": "Tutup dan buka lagi aplikasi untuk menyelesaikan perubahan arah teks.",
+      "language_restart_body": "Aplikasi akan dimulai ulang untuk mengubah arah teks.",
+      "language_restart_action": "Mulai ulang",
       "linkguard": "Pemeriksaan tautan",
       "linkguard_note": "Jika aktif, tautan yang kamu ketuk di sebagian besar aplikasi masuk ke Cleanway lebih dulu; browser bawaan Telegram dan MAX membuka tautan sendiri, tanpa pemeriksaan. Situs penipuan yang sudah dikenal tidak akan terbuka. Tautan lain langsung terbuka sementara kami mengecek situsnya, dan kamu akan diperingatkan jika pemeriksaan menemukan bahaya — kadang ini butuh sampai setengah menit.",
       "linkguard_on": "Cleanway memeriksa tautanmu",

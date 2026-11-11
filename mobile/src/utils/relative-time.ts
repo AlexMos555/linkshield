@@ -1,7 +1,7 @@
 import type { TFunction } from "i18next";
 
 /** "Just now", "5 min ago", "Yesterday"… — for list rows. Empty for an unreadable time. */
-export function relativeTime(ms: number, t: TFunction, now: number = Date.now()): string {
+export function relativeTime(ms: number, t: TFunction, language: string, now: number = Date.now()): string {
   if (!Number.isFinite(ms)) return "";
   const minutes = Math.max(0, Math.round((now - ms) / 60000));
   if (minutes < 1) return t("mobile.history.just_now");
@@ -11,7 +11,23 @@ export function relativeTime(ms: number, t: TFunction, now: number = Date.now())
   const days = Math.floor(hours / 24);
   if (days === 1) return t("mobile.history.yesterday");
   if (days < 7) return t("mobile.history.days_ago", { days });
-  return new Date(ms).toLocaleDateString();
+  return shortDate(ms, language);
+}
+
+/**
+ * "26.10.2026" in Russian, "10/26/2026" in English — a date in the APP's
+ * language, not the phone's region: a Russian screen on a phone set to
+ * British English showed "26/10/2026" (Galaxy, 2026-11-11). Falls back to
+ * the device format if this language has no locale data.
+ */
+export function shortDate(ms: number, language: string): string {
+  if (!Number.isFinite(ms)) return "";
+  const date = new Date(ms);
+  try {
+    return date.toLocaleDateString(language, { day: "2-digit", month: "2-digit", year: "numeric" });
+  } catch {
+    return date.toLocaleDateString();
+  }
 }
 
 /** "14:35" in the app's language — when a pause ends. Falls back to the device format. */

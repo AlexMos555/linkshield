@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share } from "rea
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius, sectionHeader } from "../src/utils/theme";
+import { shortDate } from "../src/utils/relative-time";
 import { getWeeklyStats, getRecentChecks, MESSAGE_CHECK_SOURCE } from "../src/services/database";
 
 /**
@@ -22,7 +23,7 @@ import { getWeeklyStats, getRecentChecks, MESSAGE_CHECK_SOURCE } from "../src/se
 type FlaggedDomain = { domain: string; count: number };
 
 export default function ReportScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [stats, setStats] = useState({ total_checks: 0, threats_blocked: 0 });
   const [flagged, setFlagged] = useState<FlaggedDomain[]>([]);
 
@@ -57,8 +58,8 @@ export default function ReportScreen() {
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 86400000);
   const period = t("mobile.report.period", {
-    from: weekAgo.toLocaleDateString(),
-    to: now.toLocaleDateString(),
+    from: shortDate(weekAgo.getTime(), i18n.language),
+    to: shortDate(now.getTime(), i18n.language),
   });
 
   async function shareReport() {

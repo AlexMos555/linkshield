@@ -19,9 +19,16 @@ object LocalizedContext {
     private const val PREFS = "cleanway_ui"
     private const val KEY = "locale"
 
-    /** Persist the app's chosen UI locale (BCP-47 code, e.g. "ru"). */
-    fun set(context: Context, code: String) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, code).apply()
+    /**
+     * Persist the app's chosen UI locale (BCP-47 code, e.g. "ru"). True when
+     * it differs from the one stored — the caller then re-posts what is
+     * already on screen in the old language (the ongoing notification).
+     */
+    fun set(context: Context, code: String): Boolean {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.getString(KEY, null) == code) return false
+        prefs.edit().putString(KEY, code).apply()
+        return true
     }
 
     /**

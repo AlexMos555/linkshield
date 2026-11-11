@@ -3435,7 +3435,8 @@
       "result": "Résultat",
       "scanner": "Scanner un code QR",
       "shared": "Vérification de lien",
-      "upgrade": "Passer à l'offre supérieure"
+      "upgrade": "Passer à l'offre supérieure",
+      "back": "Retour"
     },
     "check": {
       "title": "Vérifier un lien",
@@ -3768,7 +3769,9 @@
       "sign_out_confirm_body_appstore": "Les vérifications et l'historique restent sur ce téléphone. Les paramètres ne se synchronisent plus jusqu'à votre prochaine connexion. L'abonnement reste dans votre compte : reconnectez-vous pour l'utiliser sur cet iPhone.",
       "plan": "Offre",
       "plan_desc": "La protection sur ce téléphone est gratuite",
+      "plan_desc_paid": "Vérifications illimitées — abonnement actif",
       "upgrade": "Passer à l'offre supérieure",
+      "plan_manage": "Gérer",
       "report": "Rapport de la semaine",
       "report_desc": "Un résumé des liens que vous avez vérifiés",
       "family": "Espace famille",
@@ -3817,6 +3820,8 @@
       "language_note": "Choisissez la langue de l'application.",
       "language_reload_title": "Redémarrage nécessaire",
       "language_reload_body": "Fermez et rouvrez l'application pour terminer le changement de sens du texte.",
+      "language_restart_body": "L’appli va redémarrer pour changer le sens du texte.",
+      "language_restart_action": "Redémarrer",
       "linkguard": "Vérification des liens",
       "linkguard_note": "Une fois activé, les liens que vous touchez dans la plupart des applis passent d'abord par Cleanway ; les navigateurs intégrés de Telegram et de MAX ouvrent les liens eux-mêmes, sans vérification. Les sites frauduleux connus ne s'ouvrent pas. Les autres s'ouvrent tout de suite pendant que nous vérifions le site, et vous êtes averti si la vérification trouve un danger — cela prend parfois jusqu'à une demi-minute.",
       "linkguard_on": "Cleanway vérifie vos liens",

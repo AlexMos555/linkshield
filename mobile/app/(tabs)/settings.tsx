@@ -8,7 +8,7 @@ import * as SecureStore from "expo-secure-store";
 import * as Localization from "expo-localization";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
-import { SUPPORTED_LOCALES, LOCALE_NAMES, changeLocale, localeChangeNeedsReload, type SupportedLocale } from "../../src/i18n";
+import { SUPPORTED_LOCALES, LOCALE_NAMES, changeLocale, localeChangeNeedsReload, reloadForDirection, type SupportedLocale } from "../../src/i18n";
 import { colors, type as typo, space, radius, sectionHeader } from "../../src/utils/theme";
 import { pruneOldChecks } from "../../src/services/database";
 import { getSessionState, signOut } from "../../src/services/auth";
@@ -19,11 +19,11 @@ import { confirmDeleteAccount } from "../../src/services/account-actions";
 import {
   isDefaultLinkHandler, requestLinkHandler, notificationsEnabled, turnOnBlockNotifications, linkListAvailable,
 } from "../../modules/cleanway-vpn";
-import { paidPlansVisible } from "../../src/utils/freemium";
-import { FREEMIUM, PAID_PLANS_OFFERED } from "../../src/services/freemium";
+import { paidPlansVisible, settingsPlanRow } from "../../src/utils/freemium";
+import { FREEMIUM, PAID_PLANS_OFFERED, freemiumEvents, isPaid } from "../../src/services/freemium";
 import { STORE_PURCHASE_WITHOUT_ACCOUNT, storeBillingOn } from "../../src/services/store-billing";
 import { linkGuardSettingShown } from "../../src/utils/platform-features";
-import { DATA_SOURCES_URL, PRIVACY_POLICY_URL, TERMS_URL } from "../../src/utils/legal-urls";
+import { DATA_SOURCES_URL, privacyPolicyUrl, termsUrl } from "../../src/utils/legal-urls";
 
 type SkillLevel = "kids" | "regular" | "granny" | "pro";
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -106,6 +106,25 @@ export default function SettingsScreen() {
   useFocusEffect(useCallback(() => {
     setAllowed(allowedSites());
   }, []));
+
+  // The Plan row says what the paywall says: the same answer (isPaid — the
+  // account's plan and, on an iPhone, this phone's own App Store plan). It
+  // said "free" + "Upgrade" under an active subscription (both phones,
+  // 2026-11-11). Null until read: the row then claims neither. Re-read on
+  // focus (back from the paywall) and when a purchase or restore lands.
+  const [planPaid, setPlanPaid] = useState<boolean | null>(null);
+  const loadPlan = useCallback(() => {
+    if (!PAID_PLANS_OFFERED) return;
+    void isPaid().then(setPlanPaid, () => undefined);
+  }, []);
+  useFocusEffect(loadPlan);
+  useEffect(() => {
+    freemiumEvents.on("changed", loadPlan);
+    return () => {
+      freemiumEvents.off("changed", loadPlan);
+    };
+  }, [loadPlan]);
+  const planRow = settingsPlanRow(planPaid);
 
   function confirmRemoveAllowed(domain: string) {
     Alert.alert(
@@ -207,9 +226,22 @@ export default function SettingsScreen() {
     const needsReload = localeChangeNeedsReload(next);
     await changeLocale(next);
     setLocale(next);
-    if (needsReload) {
-      Alert.alert(t("mobile.settings.language_reload_title"), t("mobile.settings.language_reload_body"));
-    }
+    if (!needsReload) return;
+    // One button, not dismissable: the layout is half-mirrored until the JS
+    // restarts, and "close and reopen" does not restart it on Android while
+    // the shield keeps the process alive (Galaxy, 2026-11-11).
+    Alert.alert(
+      t("mobile.settings.language_reload_title"),
+      t("mobile.settings.language_restart_body"),
+      [{ text: t("mobile.settings.language_restart_action"), onPress: () => void restartForDirection() }],
+      { cancelable: false },
+    );
+  }
+
+  async function restartForDirection(): Promise<void> {
+    if (await reloadForDirection()) return;
+    // The restart could not be asked for: the old instruction is all that is left.
+    Alert.alert(t("mobile.settings.language_reload_title"), t("mobile.settings.language_reload_body"));
   }
 
   function confirmSignOut(): void {
@@ -353,8 +385,8 @@ export default function SettingsScreen() {
           distribution: FREEMIUM.distribution,
           storeBillingOn: storeBillingOn(),
         }) && (
-          <Row label={t("mobile.settings.plan")} desc={t("mobile.settings.plan_desc")}
-               right={<Text style={s.pill}>{t("mobile.settings.upgrade")}</Text>}
+          <Row label={t("mobile.settings.plan")} desc={planRow.descKey ? t(planRow.descKey) : undefined}
+               right={planRow.actionKey ? <Text style={s.pill}>{t(planRow.actionKey)}</Text> : chevron}
                onPress={() => router.push({ pathname: "/paywall", params: { from: "upgrade" } })} />
         )}
         <Row label={t("mobile.settings.report")} desc={t("mobile.settings.report_desc")}
@@ -470,9 +502,9 @@ export default function SettingsScreen() {
 
       <Section title={t("mobile.settings.about")}>
         <Row first label={t("mobile.settings.privacy_policy")} right={chevron}
-             onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)} />
+             onPress={() => void Linking.openURL(privacyPolicyUrl(i18n.language))} />
         <Row label={t("mobile.settings.terms")} right={chevron}
-             onPress={() => void Linking.openURL(TERMS_URL)} />
+             onPress={() => void Linking.openURL(termsUrl(i18n.language))} />
         {/* The credit CC BY asks for: Cleanway's popular-site ranking is adapted open data. */}
         <Row label={t("mobile.settings.data_sources")} desc={t("mobile.settings.data_sources_desc")} right={chevron}
              onPress={() => void Linking.openURL(DATA_SOURCES_URL)} />

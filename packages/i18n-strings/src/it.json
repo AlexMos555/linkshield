@@ -3435,7 +3435,8 @@
       "result": "Risultato",
       "scanner": "Scansiona un codice QR",
       "shared": "Controllo link",
-      "upgrade": "Upgrade"
+      "upgrade": "Upgrade",
+      "back": "Indietro"
     },
     "check": {
       "title": "Controlla un link",
@@ -3768,7 +3769,9 @@
       "sign_out_confirm_body_appstore": "I controlli e la cronologia restano su questo telefono. Le impostazioni smettono di sincronizzarsi finché non accedi di nuovo. L'abbonamento resta nel tuo account: accedi di nuovo per usarlo su questo iPhone.",
       "plan": "Piano",
       "plan_desc": "La protezione su questo telefono è gratuita",
+      "plan_desc_paid": "Controlli illimitati — abbonamento attivo",
       "upgrade": "Fai l'upgrade",
+      "plan_manage": "Gestisci",
       "report": "Resoconto settimanale",
       "report_desc": "Un riepilogo dei link che hai controllato",
       "family": "Spazio famiglia",
@@ -3817,6 +3820,8 @@
       "language_note": "Scegli la lingua dell'app.",
       "language_reload_title": "Riavvio necessario",
       "language_reload_body": "Chiudi e riapri l'app per completare il cambio di direzione del testo.",
+      "language_restart_body": "L’app verrà riavviata per cambiare la direzione del testo.",
+      "language_restart_action": "Riavvia",
       "linkguard": "Controllo dei link",
       "linkguard_note": "Quando è attivo, i link che tocchi nella maggior parte delle app passano prima da Cleanway; i browser integrati di Telegram e MAX aprono i link da soli, senza controllo. I siti truffa noti non si aprono. Gli altri si aprono subito mentre controlliamo il sito, e ricevi un avviso se il controllo trova un pericolo: a volte ci vuole fino a mezzo minuto.",
       "linkguard_on": "Cleanway controlla i tuoi link",

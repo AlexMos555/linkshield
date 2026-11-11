@@ -327,7 +327,22 @@ class CleanwayVpnModule : Module() {
      * changes and at startup. See ai.cleanway.app.LocalizedContext.
      */
     Function("setNotificationLocale") { code: String ->
-      ai.cleanway.app.LocalizedContext.set(context, code)
+      val changed = ai.cleanway.app.LocalizedContext.set(context, code)
+      // The ongoing "protection is on" notification was built in the old
+      // language and is only rebuilt on a pause: after a language switch it
+      // stayed Russian under an Arabic app (Galaxy, 2026-11-11). Ask the
+      // running service to post it again; nothing to do when it is not up.
+      if (changed && CleanwayVpnService.isRunning) {
+        try {
+          context.startService(
+            Intent(context, CleanwayVpnService::class.java)
+              .setAction(CleanwayVpnService.ACTION_REFRESH_NOTIFICATION)
+          )
+        } catch (_: Exception) {
+          // Not allowed right now (app in the background): the next pause or restart rebuilds it.
+        }
+      }
+      Unit
     }
 
     /**
