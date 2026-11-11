@@ -18,9 +18,10 @@ matches (must be exactly 0).
 
 Held-out sets (scripts/heldout_sets.py):
   phishtank  PhishTank online-valid (default). Held out as long as PhishTank
-             is not a source — it becomes one the day PHISHTANK_API_KEY is
-             set on the refresh job (api/services/phishtank_feed.py), and
-             this number becomes circular. Anonymous pulls are throttled
+             is not a source — it becomes one the day the refresh job gets
+             BLOCKLIST_PHISHTANK_SOURCE (keyless) or PHISHTANK_API_KEY
+             (api/services/phishtank_feed.py), and this number becomes
+             circular. Anonymous pulls are throttled
              (HTTP 404): pass --sample-file to score several artifacts
              against ONE pull.
   tweetfeed  TweetFeed year.csv, --days 30 for the "independent 30-day
@@ -70,7 +71,8 @@ HELD_OUT = {
 }
 NOTES = {
     "phishtank": ("Coverage is measured against a feed that does not build the list (PhishTank, as long as "
-                  "PHISHTANK_API_KEY is not set on the refresh job), so it is not circular."),
+                  "the refresh job has neither BLOCKLIST_PHISHTANK_SOURCE nor PHISHTANK_API_KEY), so it is not "
+                  "circular."),
     "tweetfeed": ("TweetFeed year.csv has been a SOURCE of the published list since 2026-09-26 (#47): against an "
                   "artifact built with it this number is circular. It is honest only for an artifact built with "
                   "BLOCKLIST_EXCLUDE_FEEDS=TweetFeed (scripts/eval_day_one_coverage.py)."),

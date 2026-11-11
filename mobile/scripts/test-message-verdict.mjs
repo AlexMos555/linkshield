@@ -235,6 +235,31 @@ try {
     ],
     ["stored verdicts are recognised", () => m.isMessageVerdict("no_signals"), true],
     ["'safe' is not a message verdict", () => m.isMessageVerdict("safe"), false],
+
+    // ── Google's credit (Web Risk's rules for warnings) ─────────────
+    // A link the server called risky because Google lists it: the links card
+    // says "Advisory provided by Google". A link risky for other reasons, a
+    // clean one, or one not checked yet: no Google credit.
+    [
+      "a risky link Google flagged brings Google's credit",
+      () => m.googleAdvised({
+        "a.tld": { kind: "checked", level: "safe" },
+        "b.tld": { kind: "checked", level: "dangerous", google: true },
+      }),
+      true,
+    ],
+    [
+      "risky links on other sources, pending or failed checks: no Google credit",
+      () => m.googleAdvised({
+        "a.tld": { kind: "checked", level: "dangerous" },
+        "b.tld": { kind: "checked", level: "caution", google: false },
+        "c.tld": { kind: "pending" },
+        "d.tld": { kind: "failed", why: "offline" },
+        "e.tld": { kind: "not_found" },
+      }),
+      false,
+    ],
+    ["no links checked: no Google credit", () => m.googleAdvised({}), false],
   ];
 
   let failed = 0;

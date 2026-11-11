@@ -23,7 +23,11 @@ Pinned here:
     landing/lib/data-sources.ts, so a new source cannot ship uncredited;
   * and only those: a feed production leaves out (OpenPhish, phishing.army,
     since 2026-10-23 CSIRT Italia) or has retired (URLhaus) is not on the
-    page as a source we use.
+    page as a source we use;
+  * PhishTank, which the key or BLOCKLIST_PHISHTANK_SOURCE makes a source,
+    is credited before either is set: until the page lists it, production's
+    env here keeps it out and the switch-on runbook
+    (docs/THIRD_PARTY_FEEDS.md §1) says to credit it first.
 
 What each listed source links to, and that the app's link lands on the
 section the page renders, is in scripts/test-landing-honesty.mjs, which can
@@ -86,6 +90,17 @@ def _module(name: str):
     return module
 
 
+def _production_env(rdd) -> dict[str, str]:
+    """The sources part of the env production's refresh job runs with: the
+    licence switch on, PhishTank off (BLOCKLIST_PHISHTANK_SOURCE unset, so
+    the workflow passes no key either). The day PhishTank is to be switched
+    on, the PR that credits it on the page (landing/lib/data-sources.ts and
+    landing.methodology.sources_* in every locale) adds
+    `rdd.phishtank_feed.SOURCE_ENV: "true"` here, and the variable is set
+    only after that PR is merged (docs/THIRD_PARTY_FEEDS.md §1)."""
+    return {rdd.LICENSED_ONLY_ENV: "1"}
+
+
 def _attributed_ids(section: str | None = None) -> set[str]:
     """The `id` of every source the page lists (one `id: "..."` line each),
     or only those of one exported list (`PHISHING_SOURCES`, …)."""
@@ -146,12 +161,13 @@ def test_both_cc_by_datasets_are_listed():
 
 def test_every_feed_the_licensed_blocklist_reads_is_listed():
     rdd = _module("refresh_dangerous_domains")
-    excluded = rdd.excluded_feeds({rdd.LICENSED_ONLY_ENV: "1"})
+    env = _production_env(rdd)
     # run_sources: every source a run with these exclusions has, the MISP
-    # feed fetched outside _feed_specs included. PhishTank joins only with a
-    # key nobody has (§1); it needs a line on the page the day
-    # BLOCKLIST_PHISHTANK_SOURCE is set.
-    feeds = rdd.run_sources(excluded, {})
+    # feed fetched outside _feed_specs included. PhishTank joins with the
+    # key or with BLOCKLIST_PHISHTANK_SOURCE (keyless, the public dump); it is
+    # in neither today, and the page needs its line before either is set
+    # (_production_env, and the test below).
+    feeds = rdd.run_sources(rdd.excluded_feeds(env), env)
     assert feeds, "no feeds"
     assert not feeds & rdd.NON_COMMERCIAL_FEEDS
     assert feeds <= _attributed_ids(), f"not credited on the page: {sorted(feeds - _attributed_ids())}"
@@ -163,13 +179,36 @@ def test_the_page_credits_no_feed_production_leaves_out():
     # of them — crediting it would claim data we may not ship.
     rdd = _module("refresh_dangerous_domains")
     rtf = _module("refresh_training_feeds")
-    licensed = rdd.run_sources(rdd.excluded_feeds({rdd.LICENSED_ONLY_ENV: "1"}), {})
+    env = _production_env(rdd)
+    licensed = rdd.run_sources(rdd.excluded_feeds(env), env)
     trained = {source.name for source in rtf.PHISHING_SOURCES}
     listed = _attributed_ids("PHISHING_SOURCES")
     assert listed, "no phishing sources parsed from the page"
     assert "CSIRT Italia" not in _attributed_ids(), "left out since 2026-10-23 (ACN's terms bar commercial use)"
     assert not listed & (rdd.NON_COMMERCIAL_FEEDS | rdd.RETIRED_FEEDS)
     assert listed <= licensed | trained, f"credited but not used: {sorted(listed - licensed - trained)}"
+
+
+def test_phishtank_is_credited_before_either_switch_makes_it_a_source():
+    # The key or BLOCKLIST_PHISHTANK_SOURCE makes PhishTank a source of the
+    # production build. Both live in GitHub, which this test cannot read, so
+    # what it holds is the order: switched on, PhishTank is in the build;
+    # while the page does not credit it, production's env here must keep it
+    # out, and the switch-on runbook must say to credit it first.
+    rdd = _module("refresh_dangerous_domains")
+    env = _production_env(rdd)
+    excluded = rdd.excluded_feeds(env)
+    for switch in ({rdd.phishtank_feed.SOURCE_ENV: "true"}, {rdd.phishtank_feed.KEY_ENV: "k3y"}):
+        assert rdd.phishtank_feed.SOURCE_NAME in rdd.run_sources(excluded, {**env, **switch}), switch
+    if rdd.phishtank_feed.SOURCE_NAME in _attributed_ids("PHISHING_SOURCES"):
+        return  # credited: the two tests above hold the page to the build
+    assert rdd.phishtank_feed.SOURCE_NAME not in rdd.run_sources(excluded, env)
+    notes = (ROOT / "docs" / "THIRD_PARTY_FEEDS.md").read_text(encoding="utf-8")
+    start = notes.index("### What `BLOCKLIST_PHISHTANK_SOURCE` does, exactly")
+    section = notes[start:notes.index("\n### ", start + 1)]
+    for step in ("landing/lib/data-sources.ts", "`PHISHING_SOURCES`", "`landing.methodology.sources_*`",
+                 "tests/test_data_attribution.py"):
+        assert step in section, f"the switch-on runbook does not name {step}"
 
 
 def test_every_feed_the_model_learns_from_is_listed():

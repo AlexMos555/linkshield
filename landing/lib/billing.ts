@@ -38,7 +38,7 @@ export interface BillingTerms {
   /** Days after install with everything unlimited and nothing charged. */
   readonly trialDays: number;
   /** Detailed checks a day without the subscription. */
-  readonly freeChecksPerDay: number;
+  readonly freeChecksPerMonth: number;
   readonly graceDays: number;
   /** What happens after the grace window: `basic` keeps list blocking, `off` stops it. */
   readonly lapsePolicy: LapsePolicy;
@@ -50,13 +50,13 @@ export type LapsePolicy = "basic" | "off";
  * The founder's numbers (2026-10-07): 99 ₽ a month for 3 devices, +29 ₽ a
  * month for each one more, everything unlimited for the first 7 days. They
  * replace the 99 / 270 / 399 ₽ one-, three- and five-phone plans of
- * 2026-09-29.
+ * 2026-09-29. Free checks: 5 a month (founder, 2026-11-04 — was 3 a day).
  */
 export const DEFAULT_PRICE_RUB = 99;
 export const DEFAULT_INCLUDED_DEVICES = 3;
 export const DEFAULT_EXTRA_DEVICE_RUB = 29;
 export const DEFAULT_TRIAL_DAYS = 7;
-export const DEFAULT_FREE_CHECKS_PER_DAY = 3;
+export const DEFAULT_FREE_CHECKS_PER_MONTH = 5;
 export const DEFAULT_GRACE_DAYS = 7;
 export const DEFAULT_LAPSE_POLICY: LapsePolicy = "basic";
 
@@ -81,7 +81,7 @@ export function billingTermsFromEnv(env: Env): BillingTerms {
     includedDevices: parsePositiveInt(env.NEXT_PUBLIC_BILLING_INCLUDED_DEVICES, DEFAULT_INCLUDED_DEVICES),
     extraDeviceRub: parsePositiveInt(env.NEXT_PUBLIC_BILLING_EXTRA_DEVICE_RUB, DEFAULT_EXTRA_DEVICE_RUB),
     trialDays: parsePositiveInt(env.NEXT_PUBLIC_BILLING_TRIAL_DAYS, DEFAULT_TRIAL_DAYS),
-    freeChecksPerDay: parsePositiveInt(env.NEXT_PUBLIC_BILLING_FREE_CHECKS_PER_DAY, DEFAULT_FREE_CHECKS_PER_DAY),
+    freeChecksPerMonth: parsePositiveInt(env.NEXT_PUBLIC_BILLING_FREE_CHECKS_PER_MONTH, DEFAULT_FREE_CHECKS_PER_MONTH),
     graceDays: parsePositiveInt(env.NEXT_PUBLIC_BILLING_GRACE_DAYS, DEFAULT_GRACE_DAYS),
     lapsePolicy: parseLapsePolicy(env.NEXT_PUBLIC_BILLING_LAPSE_POLICY),
   };
@@ -105,7 +105,7 @@ export function billingMessageArgs(terms: BillingTerms): Record<string, string |
     extra: String(terms.extraDeviceRub),
     devices: terms.includedDevices,
     days: terms.trialDays,
-    checks: terms.freeChecksPerDay,
+    checks: terms.freeChecksPerMonth,
     grace: terms.graceDays,
   };
 }

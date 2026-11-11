@@ -85,6 +85,10 @@ EXTENSION_NS_TO_FLAT_PREFIX = {
     "extension.reason": "reason_",
     # Block-page evidence card bodies, keyed by the same reason groups.
     "extension.evidence": "evidence_",
+    # "Advisory provided by Google" + learn-more links under a verdict built
+    # on Google's lists (content/reason-labels.js). The app reads the same
+    # keys as extension.advisory.*, the site as the Advisory namespace.
+    "extension.advisory": "advisory_",
     # Overlays opened from the popup, the password-leak banner, the webmail
     # banner and the settings page (all used to be hard-coded English).
     "extension.weekly": "weekly_",
@@ -175,6 +179,12 @@ def namespace_for_landing(source: dict[str, Any]) -> dict[str, Any]:
     reasons = source.get("mobile", {}).get("reason")
     if reasons:
         out["Reasons"] = reasons
+    # Google's credit under a verdict built on Google's lists: one set of
+    # words for the extension, the app and the /check page (Web Risk's rules
+    # for warnings), kept as extension.advisory with chrome.i18n's {text}.
+    advisory = source.get("extension", {}).get("advisory")
+    if advisory:
+        out["Advisory"] = {key: entry["text"] for key, entry in advisory.items()}
     return out
 
 

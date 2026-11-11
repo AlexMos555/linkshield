@@ -7,7 +7,9 @@
  * grew by every domain the person ever saw.
  *
  * Every entry has its own lifetime:
- *   - an API verdict: an hour, and mirrored to chrome.storage.session, so a
+ *   - an API verdict: an hour — one resting on Google's lists no longer than
+ *     Google's answer is valid (background/google-verdict.js) — and mirrored
+ *     to chrome.storage.session, so a
  *     restarted worker (Chrome stops an idle one after 30 seconds) does not
  *     ask the API again for every link it already checked. storage.session
  *     is memory only, gone when the browser quits, and out of content
@@ -65,11 +67,20 @@ export function createVerdictCache({ session = null, now = () => Date.now(), max
     return e.r;
   }
 
-  /** An answer from the API: an hour, in memory and in storage.session. */
-  function setVerdict(domain, r) {
-    put(domain, r, VERDICT_TTL_MS, true);
+  /**
+   * An answer from the API: an hour (or `ttlMs`, if shorter), in memory and
+   * in storage.session. 0 keeps it nowhere — and drops what an earlier worker
+   * kept, so a restart cannot bring an older answer back.
+   */
+  function setVerdict(domain, r, ttlMs = VERDICT_TTL_MS) {
+    const ttl = Math.min(ttlMs, VERDICT_TTL_MS);
+    put(domain, r, ttl, true);
     if (!session) return;
-    session.set({ [SESSION_PREFIX + domain]: { r, until: now() + VERDICT_TTL_MS } }).catch(() => {});
+    if (!(ttl > 0)) {
+      session.remove(SESSION_PREFIX + domain).catch(() => {});
+      return;
+    }
+    session.set({ [SESSION_PREFIX + domain]: { r, until: now() + ttl } }).catch(() => {});
     writes++;
     if (writes % PRUNE_EVERY_WRITES === 0) prune().catch(() => {});
   }

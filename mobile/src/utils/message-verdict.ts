@@ -37,7 +37,8 @@ export type ServerLevel = "safe" | "caution" | "dangerous";
 /** What the domain-only server check said about one host. */
 export type LinkCheck =
   | { kind: "pending" }
-  | { kind: "checked"; level: ServerLevel }
+  /** `google`: one of the server's reasons is Google's (Web Risk) — the card credits Google. */
+  | { kind: "checked"; level: ServerLevel; google?: boolean }
   /** The server says the site does not exist. A fact about the link, not a verdict on the message. */
   | { kind: "not_found" }
   | { kind: "failed"; why: "rate_limited" | "offline" | "timeout" | "error" }
@@ -124,6 +125,16 @@ export function planServerChecks(links: readonly MessageLink[]): Readonly<Record
   return Object.fromEntries(
     hosts.map((h): [string, LinkCheck] => [h, sent.has(h) ? { kind: "pending" } : { kind: "not_sent" }]),
   );
+}
+
+/**
+ * Whether the links card credits Google: a link the server called risky with
+ * one of its reasons Google's (src/utils/google-advisory.ts). Web Risk's rules
+ * for warnings ask for "Advisory provided by Google" on such a warning, and
+ * forbid it on one built on other sources.
+ */
+export function googleAdvised(checks: Readonly<Record<string, LinkCheck>>): boolean {
+  return Object.values(checks).some((c) => c.kind === "checked" && c.level !== "safe" && c.google === true);
 }
 
 /** Hosts from a plan that are waiting for the server. */

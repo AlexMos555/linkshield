@@ -20,8 +20,8 @@ var FALLBACK_EN = {
   status_safe_subtitle: "No scam links found on $1",
   status_warning_title: "This site looks suspicious",
   status_warning_subtitle: "$1 shows some signs of a scam. Don't enter passwords or card details here unless you trust this site.",
-  status_danger_title: "This is a scam site",
-  status_danger_subtitle: "$1 is pretending to be someone else to steal your information",
+  status_danger_title: "This looks like a scam site",
+  status_danger_subtitle: "$1 may be pretending to be someone else to steal your information",
   status_unknown_title: "Couldn't check this page",
   status_unknown_subtitle: "Try again in a moment",
   status_user_content_title: "Anyone can publish a page here",
@@ -54,6 +54,11 @@ var FALLBACK_EN = {
   offline_warning: "Offline — using basic protection",
   trust_footer: "We check site addresses, not full links or page content",
   confidence_chip: "Confidence: $1%",
+  advisory_google: "Advisory provided by Google",
+  advisory_learn_more: "Learn more:",
+  advisory_learn_phishing: "phishing",
+  advisory_learn_malware: "malware",
+  advisory_learn_unwanted: "unwanted software",
   time_just_now: "just now",
   time_minutes: "$1 min",
   time_hours: "$1 h",
@@ -181,6 +186,17 @@ function setStatus(state, title, subtitle) {
   primary.hidden = state !== "danger";
 }
 
+// "Advisory provided by Google" under a verdict one of whose reasons is
+// Google's (content/reason-labels.js fromGoogle), hidden for any other —
+// Web Risk's rules for warnings. It starts hidden (popup.html); the two paths
+// that show a verdict — the block page's and the API's — decide.
+function showGoogleAdvisory(reasons) {
+  var box = $("google-advisory");
+  if (!box) return;
+  var labels = window.__cleanwayReasons;
+  box.hidden = !(labels && typeof labels.fromGoogle === "function" && labels.fromGoogle(reasons));
+}
+
 function levelToState(level) {
   if (level === "safe") return "safe";
   if (level === "user_content") return "user_content";
@@ -254,46 +270,64 @@ async function loadPageStatus() {
   // The tab is on our block page: the site behind it is a scam. Without
   // this the extension page fell into "not a web page" below and the popup
   // said "This page is safe" over the STOP screen.
+  var domain = "";
+  var behindBlock = false;
   var blockedHref = blockedPageUrl(tab);
   if (blockedHref) {
     var shown = self.cleanwayBlockedUrl.parse(blockedHref);
-    if (shown.domain) _shownVerdict = { domain: shown.domain, level: "dangerous" };
-    setStatus("danger", t("status_danger_title"),
-      shown.domain ? t("status_danger_subtitle", [shown.domain]) : "");
-    if (typeof shown.confidence_pct === "number") {
-      var blockedChip = $("confidence-chip");
-      if (blockedChip) {
-        blockedChip.textContent = t("confidence_chip", [String(shown.confidence_pct)]);
-        blockedChip.hidden = false;
+    // A verdict resting on Google whose window is over (or was never given):
+    // Web Risk allows its warning only while Google's answer is valid, so it
+    // is not drawn from the address — the site is checked again below, as
+    // the block page itself does (blocked/blocked.js).
+    if (shown.domain && self.cleanwayBlockedUrl.needsRecheck(shown, Date.now())) {
+      domain = shown.domain;
+      behindBlock = true;
+    } else {
+      if (shown.domain) _shownVerdict = { domain: shown.domain, level: "dangerous" };
+      setStatus("danger", t("status_danger_title"),
+        shown.domain ? t("status_danger_subtitle", [shown.domain]) : "");
+      showGoogleAdvisory(shown.reasons);
+      if (typeof shown.confidence_pct === "number") {
+        var blockedChip = $("confidence-chip");
+        if (blockedChip) {
+          blockedChip.textContent = t("confidence_chip", [String(shown.confidence_pct)]);
+          blockedChip.hidden = false;
+        }
       }
+      return;
     }
-    return;
   }
 
-  if (!tab || !tab.url) {
-    setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
-    return;
-  }
+  if (!domain) {
+    if (!tab || !tab.url) {
+      setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
+      return;
+    }
 
-  var url;
-  try { url = new URL(tab.url); } catch (e) {
-    setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
-    return;
-  }
+    var url;
+    try { url = new URL(tab.url); } catch (e) {
+      setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
+      return;
+    }
 
-  // chrome:// and about: aren't checkable
-  if (!/^https?:$/.test(url.protocol)) {
-    setStatus("safe", t("status_safe_title"), "");
-    return;
-  }
+    // chrome:// and about: aren't checkable
+    if (!/^https?:$/.test(url.protocol)) {
+      setStatus("safe", t("status_safe_title"), "");
+      return;
+    }
 
-  var domain = url.hostname;
+    domain = url.hostname;
+  }
 
   try {
     // page: this is the tab's own page — if it is a scam, its block page
     // already counted it; it is not a "warning" on top of that.
     var resp = await chrome.runtime.sendMessage({ type: "CHECK_DOMAINS", domains: [domain], page: true });
     var r = resp && resp.results && resp.results[0];
+    // Over the block page only the server's answer is a fresh check: the
+    // offline guess (the API did not answer) is "couldn't check", as the
+    // block page itself says — never "safe" over the old warning.
+    if (r && behindBlock && r.level !== "dangerous" && r.source !== "api" && r.source !== "platform") r = null;
     if (!r) {
       _shownVerdict = { domain: domain, level: "unknown" };
       setStatus("unknown", t("status_unknown_title"), t("status_unknown_subtitle"));
@@ -325,6 +359,7 @@ async function loadPageStatus() {
       subtitle = t("status_unknown_subtitle");
     }
     setStatus(state, title, subtitle);
+    showGoogleAdvisory(r.reasons);
     // Strategy doc #12 — surface the confidence band beneath the
     // verdict. Backend always populates confidence_pct (50-99) on
     // every result; falling back to nothing if the field is

@@ -93,6 +93,9 @@ body {
 }
 
 .findings-list, .links-list { list-style: none; }
+.google-advisory { margin-top: 8px; font-size: 12px; line-height: 1.5; color: var(--text-muted); }
+.google-advisory[hidden] { display: none; }
+.google-advisory a { color: inherit; text-decoration: underline; }
 
 .finding {
   display: flex;

@@ -389,6 +389,15 @@ EAS creates these on the first `eas build` if you let it log in; to do it by han
    (the paywall links them too). Support URL `https://cleanway.ai`.
 4. Account deletion: in the app (Settings → Delete account, and Account →
    Delete account). Mention it in review notes.
+5. **Pricing and Availability → Countries or Regions: every territory except
+   France. Russia stays on the list.** Decision 2026-11-04: worldwide launch
+   that does not wait for Russia; founder's clarification 2026-11-11: the app
+   stays available in Russia, paid plans are simply not expected to sell there
+   (App Store payments mostly do not work in Russia). France is off since
+   2026-10-24 (encryption declaration, §2 table). Check the list before every
+   submission (174 territories were on on 2026-10-24). The subscriptions
+   (§3.4) follow the app's availability, so no separate country setting is
+   needed for them.
 
 ### 3.4 In-app purchases (Subscriptions)
 
@@ -399,6 +408,28 @@ The server already knows these ids (`api/services/store_products.py`):
 | `Cleanway` | `cleanway.devices.monthly` | 1 month | Personal plan (3 devices) |
 | `Cleanway` | `cleanway.devices.yearly` | 1 year | Personal plan |
 | `Cleanway devices` (separate group) | `cleanway.extra_device.monthly` / `.yearly` | — | +1 device (not sold in the app yet) |
+
+**Prices (founder decision 2026-11-04: US$1.99 a month in every country).**
+Apple no longer has numbered "price tiers"; it has price points. For each
+subscription: App Store Connect → the app → Subscriptions → group `Cleanway` →
+the product → Subscription Prices → Add Subscription Price → base country
+**United States**, price **USD 1.99** → Next: Apple fills every other storefront
+with its equalized local price for the same point (keep them, do not edit
+countries by hand — "the same price everywhere" is exactly Apple's
+equalization) → Confirm.
+
+| Product | Base price (United States) | Note |
+|---|---|---|
+| `cleanway.devices.monthly` | USD 1.99 | the founder's price |
+| `cleanway.devices.yearly` | USD 19.99 | approved by the founder 2026-11-11 (≈ 2 months free), already created in App Store Connect; the paywall shows only what the `default` offering has |
+| `cleanway.extra_device.*` | — | not sold in the app yet: no need to create before it is |
+
+Introductory offer (free trial): do **not** add one unless the founder says so —
+the app already gives 7 days with everything unlocked, then 5 free manual checks
+a month (server settings), and a store trial on top would double it. The app never types a
+price: it shows StoreKit's own string (RevenueCat `priceString`), so a price change
+here needs no new build. Apple's price changes for existing subscribers follow
+Apple's rules (notice, consent for an increase) — irrelevant before the first sale.
 
 Then in RevenueCat (runbook §3, §9): add the App Store app, upload the
 In-App Purchase key (`.p8`), set App Store Server Notifications V2 to
@@ -419,10 +450,40 @@ Terms + Privacy links, no link to the web checkout anywhere in the iOS build,
 and for App Store subscribers the account screen explains that only Apple can
 cancel the subscription and that deleting the account does not.
 
+**No account needed to buy or restore** (#344; the founder answered "Б" on
+2026-11-11 — `docs/STORE_DECISIONS_2026-10.md` §3).
+App Review 5.1.1(v) rejects an app that asks for an account before an in-app
+purchase its main function does not need. So, signed out, the purchase and
+"Restore purchases" run under RevenueCat's anonymous id. The phone keeps its
+own App Store plan from RevenueCat (`storePlanActive`,
+`mobile/src/utils/store-billing.ts`). It counts that plan signed in too, so
+the iPhone that paid stays unlimited even when the account's 3 device seats
+are taken (3.1.2(a)). After the purchase the paywall offers sign-in as
+optional, to use the plan in the Android app and the browser extension, and a
+"Have a Cleanway account? Sign in" link stays under Restore so someone paying
+elsewhere does not buy twice. On sign-in `Purchases.logIn` merges the
+anonymous buyer into the account. When it does not (the account already has
+an anonymous alias of its own — nearly every account, the review account
+included), the app calls `Purchases.syncPurchasesForResult()`, a restore
+without an Apple ID prompt, so the plan follows the account; if even that
+fails, the phone keeps the plan it paid for and suggests "Restore purchases".
+The app then asks the server to re-read the account (`/me/entitlement/refresh`,
+retried until it answers — the server needs `REVENUECAT_SECRET_API_KEY`).
+Signed out, a purchase or restore on an iPhone where someone signed in before
+first asks whether to continue without signing in (it would move the
+subscription off that account), and signing out says the plan stays in the
+account. Family Sharing stays off for these subscriptions. Android is
+unchanged (sign in first). Details and edge cases: runbook §9 and §9.1.
+
 Sandbox testing: App Store Connect → Users and Access → Sandbox testers; sign
 in on the device under Settings → App Store → Sandbox Account. The simulator
 can use a StoreKit configuration file, but RevenueCat needs real sandbox
-receipts for the server webhook — test on a device via TestFlight.
+receipts for the server webhook — test on a device via TestFlight. The
+TestFlight checklist for buying without an account (buy signed out; reinstall
+and restore signed out; sign in and see the plan on Android and in the
+extension; the same with an account that does not merge, such as the review
+account; sign out and restore; a full device list; offline right after
+sign-in) is in `docs/runbooks/revenuecat.md` §9.1.
 
 ### 3.5 App Privacy ("nutrition labels")
 
@@ -754,10 +815,27 @@ in-app purchase or subscription to such a version in App Store Connect (the
 version page's "In-App Purchases and Subscriptions" section stays empty). Only
 for a build made with the public `appl_…` key (§1.2, §3.4) and with its
 subscriptions attached to the version, replace the sentence "This version has
-no in-app purchases: …" with:
+no in-app purchases: …" with the sentence for that build:
 
-> Subscriptions are sold only through In-App Purchase; "Restore purchases"
-> is on the paywall and in Account.
+- built from `feat/iap-without-account` (buying without an account, §3.4 —
+  after the founder's "Б"; `docs/STORE_DECISIONS_2026-10.md` §3.7):
+
+  > Subscriptions are sold only through In-App Purchase and can be bought
+  > and restored without an account. Signing in (a one-time code by email)
+  > is optional: it lets the same subscription work in the Cleanway Android
+  > app and browser extension and manage up to 3 devices. A subscription
+  > bought without an account moves to the account when you sign in, the
+  > demo account in Sign-In Information included. "Restore purchases" is on
+  > the paywall and on the Account screen. On an iPhone where an account was
+  > used before, buying or restoring while signed out first asks whether to
+  > continue without signing in, because the subscription would then leave
+  > that account.
+
+- built before it (the paywall still asks to sign in first — answer "А" or
+  "В"):
+
+  > Subscriptions are sold only through In-App Purchase; "Restore purchases"
+  > is on the paywall and in Account.
 
 Sign-In Information (App Review Information → **Sign-in required**): user
 name `review@cleanway.ai`, password from the macOS Keychain — create the

@@ -1,5 +1,6 @@
 /**
- * The free plan on this phone: the daily counter, the first-days trial and
+ * The free plan on this phone: the monthly counter, the first-days trial,
+ * the server's numbers for both (GET /api/v1/pricing/for-country `free`) and
  * the paid status, stored in the app's settings table. The rules themselves
  * are pure (src/utils/freemium.ts); this file reads and writes their state.
  *
@@ -7,14 +8,18 @@
  * storage or the network: every check is detailed, as before.
  *
  * No analytics: nothing about the counter, the paywall or a purchase leaves
- * the phone. The only request is GET /api/v1/me/entitlement, when signed in.
+ * the phone. Requests: GET /api/v1/pricing/for-country (anonymous, the free
+ * plan's numbers, at most every 6 h), GET /api/v1/me/entitlement, when signed
+ * in — and in the iPhone app, for a phone that bought or restored there,
+ * RevenueCat itself (services/store-billing.ts refreshStorePlan): the iPhone
+ * app sells without an account, so the phone also counts its own App Store plan.
  */
 import { EventEmitter } from "events";
 import { Platform } from "react-native";
 
 import { getSetting, setSetting } from "./database";
 import { getSessionState } from "./auth";
-import { getEntitlement, type EntitlementResponse } from "./api";
+import { getEntitlement, getPricingForCountry, type EntitlementResponse } from "./api";
 import {
   accessFor,
   entitlementFresh,
@@ -22,17 +27,30 @@ import {
   installedAtOr,
   isPaidEntitlement,
   localDayKey,
+  localMonthKey,
   paidFromCache,
   parseEntitlementCache,
-  quotaForDay,
+  parseFreeTerms,
+  parseTermsCache,
+  quotaForPeriod,
   readFreemiumConfig,
+  storePurchaseWithoutAccount,
+  termsFresh,
   withPaywallShown,
   type Access,
   type EntitlementCache,
+  type FreeTerms,
   type FreemiumConfig,
   type QuotaState,
 } from "../utils/freemium";
-import { paidPlansOffered, readStoreBillingConfig } from "../utils/store-billing";
+import {
+  paidPlansOffered,
+  parseStorePlanCache,
+  readStoreBillingConfig,
+  storePlanActive,
+  storePlanStale,
+  type StorePlanCache,
+} from "../utils/store-billing";
 
 /**
  * Does this build show paid plans at all (utils/store-billing.ts
@@ -58,8 +76,6 @@ export const FREEMIUM: FreemiumConfig = readFreemiumConfig(
   typeof process !== "undefined"
     ? {
         EXPO_PUBLIC_FREEMIUM_ENABLED: process.env.EXPO_PUBLIC_FREEMIUM_ENABLED,
-        EXPO_PUBLIC_FREE_CHECKS_PER_DAY: process.env.EXPO_PUBLIC_FREE_CHECKS_PER_DAY,
-        EXPO_PUBLIC_FREE_TRIAL_DAYS: process.env.EXPO_PUBLIC_FREE_TRIAL_DAYS,
         EXPO_PUBLIC_DISTRIBUTION: process.env.EXPO_PUBLIC_DISTRIBUTION,
       }
     : {},
@@ -69,9 +85,20 @@ export const FREEMIUM: FreemiumConfig = readFreemiumConfig(
   PAID_PLANS_OFFERED,
 );
 
-const QUOTA_KEY = "freemium_quota";
+/**
+ * Does this phone count its own store plan (utils/store-billing.ts
+ * storePlanActive)? Only the iPhone app that sells: it buys and restores
+ * without an account. False on every Android build and in an iPhone build
+ * without App Store billing — those read the plan from the server alone.
+ */
+const DEVICE_PLAN: boolean = PAID_PLANS_OFFERED && storePurchaseWithoutAccount(FREEMIUM.distribution);
+
+// A new key: the daily counter of earlier builds (freemium_quota) is not carried over.
+const QUOTA_KEY = "freemium_quota_month";
+const TERMS_KEY = "freemium_terms";
 const INSTALLED_KEY = "freemium_installed_at";
 const ENTITLEMENT_KEY = "freemium_entitlement";
+const STORE_PLAN_KEY = "freemium_store_plan";
 
 /** "changed": the counter or the paid status moved — counters on screen re-read. */
 export const freemiumEvents = new EventEmitter();
@@ -85,7 +112,30 @@ function parseJson(raw: string): unknown {
 }
 
 async function readQuota(now: number): Promise<QuotaState> {
-  return quotaForDay(parseJson(await getSetting(QUOTA_KEY)), localDayKey(now));
+  return quotaForPeriod(parseJson(await getSetting(QUOTA_KEY)), localMonthKey(now));
+}
+
+async function fetchTerms(): Promise<FreeTerms | null> {
+  const { data } = await getPricingForCountry(null);
+  const terms = parseFreeTerms(data);
+  if (terms) await setSetting(TERMS_KEY, JSON.stringify({ terms, fetchedAt: Date.now() }));
+  return terms;
+}
+
+/**
+ * The free plan's numbers. The stored answer while fresh; a stale one answers
+ * at once and the server is asked in the background; with none stored, the
+ * server is asked now. Null only when the server has never answered — then
+ * nothing is limited (accessFor).
+ */
+async function freeTerms(now: number): Promise<FreeTerms | null> {
+  const cache = parseTermsCache(parseJson(await getSetting(TERMS_KEY)));
+  if (termsFresh(cache, now)) return cache?.terms ?? null;
+  if (cache) {
+    void fetchTerms().catch(() => null);
+    return cache.terms;
+  }
+  return fetchTerms().catch(() => null);
 }
 
 /** First launch with the limit on; stored the first time it is asked for. */
@@ -147,15 +197,64 @@ async function fetchPaid(account: string, before: EntitlementCache | null): Prom
   return paid;
 }
 
+// ── This phone's own plan (the iPhone app) ────────────────────────────
+
+let _storePlanRefresher: (() => Promise<void>) | null = null;
+
 /**
- * Paid right now? Not signed in is free. Signed in: the cached answer while
- * fresh. A stale one answers at once (a paid one within the offline grace)
- * and the server is asked in the background, so a check never waits on a
- * slow network for the plan. Only with no answer at all — or [force], from
- * the paywall — does it wait for the server.
+ * How to re-read this phone's plan from RevenueCat — handed over by
+ * services/store-billing.ts at start (it imports this file; an import the
+ * other way would be a cycle).
  */
-export async function isPaid(force: boolean = false): Promise<boolean> {
-  const session = await getSessionState();
+export function setStorePlanRefresher(refresh: (() => Promise<void>) | null): void {
+  _storePlanRefresher = refresh;
+}
+
+/** The last answer about this phone's own plan; null outside the iPhone app or when there is none. */
+export async function storePlanOnThisPhone(): Promise<StorePlanCache | null> {
+  if (!DEVICE_PLAN) return null;
+  return parseStorePlanCache(parseJson(await getSetting(STORE_PLAN_KEY)));
+}
+
+/** Keep what RevenueCat just said about this phone's plan (purchase, restore, sign-in / out, a re-read). */
+export async function rememberStorePlan(plan: StorePlanCache): Promise<void> {
+  if (!DEVICE_PLAN) return;
+  try {
+    const before = await storePlanOnThisPhone();
+    await setSetting(STORE_PLAN_KEY, JSON.stringify(plan));
+    const now = Date.now();
+    if (storePlanActive(before, now) !== storePlanActive(plan, now)) freemiumEvents.emit("changed");
+  } catch {
+    // Best-effort: the next purchase / restore / re-read writes it again.
+  }
+}
+
+/**
+ * Paid by this phone's own App Store plan? Always false outside the iPhone
+ * app. A stale answer is re-read from RevenueCat in the background (only for
+ * a phone that bought or restored here — store-billing.ts decides); [force],
+ * from the paywall, waits for it.
+ */
+export async function devicePlanPaid(force: boolean = false): Promise<boolean> {
+  if (!DEVICE_PLAN) return false;
+  try {
+    let plan = await storePlanOnThisPhone();
+    const refresh = _storePlanRefresher;
+    if (refresh && (force || (plan !== null && storePlanStale(plan, Date.now())))) {
+      const run = refresh().catch(() => undefined);
+      if (force) {
+        await run;
+        plan = await storePlanOnThisPhone();
+      }
+    }
+    return storePlanActive(plan, Date.now());
+  } catch {
+    return false;
+  }
+}
+
+/** The account's plan, from the server or its cache (see isPaid). */
+async function accountPaid(session: Awaited<ReturnType<typeof getSessionState>>, force: boolean): Promise<boolean> {
   const account = accountOf(session);
   if (account === null) return false;
   const now = Date.now();
@@ -170,12 +269,28 @@ export async function isPaid(force: boolean = false): Promise<boolean> {
   return paid ?? paidFromCache(cache, account, now);
 }
 
-/** What the next check gets — for the "N checks left today" hint. */
+/**
+ * Paid right now? Not signed in is free — except an iPhone whose own App
+ * Store plan RevenueCat reports (devicePlanPaid; the iPhone app sells without
+ * an account, and the phone that paid keeps its plan even when the account's
+ * device seats are all taken). Signed in: also the account's plan — the
+ * cached answer while fresh. A stale one answers at once (a paid one within
+ * the offline grace) and the server is asked in the background, so a check
+ * never waits on a slow network for the plan. Only with no answer at all —
+ * or [force], from the paywall — does it wait for the server.
+ */
+export async function isPaid(force: boolean = false): Promise<boolean> {
+  const session = await getSessionState();
+  const [account, device] = await Promise.all([accountPaid(session, force), devicePlanPaid(force)]);
+  return account || device;
+}
+
+/** What the next check gets — for the "N checks left this month" hint. */
 export async function currentAccess(): Promise<Access> {
   if (!FREEMIUM.enabled) return { kind: "unlimited", why: "off" };
   const now = Date.now();
-  const [paid, at, quota] = await Promise.all([isPaid(), installedAt(now), readQuota(now)]);
-  return accessFor({ config: FREEMIUM, paid, installedAt: at, quota, nowMs: now });
+  const [paid, at, quota, terms] = await Promise.all([isPaid(), installedAt(now), readQuota(now), freeTerms(now)]);
+  return accessFor({ config: FREEMIUM, terms, paid, installedAt: at, quota, nowMs: now });
 }
 
 export interface CheckDecision {
@@ -189,8 +304,8 @@ export interface CheckDecision {
 let chain: Promise<unknown> = Promise.resolve();
 
 /**
- * A detailed check is about to start. Decides, and spends one free check
- * when it is allowed. [key] = the site (re-opening it today is free); null =
+ * A manual check is about to start. Decides, and spends one free check
+ * when it is allowed. [key] = the site (re-opening it this month is free); null =
  * a message, which always counts. Any storage failure lets the check
  * through — a broken counter never hides an analysis.
  */
@@ -199,9 +314,9 @@ export function beginDetailedCheck(key: string | null): Promise<CheckDecision> {
   const run = chain.then(async (): Promise<CheckDecision> => {
     try {
       const now = Date.now();
-      const [paid, at, quota] = await Promise.all([isPaid(), installedAt(now), readQuota(now)]);
-      const access = accessFor({ config: FREEMIUM, paid, installedAt: at, quota, nowMs: now });
-      const gate = gateCheck(access, quota, key);
+      const [paid, at, quota, terms] = await Promise.all([isPaid(), installedAt(now), readQuota(now), freeTerms(now)]);
+      const access = accessFor({ config: FREEMIUM, terms, paid, installedAt: at, quota, nowMs: now });
+      const gate = gateCheck(access, quota, key, localDayKey(now));
       if (gate.quota !== quota) {
         await setSetting(QUOTA_KEY, JSON.stringify(gate.quota));
         freemiumEvents.emit("changed");
@@ -220,8 +335,9 @@ export function notePaywallShown(): Promise<void> {
   if (!FREEMIUM.enabled) return Promise.resolve();
   const run = chain.then(async () => {
     try {
-      const quota = await readQuota(Date.now());
-      await setSetting(QUOTA_KEY, JSON.stringify(withPaywallShown(quota)));
+      const now = Date.now();
+      const quota = await readQuota(now);
+      await setSetting(QUOTA_KEY, JSON.stringify(withPaywallShown(quota, localDayKey(now))));
     } catch {
       // At worst it opens by itself once more.
     }

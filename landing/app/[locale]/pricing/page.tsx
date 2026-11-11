@@ -143,7 +143,7 @@ export default async function PricingPage({
   const faqArgs = {
     devices: pricing.includedDevices,
     extra: usd(pricing.extraDevice.monthly.amount),
-    checks: pricing.freeChecksPerDay,
+    checks: pricing.freeChecksPerMonth,
     days: pricing.freeUnlimitedDays,
   };
   const faq = FAQ_KEYS.map((key) => ({ q: t(`faq_${key}_q`), a: t(`faq_${key}_a`, faqArgs) }));

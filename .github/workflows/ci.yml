@@ -264,9 +264,9 @@ jobs:
         # crash, never nothing.
         run: node mobile/scripts/test-account-export.mjs
 
-      - name: Free plan daily-limit table test
-        # EXPO_PUBLIC_FREEMIUM_ENABLED (off by default): 3 detailed checks a
-        # day reset at local midnight, 7 unlimited days after install, a paid
+      - name: Free plan monthly-limit table test
+        # EXPO_PUBLIC_FREEMIUM_ENABLED (off by default): the server's monthly
+        # manual-check limit (reset on the 1st) after its unlocked days, a paid
         # account unlimited (7-day offline grace), the paywall opening by
         # itself once a day, a listed link still "dangerous" after the limit,
         # and a store build never linking out to the web checkout.

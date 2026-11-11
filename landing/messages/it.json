@@ -115,7 +115,7 @@
       "Il tuo indirizzo IP, per limitare quanti controlli può fare una connessione; per questo viene conservato così com'è per un'ora al massimo",
       "La tua email e il tuo piano, solo se crei un account"
     ],
-    "server_note": "Per valutare un sito, il nostro server può chiedere informazioni sul suo nome a servizi come Google Safe Browsing: solo il nome, mai chi sei.",
+    "server_note": "Per valutare un sito, il nostro server può chiedere informazioni sul suo nome a servizi come Google Web Risk: solo il nome, mai chi sei.",
     "device_heading": "Cosa resta sul tuo telefono",
     "device_items": [
       "La lista dei siti truffa usata dalla protezione",
@@ -152,7 +152,7 @@
     "items": [
       {
         "q": "Cosa sa Cleanway di me?",
-        "a": "I siti vengono confrontati con la lista direttamente sul telefono. Quando un sito va controllato più a fondo, al nostro server arriva solo il suo nome (per esempio example.com), e il server può chiedere informazioni su quel nome a servizi come Google Safe Browsing. Non riceviamo link completi, contenuti delle pagine né testi dei messaggi, e non teniamo un elenco dei siti che apri. I dettagli sono nella nostra informativa sulla privacy."
+        "a": "I siti vengono confrontati con la lista direttamente sul telefono. Quando un sito va controllato più a fondo, al nostro server arriva solo il suo nome (per esempio example.com), e il server può chiedere informazioni su quel nome a servizi come Google Web Risk. Non riceviamo link completi, contenuti delle pagine né testi dei messaggi, e non teniamo un elenco dei siti che apri. I dettagli sono nella nostra informativa sulla privacy."
       },
       {
         "q": "Il telefono diventerà più lento?",
@@ -163,8 +163,8 @@
         "a": "Non contemporaneamente. La protezione di Cleanway usa il meccanismo VPN di Android solo per i nomi dei siti: il telefono confronta ogni nome con la lista e cerca quelli che non vi compaiono come farebbe senza Cleanway, presso il DNS della tua rete o, se non risponde, presso Cloudflare o Quad9. Il resto del tuo traffico passa come sempre, né attraverso Cleanway né attraverso un altro paese. Android fa funzionare un solo servizio di questo tipo alla volta, quindi se attivi un'altra VPN la protezione di Cleanway si spegne. Quando hai finito, apri Cleanway e riattiva la protezione. Il controllo manuale di un sito o di un messaggio nell'app funziona comunque."
       },
       {
-        "q": "In cosa è diverso da Google Safe Browsing?",
-        "a": "Google Safe Browsing è una delle fonti che usiamo. Cleanway in più blocca i siti truffa noti in tutte le app del telefono, non solo nel browser, controlla i messaggi sospetti direttamente sul telefono e spiega i suoi verdetti con parole semplici. Quando chiediamo a Google di un sito, inviamo solo il suo nome, non chi sei."
+        "q": "In cosa è diverso dagli avvisi del browser?",
+        "a": "Chrome, Firefox e Safari avvisano da soli di una parte dei siti pericolosi, con gli elenchi di Google. Anche noi chiediamo a Google, tramite Google Web Risk, e usiamo altre fonti. In più Cleanway blocca i siti truffa noti in tutte le app del telefono, non solo nel browser, controlla i messaggi sospetti direttamente sul telefono e spiega i suoi verdetti con parole semplici. Quando chiediamo a Google di un sito, inviamo solo il suo nome, non chi sei."
       },
       {
         "q": "È gratis?",
@@ -267,7 +267,7 @@
   },
   "Pricing": {
     "page_title": "Prezzi",
-    "hero_subtitle": "I siti truffa noti vengono bloccati per tutti, che paghino o no. Cleanway Illimitato toglie il limite giornaliero ai controlli dettagliati di link e messaggi su {devices, plural, one {# dispositivo} other {# dispositivi}} di uno stesso account.",
+    "hero_subtitle": "I siti truffa noti vengono bloccati per tutti, che paghino o no. Cleanway Illimitato toglie il limite mensile ai controlli dettagliati di link e messaggi su {devices, plural, one {# dispositivo} other {# dispositivi}} di uno stesso account.",
     "interval_monthly": "Mensile",
     "interval_yearly": "Annuale",
     "free_badge": "La protezione è gratis",
@@ -296,7 +296,7 @@
     "free_plan_name": "Gratis",
     "free_plan_tagline": "Per sempre. Senza account, senza carta.",
     "free_item_block": "Blocca i siti truffa noti della nostra lista, senza limiti",
-    "free_item_checks": "{checks, plural, one {# controllo dettagliato} other {# controlli dettagliati}} al giorno: il verdetto, i motivi, come funziona la truffa",
+    "free_item_checks": "{checks, plural, one {# controllo dettagliato} other {# controlli dettagliati}} al mese: il verdetto, i motivi, come funziona la truffa",
     "free_item_first_days": "Tutto senza limiti per i primi {days, plural, one {# giorno} other {# giorni}} dopo l'installazione",
     "free_item_account": "Nessun account necessario",
     "plan_name": "Illimitato",
@@ -321,7 +321,7 @@
     "checkout_error_bad_response": "La pagina di pagamento non si è aperta. Contatta l'assistenza.",
     "checkout_error_already_subscribed": "Hai già un abbonamento attivo. Puoi modificarlo o disdirlo nel tuo account.",
     "always_title": "Il blocco non si ferma mai",
-    "always_body": "Un sito già noto come truffa viene bloccato per tutti, che paghino o no, il primo giorno come il millesimo. Il limite giornaliero riguarda solo i controlli dettagliati, mai il blocco.",
+    "always_body": "Un sito già noto come truffa viene bloccato per tutti, che paghino o no, il primo giorno come il millesimo. Il limite mensile riguarda solo i controlli dettagliati, mai il blocco.",
     "always_note": "Nessuno vedrà mai «paga per restare protetto dalle truffe». Non lo faremo mai.",
     "region_title": "Perché il tuo prezzo può essere diverso",
     "region_body": "Il prezzo mensile è lo stesso ovunque. Il prezzo annuale è più basso nei paesi dove i redditi sono più bassi. Lo scegliamo in base al paese della tua connessione a internet, e al pagamento viene addebitato esattamente il prezzo mostrato in questa pagina.",
@@ -331,7 +331,7 @@
     "faq_unlink_q": "Come libero il posto di un dispositivo?",
     "faq_unlink_a": "Apri il tuo account su cleanway.ai o nell'app, trova il dispositivo in «Dispositivi» e scegli «Scollega». Il suo posto si libera subito. Il dispositivo scollegato esce dal tuo account, e il blocco dei siti truffa noti continua a funzionare su di esso.",
     "faq_free_q": "Cosa ottengo senza pagare?",
-    "faq_free_a": "Il blocco dei siti truffa noti della nostra lista, senza limiti e senza scadenza, più {checks, plural, one {# controllo dettagliato} other {# controlli dettagliati}} al giorno: il verdetto, i motivi e come funziona la truffa. Per i primi {days, plural, one {# giorno} other {# giorni}} dopo l'installazione tutto funziona senza limiti. Non ti servono né un account né una carta.",
+    "faq_free_a": "Il blocco dei siti truffa noti della nostra lista, senza limiti e senza scadenza, più {checks, plural, one {# controllo dettagliato} other {# controlli dettagliati}} al mese: il verdetto, i motivi e come funziona la truffa. Per i primi {days, plural, one {# giorno} other {# giorni}} dopo l'installazione tutto funziona senza limiti. Non ti servono né un account né una carta.",
     "faq_refund_q": "Posso riavere i miei soldi?",
     "faq_refund_a": "Se ti è stato addebitato qualcosa dopo la disdetta, o per errore, scrivi all'assistenza e ti rimborsiamo quell'addebito. Gli altri rimborsi seguono le leggi a tutela dei consumatori del tuo paese.",
     "faq_cancel_q": "Posso disdire in qualsiasi momento?",
@@ -370,7 +370,7 @@
     "how_4_body": "Disdici nell'app, via SMS o tramite l'assistenza. Dopo la disdetta non viene addebitato più nulla e la protezione resta attiva fino alla fine del mese pagato.",
     "faq_title": "Domande frequenti",
     "faq_auto_q": "Dopo i primi giorni verrà addebitato qualcosa in automatico?",
-    "faq_auto_a": "No. Quando finiscono i {days, plural, one {# giorno} other {# giorni}} senza limiti, non viene addebitato nulla: la protezione di base continua a funzionare senza nulla da pagare, con {checks, plural, one {# controllo dettagliato} other {# controlli dettagliati}} al giorno. Un abbonamento inizia solo se lo scegli tu nell'app e lo confermi con un codice SMS.",
+    "faq_auto_a": "No. Quando finiscono i {days, plural, one {# giorno} other {# giorni}} senza limiti, non viene addebitato nulla: la protezione di base continua a funzionare senza nulla da pagare, con {checks, plural, one {# controllo dettagliato} other {# controlli dettagliati}} al mese. Un abbonamento inizia solo se lo scegli tu nell'app e lo confermi con un codice SMS.",
     "faq_cancel_q": "Come disdico?",
     "faq_cancel_a": "Nell'app: «Abbonamento» → «Disdici abbonamento». Oppure invia un SMS con la parola СТОП al numero breve indicato nell'app e nella pagina di disdetta. Dopo la disdetta non viene addebitato più nulla; la protezione resta attiva fino alla fine del mese pagato.",
     "faq_nomoney_q": "E se sul conto non ci sono soldi?",
@@ -399,7 +399,7 @@
     "basic_price": "Nulla da pagare",
     "basic_for": "Sempre, senza bisogno di account",
     "basic_item_block": "Blocca i siti truffa noti della lista, senza limiti",
-    "basic_item_checks": "{checks, plural, one {# controllo dettagliato} other {# controlli dettagliati}} al giorno",
+    "basic_item_checks": "{checks, plural, one {# controllo dettagliato} other {# controlli dettagliati}} al mese",
     "basic_item_first_days": "I primi {days, plural, one {# giorno} other {# giorni}} dopo l'installazione: tutto senza limiti",
     "plan_name": "Illimitato",
     "plan_for": "Il tuo telefono, quello di tua madre e il tuo portatile",
@@ -566,7 +566,6 @@
     "caveat_endpoint": "Cleanway viene misurato tramite il controllo pubblico dei siti, lo stesso percorso anonimo usato da un visitatore, non tramite un accesso privilegiato. Misura la risposta del nostro server, non il blocco sul telefono: la protezione del telefono blocca subito solo i siti della sua lista, quindi questo numero non dice quanti di questi link bloccherebbe un telefono.",
     "caveat_rate_limit": "Al momento l'esecuzione settimanale è rallentata dal limite di richieste di quel controllo, quindi molti link restano senza verdetto e la maggior parte delle misurazioni è troppo piccola per essere pubblicata.",
     "caveat_phishtank": "La consultazione gratuita di PhishTank risponde spesso «non indicizzato» per i link recenti perché il suo database è indietro di qualche ora, quindi la sua colonna mostra spesso «—».",
-    "caveat_gsb": "Google Safe Browsing richiede una chiave API; se non è configurata per l'esecuzione, la sua colonna mostra «—».",
     "caveat_nxdomain": "Un dominio che non esiste più riceve anch'esso NXDOMAIN da Cloudflare e viene contato come blocco di Cloudflare, il che favorisce Cloudflare sui domini di phishing già chiusi.",
     "caveat_latency": "I tempi di risposta sono misurati dalla macchina che esegue lo script (un server cloud negli USA o nell'UE); da altre regioni saranno diversi.",
     "caveat_allowlist": "Il nostro server considera sicuri, senza analizzarli, i siti della top 100.000 di Tranco, e il campione di siti reali qui sopra viene proprio da quella fascia. Per questo non può mostrare quanto spesso Cleanway definisce per errore pericoloso un sito reale meno noto, e non ne ricaviamo alcun tasso di falsi allarmi. Lo faremo quando il campione includerà siti reali fuori da quella lista.",
@@ -685,6 +684,7 @@
     "verdict_caution": "{domain} ha alcuni segnali sospetti. Fai attenzione.",
     "verdict_dangerous": "{domain} mostra forti segnali di essere un sito di phishing o truffa. Non inserire dati personali.",
     "check_failed": "Al momento non siamo riusciti a controllare {domain}. Riprova tra qualche minuto.",
+    "checking": "Stiamo controllando {domain}…",
     "signals_heading": "Perché",
     "low_confidence": "È un controllo rapido con dati limitati.",
     "cta_title": "Proteggi tutte le app del tuo telefono",
@@ -832,7 +832,7 @@
     "meta_description": "Cosa riceve Cleanway, cosa resta sul tuo telefono o nel tuo browser, chi altro vede cosa e per quanto tempo viene conservato tutto.",
     "back": "Torna a Cleanway",
     "title": "Informativa sulla privacy",
-    "updated": "Ultimo aggiornamento: 22 ottobre 2026",
+    "updated": "Ultimo aggiornamento: 4 novembre 2026",
     "intro": "Questa informativa spiega in parole semplici quali dati tratta Cleanway, perché e chi altro li vede. Descrive il servizio così come funziona oggi. Se qualcosa qui non corrisponde a ciò che Cleanway fa davvero, è un errore e vogliamo saperlo.",
     "contact_live": "Domande e richieste sui tuoi dati:",
     "contact_not_live": "La nostra casella di assistenza è temporaneamente fuori servizio, quindi al momento non possiamo ricevere email. L'indirizzo ricomparirà qui appena funzionerà.",
@@ -875,7 +875,7 @@
           "Per decidere se il sito è pericoloso, il nostro server può:"
         ],
         "items": [
-          "chiedere informazioni sul nome a servizi di controllo esterni: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX e IPQualityScore, e scoprire quando il sito è stato registrato chiedendolo via RDAP al registro della sua estensione di dominio (per .com, Verisign). Ricevono solo il nome del sito, non chi sei;",
+          "chiedere informazioni sul nome a servizi di controllo esterni: Google Web Risk, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX e IPQualityScore, e scoprire quando il sito è stato registrato chiedendolo via RDAP al registro della sua estensione di dominio (per .com, Verisign). Ricevono solo il nome del sito, non chi sei;",
           "confrontare la propria risposta con quella del filtro DNS di Cloudflare (1.1.1.1 for Families), che riceve il nome del sito con una normale richiesta DNS;",
           "esaminare il sito stesso (indirizzo, certificato e impostazioni) dal nostro server, non dal tuo telefono;",
           "nei casi dubbi, chiedere un secondo parere a un modello di IA di Anthropic. Riceve solo segnali astratti, senza il nome del sito."
@@ -1311,7 +1311,7 @@
     }
   },
   "Reasons": {
-    "flagged_dangerous": "Google segnala questo sito come pericoloso",
+    "flagged_dangerous": "Google avverte che questo sito potrebbe essere pericoloso",
     "flagged_phishing": "Segnalato come phishing",
     "on_blocklists": "In elenchi affidabili di truffe e spam",
     "threat_reports": "Citato in report sulle minacce",
@@ -1346,5 +1346,12 @@
     "checks_incomplete": "Alcuni controlli non sono terminati, quindi il risultato è meno sicuro",
     "user_content_platform": "Su questo servizio chiunque può creare una pagina, anche i truffatori",
     "on_device_list": "È nella lista dei siti truffa sul tuo telefono"
+  },
+  "Advisory": {
+    "google": "Avviso fornito da Google",
+    "learn_more": "Scopri di più:",
+    "learn_phishing": "phishing",
+    "learn_malware": "malware",
+    "learn_unwanted": "software indesiderato"
   }
 }

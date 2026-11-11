@@ -303,6 +303,23 @@ await test("public check: an older server's answer gains no invented exists/verd
   assert.equal("verdict_basis" in norm, false);
 });
 
+// Web Risk's rules: a warning on Google's lists may be shown only while
+// Google's answer is valid. The server says for how long (advisory_ttl,
+// seconds); the app caps its own caches by it.
+await test("public check: advisory_ttl passes through as a number of seconds, and only then", () => {
+  const google = normalizePublicCheck({
+    domain: "evil.tk", score: 90, level: "dangerous", safe: false,
+    signals: ["Google"], reason_codes: ["safe_browsing"], advisory_ttl: 1499,
+  });
+  assert.equal(google.advisory_ttl, 1499);
+  for (const absent of [null, undefined, "1499", -1]) {
+    const norm = normalizePublicCheck({ domain: "evil.tk", score: 90, level: "dangerous", safe: false, advisory_ttl: absent });
+    assert.equal("advisory_ttl" in norm, false, String(absent));
+  }
+  const zero = normalizePublicCheck({ domain: "evil.tk", score: 90, level: "dangerous", safe: false, advisory_ttl: 0 });
+  assert.equal(zero.advisory_ttl, 0, "0 means: keep it nowhere");
+});
+
 await test("public check: never carries the account token", async () => {
   const seen = [];
   const client = createClient({

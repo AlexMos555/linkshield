@@ -68,6 +68,11 @@ class DomainResult(BaseModel):
     exists: Optional[bool] = None
     # Checks that did not finish inside the analysis time budget, by name.
     checks_incomplete: list[str] = Field(default_factory=list)
+    # Sources not asked because their circuit breaker is open (down, e.g.
+    # PhishStats since 2026-11-04), by name — for logs and diagnostics. Not
+    # "incomplete": nothing was cut off, the answer is as complete as the
+    # sources that are up allow, and is cached as long as any other.
+    sources_down: list[str] = Field(default_factory=list)
 
 
 class CheckResponse(BaseModel):

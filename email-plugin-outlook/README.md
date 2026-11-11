@@ -42,10 +42,14 @@ is `ReadItem` — the narrowest scope that still lets us read the open
 message. `manifest.xml`'s descriptions say the same, and
 `tests/test_outlook_addin.py` holds the code and the manifest to it.
 
-Domain-reputation lookups (Safe Browsing, our ML model) happen on the
+Domain-reputation lookups (Google Web Risk) happen on the
 backend so the anon key never ships to end users. See
 [`docs/runbooks/outlook-addin-hosting.md`](../docs/runbooks/outlook-addin-hosting.md)
 for the hosting (`cleanway.ai/outlook/`, CSP, CORS) and the sideload test.
+A link Google Web Risk flags (finding `known_dangerous_link`) shows Google's
+credit under the findings — "Advisory provided by Google", linked, with
+learn-more links — and nothing of Google otherwise (Web Risk's rules for
+warnings; `tests/test_outlook_addin.py`).
 
 ## Local dev
 

@@ -41,10 +41,10 @@
         }
       },
       "status_danger_title": {
-        "text": "Ce site est une arnaque"
+        "text": "Ce site ressemble à une arnaque"
       },
       "status_danger_subtitle": {
-        "text": "$DOMAIN$ se fait passer pour un autre site afin de voler vos informations",
+        "text": "$DOMAIN$ se fait peut-être passer pour un autre site afin de voler vos informations",
         "placeholders": {
           "domain": {
             "content": "$1"
@@ -370,10 +370,10 @@
         "text": "STOP"
       },
       "subtitle_scam": {
-        "text": "Ce site est une arnaque"
+        "text": "Ce site ressemble à une arnaque"
       },
       "explanation": {
-        "text": "$DOMAIN$ se fait passer pour un autre site afin de voler vos informations.",
+        "text": "$DOMAIN$ se fait peut-être passer pour un autre site afin de voler vos informations.",
         "placeholders": {
           "domain": {
             "content": "$1"
@@ -392,13 +392,13 @@
         "text": "Comment les escrocs utilisent ces sites :"
       },
       "scheme_step1": {
-        "text": "On vous demandera votre mot de passe ou vos coordonnées bancaires"
+        "text": "Un site comme celui-ci peut vous demander votre mot de passe ou vos coordonnées bancaires"
       },
       "scheme_step2": {
-        "text": "L'escroc vole tout ce que vous tapez"
+        "text": "Un escroc pourrait voler tout ce que vous tapez"
       },
       "scheme_step3": {
-        "text": "Il vide votre compte ou usurpe votre identité"
+        "text": "Il pourrait vider votre compte ou usurper votre identité"
       },
       "back_button": {
         "text": "Revenir en sécurité"
@@ -418,7 +418,7 @@
         "text": "Protégé par Cleanway. Nous ne vendons jamais vos données."
       },
       "voice_alert": {
-        "text": "Arrêtez. Le site $DOMAIN$ est dangereux. Ne tapez pas votre mot de passe.",
+        "text": "Arrêtez. Le site $DOMAIN$ pourrait être dangereux. Ne tapez pas votre mot de passe.",
         "placeholders": {
           "domain": {
             "content": "$1"
@@ -429,13 +429,63 @@
         "text": "Pourquoi nous avons bloqué ce site"
       },
       "explainer_heading": {
-        "text": "De quel type d'arnaque s'agit-il ?"
+        "text": "De quel type d'arnaque pourrait-il s'agir ?"
       },
       "evidence_other_title": {
         "text": "Un signal d'alerte"
       },
       "evidence_other_body": {
         "text": "Nos vérifications ont trouvé quelque chose d'inhabituel sur ce site."
+      },
+      "rechecking": {
+        "text": "Nouvelle vérification de $DOMAIN$…",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_title": {
+        "text": "Vérifié à nouveau"
+      },
+      "recheck_clear": {
+        "text": "$DOMAIN$ n'est pas signalé comme dangereux pour le moment. L'avertissement précédent a expiré.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_caution": {
+        "text": "Il présente toutefois des signes d'arnaque. N'y saisissez ni mots de passe ni données de carte si vous ne faites pas confiance à ce site."
+      },
+      "recheck_failed": {
+        "text": "Cleanway n'a pas pu vérifier à nouveau $DOMAIN$ pour le moment. L'avertissement précédent a expiré.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_open": {
+        "text": "Ouvrir le site"
+      },
+      "recheck_back": {
+        "text": "Revenir en arrière"
+      },
+      "recheck_failed_title": {
+        "text": "Nouvelle vérification impossible"
+      },
+      "recheck_retry": {
+        "text": "Réessayer"
+      },
+      "recheck_paused": {
+        "text": "L'avertissement précédent concernant $DOMAIN$ a expiré. Cliquez sur « Réessayer » pour vérifier le site à nouveau.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
       }
     },
     "welcome": {
@@ -444,6 +494,9 @@
       },
       "hero_subtitle": {
         "text": "Chaque lien que vous voyez est vérifié. Les dangereux sont bloqués automatiquement."
+      },
+      "limits": {
+        "text": "Aucune protection n'est parfaite : il peut arriver qu'un site sûr soit signalé par erreur, ou qu'un site dangereux passe inaperçu."
       },
       "step1_title": {
         "text": "Vérification automatique"
@@ -743,7 +796,7 @@
     },
     "reason": {
       "flagged_dangerous": {
-        "text": "Google signale ce site comme dangereux"
+        "text": "Google signale que ce site pourrait être dangereux"
       },
       "flagged_phishing": {
         "text": "Signalé comme hameçonnage"
@@ -871,7 +924,7 @@
     },
     "evidence": {
       "flagged_dangerous": {
-        "text": "Google Safe Browsing, la liste qu'utilisent Chrome, Firefox et Safari pour prévenir les internautes, signale ce site comme dangereux."
+        "text": "Ce site figure sur les listes de Google des sites soupçonnés d'être trompeurs ou nuisibles (Google Web Risk). Il pourrait tenter de vous soutirer vos informations ou d'installer des programmes malveillants."
       },
       "flagged_phishing": {
         "text": "Ce site figure dans des bases anti-hameçonnage — des listes de sites qui soutirent des mots de passe ou des données de carte."
@@ -995,6 +1048,23 @@
       },
       "broken_certificate": {
         "text": "Le certificat qui prouve qui gère ce site a expiré, n'a pas été émis par une autorité de confiance ou appartient à une autre adresse. Votre navigateur vous avertira aussi."
+      }
+    },
+    "advisory": {
+      "google": {
+        "text": "Avertissement fourni par Google"
+      },
+      "learn_more": {
+        "text": "En savoir plus :"
+      },
+      "learn_phishing": {
+        "text": "hameçonnage"
+      },
+      "learn_malware": {
+        "text": "logiciels malveillants"
+      },
+      "learn_unwanted": {
+        "text": "logiciels indésirables"
       }
     },
     "weekly": {
@@ -1161,7 +1231,7 @@
         "text": "Fermer"
       },
       "finding_url_reputation": {
-        "text": "Un lien de cet e-mail mène à un site dangereux connu"
+        "text": "Un lien de cet e-mail pourrait mener à un site dangereux"
       },
       "finding_auth_fail": {
         "text": "L'e-mail a échoué aux vérifications qui confirment son véritable expéditeur"
@@ -1215,7 +1285,7 @@
         "text": "Analyser les e-mails que j'ouvre dans Gmail, Outlook et Yahoo pour détecter le phishing"
       },
       "setting_consent": {
-        "text": "Désactivé tant que vous ne l'activez pas. Une fois activé, chaque e-mail que vous ouvrez dans Gmail, Outlook ou Yahoo Mail est envoyé au serveur de Cleanway (api.cleanway.ai) pour détecter le phishing : l'objet, le nom et l'adresse de l'expéditeur, l'adresse Reply-To, le texte du message ainsi que l'adresse et le texte de chaque lien. L'e-mail est analysé et n'est pas conservé ; les domaines de ses liens sont aussi vérifiés auprès de Google Safe Browsing. Désactivez-le à tout moment : l'analyse s'arrête aussitôt."
+        "text": "Désactivé tant que vous ne l'activez pas. Une fois activé, chaque e-mail que vous ouvrez dans Gmail, Outlook ou Yahoo Mail est envoyé au serveur de Cleanway (api.cleanway.ai) pour détecter le phishing : l'objet, le nom et l'adresse de l'expéditeur, l'adresse Reply-To, le texte du message ainsi que l'adresse et le texte de chaque lien. L'e-mail est analysé et n'est pas conservé ; les domaines de ses liens sont aussi vérifiés auprès de Google Web Risk. Désactivez-le à tout moment : l'analyse s'arrête aussitôt."
       },
       "setting_denied": {
         "text": "Votre navigateur n'a pas donné à Cleanway l'accès aux sites de messagerie : l'analyse des e-mails reste désactivée."
@@ -1666,7 +1736,7 @@
         "Votre adresse IP, pour limiter le nombre de vérifications par connexion ; pour cela, elle est conservée telle quelle une heure au plus",
         "Votre e-mail et votre offre, seulement si vous créez un compte"
       ],
-      "server_note": "Pour évaluer un site, notre serveur peut interroger des services comme Google Safe Browsing sur son nom : uniquement le nom, jamais qui vous êtes.",
+      "server_note": "Pour évaluer un site, notre serveur peut interroger des services comme Google Web Risk sur son nom : uniquement le nom, jamais qui vous êtes.",
       "device_heading": "Ce qui reste sur votre téléphone",
       "device_items": [
         "La liste des sites d'arnaque utilisée par la protection",
@@ -1703,7 +1773,7 @@
       "items": [
         {
           "q": "Qu'est-ce que Cleanway apprend sur moi ?",
-          "a": "Les sites sont comparés à la liste directement sur votre téléphone. Quand un site doit être examiné de plus près, seul son nom (comme example.com) arrive sur notre serveur, qui peut interroger des services comme Google Safe Browsing sur ce nom. Nous ne recevons ni liens complets, ni contenu de pages, ni textes de messages, et nous ne tenons pas de liste des sites que vous ouvrez. Les détails figurent dans notre politique de confidentialité."
+          "a": "Les sites sont comparés à la liste directement sur votre téléphone. Quand un site doit être examiné de plus près, seul son nom (comme example.com) arrive sur notre serveur, qui peut interroger des services comme Google Web Risk sur ce nom. Nous ne recevons ni liens complets, ni contenu de pages, ni textes de messages, et nous ne tenons pas de liste des sites que vous ouvrez. Les détails figurent dans notre politique de confidentialité."
         },
         {
           "q": "Mon téléphone sera-t-il plus lent ?",
@@ -1714,8 +1784,8 @@
           "a": "Pas en même temps. La protection de Cleanway n'utilise le mécanisme VPN d'Android que pour les noms de sites : le téléphone compare chaque nom à la liste et cherche ceux qui n'y figurent pas comme il le ferait sans Cleanway, auprès du DNS de votre réseau ou, s'il ne répond pas, de Cloudflare ou de Quad9. Le reste de votre trafic passe comme d'habitude — ni par Cleanway, ni par un autre pays. Android ne fait tourner qu'un seul service de ce type à la fois : si vous activez un autre VPN, la protection de Cleanway se coupe. Une fois terminé, ouvrez Cleanway et réactivez la protection. La vérification manuelle d'un site ou d'un message dans l'appli fonctionne dans tous les cas."
         },
         {
-          "q": "Quelle différence avec Google Safe Browsing ?",
-          "a": "Google Safe Browsing est l'une des sources que nous utilisons. Cleanway bloque en plus les sites d'arnaque connus dans toutes les applis du téléphone, pas seulement dans le navigateur, vérifie les messages suspects sur le téléphone et explique ses verdicts en termes simples. Quand nous interrogeons Google sur un site, nous n'envoyons que son nom, pas qui vous êtes."
+          "q": "Quelle différence avec les avertissements du navigateur ?",
+          "a": "Chrome, Firefox et Safari signalent eux-mêmes une partie des sites dangereux, grâce aux listes de Google. Nous interrogeons aussi Google, via Google Web Risk, ainsi que d'autres sources. Cleanway bloque en plus les sites d'arnaque connus dans toutes les applis du téléphone, pas seulement dans le navigateur, vérifie les messages suspects sur le téléphone et explique ses verdicts en termes simples. Quand nous interrogeons Google sur un site, nous n'envoyons que son nom, pas qui vous êtes."
         },
         {
           "q": "Est-ce gratuit ?",
@@ -1818,7 +1888,7 @@
     },
     "pricing": {
       "page_title": "Tarifs",
-      "hero_subtitle": "Les sites d'arnaque connus sont bloqués pour tout le monde, abonné ou non. Cleanway Illimité supprime la limite quotidienne de vérifications détaillées des liens et des messages sur {devices, plural, one {# appareil} other {# appareils}} d'un même compte.",
+      "hero_subtitle": "Les sites d'arnaque connus sont bloqués pour tout le monde, abonné ou non. Cleanway Illimité supprime la limite mensuelle de vérifications détaillées des liens et des messages sur {devices, plural, one {# appareil} other {# appareils}} d'un même compte.",
       "interval_monthly": "Mensuel",
       "interval_yearly": "Annuel",
       "free_badge": "La protection est gratuite",
@@ -1847,7 +1917,7 @@
       "free_plan_name": "Gratuit",
       "free_plan_tagline": "Pour toujours. Sans compte, sans carte.",
       "free_item_block": "Bloque les sites d'arnaque connus de notre liste — sans limite",
-      "free_item_checks": "{checks, plural, one {# vérification détaillée} other {# vérifications détaillées}} par jour : le verdict, les raisons, le fonctionnement de l'arnaque",
+      "free_item_checks": "{checks, plural, one {# vérification détaillée} other {# vérifications détaillées}} par mois : le verdict, les raisons, le fonctionnement de l'arnaque",
       "free_item_first_days": "Tout sans limite pendant les {days, plural, one {# jour} other {# jours}} qui suivent l'installation",
       "free_item_account": "Aucun compte nécessaire",
       "plan_name": "Illimité",
@@ -1872,7 +1942,7 @@
       "checkout_error_bad_response": "La page de paiement ne s'est pas ouverte. Merci de contacter l'assistance.",
       "checkout_error_already_subscribed": "Vous avez déjà un abonnement actif. Modifiez-le ou résiliez-le depuis votre compte.",
       "always_title": "Le blocage ne s'arrête jamais",
-      "always_body": "Un site déjà connu comme arnaque est bloqué pour tout le monde — abonné ou non, le premier jour comme le millième. La limite quotidienne ne concerne que les vérifications détaillées, jamais le blocage lui-même.",
+      "always_body": "Un site déjà connu comme arnaque est bloqué pour tout le monde — abonné ou non, le premier jour comme le millième. La limite mensuelle ne concerne que les vérifications détaillées, jamais le blocage lui-même.",
       "always_note": "Personne ne verra jamais « payez pour rester protégé contre la fraude ». Nous ne le ferons jamais.",
       "region_title": "Pourquoi votre prix peut être différent",
       "region_body": "Le prix mensuel est le même partout. Le prix annuel est plus bas dans les pays où les revenus sont plus bas. Nous le choisissons d'après le pays de votre connexion internet, et le paiement prélève exactement le prix affiché sur cette page.",
@@ -1882,7 +1952,7 @@
       "faq_unlink_q": "Comment libérer la place d'un appareil ?",
       "faq_unlink_a": "Ouvrez votre compte sur cleanway.ai ou dans l'application, trouvez l'appareil dans « Appareils » et choisissez « Dissocier ». Sa place se libère aussitôt. L'appareil dissocié est déconnecté de votre compte, et le blocage des sites d'arnaque connus continue d'y fonctionner.",
       "faq_free_q": "Qu'est-ce que j'obtiens sans payer ?",
-      "faq_free_a": "Le blocage des sites d'arnaque connus de notre liste, sans limite et sans date de fin, plus {checks, plural, one {# vérification détaillée} other {# vérifications détaillées}} par jour — le verdict, les raisons et le fonctionnement de l'arnaque. Pendant les {days, plural, one {# jour} other {# jours}} qui suivent l'installation, tout fonctionne sans limite. Vous n'avez besoin ni de compte ni de carte.",
+      "faq_free_a": "Le blocage des sites d'arnaque connus de notre liste, sans limite et sans date de fin, plus {checks, plural, one {# vérification détaillée} other {# vérifications détaillées}} par mois — le verdict, les raisons et le fonctionnement de l'arnaque. Pendant les {days, plural, one {# jour} other {# jours}} qui suivent l'installation, tout fonctionne sans limite. Vous n'avez besoin ni de compte ni de carte.",
       "faq_refund_q": "Puis-je être remboursé ?",
       "faq_refund_a": "Si vous avez été prélevé après avoir résilié, ou par erreur, écrivez à l'assistance et nous remboursons ce prélèvement. Les autres remboursements suivent le droit de la consommation de votre pays.",
       "faq_cancel_q": "Puis-je résilier à tout moment ?",
@@ -1921,7 +1991,7 @@
       "how_4_body": "Résiliez dans l'application, par SMS ou via l'assistance. Après la résiliation, plus rien n'est prélevé et la protection reste active jusqu'à la fin du mois payé.",
       "faq_title": "Questions fréquentes",
       "faq_auto_q": "Quelque chose sera-t-il prélevé automatiquement après les premiers jours ?",
-      "faq_auto_a": "Non. À la fin des {days, plural, one {# jour} other {# jours}} sans limite, rien n'est prélevé : la protection de base continue de fonctionner sans rien à payer, avec {checks, plural, one {# vérification détaillée} other {# vérifications détaillées}} par jour. Un abonnement ne commence que si vous le choisissez vous-même dans l'application et le confirmez par code SMS.",
+      "faq_auto_a": "Non. À la fin des {days, plural, one {# jour} other {# jours}} sans limite, rien n'est prélevé : la protection de base continue de fonctionner sans rien à payer, avec {checks, plural, one {# vérification détaillée} other {# vérifications détaillées}} par mois. Un abonnement ne commence que si vous le choisissez vous-même dans l'application et le confirmez par code SMS.",
       "faq_cancel_q": "Comment résilier ?",
       "faq_cancel_a": "Dans l'application : « Abonnement » → « Résilier l'abonnement ». Ou envoyez un SMS avec le mot СТОП au numéro court indiqué dans l'application et sur la page de résiliation. Après la résiliation, plus rien n'est prélevé ; la protection reste active jusqu'à la fin du mois payé.",
       "faq_nomoney_q": "Et s'il n'y a pas d'argent sur le compte ?",
@@ -1950,7 +2020,7 @@
       "basic_price": "Rien à payer",
       "basic_for": "Toujours, sans compte",
       "basic_item_block": "Bloque les sites frauduleux connus de la liste — sans limite",
-      "basic_item_checks": "{checks, plural, one {# vérification détaillée} other {# vérifications détaillées}} par jour",
+      "basic_item_checks": "{checks, plural, one {# vérification détaillée} other {# vérifications détaillées}} par mois",
       "basic_item_first_days": "Les {days, plural, one {# jour} other {# jours}} qui suivent l'installation — tout sans limite",
       "plan_name": "Illimité",
       "plan_for": "Votre téléphone, celui de votre mère et votre ordinateur portable",
@@ -2117,7 +2187,6 @@
       "caveat_endpoint": "Cleanway est mesuré via sa vérification publique des sites — le même chemin anonyme qu'utilise un visiteur — et non via un accès privilégié. Cela mesure la réponse de notre serveur, pas le blocage sur le téléphone : la protection du téléphone ne bloque immédiatement que les sites de sa liste, donc ce chiffre ne dit pas combien de ces liens un téléphone bloquerait.",
       "caveat_rate_limit": "Pour l'instant, l'exécution hebdomadaire est freinée par la limite de requêtes de cette vérification : beaucoup de liens restent sans verdict et la plupart des mesures sont trop petites pour être publiées.",
       "caveat_phishtank": "La consultation gratuite de PhishTank répond souvent « non indexé » pour les liens récents, car sa base a quelques heures de retard ; sa colonne affiche donc souvent « — ».",
-      "caveat_gsb": "Google Safe Browsing nécessite une clé d'API ; si aucune n'est configurée pour l'exécution, sa colonne affiche « — ».",
       "caveat_nxdomain": "Un domaine qui n'existe plus reçoit aussi NXDOMAIN de Cloudflare et est compté comme un blocage de Cloudflare, ce qui avantage Cloudflare sur les domaines de phishing déjà fermés.",
       "caveat_latency": "Les temps de réponse sont mesurés depuis la machine qui exécute le script (un serveur cloud aux États-Unis ou dans l'UE) ; depuis d'autres régions, ils seront différents.",
       "caveat_allowlist": "Notre serveur considère comme sûrs, sans les analyser, les sites du top 100 000 de Tranco, et l'échantillon de vrais sites ci-dessus provient de cette même tranche. Il ne peut donc pas montrer à quelle fréquence Cleanway juge à tort dangereux un vrai site moins connu, et nous n'en tirons aucun taux de fausses alertes. Nous le ferons quand l'échantillon comprendra de vrais sites hors de cette liste.",
@@ -2236,6 +2305,7 @@
       "verdict_caution": "{domain} présente quelques signes suspects. Soyez prudent.",
       "verdict_dangerous": "{domain} présente de forts signes de site de phishing ou d'arnaque. N'y saisissez aucune donnée personnelle.",
       "check_failed": "Impossible de vérifier {domain} pour le moment. Réessayez dans quelques minutes.",
+      "checking": "Vérification de {domain} en cours…",
       "signals_heading": "Pourquoi",
       "low_confidence": "Il s'agit d'une vérification rapide, avec des données limitées.",
       "cta_title": "Protégez toutes les applis de votre téléphone",
@@ -2383,7 +2453,7 @@
       "meta_description": "Ce que Cleanway reçoit, ce qui reste sur votre téléphone ou dans votre navigateur, qui d'autre voit quoi, et combien de temps tout est conservé.",
       "back": "Retour à Cleanway",
       "title": "Politique de confidentialité",
-      "updated": "Dernière mise à jour : 22 octobre 2026",
+      "updated": "Dernière mise à jour : 4 novembre 2026",
       "intro": "Cette politique explique en termes simples quelles données Cleanway traite, pourquoi et qui d'autre les voit. Elle décrit le service tel qu'il fonctionne aujourd'hui. Si quelque chose ici ne correspond pas à ce que fait réellement Cleanway, c'est une erreur et nous voulons le savoir.",
       "contact_live": "Questions et demandes concernant vos données :",
       "contact_not_live": "Notre boîte d'assistance est temporairement hors service : nous ne pouvons donc pas recevoir d'e-mails pour le moment. L'adresse réapparaîtra ici dès qu'elle fonctionnera.",
@@ -2426,7 +2496,7 @@
             "Pour décider si le site est dangereux, notre serveur peut :"
           ],
           "items": [
-            "interroger des services de vérification externes sur ce nom : Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX et IPQualityScore, et savoir quand le site a été enregistré en interrogeant par RDAP le registre de son extension de domaine (pour .com, Verisign). Ils ne reçoivent que le nom du site, pas qui vous êtes ;",
+            "interroger des services de vérification externes sur ce nom : Google Web Risk, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX et IPQualityScore, et savoir quand le site a été enregistré en interrogeant par RDAP le registre de son extension de domaine (pour .com, Verisign). Ils ne reçoivent que le nom du site, pas qui vous êtes ;",
             "comparer sa réponse avec celle du filtre DNS de Cloudflare (1.1.1.1 for Families), qui reçoit le nom du site dans une requête DNS ordinaire ;",
             "examiner le site lui-même (son adresse, son certificat et ses réglages) — depuis notre serveur, pas depuis votre téléphone ;",
             "dans les cas limites, demander un deuxième avis à un modèle d'IA d'Anthropic. Il ne reçoit que des signaux abstraits, sans le nom du site."
@@ -3695,6 +3765,7 @@
       "sign_out": "Se déconnecter",
       "sign_out_confirm_title": "Se déconnecter ?",
       "sign_out_confirm_body": "Les vérifications et l'historique restent sur ce téléphone. Les paramètres ne se synchronisent plus jusqu'à votre prochaine connexion.",
+      "sign_out_confirm_body_appstore": "Les vérifications et l'historique restent sur ce téléphone. Les paramètres ne se synchronisent plus jusqu'à votre prochaine connexion. L'abonnement reste dans votre compte : reconnectez-vous pour l'utiliser sur cet iPhone.",
       "plan": "Offre",
       "plan_desc": "La protection sur ce téléphone est gratuite",
       "upgrade": "Passer à l'offre supérieure",
@@ -3837,7 +3908,7 @@
     },
     "onboarding": {
       "s1_title": "Vérifiez tout avant d'y toucher",
-      "s1_desc": "Collez un lien, scannez un code QR, ou partagez directement avec Cleanway tout ce qui vous paraît suspect. Vous recevez une réponse simple, avec les raisons qui l'expliquent.",
+      "s1_desc": "Collez un lien, scannez un code QR, ou partagez directement avec Cleanway tout ce qui vous paraît suspect. Vous recevez une réponse simple, avec les raisons qui l'expliquent. Aucune vérification n'est parfaite : il peut arriver qu'un site sûr soit signalé par erreur, ou qu'un site dangereux passe inaperçu.",
       "s2_title": "Pensé pour rester privé",
       "s2_desc": "Pour vérifier un lien, nos serveurs reçoivent le nom du site web et un numéro d'installation aléatoire qui change chaque jour. Vos mots de passe, le texte de vos messages et les adresses complètes des pages ne quittent jamais votre téléphone.",
       "s3_title": "Un bouclier pour toutes les applis",
@@ -3900,7 +3971,7 @@
       "nav_title": "On m'appelle"
     },
     "reason": {
-      "flagged_dangerous": "Google signale ce site comme dangereux",
+      "flagged_dangerous": "Google signale que ce site pourrait être dangereux",
       "flagged_phishing": "Signalé comme hameçonnage",
       "on_blocklists": "Sur des listes fiables d'arnaques et de spam",
       "threat_reports": "Mentionné dans des rapports de menaces",
@@ -4022,7 +4093,7 @@
     "paywall": {
       "close": "Fermer",
       "title": "Vérifiez sans limite",
-      "lead": "Les vérifications détaillées gratuites du jour sont épuisées. Les sites de notre liste d'arnaques restent bloqués, avec ou sans abonnement.",
+      "lead": "Les vérifications détaillées gratuites du mois sont épuisées. Les sites de notre liste d'arnaques restent bloqués, avec ou sans abonnement.",
       "per_month": "{{price}} par mois",
       "per_year": "{{price}} par an",
       "period_month": "/ mois",
@@ -4039,7 +4110,7 @@
       "cta_store": "S'abonner",
       "cta_soon_ru": "Bientôt : paiement par le solde du téléphone",
       "fine_cancel": "Résiliable à tout moment.",
-      "fine_soon": "Le paiement par le solde du téléphone arrive bientôt. En attendant, la liste d'arnaques continue de bloquer et les vérifications gratuites se renouvellent chaque jour.",
+      "fine_soon": "Le paiement par le solde du téléphone arrive bientôt. En attendant, la liste d'arnaques continue de bloquer et les vérifications gratuites se renouvellent chaque mois.",
       "restore": "Déjà abonné ? Restaurer",
       "restore_sign_in": "Déjà abonné ? Se connecter",
       "note_store_soon": "Le paiement dans l'application arrive bientôt.",
@@ -4050,17 +4121,17 @@
       "done": "Terminé",
       "always_free": "Le blocage des sites de notre liste d'arnaques est toujours gratuit.",
       "locked_title": "L'analyse détaillée fait partie de l'abonnement",
-      "locked_body": "Les vérifications détaillées gratuites du jour sont épuisées ; de nouvelles demain. Les sites de notre liste d'arnaques sont toujours bloqués.",
+      "locked_body": "Les vérifications détaillées gratuites du mois sont épuisées ; de nouvelles le 1er. Les sites de notre liste d'arnaques sont toujours bloqués.",
       "locked_cta": "Vérifier sans limite",
       "not_listed_title": "Absent de notre liste d'arnaques",
       "not_listed_body": "Cela ne veut pas dire à lui seul que le site est sûr : la vérification détaillée va beaucoup plus loin.",
-      "left_today": "Vérifications gratuites restantes aujourd'hui : {{n}}",
-      "none_left": "Les vérifications gratuites du jour sont épuisées. La liste d'arnaques continue de fonctionner.",
+      "left_today": "Vérifications gratuites restantes ce mois-ci : {{n}}",
+      "none_left": "Les vérifications gratuites du mois sont épuisées. La liste d'arnaques continue de fonctionner.",
       "message_listed_sub": "Un lien de ce message figure dans notre liste de sites d'arnaque.",
       "message_locked_title_links": "Aucun lien de notre liste d'arnaques",
       "message_locked_title_none": "Message non analysé",
-      "message_locked_sub": "Le texte n'a pas été lu : les vérifications détaillées gratuites du jour sont épuisées.",
-      "lead_upgrade": "Vérifications détaillées des liens et des messages sans limite quotidienne, sur {{n}} appareils maximum. Les sites de notre liste d'arnaques sont bloqués avec ou sans abonnement.",
+      "message_locked_sub": "Le texte n'a pas été lu : les vérifications détaillées gratuites du mois sont épuisées.",
+      "lead_upgrade": "Vérifications détaillées des liens et des messages sans limite mensuelle, sur {{n}} appareils maximum. Les sites de notre liste d'arnaques sont bloqués avec ou sans abonnement.",
       "plan_month": "Mensuel",
       "plan_year": "Annuel",
       "save_percent": "{{n}} % d'économie",
@@ -4070,7 +4141,7 @@
       "retry": "Réessayer",
       "fine_store": "Facturé par Google Play. Renouvelé automatiquement jusqu'à résiliation — résiliable à tout moment dans Google Play.",
       "cta_soon_play": "Pas encore disponible dans votre pays",
-      "fine_soon_play": "Les abonnements ne sont pas encore disponibles ici. La liste d'arnaques continue de bloquer et les vérifications gratuites se renouvellent chaque jour.",
+      "fine_soon_play": "Les abonnements ne sont pas encore disponibles ici. La liste d'arnaques continue de bloquer et les vérifications gratuites se renouvellent chaque mois.",
       "note_pending": "Votre paiement est en attente. L'abonnement démarre dès que Google Play le confirme.",
       "note_processing": "Paiement reçu. L'abonnement démarre dans la minute — sinon, touchez Restaurer.",
       "note_restored": "Achats restaurés — votre abonnement est actif.",
@@ -4090,7 +4161,16 @@
       "err_already_owned_appstore": "Cet identifiant Apple a déjà l'abonnement. Touchez Restaurer pour le transférer sur ce compte.",
       "err_network_appstore": "Pas de connexion à l'App Store. Vérifiez Internet et réessayez.",
       "err_not_allowed_appstore": "Les achats sont désactivés sur cet iPhone (par exemple dans Temps d'écran).",
-      "err_store_appstore": "L'App Store n'a pas pu finaliser l'achat. Veuillez réessayer."
+      "err_store_appstore": "L'App Store n'a pas pu finaliser l'achat. Veuillez réessayer.",
+      "note_restore_none_appstore": "Aucun abonnement actif sur cet identifiant Apple.",
+      "sync_offer": "Actif sur cet iPhone. La connexion est facultative : elle permet d'utiliser le même abonnement dans l'app Cleanway pour Android et dans l'extension de navigateur, sur {{n}} appareils maximum.",
+      "note_restore_here_appstore": "L'abonnement acheté sur cet iPhone n'est pas encore dans votre compte. Touchez Restaurer pour l'ajouter.",
+      "sign_in_account": "Vous avez un compte Cleanway ? Se connecter",
+      "note_restore_none_signed_out_appstore": "Aucun abonnement actif sur cet identifiant Apple. Si vous payez déjà Cleanway sur un autre appareil, connectez-vous à votre compte.",
+      "without_account_title": "Continuer sans vous connecter ?",
+      "without_account_body": "Quelqu'un s'est déjà connecté sur cet iPhone. Si cet identifiant Apple paie déjà Cleanway dans un compte, continuer sans connexion déplace l'abonnement sur cet iPhone uniquement : il cesse de fonctionner dans ce compte, sur Android et dans l'extension de navigateur jusqu'à ce que vous vous connectiez et touchiez Restaurer.",
+      "without_account_continue": "Continuer sans connexion",
+      "sync_offer_back": "Actif sur cet iPhone. Si cet abonnement était dans votre compte Cleanway, il ne fonctionne plus que sur cet iPhone : connectez-vous et touchez Restaurer pour l'utiliser de nouveau sur Android et dans l'extension de navigateur."
     },
     "ios_sms": {
       "line_ready": "Range les SMS d'arnaque d'expéditeurs inconnus dans Indésirables, directement sur cet iPhone. Fonctionne une fois activé dans Réglages.",

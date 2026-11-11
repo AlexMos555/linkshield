@@ -118,8 +118,10 @@ def test_cache_key_no_domain_in_key():
     signals, locale. Adding a domain later would break per-domain
     cache hits."""
     key = _cache_key("bank_impostor", ["a"], "en")
-    assert key.startswith("explainer:v1:")
-    assert len(key) <= len("explainer:v1:") + 24
+    # v2 since 2026-11-04: v1 entries stated the harm as fact
+    # (tests/test_explainer_suspicion.py).
+    assert key.startswith("explainer:v2:")
+    assert len(key) <= len("explainer:v2:") + 24
 
 
 # ─────────────────────────────────────────────────────────────────

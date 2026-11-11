@@ -187,7 +187,7 @@ export default function PricingClient({ pricing, initialInterval }: PricingClien
             <p className="mb-6 text-4xl font-extrabold text-white">$0</p>
             <ul className="space-y-2 flex-grow mb-6">
               <Feature>{t("free_item_block")}</Feature>
-              <Feature>{t("free_item_checks", { checks: pricing.freeChecksPerDay })}</Feature>
+              <Feature>{t("free_item_checks", { checks: pricing.freeChecksPerMonth })}</Feature>
               <Feature>{t("free_item_first_days", { days: pricing.freeUnlimitedDays })}</Feature>
               <Feature>{t("free_item_account")}</Feature>
             </ul>

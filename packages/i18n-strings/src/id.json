@@ -41,10 +41,10 @@
         }
       },
       "status_danger_title": {
-        "text": "Ini situs penipuan"
+        "text": "Ini tampaknya situs penipuan"
       },
       "status_danger_subtitle": {
-        "text": "$DOMAIN$ berpura-pura menjadi situs lain untuk mencuri data Anda",
+        "text": "$DOMAIN$ mungkin berpura-pura menjadi situs lain untuk mencuri data Anda",
         "placeholders": {
           "domain": {
             "content": "$1"
@@ -370,10 +370,10 @@
         "text": "STOP"
       },
       "subtitle_scam": {
-        "text": "Ini situs penipuan"
+        "text": "Ini tampaknya situs penipuan"
       },
       "explanation": {
-        "text": "$DOMAIN$ berpura-pura menjadi situs lain untuk mencuri data Anda.",
+        "text": "$DOMAIN$ mungkin berpura-pura menjadi situs lain untuk mencuri data Anda.",
         "placeholders": {
           "domain": {
             "content": "$1"
@@ -392,13 +392,13 @@
         "text": "Bagaimana penipu menggunakan situs seperti ini:"
       },
       "scheme_step1": {
-        "text": "Anda akan diminta password atau data bank"
+        "text": "Situs seperti ini bisa meminta password atau data bank Anda"
       },
       "scheme_step2": {
-        "text": "Penipu mencuri semua yang Anda ketik"
+        "text": "Penipu bisa mencuri semua yang Anda ketik"
       },
       "scheme_step3": {
-        "text": "Mereka menguras rekening atau mencuri identitas Anda"
+        "text": "Mereka bisa menguras rekening atau mencuri identitas Anda"
       },
       "back_button": {
         "text": "Kembali ke tempat aman"
@@ -418,7 +418,7 @@
         "text": "Dilindungi oleh Cleanway. Kami tidak pernah menjual data Anda."
       },
       "voice_alert": {
-        "text": "Berhenti. Situs $DOMAIN$ berbahaya. Jangan masukkan kata sandi Anda.",
+        "text": "Berhenti. Situs $DOMAIN$ mungkin berbahaya. Jangan masukkan kata sandi Anda.",
         "placeholders": {
           "domain": {
             "content": "$1"
@@ -429,13 +429,63 @@
         "text": "Mengapa kami memblokir situs ini"
       },
       "explainer_heading": {
-        "text": "Penipuan jenis apa ini?"
+        "text": "Kemungkinan ini penipuan jenis apa?"
       },
       "evidence_other_title": {
         "text": "Tanda bahaya"
       },
       "evidence_other_body": {
         "text": "Pemeriksaan kami menemukan hal tidak biasa pada situs ini."
+      },
+      "rechecking": {
+        "text": "Memeriksa ulang $DOMAIN$…",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_title": {
+        "text": "Sudah diperiksa ulang"
+      },
+      "recheck_clear": {
+        "text": "Saat ini $DOMAIN$ tidak ditandai berbahaya. Peringatan sebelumnya sudah kedaluwarsa.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_caution": {
+        "text": "Namun, situs ini masih menunjukkan beberapa tanda penipuan. Jangan masukkan kata sandi atau data kartu di sana jika Anda tidak memercayainya."
+      },
+      "recheck_failed": {
+        "text": "Cleanway tidak dapat memeriksa ulang $DOMAIN$ saat ini. Peringatan sebelumnya sudah kedaluwarsa.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
+      },
+      "recheck_open": {
+        "text": "Buka situs"
+      },
+      "recheck_back": {
+        "text": "Kembali"
+      },
+      "recheck_failed_title": {
+        "text": "Tidak dapat memeriksa ulang"
+      },
+      "recheck_retry": {
+        "text": "Coba lagi"
+      },
+      "recheck_paused": {
+        "text": "Peringatan sebelumnya tentang $DOMAIN$ sudah kedaluwarsa. Klik “Coba lagi” untuk memeriksa ulang situs ini.",
+        "placeholders": {
+          "domain": {
+            "content": "$1"
+          }
+        }
       }
     },
     "welcome": {
@@ -444,6 +494,9 @@
       },
       "hero_subtitle": {
         "text": "Setiap tautan yang Anda lihat diperiksa. Yang berbahaya diblokir otomatis."
+      },
+      "limits": {
+        "text": "Tidak ada perlindungan yang sempurna: sesekali situs aman bisa ditandai karena keliru, dan situs berbahaya bisa terlewat."
       },
       "step1_title": {
         "text": "Pemeriksaan otomatis"
@@ -743,7 +796,7 @@
     },
     "reason": {
       "flagged_dangerous": {
-        "text": "Google menandai situs ini berbahaya"
+        "text": "Google memperingatkan situs ini mungkin berbahaya"
       },
       "flagged_phishing": {
         "text": "Dilaporkan sebagai phishing"
@@ -871,7 +924,7 @@
     },
     "evidence": {
       "flagged_dangerous": {
-        "text": "Google Safe Browsing, daftar yang dipakai Chrome, Firefox, dan Safari untuk memperingatkan pengguna, menandai situs ini berbahaya."
+        "text": "Situs ini ada di daftar Google untuk situs yang diduga menipu atau berbahaya (Google Web Risk). Situs ini mungkin mencoba memancing data Anda atau memasang program berbahaya."
       },
       "flagged_phishing": {
         "text": "Situs ini ada di basis data antiphishing — daftar situs yang menipu orang untuk mencuri kata sandi atau data kartu."
@@ -995,6 +1048,23 @@
       },
       "broken_certificate": {
         "text": "Sertifikat yang membuktikan siapa pengelola situs ini sudah kedaluwarsa, tidak diterbitkan oleh otoritas tepercaya, atau milik alamat lain. Browser Anda juga akan memperingatkannya."
+      }
+    },
+    "advisory": {
+      "google": {
+        "text": "Peringatan disediakan oleh Google"
+      },
+      "learn_more": {
+        "text": "Pelajari lebih lanjut:"
+      },
+      "learn_phishing": {
+        "text": "phishing"
+      },
+      "learn_malware": {
+        "text": "malware"
+      },
+      "learn_unwanted": {
+        "text": "perangkat lunak yang tidak diinginkan"
       }
     },
     "weekly": {
@@ -1161,7 +1231,7 @@
         "text": "Tutup"
       },
       "finding_url_reputation": {
-        "text": "Tautan di email ini mengarah ke situs berbahaya yang dikenal"
+        "text": "Tautan di email ini mungkin mengarah ke situs berbahaya"
       },
       "finding_auth_fail": {
         "text": "Email ini gagal dalam pemeriksaan yang memastikan pengirim sebenarnya"
@@ -1215,7 +1285,7 @@
         "text": "Periksa email yang saya buka di Gmail, Outlook, dan Yahoo dari phishing"
       },
       "setting_consent": {
-        "text": "Mati kecuali Anda menyalakannya. Saat menyala, setiap email yang Anda buka di Gmail, Outlook, atau Yahoo Mail dikirim ke server Cleanway (api.cleanway.ai) untuk diperiksa dari phishing: subjek, nama dan alamat pengirim, alamat Reply-To, teks pesan, serta alamat dan teks setiap tautan di dalamnya. Email diperiksa dan tidak disimpan; domain tautannya juga diperiksa dengan Google Safe Browsing. Matikan kapan saja dan pemeriksaan langsung berhenti."
+        "text": "Mati kecuali Anda menyalakannya. Saat menyala, setiap email yang Anda buka di Gmail, Outlook, atau Yahoo Mail dikirim ke server Cleanway (api.cleanway.ai) untuk diperiksa dari phishing: subjek, nama dan alamat pengirim, alamat Reply-To, teks pesan, serta alamat dan teks setiap tautan di dalamnya. Email diperiksa dan tidak disimpan; domain tautannya juga diperiksa dengan Google Web Risk. Matikan kapan saja dan pemeriksaan langsung berhenti."
       },
       "setting_denied": {
         "text": "Browser Anda tidak memberi Cleanway akses ke situs email, jadi pemeriksaan email tetap mati."
@@ -1666,7 +1736,7 @@
         "Alamat IP Anda, untuk membatasi berapa banyak pemeriksaan dari satu koneksi; untuk itu alamat ini disimpan apa adanya paling lama satu jam",
         "Email dan paket Anda, hanya jika Anda membuat akun"
       ],
-      "server_note": "Untuk menilai sebuah situs, server kami bisa menanyakan namanya ke layanan seperti Google Safe Browsing: hanya namanya, tidak pernah siapa Anda.",
+      "server_note": "Untuk menilai sebuah situs, server kami bisa menanyakan namanya ke layanan seperti Google Web Risk: hanya namanya, tidak pernah siapa Anda.",
       "device_heading": "Yang tetap di ponsel Anda",
       "device_items": [
         "Daftar situs penipuan yang dipakai perlindungan untuk mencocokkan",
@@ -1703,7 +1773,7 @@
       "items": [
         {
           "q": "Apa yang diketahui Cleanway tentang saya?",
-          "a": "Situs dicocokkan dengan daftar langsung di ponsel Anda. Jika sebuah situs perlu diperiksa lebih teliti, hanya namanya (misalnya example.com) yang dikirim ke server kami, dan server bisa menanyakan nama itu ke layanan seperti Google Safe Browsing. Kami tidak menerima tautan lengkap, isi halaman, atau teks pesan, dan kami tidak mencatat situs yang Anda buka. Detailnya ada di kebijakan privasi kami."
+          "a": "Situs dicocokkan dengan daftar langsung di ponsel Anda. Jika sebuah situs perlu diperiksa lebih teliti, hanya namanya (misalnya example.com) yang dikirim ke server kami, dan server bisa menanyakan nama itu ke layanan seperti Google Web Risk. Kami tidak menerima tautan lengkap, isi halaman, atau teks pesan, dan kami tidak mencatat situs yang Anda buka. Detailnya ada di kebijakan privasi kami."
         },
         {
           "q": "Apakah ponsel saya jadi lebih lambat?",
@@ -1714,8 +1784,8 @@
           "a": "Tidak bersamaan. Perlindungan Cleanway memakai mekanisme VPN Android hanya untuk nama situs: ponsel mencocokkan setiap nama dengan daftar dan mencari nama yang tidak ada di daftar seperti tanpa Cleanway, melalui DNS jaringan Anda atau, jika DNS itu tidak menjawab, melalui Cloudflare atau Quad9. Lalu lintas Anda yang lain berjalan seperti biasa — tidak lewat Cleanway dan tidak lewat negara lain. Android hanya menjalankan satu layanan seperti itu dalam satu waktu, jadi jika Anda menyalakan VPN lain, perlindungan Cleanway akan mati. Setelah selesai, buka Cleanway dan nyalakan lagi perlindungannya. Memeriksa situs atau pesan secara manual di aplikasi tetap berfungsi."
         },
         {
-          "q": "Apa bedanya dengan Google Safe Browsing?",
-          "a": "Google Safe Browsing adalah salah satu sumber yang kami pakai. Cleanway juga memblokir situs penipuan yang dikenal di semua aplikasi ponsel, bukan hanya di browser, memeriksa pesan mencurigakan langsung di ponsel, dan menjelaskan hasilnya dengan kata-kata sederhana. Saat kami bertanya kepada Google tentang sebuah situs, kami hanya mengirim namanya, bukan siapa Anda."
+          "q": "Apa bedanya dengan peringatan di browser?",
+          "a": "Chrome, Firefox, dan Safari sendiri memperingatkan sebagian situs berbahaya, dengan daftar dari Google. Kami juga bertanya kepada Google, melalui Google Web Risk, dan memakai sumber lain. Selain itu, Cleanway memblokir situs penipuan yang dikenal di semua aplikasi ponsel, bukan hanya di browser, memeriksa pesan mencurigakan langsung di ponsel, dan menjelaskan hasilnya dengan kata-kata sederhana. Saat kami bertanya kepada Google tentang sebuah situs, kami hanya mengirim namanya, bukan siapa Anda."
         },
         {
           "q": "Apakah gratis?",
@@ -1818,7 +1888,7 @@
     },
     "pricing": {
       "page_title": "Harga",
-      "hero_subtitle": "Situs penipuan yang dikenal diblokir untuk semua orang, berbayar atau tidak. Cleanway Tanpa Batas menghapus batas harian pemeriksaan detail tautan dan pesan di {devices, plural, other {# perangkat}} dalam satu akun.",
+      "hero_subtitle": "Situs penipuan yang dikenal diblokir untuk semua orang, berbayar atau tidak. Cleanway Tanpa Batas menghapus batas bulanan pemeriksaan detail tautan dan pesan di {devices, plural, other {# perangkat}} dalam satu akun.",
       "interval_monthly": "Bulanan",
       "interval_yearly": "Tahunan",
       "free_badge": "Perlindungannya gratis",
@@ -1847,7 +1917,7 @@
       "free_plan_name": "Gratis",
       "free_plan_tagline": "Selamanya. Tanpa akun, tanpa kartu.",
       "free_item_block": "Memblokir situs penipuan yang dikenal dari daftar kami — tanpa batasan",
-      "free_item_checks": "{checks, plural, other {# pemeriksaan detail}} per hari: kesimpulan, alasannya, dan cara kerja modus penipuannya",
+      "free_item_checks": "{checks, plural, other {# pemeriksaan detail}} per bulan: kesimpulan, alasannya, dan cara kerja modus penipuannya",
       "free_item_first_days": "Semuanya tanpa batasan selama {days, plural, other {# hari}} pertama setelah pemasangan",
       "free_item_account": "Tidak perlu akun",
       "plan_name": "Tanpa Batas",
@@ -1872,7 +1942,7 @@
       "checkout_error_bad_response": "Halaman pembayaran tidak terbuka. Silakan hubungi dukungan.",
       "checkout_error_already_subscribed": "Anda sudah punya langganan aktif. Ubah atau batalkan di akun Anda.",
       "always_title": "Pemblokiran tidak pernah berhenti",
-      "always_body": "Situs yang sudah dikenal sebagai penipuan diblokir untuk semua orang — berbayar atau tidak, di hari pertama maupun hari keseribu. Batas harian hanya berlaku untuk pemeriksaan detail, tidak pernah untuk pemblokiran itu sendiri.",
+      "always_body": "Situs yang sudah dikenal sebagai penipuan diblokir untuk semua orang — berbayar atau tidak, di hari pertama maupun hari keseribu. Batas bulanan hanya berlaku untuk pemeriksaan detail, tidak pernah untuk pemblokiran itu sendiri.",
       "always_note": "Tidak akan ada yang melihat “bayar agar tetap terlindungi dari penipuan”. Kami tidak akan pernah melakukan itu.",
       "region_title": "Mengapa harga Anda bisa berbeda",
       "region_body": "Harga bulanan sama di mana pun. Harga tahunan lebih rendah di negara dengan pendapatan lebih rendah. Kami menentukannya berdasarkan negara koneksi internet Anda, dan saat pembayaran yang ditagih persis harga yang tampil di halaman ini.",
@@ -1882,7 +1952,7 @@
       "faq_unlink_q": "Bagaimana cara mengosongkan tempat perangkat?",
       "faq_unlink_a": "Buka akun Anda di cleanway.ai atau di aplikasi, cari perangkat di “Perangkat”, lalu pilih “Lepaskan”. Tempatnya langsung kosong. Perangkat yang dilepas keluar dari akun Anda, dan pemblokiran situs penipuan yang dikenal tetap berjalan di perangkat itu.",
       "faq_free_q": "Apa yang saya dapat tanpa membayar?",
-      "faq_free_a": "Pemblokiran situs penipuan yang dikenal dari daftar kami, tanpa batasan dan tanpa tanggal berakhir, ditambah {checks, plural, other {# pemeriksaan detail}} per hari — kesimpulan, alasannya, dan cara kerja modus penipuannya. Selama {days, plural, other {# hari}} pertama setelah pemasangan, semuanya tanpa batasan. Anda tidak perlu akun maupun kartu.",
+      "faq_free_a": "Pemblokiran situs penipuan yang dikenal dari daftar kami, tanpa batasan dan tanpa tanggal berakhir, ditambah {checks, plural, other {# pemeriksaan detail}} per bulan — kesimpulan, alasannya, dan cara kerja modus penipuannya. Selama {days, plural, other {# hari}} pertama setelah pemasangan, semuanya tanpa batasan. Anda tidak perlu akun maupun kartu.",
       "faq_refund_q": "Bisakah uang saya dikembalikan?",
       "faq_refund_a": "Jika Anda ditagih setelah membatalkan, atau ditagih karena kesalahan, tulis ke dukungan dan kami kembalikan tagihan itu. Pengembalian dana lainnya mengikuti undang-undang perlindungan konsumen di negara Anda.",
       "faq_cancel_q": "Bisakah saya membatalkan kapan saja?",
@@ -1921,7 +1991,7 @@
       "how_4_body": "Batalkan di aplikasi, lewat SMS, atau melalui dukungan. Setelah dibatalkan tidak ada lagi tagihan, dan perlindungan tetap berjalan sampai akhir bulan yang sudah dibayar.",
       "faq_title": "Pertanyaan umum",
       "faq_auto_q": "Apakah akan ada tagihan otomatis setelah hari-hari pertama?",
-      "faq_auto_a": "Tidak. Setelah {days, plural, other {# hari}} tanpa batasan berakhir, tidak ada yang ditagihkan: perlindungan dasar tetap berjalan tanpa perlu membayar, dengan {checks, plural, other {# pemeriksaan detail}} per hari. Langganan hanya dimulai jika Anda sendiri memilihnya di aplikasi dan mengonfirmasinya dengan kode SMS.",
+      "faq_auto_a": "Tidak. Setelah {days, plural, other {# hari}} tanpa batasan berakhir, tidak ada yang ditagihkan: perlindungan dasar tetap berjalan tanpa perlu membayar, dengan {checks, plural, other {# pemeriksaan detail}} per bulan. Langganan hanya dimulai jika Anda sendiri memilihnya di aplikasi dan mengonfirmasinya dengan kode SMS.",
       "faq_cancel_q": "Bagaimana cara membatalkan?",
       "faq_cancel_a": "Di aplikasi: “Langganan” → “Batalkan langganan”. Atau kirim SMS berisi kata СТОП ke nomor singkat yang tertera di aplikasi dan di halaman pembatalan. Setelah dibatalkan tidak ada lagi tagihan; perlindungan tetap berjalan sampai akhir bulan yang sudah dibayar.",
       "faq_nomoney_q": "Bagaimana jika pulsa tidak cukup?",
@@ -1950,7 +2020,7 @@
       "basic_price": "Tidak perlu membayar",
       "basic_for": "Selalu, tanpa perlu akun",
       "basic_item_block": "Memblokir situs penipuan yang dikenal dari daftar — tanpa batasan",
-      "basic_item_checks": "{checks, plural, other {# pemeriksaan detail}} per hari",
+      "basic_item_checks": "{checks, plural, other {# pemeriksaan detail}} per bulan",
       "basic_item_first_days": "{days, plural, other {# hari}} pertama setelah pemasangan — semuanya tanpa batasan",
       "plan_name": "Tanpa Batas",
       "plan_for": "Ponsel Anda, ponsel ibu Anda, dan laptop Anda",
@@ -2117,7 +2187,6 @@
       "caveat_endpoint": "Cleanway diukur melalui pemeriksaan situs publiknya, jalur anonim yang sama dengan yang dipakai pengunjung, bukan jalur khusus. Yang diukur adalah jawaban server kami, bukan pemblokiran di ponsel: perlindungan di ponsel langsung memblokir hanya situs yang ada di daftarnya, jadi angka ini tidak menunjukkan berapa banyak tautan ini yang akan diblokir ponsel.",
       "caveat_rate_limit": "Saat ini pengukuran mingguan terhambat oleh batas permintaan pada pemeriksaan tersebut, sehingga banyak tautan tidak mendapat putusan dan sebagian besar pengukuran terlalu kecil untuk dipublikasikan.",
       "caveat_phishtank": "Pencarian gratis PhishTank sering menjawab \"belum terindeks\" untuk tautan baru karena basis datanya tertinggal beberapa jam, sehingga kolomnya sering menampilkan \"—\".",
-      "caveat_gsb": "Google Safe Browsing memerlukan kunci API; jika tidak diatur untuk pengukuran, kolomnya menampilkan \"—\".",
       "caveat_nxdomain": "Domain yang sudah tidak ada juga mendapat NXDOMAIN dari Cloudflare dan dihitung sebagai pemblokiran oleh Cloudflare, sehingga hasil Cloudflare terlihat lebih baik untuk domain phishing yang sudah ditutup.",
       "caveat_latency": "Waktu respons diukur dari mesin yang menjalankan skrip (server cloud di AS atau UE); dari wilayah lain hasilnya akan berbeda.",
       "caveat_allowlist": "Server kami menganggap aman situs di 100.000 teratas Tranco tanpa menganalisisnya, dan sampel situs asli di atas diambil dari rentang yang sama. Karena itu, sampel ini tidak bisa menunjukkan seberapa sering Cleanway keliru menyebut situs asli yang kurang terkenal sebagai berbahaya, dan kami tidak menerbitkan tingkat alarm palsu darinya. Kami akan menerbitkannya setelah sampel mencakup situs asli di luar daftar itu.",
@@ -2236,6 +2305,7 @@
       "verdict_caution": "{domain} memiliki beberapa tanda mencurigakan. Berhati-hatilah.",
       "verdict_dangerous": "{domain} menunjukkan tanda kuat sebagai situs phishing atau penipuan. Jangan masukkan data pribadi.",
       "check_failed": "Kami belum bisa memeriksa {domain} saat ini. Coba lagi beberapa menit lagi.",
+      "checking": "Sedang memeriksa {domain}…",
       "signals_heading": "Alasannya",
       "low_confidence": "Ini pemeriksaan cepat dengan data terbatas.",
       "cta_title": "Lindungi semua aplikasi di ponsel Anda",
@@ -2383,7 +2453,7 @@
       "meta_description": "Apa yang diterima Cleanway, apa yang tetap di ponsel atau browser Anda, siapa lagi yang melihat apa, dan berapa lama semuanya disimpan.",
       "back": "Kembali ke Cleanway",
       "title": "Kebijakan privasi",
-      "updated": "Terakhir diperbarui: 22 Oktober 2026",
+      "updated": "Terakhir diperbarui: 4 November 2026",
       "intro": "Kebijakan ini menjelaskan dengan kata-kata sederhana data apa yang ditangani Cleanway, mengapa, dan siapa lagi yang melihatnya. Isinya menggambarkan layanan seperti yang berjalan saat ini. Jika ada yang tidak sesuai dengan apa yang sebenarnya dilakukan Cleanway, itu adalah kesalahan dan kami ingin mengetahuinya.",
       "contact_live": "Pertanyaan dan permintaan tentang data Anda:",
       "contact_not_live": "Kotak surat dukungan kami untuk sementara tidak berfungsi, jadi saat ini kami tidak bisa menerima email. Alamatnya akan muncul lagi di bagian ini begitu berfungsi.",
@@ -2426,7 +2496,7 @@
             "Untuk memutuskan apakah situs itu berbahaya, server kami dapat:"
           ],
           "items": [
-            "menanyakan nama itu ke layanan pemeriksaan eksternal: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX, dan IPQualityScore, serta mencari tahu kapan situs itu didaftarkan dengan bertanya lewat RDAP kepada registri zona domainnya (untuk .com, Verisign). Mereka hanya menerima nama situs, bukan siapa Anda;",
+            "menanyakan nama itu ke layanan pemeriksaan eksternal: Google Web Risk, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX, dan IPQualityScore, serta mencari tahu kapan situs itu didaftarkan dengan bertanya lewat RDAP kepada registri zona domainnya (untuk .com, Verisign). Mereka hanya menerima nama situs, bukan siapa Anda;",
             "membandingkan jawabannya dengan jawaban filter DNS Cloudflare (1.1.1.1 for Families), yang menerima nama situs melalui permintaan DNS biasa;",
             "melihat situs itu sendiri (alamat, sertifikat, dan pengaturannya) dari server kami, bukan dari ponsel Anda;",
             "dalam kasus yang meragukan, meminta pendapat kedua dari model AI buatan Anthropic. Model ini hanya menerima tanda-tanda abstrak, tanpa nama situs."
@@ -3695,6 +3765,7 @@
       "sign_out": "Keluar",
       "sign_out_confirm_title": "Keluar dari akun?",
       "sign_out_confirm_body": "Pemeriksaan dan riwayat tetap ada di ponsel ini. Pengaturan berhenti disinkronkan sampai Anda masuk lagi.",
+      "sign_out_confirm_body_appstore": "Pemeriksaan dan riwayat tetap ada di ponsel ini. Pengaturan berhenti disinkronkan sampai Anda masuk lagi. Langganan tetap ada di akun Anda: masuk lagi untuk memakainya di iPhone ini.",
       "plan": "Paket",
       "plan_desc": "Perlindungan di HP ini gratis",
       "upgrade": "Upgrade",
@@ -3837,7 +3908,7 @@
     },
     "onboarding": {
       "s1_title": "Cek apa saja sebelum Anda mengetuknya",
-      "s1_desc": "Tempel link, scan kode QR, atau bagikan apa pun yang mencurigakan langsung ke Cleanway. Anda mendapat jawaban yang sederhana beserta alasannya.",
+      "s1_desc": "Tempel link, scan kode QR, atau bagikan apa pun yang mencurigakan langsung ke Cleanway. Anda mendapat jawaban yang sederhana beserta alasannya. Tidak ada pemeriksaan yang sempurna: sesekali situs aman bisa ditandai karena keliru, atau situs berbahaya terlewat.",
       "s2_title": "Dirancang menjaga privasi",
       "s2_desc": "Untuk mengecek link, server kami menerima nama situs dan nomor acak instalasi yang berganti setiap hari. Kata sandi, isi pesan, dan alamat lengkap halaman Anda tidak pernah keluar dari HP.",
       "s3_title": "Perisai untuk semua aplikasi",
@@ -3900,7 +3971,7 @@
       "nav_title": "Ada yang menelepon saya"
     },
     "reason": {
-      "flagged_dangerous": "Google menandai situs ini berbahaya",
+      "flagged_dangerous": "Google memperingatkan situs ini mungkin berbahaya",
       "flagged_phishing": "Dilaporkan sebagai phishing",
       "on_blocklists": "Ada di daftar tepercaya penipuan dan spam",
       "threat_reports": "Disebut dalam laporan ancaman",
@@ -4022,7 +4093,7 @@
     "paywall": {
       "close": "Tutup",
       "title": "Periksa tanpa batas",
-      "lead": "Pemeriksaan rinci gratis hari ini sudah habis. Situs di daftar penipuan kami tetap diblokir, berlangganan atau tidak.",
+      "lead": "Pemeriksaan rinci gratis bulan ini sudah habis. Situs di daftar penipuan kami tetap diblokir, berlangganan atau tidak.",
       "per_month": "{{price}} per bulan",
       "per_year": "{{price}} per tahun",
       "period_month": "/ bulan",
@@ -4039,7 +4110,7 @@
       "cta_store": "Berlangganan",
       "cta_soon_ru": "Segera: bayar dengan pulsa",
       "fine_cancel": "Bisa dibatalkan kapan saja.",
-      "fine_soon": "Pembayaran dengan pulsa segera hadir. Sementara itu, daftar penipuan tetap memblokir dan pemeriksaan gratis diperbarui setiap hari.",
+      "fine_soon": "Pembayaran dengan pulsa segera hadir. Sementara itu, daftar penipuan tetap memblokir dan pemeriksaan gratis diperbarui setiap bulan.",
       "restore": "Sudah membayar? Pulihkan",
       "restore_sign_in": "Sudah membayar? Masuk",
       "note_store_soon": "Pembayaran di aplikasi segera hadir.",
@@ -4050,17 +4121,17 @@
       "done": "Selesai",
       "always_free": "Memblokir situs di daftar penipuan kami selalu gratis.",
       "locked_title": "Analisis rinci termasuk dalam langganan",
-      "locked_body": "Pemeriksaan rinci gratis hari ini sudah habis; besok ada yang baru. Situs di daftar penipuan kami selalu diblokir.",
+      "locked_body": "Pemeriksaan rinci gratis bulan ini sudah habis; tanggal 1 ada yang baru. Situs di daftar penipuan kami selalu diblokir.",
       "locked_cta": "Periksa tanpa batas",
       "not_listed_title": "Tidak ada di daftar penipuan kami",
       "not_listed_body": "Itu saja tidak berarti situsnya aman — pemeriksaan rinci melihat jauh lebih dalam.",
-      "left_today": "Sisa pemeriksaan gratis hari ini: {{n}}",
-      "none_left": "Pemeriksaan gratis hari ini sudah habis. Daftar penipuan tetap bekerja.",
+      "left_today": "Sisa pemeriksaan gratis bulan ini: {{n}}",
+      "none_left": "Pemeriksaan gratis bulan ini sudah habis. Daftar penipuan tetap bekerja.",
       "message_listed_sub": "Sebuah tautan dalam pesan ini ada di daftar situs penipuan kami.",
       "message_locked_title_links": "Tidak ada tautan dari daftar penipuan kami",
       "message_locked_title_none": "Pesan belum dianalisis",
-      "message_locked_sub": "Teksnya tidak dibaca: pemeriksaan rinci gratis hari ini sudah habis.",
-      "lead_upgrade": "Pemeriksaan mendetail untuk tautan dan pesan tanpa batas harian, di hingga {{n}} perangkat. Situs di daftar penipuan kami tetap diblokir, berlangganan atau tidak.",
+      "message_locked_sub": "Teksnya tidak dibaca: pemeriksaan rinci gratis bulan ini sudah habis.",
+      "lead_upgrade": "Pemeriksaan mendetail untuk tautan dan pesan tanpa batas bulanan, di hingga {{n}} perangkat. Situs di daftar penipuan kami tetap diblokir, berlangganan atau tidak.",
       "plan_month": "Bulanan",
       "plan_year": "Tahunan",
       "save_percent": "Hemat {{n}}%",
@@ -4070,7 +4141,7 @@
       "retry": "Coba lagi",
       "fine_store": "Ditagih oleh Google Play. Diperpanjang otomatis sampai Anda membatalkannya — bisa dibatalkan kapan saja di Google Play.",
       "cta_soon_play": "Belum tersedia di negara Anda",
-      "fine_soon_play": "Langganan belum tersedia di sini. Daftar penipuan tetap memblokir, dan pemeriksaan gratis diperbarui setiap hari.",
+      "fine_soon_play": "Langganan belum tersedia di sini. Daftar penipuan tetap memblokir, dan pemeriksaan gratis diperbarui setiap bulan.",
       "note_pending": "Pembayaran Anda masih tertunda. Paket aktif segera setelah Google Play mengonfirmasinya.",
       "note_processing": "Pembayaran diterima. Paket aktif dalam satu menit — jika tidak, ketuk Pulihkan.",
       "note_restored": "Pembelian dipulihkan — paket Anda aktif.",
@@ -4090,7 +4161,16 @@
       "err_already_owned_appstore": "Apple ID ini sudah memiliki langganan. Ketuk Pulihkan untuk memindahkannya ke akun ini.",
       "err_network_appstore": "Tidak ada koneksi ke App Store. Periksa internet lalu coba lagi.",
       "err_not_allowed_appstore": "Pembelian dinonaktifkan di iPhone ini (misalnya di Durasi Layar).",
-      "err_store_appstore": "App Store tidak dapat menyelesaikan pembelian. Silakan coba lagi."
+      "err_store_appstore": "App Store tidak dapat menyelesaikan pembelian. Silakan coba lagi.",
+      "note_restore_none_appstore": "Tidak ada langganan aktif di Apple ID ini.",
+      "sync_offer": "Aktif di iPhone ini. Masuk bersifat opsional: dengan masuk, langganan yang sama berfungsi di aplikasi Cleanway untuk Android dan ekstensi browser, hingga {{n}} perangkat.",
+      "note_restore_here_appstore": "Langganan yang dibeli di iPhone ini belum ada di akun Anda. Ketuk Pulihkan untuk menambahkannya.",
+      "sign_in_account": "Punya akun Cleanway? Masuk",
+      "note_restore_none_signed_out_appstore": "Tidak ada langganan aktif di Apple ID ini. Jika Anda sudah membayar Cleanway di perangkat lain, masuk ke akun Anda.",
+      "without_account_title": "Lanjutkan tanpa masuk?",
+      "without_account_body": "Seseorang pernah masuk ke akun di iPhone ini. Jika Apple ID ini sudah membayar Cleanway di sebuah akun, melanjutkan tanpa masuk akan memindahkan langganan hanya ke iPhone ini: langganan berhenti berfungsi di akun itu, di Android, dan di ekstensi browser sampai Anda masuk dan mengetuk Pulihkan.",
+      "without_account_continue": "Lanjutkan tanpa masuk",
+      "sync_offer_back": "Aktif di iPhone ini. Jika langganan ini ada di akun Cleanway Anda, sekarang langganan hanya berfungsi di iPhone ini: masuk dan ketuk Pulihkan agar bisa dipakai lagi di Android dan ekstensi browser."
     },
     "ios_sms": {
       "line_ready": "Memindahkan SMS penipuan dari pengirim tak dikenal ke Sampah, langsung di iPhone ini. Berfungsi setelah Anda menyalakannya di Pengaturan.",

@@ -155,6 +155,9 @@ test("/ru/privacy-policy is Russian and describes only the released app", async 
   for (const service of ["RDAP", "Verisign", "MalwareBazaar", "1.1.1.1 for Families", "Resend", "Cloudflare Turnstile", "Амстердам"]) {
     await expect(body).toContainText(service);
   }
+  // Production asks Google Web Risk since 2026-11-03, no longer Safe Browsing.
+  await expect(body).toContainText("Google Web Risk");
+  await expect(body).not.toContainText("Safe Browsing");
   await expect(body).not.toContainText("в открытом виде он не хранится");
   // The contact block is attached by section id, inside the last section.
   const contact = page.locator("section#contact");

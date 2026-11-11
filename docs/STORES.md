@@ -314,11 +314,14 @@ Google's PEPK tool) keeps one signature everywhere.
       site and RuStore APKs.
 - [ ] **Pricing line** in the listing (`docs/STORE_SUBMISSION_KIT.md` §1.2–1.3): the copy says only "Basic
       protection is free." Once the subscriptions are live in Play Console, add
-      (confirm numbers first; Play shows its own localised prices in the app): "Blocking known scam sites is free with no limit. 3
-      detailed checks a day are free, and everything is unlimited for the first
-      7 days. Optional subscription: $0.99 a month or $9.99 a year for 3 devices
-      (phone, tablet, or browser with the extension); each extra device $0.49 a
-      month." Russian: see `docs/RUSTORE_SUBMISSION.md` §7.0 (99 ₽ / +29 ₽).
+      (confirm numbers first; Play shows its own localised prices in the app): "Blocking known scam sites is free with no limit.
+      Everything is unlocked for the first 7 days, then 5 manual site checks a
+      month are free. Optional subscription: $1.99 a month for unlimited checks
+      on 3 devices (phone, tablet, or browser with the extension)."
+      Numbers: founder decision 2026-11-04 (server settings
+      FREE_MANUAL_CHECKS_PER_MONTH / FREE_UNLIMITED_DAYS_AFTER_INSTALL — if they
+      change, change the line). Add "or $19.99 a year" once the yearly plan exists in
+      Play Console (founder approved it 2026-11-11). The extra device is not sold in the app — not in the line. Russian: see `docs/RUSTORE_SUBMISSION.md` §7.0 (99 ₽ / +29 ₽).
 - [x] **Screenshots and feature graphic** — EN and RU, 1080×1920, from 1.0.4
       (`mobile/assets/store/google-play/`, README there); feature graphic
       1024×500 per language; icon `mobile/assets/store/icon-512.png`.
@@ -371,7 +374,7 @@ counts only data **sent off the device**; data processed only on the phone is
 
 **"Shared" note (decide once, keep in step with the privacy policy):** the
 server sends the bare host, with no user identity, to threat-intelligence
-services (Google Safe Browsing and the others in `docs/PRIVACY.md`) to answer
+services (Google Web Risk and the others in `docs/PRIVACY.md`) to answer
 the check. Play's definition excludes transfers to service providers that
 process data on your behalf; these services answer a lookup under their own
 terms, so the conservative answer is **Shared: Web browsing history — Fraud
@@ -488,6 +491,14 @@ permission in `app.json` (`blockedPermissions`) before uploading.
         then test on the internal track — `docs/runbooks/revenuecat.md` §1–3, §5.3.
         Data safety (Purchase history) and the content rating (digital purchases)
         are answered for it above.
+12a. [ ] **Production → Countries / regions: every available country, Russia
+        included** (decision 2026-11-04: worldwide launch that does not wait
+        for Russia; founder's clarification 2026-11-11: Russia stays listed —
+        Play Billing does not work there, so the app is simply free there and
+        paid plans are not expected to sell). Set the same list on the testing
+        tracks that are open to the public. Subscriptions follow the app's
+        countries; their base-plan prices are set per country in Monetize →
+        Subscriptions.
 13. [ ] After approval: add Google Play to `landing/lib/install-urls.ts` and drop
         the "Google Play" rule in `scripts/check-landing-claims.py` (scope
         `landing.android`).
