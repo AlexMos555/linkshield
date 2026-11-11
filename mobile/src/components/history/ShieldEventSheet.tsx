@@ -47,7 +47,7 @@ export function ShieldEventSheet({ item, onClose, onChanged, onMore }: ShieldEve
   if (!item) return null;
 
   const tone = HISTORY_TONES[shieldTone(item)];
-  const when = [relativeTime(item.ts, t), absoluteTime(item.ts, i18n.language)].filter(Boolean).join(" · ");
+  const when = [relativeTime(item.ts, t, i18n.language), absoluteTime(item.ts, i18n.language)].filter(Boolean).join(" · ");
   const source = item.source ? t(SHIELD_SOURCE_KEYS[item.source]) : "";
   const body = item.kind === "blocked" ? t("mobile.history.detail.blocked_body")
     : item.kind === "warned" ? t("mobile.history.detail.warned_body")

@@ -406,6 +406,17 @@ jobs:
         # template-literal key the card builds exists in all 10 locales.
         run: node mobile/scripts/test-keep-alive.mjs
 
+      - name: Device test 2026-11-11 table test
+        # What a Galaxy and an iPhone showed: Settings → Plan said "free" under
+        # an active subscription; a "Try these" example no longer existed (the
+        # dangerous one is now the blocklist's own canary); VoiceOver read the
+        # back button as "(tabs)"; Arabic → Russian stayed mirrored with the
+        # shield on (direction judged by what the app asked for, JS restarted);
+        # the paywall ran under Android's navigation bar; Terms / Privacy
+        # opened in English; History dates used the phone's format; the ongoing
+        # notification kept the old language.
+        run: node --experimental-strip-types mobile/scripts/test-device-fixes.mjs
+
       - name: Shared message handoff regression test
         # Report #5: a second SMS shared to an open message screen must be
         # checked — the router reuses the screen, so each share needs its id.

@@ -71,7 +71,7 @@ import {
   type PlanPeriod,
 } from "../src/utils/store-billing";
 import { sourceKey } from "../src/utils/account-session";
-import { PRIVACY_POLICY_URL, TERMS_URL } from "../src/utils/legal-urls";
+import { privacyPolicyUrl, termsUrl } from "../src/utils/legal-urls";
 import { StorePlans, type StorePlansState } from "../src/components/paywall/StorePlans";
 import { PublishedPrice } from "../src/components/paywall/PublishedPrice";
 
@@ -406,7 +406,11 @@ function PaywallScreen() {
 
   return (
     // iOS shows this as a page sheet below the status bar: no top inset there.
-    <View style={[s.root, { paddingTop: Platform.OS === "ios" ? 0 : insets.top }]}>
+    // Android draws the sheet edge to edge, under the system navigation bar:
+    // the list ends above the bar, so the button that falls on the fold is
+    // cut by it instead of sitting under the system's own buttons (Galaxy,
+    // 2026-11-11). iOS has no bar there; its home indicator pads the content.
+    <View style={[s.root, { paddingTop: Platform.OS === "ios" ? 0 : insets.top, paddingBottom: Platform.OS === "android" ? insets.bottom : 0 }]}>
       <View style={s.topBar}>
         <Pressable
           onPress={close}
@@ -419,7 +423,7 @@ function PaywallScreen() {
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={[s.content, { paddingBottom: insets.bottom + space.xxl }]}>
+      <ScrollView contentContainerStyle={[s.content, { paddingBottom: (Platform.OS === "android" ? 0 : insets.bottom) + space.xxl }]}>
         <View style={s.badge}>
           <Ionicons name="shield-checkmark" size={36} color={colors.green} />
         </View>
@@ -519,10 +523,10 @@ function PaywallScreen() {
           // A store subscription sheet must link its Terms of Use and Privacy
           // Policy (App Store Review 3.1.2; Google Play asks the same).
           <View style={s.legalRow}>
-            <Pressable onPress={() => void Linking.openURL(TERMS_URL).catch(() => undefined)} style={s.legal} accessibilityRole="link">
+            <Pressable onPress={() => void Linking.openURL(termsUrl(i18n.language)).catch(() => undefined)} style={s.legal} accessibilityRole="link">
               <Text style={s.legalLabel}>{t("mobile.settings.terms")}</Text>
             </Pressable>
-            <Pressable onPress={() => void Linking.openURL(PRIVACY_POLICY_URL).catch(() => undefined)} style={s.legal} accessibilityRole="link">
+            <Pressable onPress={() => void Linking.openURL(privacyPolicyUrl(i18n.language)).catch(() => undefined)} style={s.legal} accessibilityRole="link">
               <Text style={s.legalLabel}>{t("mobile.settings.privacy_policy")}</Text>
             </Pressable>
           </View>

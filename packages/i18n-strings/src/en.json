@@ -3377,7 +3377,8 @@
       "result": "Result",
       "scanner": "Scan a QR code",
       "shared": "Link check",
-      "upgrade": "Upgrade"
+      "upgrade": "Upgrade",
+      "back": "Back"
     },
     "check": {
       "title": "Check a link",
@@ -3710,7 +3711,9 @@
       "sign_out_confirm_body_appstore": "Checks and history stay on this phone. Settings stop syncing until you sign in again. A subscription stays in your account: sign in again to use it on this iPhone.",
       "plan": "Plan",
       "plan_desc": "Protection on this phone is free",
+      "plan_desc_paid": "Unlimited checks — subscription active",
       "upgrade": "Upgrade",
+      "plan_manage": "Manage",
       "report": "Weekly report",
       "report_desc": "A summary of the links you checked",
       "family": "Family Hub",
@@ -3759,6 +3762,8 @@
       "language_note": "Choose the language for the app.",
       "language_reload_title": "Restart needed",
       "language_reload_body": "Please close and reopen the app to finish switching the layout direction.",
+      "language_restart_body": "The app will restart to switch the layout direction.",
+      "language_restart_action": "Restart",
       "linkguard": "Link checking",
       "linkguard_note": "When on, links you tap in most apps go to Cleanway first; the built-in browsers of Telegram and MAX open links themselves, unchecked. Known scam sites won't open. Other links open straight away while we check the site, and you'll get a warning if the check finds a danger — sometimes this takes up to half a minute.",
       "linkguard_on": "Cleanway checks your links",

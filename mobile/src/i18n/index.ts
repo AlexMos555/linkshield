@@ -11,10 +11,13 @@
  *   1. expo-localization lists the device's preferred languages; the first
  *      one in SUPPORTED_LOCALES wins (src/utils/device-locale.ts)
  *   2. Falls back to English if none of them is
- *   3. RTL (Arabic) forces I18nManager.forceRTL + app reload
- *      (an in-app language override is NOT built yet — changeLocale exists
- *      for it, but no screen calls it; the device locale decides)
+ *   3. Settings → Language overrides it (changeLocale, restoreSavedLocale)
+ *   4. RTL (Arabic) forces I18nManager.forceRTL; a direction flip restarts
+ *      the JS (reloadForDirection) — see src/utils/layout-direction.ts for
+ *      why I18nManager.isRTL alone cannot be trusted while the shield keeps
+ *      the process alive
  */
+import { reloadAppAsync } from "expo";
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import * as Localization from "expo-localization";
@@ -22,6 +25,7 @@ import * as SecureStore from "expo-secure-store";
 import { setNotificationLocale } from "../../modules/cleanway-vpn";
 import { I18nManager } from "react-native";
 import { firstSupportedLocale } from "../utils/device-locale";
+import { directionChange, directionName, isRtlLanguage, startupReload, type DirectionState } from "../utils/layout-direction";
 import { RESOURCES } from "./resources";
 
 export const SUPPORTED_LOCALES = [
@@ -42,22 +46,25 @@ export const LOCALE_NAMES: Record<SupportedLocale, string> = {
   ar: "العربية",
 };
 
-const RTL_LOCALES: readonly SupportedLocale[] = ["ar"] as const;
-
 /** The first of the phone's preferred languages the app has, else English. */
 function detectInitialLocale(): SupportedLocale {
   return firstSupportedLocale(Localization.getLocales(), SUPPORTED_LOCALES) ?? "en";
 }
 
+/**
+ * I18nManager.isRTL is what this JS started in and never changes while it
+ * lives; `requestedRTL` follows what was last written for the next start.
+ */
+const direction: DirectionState = { startedRTL: I18nManager.isRTL, requestedRTL: I18nManager.isRTL };
+
 export function applyRTL(locale: SupportedLocale): void {
-  const shouldRTL = RTL_LOCALES.includes(locale);
-  if (I18nManager.isRTL !== shouldRTL) {
-    I18nManager.allowRTL(shouldRTL);
-    I18nManager.forceRTL(shouldRTL);
-    // App reload required for RTL change to visually take effect. We don't
-    // trigger it here — caller decides (e.g. after user changes in Settings,
-    // show "Restart the app to apply" prompt + call Updates.reloadAsync()).
-  }
+  const shouldRTL = isRtlLanguage(locale);
+  if (!directionChange(direction, shouldRTL).write) return;
+  I18nManager.allowRTL(shouldRTL);
+  I18nManager.forceRTL(shouldRTL);
+  direction.requestedRTL = shouldRTL;
+  // The screen follows only after the JS restarts — the caller decides when
+  // (Settings shows a "Restart" dialog, then reloadForDirection()).
 }
 
 const initialLocale = detectInitialLocale();
@@ -96,10 +103,28 @@ setNotificationLocale(initialLocale);
  */
 const LOCALE_OVERRIDE_KEY = "cleanway.locale";
 
-/** True when switching to `next` flips the layout direction (needs a reload). */
+/** True when switching to `next` leaves the screen in the wrong direction until the JS restarts. */
 export function localeChangeNeedsReload(next: SupportedLocale): boolean {
-  return RTL_LOCALES.includes(next) !== I18nManager.isRTL;
+  return directionChange(direction, isRtlLanguage(next)).reload;
 }
+
+/**
+ * Restart the JS so the layout direction written by applyRTL takes effect:
+ * the same process, so the Android shield (a native service) keeps running.
+ * False when the restart could not be asked for — the caller then tells the
+ * person to close and reopen the app.
+ */
+export async function reloadForDirection(): Promise<boolean> {
+  try {
+    await reloadAppAsync("layout direction");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The direction a restart at start was already spent on — see startupReload. */
+const DIRECTION_RELOAD_KEY = "cleanway.direction_reload";
 
 export async function changeLocale(locale: SupportedLocale): Promise<void> {
   await i18n.changeLanguage(locale);
@@ -130,6 +155,29 @@ export async function restoreSavedLocale(): Promise<void> {
     }
   } catch {
     // No saved preference or storage unavailable: keep the device locale.
+  }
+  await settleDirectionAtStart();
+}
+
+/**
+ * The language is settled; is the screen in its direction? If not — a phone
+ * left mirrored by the 1.0.x language switch, or a flip whose restart never
+ * happened — restart the JS now, once (startupReload), instead of waiting
+ * for a process the shield may keep alive for days.
+ */
+async function settleDirectionAtStart(): Promise<void> {
+  try {
+    const wantedRTL = isRtlLanguage(i18n.language);
+    const tried = await SecureStore.getItemAsync(DIRECTION_RELOAD_KEY);
+    if (wantedRTL === direction.startedRTL) {
+      if (tried !== null) await SecureStore.deleteItemAsync(DIRECTION_RELOAD_KEY);
+      return;
+    }
+    if (!startupReload(direction.startedRTL, wantedRTL, tried)) return;
+    await SecureStore.setItemAsync(DIRECTION_RELOAD_KEY, directionName(wantedRTL));
+    await reloadForDirection();
+  } catch {
+    // Storage unavailable: no automatic restart; Settings → Language still offers one.
   }
 }
 

@@ -223,6 +223,11 @@ export default function RootLayout() {
           // for every screen opened from the tabs that was the raw route name
           // "(tabs)" (seen on the iOS simulator). A bare chevron, as on Android.
           headerBackButtonDisplayMode: "minimal",
+          // …and VoiceOver still read that hidden title aloud: the back button
+          // on "Check a link" was announced as "(tabs)" (iPhone, 2026-11-11).
+          // A translated "Back" is what it says now, and what the long-press
+          // menu lists.
+          headerBackTitle: t("mobile.nav.back"),
           contentStyle: { backgroundColor: "#0f172a", paddingBottom: bottomPad },
         }}
       >

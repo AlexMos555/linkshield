@@ -62,7 +62,7 @@ type Screen =
 
 export default function FamilyScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [screen, setScreen] = useState<Screen>({ kind: "loading" });
   const [joinOpen, setJoinOpen] = useState(false);
   const [joinCode, setJoinCode] = useState("");
@@ -442,7 +442,7 @@ export default function FamilyScreen() {
               </Text>
               <Text style={styles.alertMeta}>
                 {a.level || t("mobile.family.level_blocked")} ·{" "}
-                {a._at ? new Date(a._at).toLocaleString() : ""}
+                {a._at ? new Date(a._at).toLocaleString(i18n.language) : ""}
               </Text>
             </View>
           ))}

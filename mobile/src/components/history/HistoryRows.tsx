@@ -89,10 +89,10 @@ function RowFrame({ tone, icon, title, what, meta, a11yLabel, onPress, a11yHint 
 
 /** Something a shield did on its own. Tapping opens why, when, and the rescue. */
 const ShieldRow = memo(function ShieldRow({ item, onOpen }: { item: ShieldItem; onOpen: (item: ShieldItem) => void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const what = t(SHIELD_KIND_KEYS[item.kind]);
   const source = item.source ? t(SHIELD_SOURCE_KEYS[item.source]) : "";
-  const when = relativeTime(item.ts, t);
+  const when = relativeTime(item.ts, t, i18n.language);
   return (
     <RowFrame
       tone={shieldTone(item)}
@@ -113,7 +113,7 @@ const ShieldRow = memo(function ShieldRow({ item, onOpen }: { item: ShieldItem; 
  * user nothing about which direction is bad.
  */
 const CheckRow = memo(function CheckRow({ item }: { item: CheckItem }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const tone: Tone = item.level === "dangerous" ? "danger"
     : item.level === "caution" ? "caution"
     : item.level === "safe" ? "safe"
@@ -124,7 +124,7 @@ const CheckRow = memo(function CheckRow({ item }: { item: CheckItem }) {
     : "help-circle-outline";
   const what = item.level ? t(CHECK_LEVEL_KEYS[item.level]) : t("mobile.history.verdict_unknown");
   const source = t("mobile.history.source.manual");
-  const when = relativeTime(item.ts, t);
+  const when = relativeTime(item.ts, t, i18n.language);
   const { color, wash, stroke } = HISTORY_TONES[tone];
   return (
     <View
@@ -161,12 +161,12 @@ const CheckRow = memo(function CheckRow({ item }: { item: CheckItem }) {
  * "safe": the calmest verdict is "no signs of fraud found".
  */
 const SmsRow = memo(function SmsRow({ item }: { item: SmsItem }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const tone: Tone = item.verdict === "dangerous" ? "danger" : item.verdict === "caution" ? "caution" : "muted";
   const title = t("mobile.message.history_title");
   const what = item.verdict ? t(VERDICT_KEYS[item.verdict]) : t("mobile.history.verdict_unknown");
   const hosts = item.hosts.join(", ");
-  const when = relativeTime(item.ts, t);
+  const when = relativeTime(item.ts, t, i18n.language);
   return (
     <RowFrame
       tone={tone}
