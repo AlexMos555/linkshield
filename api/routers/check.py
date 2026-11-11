@@ -44,7 +44,8 @@ from api.services.domain_validator import validate_domain, normalize_domain, Dom
 router = APIRouter(prefix="/api/v1", tags=["check"])
 
 # A batch may start analyses for this many analysis budgets (6 s at the
-# default 3 s), each while at least half a budget is left.
+# default 3 s of config.check_analysis_budget_seconds), each while at least
+# half a budget is left.
 _BATCH_WINDOW_BUDGETS = 2
 
 
@@ -55,8 +56,10 @@ async def _analyse_batch(domains: list[str], slots: int, withheld: frozenset[str
     what is left of the batch's window, at most one analysis budget. One that
     could not start in time is None: the caller answers it on the address
     alone, marked partial. Exceptions are returned, not raised. `withheld`:
-    the names whose allowlist answer the age gate withheld (allowlist_age)."""
-    budget = get_settings().analysis_budget_seconds
+    the names whose allowlist answer the age gate withheld (allowlist_age).
+    The budget is the app's (config.check_analysis_budget_seconds): it waits
+    12 s, not the browser extension's 3 s."""
+    budget = get_settings().check_analysis_budget_seconds
     window = Deadline(budget * _BATCH_WINDOW_BUDGETS)
     turn = asyncio.Semaphore(slots)
 

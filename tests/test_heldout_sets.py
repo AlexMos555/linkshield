@@ -187,6 +187,7 @@ def test_build_variants_record_the_sources_each_build_really_had(tmp_path, monke
     rdd = d1._load_refresh_module()
     _stub_refresh(monkeypatch, rdd)
     monkeypatch.delenv(rdd.phishtank_feed.KEY_ENV, raising=False)
+    monkeypatch.delenv(rdd.phishtank_feed.SOURCE_ENV, raising=False)
     builds = asyncio.run(d1.build_variants(rdd, d1.Snapshot(tmp_path / "no-key"), {"all": frozenset()}))
     assert "PhishTank" not in builds["all"]["feeds"] and "TweetFeed" in builds["all"]["feeds"]
 
@@ -202,6 +203,58 @@ def test_build_variants_record_the_sources_each_build_really_had(tmp_path, monke
                         {"phishtank": "PhishTank"})
     assert held_out["phishtank"]["windows"]["1"]["coverage"]["all"]["circular"] is True
     assert d1.headline(held_out) == {}
+
+
+def test_the_keyless_switch_makes_the_phishtank_sample_circular_too(tmp_path, monkeypatch):
+    """BLOCKLIST_PHISHTANK_SOURCE without a key makes PhishTank a source just
+    as the key does: every build says so, and the sample leaves the headline."""
+    import asyncio
+
+    rdd = d1._load_refresh_module()
+    _stub_refresh(monkeypatch, rdd)
+    monkeypatch.delenv(rdd.phishtank_feed.KEY_ENV, raising=False)
+    monkeypatch.setenv(rdd.phishtank_feed.SOURCE_ENV, "true")
+    real = rdd._fetch_conditional
+    builds = asyncio.run(d1.build_variants(rdd, d1.Snapshot(tmp_path),
+                                           {"all": frozenset(), "licensed": rdd.NON_COMMERCIAL_FEEDS}))
+    assert "PhishTank" in builds["all"]["feeds"] and "PhishTank" in builds["licensed"]["feeds"]
+    assert rdd._fetch_conditional is not real, "the builds read one snapshot pull"
+    held_out = d1.score(builds, {"phishtank": ho.phishtank_reports(PHISHTANK)}, (1,), set(),
+                        {"phishtank": "PhishTank"})
+    coverage = held_out["phishtank"]["windows"]["1"]["coverage"]
+    assert coverage["all"]["circular"] is True and coverage["licensed"]["circular"] is True
+    assert d1.headline(held_out) == {}
+
+
+def test_the_keyless_dump_is_the_phishtank_sample_one_pull_a_session(tmp_path, monkeypatch):
+    """Without a key the refresh job asks for the very file the PhishTank
+    sample is read from: the snapshot keeps it once, under the sample's name,
+    and the sample does not download it again."""
+    import asyncio
+    import gzip
+
+    rdd = d1._load_refresh_module()
+    assert rdd.phishtank_feed.ANON_FEED_URL == ho.PHISHTANK_ONLINE_VALID_URL
+    body = gzip.compress(PHISHTANK.encode("utf-8"))
+    calls = []
+
+    async def _real(url, headers):
+        calls.append(url)
+        return 200, {}, body
+
+    class _NoClient:
+        def __init__(self, *a, **k):
+            raise AssertionError("the sample must not download the dump a second time")
+
+    snap = d1.Snapshot(tmp_path)
+    fetch = snap.conditional_fetcher(_real)
+    url = rdd.phishtank_feed.ANON_FEED_URL
+    assert asyncio.run(fetch(url, {})) == (200, {}, body)
+    assert asyncio.run(fetch(url, {})) == (200, {}, body)
+    monkeypatch.setattr(d1.httpx, "AsyncClient", _NoClient)
+    assert asyncio.run(snap.phishtank_dump()) == body
+    assert calls == [url]
+    assert (tmp_path / d1.PHISHTANK_DUMP).exists() and not (tmp_path / d1.PHISHTANK_KEYED_DUMP).exists()
 
 
 def test_the_keyed_phishtank_dump_is_fetched_once_and_its_url_never_written(tmp_path):
@@ -224,6 +277,46 @@ def test_the_keyed_phishtank_dump_is_fetched_once_and_its_url_never_written(tmp_
     assert (tmp_path / d1.PHISHTANK_KEYED_DUMP).exists()
     assert all(b"k3y" not in p.read_bytes() for p in tmp_path.iterdir())
     assert d1.snapshot_fingerprint(snap)["bodies"] == 1
+
+
+def test_the_benchmark_keeps_httpx_from_logging_the_keyed_url(tmp_path, monkeypatch, caplog):
+    """httpx logs every request at INFO with its full URL, and the keyed
+    PhishTank URL carries the key. The benchmark quiets that logger itself,
+    whether or not the refresh module it loads does too: a fresh copy of the
+    script, httpx's logger as a new process finds it, one keyed GET through
+    the snapshot with only the network mocked."""
+    import asyncio
+    import importlib.util
+    import logging
+
+    import httpx
+
+    httpx_log = logging.getLogger("httpx")
+    saved = httpx_log.level
+    httpx_log.setLevel(logging.NOTSET)
+    try:
+        spec = importlib.util.spec_from_file_location("eval_day_one_coverage_fresh",
+                                                      ROOT / "scripts" / "eval_day_one_coverage.py")
+        bench = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bench)  # type: ignore[union-attr]
+        seen = []
+
+        def _handler(request):
+            seen.append(str(request.url))
+            return httpx.Response(200, content=b"phish_id,url\n1,https://a.example/\n")
+
+        async def _real(url, headers):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(_handler)) as client:
+                r = await client.get(url, headers=dict(headers))
+            return r.status_code, dict(r.headers), r.content
+
+        caplog.set_level(logging.DEBUG)
+        url = "https://data.phishtank.com/data/s3cr3t-k3y/online-valid.csv.gz"
+        assert asyncio.run(bench.Snapshot(tmp_path).conditional_fetcher(_real)(url, {}))[0] == 200
+        assert seen == [url]
+        assert "s3cr3t-k3y" not in caplog.text
+    finally:
+        httpx_log.setLevel(saved)
 
 
 def test_snapshot_serves_a_cached_body_without_fetching_again(tmp_path):
@@ -259,6 +352,7 @@ def test_main_writes_the_dated_report_and_latest_from_one_snapshot(tmp_path, mon
     _stub_refresh(monkeypatch, rdd)
     monkeypatch.setattr(d1, "_load_refresh_module", lambda: rdd)
     monkeypatch.delenv(rdd.phishtank_feed.KEY_ENV, raising=False)
+    monkeypatch.delenv(rdd.phishtank_feed.SOURCE_ENV, raising=False)
     snap_dir = tmp_path / "snap"
     d1.Snapshot(snap_dir).path_for(rdd.TWEETFEED_YEAR).write_text(TWEETFEED, encoding="utf-8")
 

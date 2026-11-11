@@ -34,7 +34,8 @@ from api.services import ru_brands, ru_lures
 from api.services.hosting_platforms import dynamic_dns_suffix_of as _dynamic_dns_suffix_of
 from api.services.hosting_platforms import is_shared_platform_site, tenant_suffix_of
 from api.services.hosting_platforms import USER_CONTENT_HOSTS, is_user_content_service
-from api.services.hosting_platforms import OPERATOR_SUFFIXES, is_operator_zone_name
+from api.services.hosting_platforms import OPERATOR_HOSTS, OPERATOR_SUFFIXES, is_operator_zone_name
+from api.services.hosting_platforms import TENANT_SUFFIXES_NOT_IN_MODEL
 from api.services import dead_top_names as _dead
 from api.services import public_suffix as _public_suffix
 from api.services.public_suffix import CCTLD_OPEN_ZONES, ascii_name, heuristic_registrable_domain
@@ -257,6 +258,73 @@ def is_hosting_platform_site(domain: str) -> bool:
 _PROVIDER_NAMED_SUFFIXES: frozenset[str] = frozenset({"cloudfront.net", "firebaseio.com"})
 
 
+# The curated hosting platforms whose customers' labels the name rules read
+# (_tenant_label): the scorer's hand list and data/hosting_platforms.json
+# tenant_suffixes (through tenant_suffix_of). And the platforms found after
+# the served model (TENANT_SUFFIXES_NOT_IN_MODEL), whose tenants the rules
+# read as nothing until the retrain: not the platform's name ('zapier' and
+# 'edgeone' were judged for every tenant before 2026-11-03, as 'duckdns'
+# before 2026-10-15), and not yet the customer's. The served model already
+# judges that name there without knowing the zone is shared (it reads
+# is_hosting_subdomain 0), and the two together put real sites at
+# 'dangerous': on the 602 live tenants of the Common Crawl index, reading the
+# customer's label moved 48 sites that look real by their page titles up a
+# level, 28 of them from caution to 'dangerous' (emnlp-2025-speakers and
+# zapier-blog-suggestions.zapier.app, productivitybootcamp.edgeone.dev), for
+# 60 crypto-wallet look-alikes (PR #396). Making the model weak there
+# instead cost a confirmed phish its 'dangerous'
+# (gastric-turquoise-uqpzxsmk.edgeone.dev: 58 in production; review of #396).
+_TENANT_LABEL_SUFFIXES: frozenset[str] = HOSTING_PLATFORMS | TENANT_SUFFIXES_NOT_IN_MODEL
+
+# Zapier names an interface's or chatbot's address itself: the project's
+# name, slugged, then '-' and six hex digits (form-interface-c45407,
+# zapbot-3afcd4); the customer may pick another address later. The hex is
+# always Zapier's, and so is the name when it is the one Zapier gives a new
+# project: a template's (get-in-touch, ai-chat-for-business) or the default
+# (new-interface, zapbot). These are the template names among the 556
+# zapier.app hosts of the Common Crawl index of 2026-10: 83 end in -<6 hex>,
+# 72 of them under one of these 25 names (form-interface 15, new-form-project
+# 13, new-interface 9 …), whatever the page is now titled ('Contact Kuehn
+# Law', 'Probate Intake'); 11 under names their customers typed
+# (biroq-consulting, emed-support). Judging the hex put every chatbot that
+# kept its default address at caution (zapbot-3afcd4: an unnatural n-gram
+# and entropy on '3afcd4', review of #396). And 5 are Zapier's own ids, a
+# cuid (c and 24 base-36 characters: cmp8f64bv001l4v51du7zjkae, 'ACSI Quote
+# Request'). For the day the retrain moves zapier.app into tenant_suffixes
+# and the rules start reading its tenants. Before then, measure or tighten
+# the cuid shape: any 25-character label that starts with 'c' and has three
+# digits matches it too (coinbasewalletlogin123456), and the name rules
+# would read nothing of it (review of #396).
+_ZAPIER_ID = re.compile(r"c[a-z0-9]{24}")
+_HEX_DIGITS = frozenset("0123456789abcdef")
+_ZAPIER_DEFAULT_NAMES: frozenset[str] = frozenset({
+    "form-interface", "new-form-project", "new-interface", "new-client-intake", "untitled-form",
+    "application-form", "lead-capture", "lead-capture-form", "get-in-touch", "request-portal",
+    "free-offer-download", "landing-page", "simple-website", "simple-crm", "scheduler",
+    "chat-app", "ai-chat-for-business", "ai-chat-for-customer-service", "ai-chat-for-lead-generation",
+    "ecommerce-ai-chatbot", "cta-generator", "kpi-generator", "google-contacts-create-contact",
+    "zapbot", "faqbot",
+})
+
+
+def _without_generated_slug(label: str, suffix: str) -> str:
+    """`label` without what the platform generated: on zapier.app the six hex
+    digits Zapier adds (biroq-consulting of biroq-consulting-5b6b12), and all
+    of it — "" — when the name before them is one of Zapier's defaults
+    (zapbot-3afcd4, form-interface-c45407: _ZAPIER_DEFAULT_NAMES) or the
+    label is Zapier's id for the page (a cuid with digits in it)."""
+    if suffix != "zapier.app":
+        return label
+    if _ZAPIER_ID.fullmatch(label) and sum(ch.isdigit() for ch in label) >= 3:
+        return ""
+    # String operations, not a regex: '(.+)-[0-9a-f]{6}' backtracks
+    # polynomially on a label of many hyphens (CodeQL py/polynomial-redos).
+    name, hyphen, tail = label.rpartition("-")
+    if not (name and hyphen and len(tail) == 6 and _HEX_DIGITS.issuperset(tail)):
+        return label
+    return "" if name in _ZAPIER_DEFAULT_NAMES else name
+
+
 def _tenant_label(domain: str) -> Optional[str]:
     """The name a customer chose on a dynamic-DNS service (gedivan of
     gedivan.duckdns.org) or a curated hosting platform (HOSTING_PLATFORMS
@@ -265,16 +333,23 @@ def _tenant_label(domain: str) -> Optional[str]:
     their subdomains, the platforms' own hosts (www.duckdns.org) and the
     platforms that name hosts themselves (_PROVIDER_NAMED_SUFFIXES).
 
+    "" — nothing to judge — for a tenant of a platform found after the
+    served model (TENANT_SUFFIXES_NOT_IN_MODEL: zapier.app, edgeone.dev)
+    until the retrain, and for a name the platform generated whole
+    (_without_generated_slug).
+
     Deliberately not the PSL-derived suffixes: those are mostly
     infrastructure (trafficmanager.net, elb.amazonaws.com) whose host names
     nobody picked."""
     d = (domain or "").lower().strip(".")
     suffix = _dynamic_dns_suffix_of(d)
     if not suffix:
-        suffix = tenant_suffix_of(d, HOSTING_PLATFORMS)
+        suffix = tenant_suffix_of(d, _TENANT_LABEL_SUFFIXES)
         if not suffix or suffix in _PROVIDER_NAMED_SUFFIXES or registrable_domain(d).endswith("." + suffix):
             return None
-    return d[: -(len(suffix) + 1)].split(".")[-1]
+    if suffix in TENANT_SUFFIXES_NOT_IN_MODEL:
+        return ""
+    return _without_generated_slug(d[: -(len(suffix) + 1)].split(".")[-1], suffix)
 
 
 def top_domain_key(domain: str) -> Optional[str]:
@@ -351,12 +426,76 @@ def top_domain_key(domain: str) -> Optional[str]:
 # so every zone the publisher lists tenants under must be refused here
 # (tests/test_allowlist_blocklist_zones.py). It has no tenants today (a
 # random label is NXDOMAIN, the site redirects to Hostinger, 2026-10-27).
+#
+# And data/hosting_platforms.json 'tenant_suffixes_not_in_model', the same
+# kind of zone kept out of the model's tenant list until a retrain. Its
+# zones today (zapier.app, edgeone.dev) are no top-100k names, so this
+# refuses nothing yet. Two top-100k zones measured for it stay trusted for
+# now: out of the allowlist 16 of 41 ActiveCampaign pages (ac-page.com) and
+# all 20 Locaweb sites measured (hospedagemdesites.ws) went to caution, as
+# did real Tistory blogs (review of #396). The third, mybluehost.me, is
+# EVIDENCE_ONLY_TENANT_ZONES below.
 _ALLOWLIST_TENANT_ZONES: frozenset[str] = frozenset({
     "sakura.ne.jp", "dothome.co.kr", "isweb.co.kr",
     "lojaintegrada.com.br", "lojavirtualnuvem.com.br", "shop2000.com.tw",
     "webeden.co.uk", "woobi.co.kr", "hostgator.com.br", "myzen.co.uk",
     "000webhost.com",
-})
+}) | TENANT_SUFFIXES_NOT_IN_MODEL
+
+# Top-100k zones whose customers' sites are judged on evidence alone
+# (calculate_score, _evidence_only_verdict): no instant 'safe' from the
+# allowlist, but no hygiene rule or model either. Every evidence source is
+# asked — Cleanway's blocklist (whose publisher lists no tenant of these
+# zones yet: refresh_dangerous_domains skips names under a popular
+# registrable), Web Risk / Safe Browsing, PhishTank, PhishStats, IPQS, OTX
+# and the other lists, the favicon and watchtower brand checks and the brand
+# rules on the customer's name — and the answer is 'safe' unless one of them
+# speaks. The allowlist asked none of them.
+#
+# mybluehost.me (#11,072) is Bluehost's temporary addresses, <3>.<3> letters
+# per account (fmf.dqm.mybluehost.me), website-<8 hex> for a site an account
+# adds. On 2026-11-03 zrg.okx.mybluehost.me, a PhishTank phish that Google's
+# Safe Browsing lists, was "safe 0" from the allowlist on the live
+# /public/check. Judged like any other name, about half of Bluehost's real
+# temporary addresses went to caution or worse (review of #396): another
+# site's certificate on the shared server, a forward to the customer's own
+# domain, the model on Bluehost's own website-<hex> names.
+#
+# Each zone with the number of labels the platform itself generates for an
+# account, left of the zone: <customer's labels>.<abc>.<def>.mybluehost.me.
+# Bluehost picks the two 3-letter labels (all 1,486 Common Crawl hosts of
+# 2026-10 have exactly two, the letters spread evenly), so the customer did
+# not choose them and a brand there says nothing about the site: 8 of the
+# 17,576 labels are global brands (att, aws, dhl, dpd, irs, olx, ups, wix),
+# about one account in 1,100. Read as the customer's, they took real sites
+# from 'safe 0' to caution 30 — esh.aws.mybluehost.me ('Avila Styles —
+# Coming Soon'), alpineeagle-co-uk.lvj.wix.mybluehost.me (a car restorer;
+# crt.sh, review of #396). _evidence_only_customer_name drops them.
+EVIDENCE_ONLY_ACCOUNT_LABELS: dict[str, int] = {"mybluehost.me": 2}
+EVIDENCE_ONLY_TENANT_ZONES: frozenset[str] = frozenset(EVIDENCE_ONLY_ACCOUNT_LABELS)
+
+
+def is_evidence_only_tenant(domain: str) -> bool:
+    """`domain` is a customer's site under EVIDENCE_ONLY_TENANT_ZONES (not
+    the zone itself nor its www). tenant_suffix_of() also answers for the
+    curated tenant_suffixes, so the zone it finds must be one of these."""
+    return tenant_suffix_of((domain or "").lower().strip("."), EVIDENCE_ONLY_TENANT_ZONES) in EVIDENCE_ONLY_TENANT_ZONES
+
+
+def _evidence_only_customer_name(domain: str) -> Optional[str]:
+    """The labels the customer chose, with the zone, for a site under
+    EVIDENCE_ONLY_TENANT_ZONES — paypal-login.mybluehost.me of
+    paypal-login.abc.def.mybluehost.me: the account labels the platform
+    generated (EVIDENCE_ONLY_ACCOUNT_LABELS) dropped. None when the customer
+    chose none (abc.def.mybluehost.me, the account's own address) and for
+    any other name."""
+    d = (domain or "").lower().strip(".")
+    zone = tenant_suffix_of(d, EVIDENCE_ONLY_TENANT_ZONES)
+    if zone not in EVIDENCE_ONLY_ACCOUNT_LABELS:
+        return None
+    customer = d.split(".")[: -(zone.count(".") + 1 + EVIDENCE_ONLY_ACCOUNT_LABELS[zone])]
+    return f"{'.'.join(customer)}.{zone}" if customer else None
+
 
 # Hosts under a newly reached compound-suffix entry that many people publish
 # to by path: ISP personal pages (/~user/). Both were in the Phishing.Database
@@ -481,7 +620,7 @@ def is_trusted_top_domain(domain: str) -> bool:
         return False
     if _is_abused_google_service(d, key) or _is_user_content_mirror(d, key):
         return False
-    if _is_under_shared_suffix(d) or tenant_suffix_of(d, _ALLOWLIST_TENANT_ZONES):
+    if _is_under_shared_suffix(d) or tenant_suffix_of(d, _ALLOWLIST_TENANT_ZONES) or is_evidence_only_tenant(d):
         return False
     if any(d == h or d.endswith("." + h) for h in _ALLOWLIST_PATH_SHARED_HOSTS):
         return False
@@ -1127,9 +1266,25 @@ def _has_fake_tld_in_subdomain(domain: str, legacy: bool = False) -> bool:
 # PSL-derived ones included (ondigitalocean.app, altervista.org, hf.space),
 # but not the operators' own suffixes (fonts.googleapis.com is Google's) nor
 # a zone with a restricted label (gov.scot: its names are the Scottish
-# Government's agencies, not anyone's pick).
+# Government's agencies, not anyone's pick). The platforms found after the
+# served model count too (TENANT_SUFFIXES_NOT_IN_MODEL: zapier.app,
+# edgeone.dev), 2026-11-03, and so do the evidence-only zones
+# (EVIDENCE_ONLY_TENANT_ZONES: mybluehost.me), whose evidence is the
+# tenant's: an OTX report about zrg.okx.mybluehost.me is no victim reference
+# that Bluehost's #11,072 explains away. The other allowlist-only zones of
+# 2026-10-27 (sakura.ne.jp, hostgator.com.br …) do not yet: their operators'
+# own hosts under the zone (financeiro.hostgator.com.br) would lose the
+# platform's rank with their tenants (review of #396), and no list names
+# those hosts yet.
+#
+# For mybluehost.me the tenant's site is one account label and the zone
+# (okx.mybluehost.me of zrg.okx.mybluehost.me), which about one account in
+# 17,576 shares: the account is two labels (EVIDENCE_ONLY_ACCOUNT_LABELS).
+# It feeds only the SURBL query, which LICENSED_INTEL=licensed switches off
+# in production, and OTX's top-10k and dead-name lookups, which list no such
+# name. So it stays: two labels would change the SURBL query, unmeasured.
 _RANK_TENANT_SUFFIXES: frozenset[str] = frozenset(
-    z for z in _SCORER_SHARED_SUFFIXES - OPERATOR_SUFFIXES
+    z for z in (_SCORER_SHARED_SUFFIXES | TENANT_SUFFIXES_NOT_IN_MODEL | EVIDENCE_ONLY_TENANT_ZONES) - OPERATOR_SUFFIXES
     if not _RESTRICTED_ZONE_LABELS.intersection(z.split("."))
 )
 
@@ -1161,6 +1316,104 @@ def _platform_tenant_site(domain: str) -> Optional[str]:
     if registrable != suffix and not suffix.endswith("." + registrable):
         return None
     return ".".join(d.split(".")[-(suffix.count(".") + 2):])
+
+
+def _not_in_model_tenant_site(domain: str) -> Optional[str]:
+    """The customer's own site (my-bakery.zapier.app of
+    shop.my-bakery.zapier.app) when `domain` is a tenant of a platform found
+    after the served model (TENANT_SUFFIXES_NOT_IN_MODEL), else None.
+
+    The excessive-subdomains rule counts from it (calculate_score 3.11): the
+    level every tenant has by construction is not the customer's, and
+    shop.my-bakery.zapier.app has one, not two. Only these zones: on the
+    curated lists the rule still counts from the platform
+    (shop.x.netlify.app), a recall change with its own pass."""
+    d = (domain or "").lower().strip(".")
+    zone = tenant_suffix_of(d, TENANT_SUFFIXES_NOT_IN_MODEL)
+    if zone not in TENANT_SUFFIXES_NOT_IN_MODEL:
+        return None
+    return ".".join(d.split(".")[-(zone.count(".") + 2):])
+
+
+# <org>.sharepoint.com is an organisation's SharePoint Online,
+# <org>-my.sharepoint.com its OneDrive for Business, <org>-admin.sharepoint.com
+# its SharePoint admin centre, and <org> its Microsoft 365 tenant name, chosen
+# once at sign-up. A brand's own tenant carries the brand's name, and the name
+# rules read it as a free site's name: on 2026-11-04, with no intel, the full
+# analysis called 11 of the brands' own tenants 'dangerous' on the name and
+# site hygiene alone (microsoft-my.sharepoint.com 60 by the model,
+# barclays.sharepoint.com 55 by the brand as the whole name,
+# microsoft-admin.sharepoint.com 61 by the model).
+# On a tenant verified as the brand's own (VERIFIED_ORGANIZATION_TENANTS,
+# organization_tenant_brand) what the name alone says is weak
+# (calculate_score): the brand as the whole name, the ML model's opinion of
+# the name, a brand word in it. A brand word as the whole tenant name is not
+# enough (review 2026-11-04): 16 brand words had no Entra tenant at all
+# (telegram, binance, tinkoff … — anyone signing up for Microsoft 365 can
+# take <brand>-my.sharepoint.com), and 89 more belong to tenants nobody has
+# tied to the brand. Those, a brand misspelt or with a word added (micosoft-my,
+# 0ffice365, docusignus) and names with no brand (the appriver…-my phishing
+# tenants of Phishing.Database, 61 by the model) are judged as any hosting
+# customer: the model counts. Listings, OTX reports and a brand next to a
+# lure word count in full on every tenant.
+# sharepoint.com only: no brand-owned tenant was measured in Microsoft's other
+# clouds (sharepoint.cn of 21Vianet, sharepoint-df.com), whose names the
+# scorer reads as on main. A scorer list, not a model input: the tenant
+# suffixes themselves (hosting_platforms tenant_suffixes) stay as the model
+# learned them.
+_ORGANIZATION_TENANT_SUFFIX = "sharepoint.com"
+
+
+def is_organization_tenant_site(domain: str) -> bool:
+    """`domain` is an organisation's own SharePoint Online site: one label
+    directly under sharepoint.com, contoso.sharepoint.com,
+    contoso-my.sharepoint.com. Not a name below a tenant's site, not the
+    suffix itself, not the operator's own hosts (microsoft.sharepoint.com,
+    www.sharepoint.com — hosting_platforms OPERATOR_HOSTS: allowlisted)."""
+    d = (domain or "").lower().strip(".")
+    label, _, suffix = d.partition(".")
+    if not label or suffix != _ORGANIZATION_TENANT_SUFFIX:
+        return False
+    return label != "www" and d not in OPERATOR_HOSTS
+
+
+def _load_verified_organization_tenants() -> frozenset[str]:
+    """The tenant names of data/organization_tenants.json (each verified as
+    the brand's own; the file says how). A missing or broken file trusts no
+    tenant: every name is then judged as on any hosting platform."""
+    tenants = _load_json_dict("organization_tenants.json").get("tenants")
+    if not isinstance(tenants, dict):
+        logger.warning("organization_tenants.json missing or malformed: no tenant is trusted")
+        return frozenset()
+    return frozenset(n for n in tenants if isinstance(n, str) and n.isascii() and n.isalnum() and n.islower())
+
+
+VERIFIED_ORGANIZATION_TENANTS: frozenset[str] = _load_verified_organization_tenants()
+
+# The sites Microsoft makes for every tenant next to <org>.sharepoint.com:
+# <org>-my, its OneDrive for Business, and <org>-admin, its SharePoint admin
+# centre.
+_ORGANIZATION_TENANT_SITE_SUFFIXES = ("-my", "-admin")
+
+
+def organization_tenant_brand(domain: str) -> Optional[str]:
+    """The brand whose own Microsoft 365 tenant `domain` is a site of
+    (is_organization_tenant_site; VERIFIED_ORGANIZATION_TENANTS), else None.
+
+    The tenant's name is the label without Microsoft's own '-my' or '-admin'
+    suffix (once): microsoft.sharepoint.com, microsoft-my.sharepoint.com and
+    microsoft-admin.sharepoint.com are all the tenant 'microsoft'. Only a
+    verified tenant: telegram-my (no such tenant of Telegram's),
+    facebook-my (a tenant, not the one behind facebook.com), micosoft-my,
+    pay-pal and microsoft365-my are None."""
+    if not is_organization_tenant_site(domain):
+        return None
+    label = (domain or "").lower().strip(".").split(".", 1)[0]
+    for suffix in _ORGANIZATION_TENANT_SITE_SUFFIXES:
+        if label.endswith(suffix):
+            label = label[: -len(suffix)]
+            break
+    return label if label in VERIFIED_ORGANIZATION_TENANTS and label in _TENANT_BRAND_WORDS else None
 
 
 def popularity_rank(signals: dict, domain: Optional[str] = None) -> Optional[int]:
@@ -1198,6 +1451,9 @@ def popularity_rank(signals: dict, domain: Optional[str] = None) -> Optional[int
 # 2026-10-26 fell from 'dangerous' to caution 50 (portal-canalbradesco.digital
 # 74, kucoindeep.com 68). Only one to five reports whose newest is
 # _OTX_STALE_DAYS or more old are weak — calculate_score marks that one.
+# It marks one more case: on a brand's own verified Microsoft 365 tenant
+# (organization_tenant_brand) the brand as the whole name and the ML model's
+# opinion of the name are weak too.
 WEAK_SIGNALS: frozenset[str] = frozenset({
     # what the probes saw on the site: hygiene, not intent
     "missing_headers", "no_mx_record", "new_certificate", "multiple_redirects",
@@ -1210,8 +1466,22 @@ WEAK_SIGNALS: frozenset[str] = frozenset({
     # where it is registered or hosted
     "risky_tld_medium", "abused_registrar", "risky_registrar", "dynamic_dns_host", "url_shortener",
 })
+# The top of the 'safe' band (a score above it is at least caution).
+SAFE_AT_MOST = 20
 # The top of the caution band (a score above it is 'dangerous').
 DANGEROUS_ABOVE = 50
+
+
+def level_for_score(score: int) -> RiskLevel:
+    """The level of a score: 'safe' up to SAFE_AT_MOST, 'dangerous' above
+    DANGEROUS_ABOVE, caution between. calculate_score's own mapping, and the
+    analyzer's for a score the LLM judge shifted."""
+    if score <= SAFE_AT_MOST:
+        return RiskLevel.safe
+    if score <= DANGEROUS_ABOVE:
+        return RiskLevel.caution
+    return RiskLevel.dangerous
+
 
 # One to five OTX reports whose newest was made this many days ago or earlier
 # (analyzer._otx_reports) are history, not a live campaign, and weak:
@@ -1223,6 +1493,52 @@ DANGEROUS_ABOVE = 50
 # pbsadverxo.com, webglobe.com, cmgroup.com, crcdn.org). When the age is not
 # known, the reports count as current.
 _OTX_STALE_DAYS = 90
+
+
+def otx_reports_are_history(signals: Mapping) -> bool:
+    """More than five OTX reports about a HOSTNAME — a name below a
+    registrable domain, a hosting customer's site above all
+    (analyzer._otx_indicator) — whose newest was made _OTX_STALE_DAYS
+    or more ago: not counted at all.
+
+    A tenant never carries a rank of its own (scripts/build_top_domains.py
+    drops tenants) and the platform's is not its (_platform_tenant_site), so
+    the popularity waiver that keeps old victim and sandbox mentions off a
+    popular registrable domain can never keep them off a popular tenant.
+    Keyless, 2026-11-03: mozilla.github.io (pdf.js) had 22 distinct reports,
+    the newest 423 days old, googleprojectzero.blogspot.com 27 (265 days),
+    google.github.io 16 (131 days) — malware-sandbox and IOC dumps that list
+    every host a sample touched — and as "Flagged in N reports" (+60) they
+    made the first two 'dangerous' (caution 30 and 45 before). Of 60
+    phishing customers' sites sampled from the weekly benchmarks, OTX had
+    reports for 56: one to five for 55, nine for the sixth (dangerous 71
+    without them).
+
+    One to five old reports stay what they are for any name: a weak signal.
+    A list kept up to date for years is dated by when it was made: CERT
+    Polska's "CERT.PL list of malicious domains" (made 2023-10-29, modified
+    daily) was, on the day the benchmark listed them, the only report about
+    8 of 30 sampled phishing subdomains (allegrolokalnie.*). An unknown age
+    counts, as for any report.
+
+    The step at five is intentional: five old reports about a hostname
+    score a weak +30, six score nothing, so the sixth takes the five's
+    weight away. The two counts are different evidence. One to five is how
+    phishing customers' sites look in OTX (55 of the 56 above) and what a
+    long-lived list like CERT.PL's gives, so those stay. More than five old
+    ones is the sandbox / IOC-dump pattern of a well-known host. Keeping
+    them as a weak +30 would not help: weak signals are capped at caution
+    only when nothing strong is present, and mozilla.github.io also draws
+    typosquatting (+25, strong), so it would still be 'dangerous'.
+    tests/test_otx_hostname_indicator.py checks the edges: 5 / 6 reports,
+    89 / 90 days, clones and an unknown age."""
+    newest = signals.get("alienvault_newest_report_days")
+    if signals.get("alienvault_indicator") != "hostname" or not isinstance(newest, int) \
+            or isinstance(newest, bool) or newest < _OTX_STALE_DAYS:
+        return False
+    pulses = signals.get("alienvault_pulse_count", 0) or 0
+    distinct = signals.get("alienvault_distinct_pulses")
+    return (pulses if distinct is None else min(distinct, pulses)) > 5
 
 
 def _certificate_is_a_renewal(signals: dict) -> bool:
@@ -1260,7 +1576,7 @@ def _certificate_is_a_renewal(signals: dict) -> bool:
     renewal apart directly — crt.sh lists the previous, still valid
     certificate for 13 of the 15 real sites it answered for — but on
     2026-10-26 it took 7.2 s at the median, and 31 of 96 queries failed
-    (502s, timeouts): far past the 3 s analysis budget.)"""
+    (502s, timeouts): far past the analysis budget, 3 s then.)"""
     host = (signals.get("domain") or "").lower().strip(".")
     if signals.get("cert_wildcard") and host and _platform_tenant_site(host) == host:
         return True
@@ -1276,6 +1592,30 @@ def _is_url_shortener(domain: str) -> bool:
     # allowlist checks every ancestor instead (_is_listed_shortener_host).
     base = _extract_base_domain(domain)
     return base in _URL_SHORTENERS
+
+
+def _evidence_only_verdict(domain: str, score: int, reasons: list[DomainReason]) -> tuple[int, RiskLevel, list[DomainReason]]:
+    """The verdict on a customer's site under EVIDENCE_ONLY_TENANT_ZONES:
+    Layer 1's evidence (`score`, `reasons`: the threat lists, OTX, IPQS, the
+    favicon and watchtower brand checks) plus the brand rules on the names
+    the customer chose — a brand as a whole label (paypal.abc.def.mybluehost.me,
+    _check_brand_in_subdomain) or next to a lure word
+    (paypal-login.abc.def.mybluehost.me, _check_brand_on_hosting_tenant) — and
+    nothing else: no hygiene signal, no name shape, no model. Not the
+    account labels the platform generated (_evidence_only_customer_name):
+    esh.aws.mybluehost.me names no brand. 'safe' 0 when none of them speaks."""
+    customer = _evidence_only_customer_name(domain)
+    brand = customer and (
+        _check_brand_in_subdomain(customer) or _check_brand_on_hosting_tenant(customer, EVIDENCE_ONLY_TENANT_ZONES)
+    )
+    if brand:
+        score += 30
+        reasons.append(DomainReason(
+            signal="brand_subdomain_abuse", weight=30,
+            detail=f"Uses the '{brand}' brand name in the name of a site on a hosting platform anyone can publish to",
+        ))
+    score = max(0, min(100, score))
+    return score, level_for_score(score), reasons
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1333,10 +1673,16 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # is the tenant's label: the name-shape rules (3.13-3.32) read
     # 'gedivan' of gedivan.duckdns.org, not 'duckdns', which gave every
     # *.duckdns.org host +12 (a 5-consonant run, a 1:6 vowel ratio) and
-    # never looked at the tenant's own name (2026-10-15).
+    # never looked at the tenant's own name (2026-10-15). An empty label
+    # (_tenant_label: zapier.app and edgeone.dev until the retrain, a name the
+    # platform generated whole) leaves them nothing to read.
     tenant_label = _tenant_label(ascii_domain)
-    if tenant_label:
+    if tenant_label is not None:
         domain_name = _decode_idn(tenant_label)
+    # A site of a brand's own Microsoft 365 tenant (microsoft-my.sharepoint.com,
+    # barclays.sharepoint.com; VERIFIED_ORGANIZATION_TENANTS): what the name
+    # alone says is weak here. None on every other name.
+    organization_brand = organization_tenant_brand(ascii_domain)
 
     # ════════════════════════════════════════════
     # LAYER 1: BLOCKLIST CHECK (instant block)
@@ -1463,8 +1809,11 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     #
     # A customer's site on a hosting platform is judged by its own name, not
     # the platform's (_platform_tenant_site): OTX is asked about the full
-    # host, so its pulses are about the tenant, and workers.dev or at.ua being
-    # popular vouches for none of their customers (audit 2026-10-25).
+    # host, as the hostname indicator it files a tenant under
+    # (analyzer._otx_indicator — until 2026-11-03 it was asked for a
+    # domain of that name and answered 0 for every tenant), so its pulses
+    # are about the tenant, and workers.dev or at.ua being popular vouches
+    # for none of their customers (audit 2026-10-25).
     #
     # The tiers count DISTINCT reports (analyzer._otx_reports): a
     # cloned pulse is the same report again. tztu.ru's 44 pulses were one
@@ -1475,11 +1824,13 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     #
     # One to five reports that are all _OTX_STALE_DAYS or more old are weak
     # (WEAK_SIGNALS): they still score, but alone with other weak signals
-    # they make a caution, not a 'dangerous'.
+    # they make a caution, not a 'dangerous'. About a hostname (a name below
+    # a registrable domain) more than five old reports do not count at all
+    # (otx_reports_are_history).
     alienvault_pulses = signals.get("alienvault_pulse_count", 0) or 0
     _distinct = signals.get("alienvault_distinct_pulses")
     otx_reports = alienvault_pulses if _distinct is None else min(_distinct, alienvault_pulses)
-    if otx_reports > 0:
+    if otx_reports > 0 and not otx_reports_are_history(signals):
         # The registrable domain whose popularity counts
         # (rank_registrable_domain), with the Russian zones: until 2026-10-28
         # this read the compound-ccTLD heuristic, whose key for any x.spb.ru
@@ -1512,12 +1863,13 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
                 _newest = signals.get("alienvault_newest_report_days")
                 _stale = isinstance(_newest, int) and _newest >= _OTX_STALE_DAYS
                 _age = f", the newest {_newest} days old" if _stale else ""
-                reasons.append(DomainReason(
+                otx_reason = DomainReason(
                     signal="alienvault_otx", weight=_wt,
                     detail=f"Found in {alienvault_pulses} AlienVault OTX threat report(s){_copies}{_age}",
-                ))
+                )
+                reasons.append(otx_reason)
                 if _stale:
-                    weak_here.append(reasons[-1])
+                    weak_here.append(otx_reason)
 
     # IPQualityScore
     if signals.get("ipqs_phishing"):
@@ -1566,6 +1918,11 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
             signal="known_legitimate", weight=-50,
             detail=f"Known legitimate domain: {top_entry}. {detail}",
         )]
+
+    # A customer's site under an evidence-only zone (mybluehost.me): Layer 1's
+    # evidence and the brand rules, nothing from Layer 3's hygiene or model.
+    if is_evidence_only_tenant(ascii_domain):
+        return _evidence_only_verdict(ascii_domain, score, reasons)
 
     # ════════════════════════════════════════════
     # LAYER 3: FEATURE SCORING (30+ signals)
@@ -1666,6 +2023,12 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
             f"anyone can publish to"
         )
         reasons.append(DomainReason(signal="brand_subdomain_abuse", weight=30, detail=detail))
+        # The brand as the whole name of the brand's own verified tenant
+        # (barclays.sharepoint.com is Barclays', tele2.sharepoint.com Tele2
+        # AB's): weak, whichever rule found it. A brand next to a lure word
+        # (tenant_brand: paypal-login) is not a tenant's name and stays strong.
+        if organization_brand and (brand_sub or tenant_brand) == organization_brand:
+            weak_here.append(reasons[-1])
 
     # ── 3.5b A name on a free dynamic-DNS service ──
     # gedivan.duckdns.org, havuwuzu.ipv64.net: a name that costs nothing,
@@ -1764,7 +2127,13 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # and kvs.gov.spb.ru have ONE subdomain level each, a.b.evil.com has two
     # — and so does vk.com.msk.ru, whose registered name 'com' reads as a TLD.
     # Either form works — decoding never adds or removes a label separator.
-    sub_levels = _apparent_subdomain_levels(ascii_domain)
+    # On a platform found after the model, from the customer's own site
+    # (_not_in_model_tenant_site): shop.my-bakery.zapier.app has one.
+    tenant_site = _not_in_model_tenant_site(ascii_domain)
+    if tenant_site:
+        sub_levels = ascii_domain.lower().strip(".").count(".") - tenant_site.count(".")
+    else:
+        sub_levels = _apparent_subdomain_levels(ascii_domain)
     if sub_levels >= 2:
         below = ascii_domain.lower().strip(".").split(".", sub_levels)[-1]
         score += 15
@@ -1781,7 +2150,7 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # tenants: the word is in 49 of 815 in the four licensed feeds' fresh
     # phishing (6.0%) and in 18 of 5,221 with real Chrome traffic (CrUX
     # global origins, 0.34%).
-    keyword = _keyword_in_name(domain_name) if tenant_label else _check_suspicious_keywords(unicode_domain)
+    keyword = _keyword_in_name(domain_name) if tenant_label is not None else _check_suspicious_keywords(unicode_domain)
     if keyword:
         score += 10
         reasons.append(DomainReason(
@@ -2205,12 +2574,19 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
                     signal="ml_high_risk", weight=35,
                     detail=f"ML model: {ml_prob*100:.0f}% phishing probability (confidence: {ml_confidence*100:.0f}%)",
                 ))
+                # The model reads the name only, and on the brand's own
+                # verified tenant the name is the brand's (microsoft-my: 0.95).
+                # On any other tenant (micosoft-my, telegram-my) it counts.
+                if organization_brand:
+                    weak_here.append(reasons[-1])
             elif ml_prob > 0.6:
                 score += 20
                 reasons.append(DomainReason(
                     signal="ml_suspicious", weight=20,
                     detail=f"ML model: {ml_prob*100:.0f}% phishing probability",
                 ))
+                if organization_brand:
+                    weak_here.append(reasons[-1])
             elif (ml_prob < 0.1 and score > 30 and not signals.get("popularity_withheld")
                   and legacy_registrable_domain(ascii_domain) not in _dead.DEAD_TOP_NAMES):
                 # ML says safe but rules say risky — reduce score slightly.
@@ -2229,25 +2605,18 @@ def calculate_score(signals: dict) -> tuple[int, RiskLevel, list[DomainReason]]:
     # Every reason stays in the list, so the person sees what was found; only
     # the verdict stops at the top of the caution band. Not on a hosting
     # customer's site that names a brand (_tenant_brand_word): there a pile
-    # of weak signals is how fresh phishing looks.
+    # of weak signals is how fresh phishing looks. On the brand's own
+    # verified tenant (paypal-my, organization_tenant_brand) the cap holds.
     if score > DANGEROUS_ABOVE and not any(
         r.weight > 0 and r.signal not in WEAK_SIGNALS and not any(r is w for w in weak_here)
         for r in reasons
-    ) and not _tenant_brand_word(ascii_domain):
+    ) and (organization_brand or not _tenant_brand_word(ascii_domain)):
         score = DANGEROUS_ABOVE
 
     # ── Clamp ──
     score = max(0, min(100, score))
 
-    # ── Determine level ──
-    if score <= 20:
-        level = RiskLevel.safe
-    elif score <= DANGEROUS_ABOVE:
-        level = RiskLevel.caution
-    else:
-        level = RiskLevel.dangerous
-
-    return score, level, reasons
+    return score, level_for_score(score), reasons
 
 
 def calculate_confidence(
@@ -3286,7 +3655,7 @@ def _check_brand_under_open_zone(domain: str) -> Optional[str]:
     return None
 
 
-def _check_brand_on_hosting_tenant(domain: str) -> Optional[str]:
+def _check_brand_on_hosting_tenant(domain: str, zones: frozenset[str] = _SCORER_SHARED_SUFFIXES) -> Optional[str]:
     """A brand in the name a customer gave its site on a hosting platform:
     sberbank-online.pages.dev, gosuslugi-vhod.netlify.app,
     paypal-login.netlify.app, sberbank.tw1.ru.
@@ -3303,11 +3672,13 @@ def _check_brand_on_hosting_tenant(domain: str) -> Optional[str]:
     paypa1-login.ngrok-free.app, 5berbank-bonus.pages.dev; since
     2026-10-23). Russian zones (spb.ru) are _check_brand_under_open_zone's;
     a name directly under a country's zone (paypal-login.com.br) is the
-    typosquat rule's."""
+    typosquat rule's. `zones`: the shared suffixes besides
+    data/hosting_platforms.json tenant_suffixes (_evidence_only_verdict
+    passes EVIDENCE_ONLY_TENANT_ZONES)."""
     from api.services.hosting_platforms import tenant_suffix_of
 
     d = (domain or "").lower().strip(".")
-    suffix = tenant_suffix_of(d, _SCORER_SHARED_SUFFIXES)
+    suffix = tenant_suffix_of(d, zones)
     if not suffix or suffix in RU_PUBLIC_SUFFIXES or suffix in _RU_RESTRICTED_ZONES:
         return None
     # ru.com / ru.net names are the typosquat rule's (yandex.ru.com), and a

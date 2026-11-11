@@ -257,7 +257,9 @@ def test_a_big_batch_leaves_fresh_slots_for_everyone_else(check_env, public_env,
 def test_a_batch_past_its_window_says_the_rest_is_partial_and_refunds_them(check_env, settings):
     # Budget 0.4 s: the batch may start analyses for 0.8 s while 0.2 s is left.
     # Two at a time, 0.35 s each: rounds at 0, 0.35 (0.45 left), then 0.10 left.
-    settings(analysis_budget_seconds=0.4)
+    # /check's own budget since 2026-11-04 (the app waits 12 s; the shared
+    # one is the browser extension's).
+    settings(check_analysis_budget_seconds=0.4)
     check_env["delay"] = 0.35
     domains = _obscure(10)
     resp = TestClient(app).post("/api/v1/check", json={"domains": domains})

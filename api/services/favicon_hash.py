@@ -59,7 +59,10 @@ from api.services.scoring import _SCORER_SHARED_SUFFIXES
 logger = logging.getLogger(__name__)
 
 FAVICON_CACHE_TTL = 24 * 60 * 60  # 24 hours
-FAVICON_FETCH_TIMEOUT = 2.0  # seconds — block-on-first-fetch budget
+# Seconds per connection phase — block-on-first-fetch budget. The site probes'
+# limit (site_probes.SITE_PROBE_TIMEOUT_S): on a site that never answers, a
+# longer one ran past the 2.3 s analysis budget and was named incomplete.
+FAVICON_FETCH_TIMEOUT = 1.5
 FAVICON_MAX_BYTES = 256 * 1024  # 256 KB — bigger than any sane favicon
 HASH_HEX_LEN = 24  # 24 hex chars = 96 bits — comfortably past consumer
                    # GPU second-preimage horizon (~2^96 vs ~2^48 prior)

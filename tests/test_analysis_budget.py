@@ -106,19 +106,22 @@ def test_complete_analysis_reports_nothing_missing(offline_analyzer):
 
 
 def test_slow_llm_judge_is_cut_off(offline_analyzer, monkeypatch):
+    """The analyzer never waits for a live judge call (tests/
+    test_llm_judge_background.py); what it does await — the judge's cache
+    lookup — is cut off at the deadline like any check."""
     offline_analyzer(site="reachable", values={"whois": {"age_days": 20}})
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
     from api.services import llm_judge
 
     async def _instant(*a, **k):
-        return None
+        return llm_judge.SKIPPED, None
 
     async def _slow(*a, **k):
         await asyncio.sleep(10)
 
-    monkeypatch.setattr(llm_judge, "judge_ambiguous_verdict", _instant)
+    monkeypatch.setattr(llm_judge, "opinion_now", _instant)
     own_work = _fast_run_seconds("sberbank-bonus.ru")
-    monkeypatch.setattr(llm_judge, "judge_ambiguous_verdict", _slow)
+    monkeypatch.setattr(llm_judge, "opinion_now", _slow)
     result, elapsed = _timed(analyzer.analyze_domain("sberbank-bonus.ru", budget_s=BUDGET))
     assert elapsed < BUDGET + own_work + SLACK
     assert "llm_judge" in result.checks_incomplete

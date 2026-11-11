@@ -1,0 +1,154 @@
+{
+  "_about": "Microsoft 365 tenants on sharepoint.com verified as the brand's own, read by api/services/scoring.py (organization_tenant_brand). Only on these tenants (<name>.sharepoint.com, <name>-my and <name>-admin) the brand as the whole name and the ML model's opinion of the name are weak signals; every other tenant, brand-named or not, is judged as any hosting customer. A name goes here only when the Entra tenant behind <name>.onmicrosoft.com (login.microsoftonline.com/<name>.onmicrosoft.com/.well-known/openid-configuration) is the same tenant that verified the brand's own domain (the same lookup for 'domain'), and the tenant had a live SharePoint or OneDrive site when checked. Not here: brand names with no Entra tenant at all (telegram, binance, tinkoff … — anyone can sign up for them), tenants held by someone other than the brand's domain owner (facebook, lloyds, santander, ozon, tbank …), and other clouds (sharepoint.cn, sharepoint-df.com). Re-check before adding a name; a missing or broken file means no tenant is trusted.",
+  "checked": "2026-11-04",
+  "tenants": {
+    "adobe": {
+      "domain": "adobe.com",
+      "entra_tenant": "fa7b1b5a-7b34-4387-94ae-d2c178decee1"
+    },
+    "amazon": {
+      "domain": "amazon.com",
+      "entra_tenant": "5280104a-472d-4538-9ccf-1e1d0efe8b1b"
+    },
+    "asana": {
+      "domain": "asana.com",
+      "entra_tenant": "9f4751c6-28c7-4f7a-bbf9-e03061d953d2"
+    },
+    "att": {
+      "domain": "att.com",
+      "entra_tenant": "e741d71c-c6b6-47b0-803c-0f3b32b07556"
+    },
+    "bankofamerica": {
+      "domain": "bankofamerica.com",
+      "entra_tenant": "2b256175-5eca-4aaa-935a-4c63d79447ce"
+    },
+    "barclays": {
+      "domain": "barclays.co.uk",
+      "entra_tenant": "c4b62f1d-01e0-4107-a0cc-5ac886858b23"
+    },
+    "bestbuy": {
+      "domain": "bestbuy.com",
+      "entra_tenant": "135e8995-7d3b-4466-844b-a0d62ba5f495"
+    },
+    "capitalone": {
+      "domain": "capitalone.com",
+      "entra_tenant": "c4bbfe29-1e89-4a06-9144-923b36afc949"
+    },
+    "citi": {
+      "domain": "citi.com",
+      "entra_tenant": "1771ae17-e764-4e0f-a476-d4184d79a5d9"
+    },
+    "coinbase": {
+      "domain": "coinbase.com",
+      "entra_tenant": "3d309027-3cd0-4b06-86b6-5150f8834c76"
+    },
+    "digitalocean": {
+      "domain": "digitalocean.com",
+      "entra_tenant": "e3e671f5-d109-466d-98c2-b3fb0b4c1877"
+    },
+    "etsy": {
+      "domain": "etsy.com",
+      "entra_tenant": "f7c11bf6-1d30-45ed-82af-a4256321fe3a"
+    },
+    "homedepot": {
+      "domain": "homedepot.com",
+      "entra_tenant": "fb7e6711-b619-4fbe-afe6-f83b12673323"
+    },
+    "hsbc": {
+      "domain": "hsbc.com",
+      "entra_tenant": "e0fd434d-ba64-497b-90d2-859c472e1a92"
+    },
+    "laposte": {
+      "domain": "laposte.fr",
+      "entra_tenant": "80c03608-5f64-40bb-9c70-9394abe6011c"
+    },
+    "lowes": {
+      "domain": "lowes.com",
+      "entra_tenant": "bcfa3e87-841e-48c7-983b-584159dd1a69"
+    },
+    "lyft": {
+      "domain": "lyft.com",
+      "entra_tenant": "ff027eda-f9b4-4aeb-a9cb-31b7e19447ae"
+    },
+    "microsoft": {
+      "domain": "microsoft.com",
+      "entra_tenant": "72f988bf-86f1-41af-91ab-2d7cd011db47"
+    },
+    "n26": {
+      "domain": "n26.com",
+      "entra_tenant": "ca17413d-9045-45c6-bed6-11f3bc9de2be"
+    },
+    "netflix": {
+      "domain": "netflix.com",
+      "entra_tenant": "002742ed-13ed-4b38-adea-e617dd50caa6"
+    },
+    "nintendo": {
+      "domain": "nintendo.com",
+      "entra_tenant": "f866113a-10c2-47c3-9817-2a94afb76e68"
+    },
+    "nubank": {
+      "domain": "nubank.com.br",
+      "entra_tenant": "565d5233-2838-4551-b6a4-512680d66724"
+    },
+    "paypal": {
+      "domain": "paypal.com",
+      "entra_tenant": "fb007914-6020-4374-977e-21bac5f3f4c8"
+    },
+    "pichincha": {
+      "domain": "pichincha.com",
+      "entra_tenant": "f5b0d682-1497-4db0-9019-660035554e72"
+    },
+    "postnord": {
+      "domain": "postnord.se",
+      "entra_tenant": "91f09566-a850-4fae-bbe1-29ad3804a2f6"
+    },
+    "revolut": {
+      "domain": "revolut.com",
+      "entra_tenant": "7b96fe86-b764-407c-aebe-5435d91c5248"
+    },
+    "roblox": {
+      "domain": "roblox.com",
+      "entra_tenant": "5c50f910-1868-4fbc-838e-fa739f62fe46"
+    },
+    "royalmail": {
+      "domain": "royalmail.com",
+      "entra_tenant": "7a082108-90dd-41ac-be41-9b8feabee2da"
+    },
+    "schwab": {
+      "domain": "schwab.com",
+      "entra_tenant": "61de5c81-d3b4-4669-a7ae-bd2e3884f7fa"
+    },
+    "shopify": {
+      "domain": "shopify.com",
+      "entra_tenant": "6c0debfb-ffb9-4e62-a2a9-31e5a5b65111"
+    },
+    "spotify": {
+      "domain": "spotify.com",
+      "entra_tenant": "fcb4d733-a721-4366-b2c2-8bc5dbc81df7"
+    },
+    "stripe": {
+      "domain": "stripe.com",
+      "entra_tenant": "a5c4285d-4af1-4041-b59f-096afcdb55d1"
+    },
+    "tele2": {
+      "domain": "tele2.com",
+      "entra_tenant": "76431109-ff89-42c2-8781-a07ca07a2d57"
+    },
+    "walmart": {
+      "domain": "walmart.com",
+      "entra_tenant": "3cbcc3d3-094d-4006-9849-0d11d61f484d"
+    },
+    "wayfair": {
+      "domain": "wayfair.com",
+      "entra_tenant": "6b5d7b4d-892b-4297-a74b-3cd84e04ed4e"
+    },
+    "wellsfargo": {
+      "domain": "wellsfargo.com",
+      "entra_tenant": "e122af3c-4c68-4e49-9c52-4ae1e25e91ae"
+    },
+    "wetransfer": {
+      "domain": "wetransfer.com",
+      "entra_tenant": "a6bbbb51-63c2-4f05-8af2-58d2a1c2c3bc"
+    }
+  }
+}
