@@ -269,7 +269,8 @@ export function marketFor(language: string, region: string | null | undefined): 
  *     Stripe cannot take Russian cards, phone-balance billing is not merged;
  *     the old upgrade screen led there to a page in dollars no one could pay,
  *     report #15. A Google Play / App Store build is not hidden by region: the
- *     store sells only where the app is published (not in Russia);
+ *     store decides what it can sell (Russia stays in the stores' country
+ *     lists, but a payment there mostly does not go through);
  *   • a build that cannot take a payment at all (paywallSaleOff) — RuStore,
  *     or a store build whose billing SDK is not there. Its paywall only says
  *     "coming soon"; an Upgrade row there was a sign-in detour to that note.
@@ -366,9 +367,10 @@ export type PurchaseAction = "sign_in" | "web_checkout" | "store" | "soon";
 
 export function purchaseAction(input: { signedIn: boolean; market: Market; distribution: Distribution }): PurchaseAction {
   const { signedIn, market, distribution } = input;
-  // Google Play and the App Store are published without Russia (founder,
-  // 2026-11-04), so a store build was installed from a storefront outside it:
-  // the store, not the phone's region, decides whether the plan is sold there.
+  // In a Google Play or App Store build the store, not the phone's region,
+  // decides whether the plan is sold (founder, 2026-11-04). Russia stays in
+  // the stores' country lists (2026-11-11): a payment from a Russian
+  // storefront mostly fails in the store's own sheet, no sales are expected.
   // A phone set to region RU abroad can pay; a storefront without the product
   // gets the paywall's "not available in your country" (prices_empty).
   if (market === "ru" && !revenueCatStore(distribution)) return "soon";

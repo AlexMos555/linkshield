@@ -24,8 +24,8 @@
  *     is still "dangerous", and nothing else is claimed;
  *   • a store build never links out to the web checkout; Russia shows
  *     "coming soon" in the site APK and RuStore, while a Google Play or App
- *     Store build leaves the country to its store (both are published
- *     without Russia); signed out → sign in first;
+ *     Store build leaves the country to its store; signed out → sign in
+ *     first;
  *   • a build that cannot take a payment (RuStore: no billing built; a
  *     store build without its billing SDK) says "coming soon" up front —
  *     the button off, no sign-in first for a purchase that cannot happen;
@@ -371,12 +371,12 @@ check("Russia: \"coming soon\" in the builds that sell by themselves (site APK, 
     }
   }
 });
-check("store builds: the store decides the country, not the phone's region (launch without Russia, 2026-11-04)", () => {
-  // Google Play and the App Store are published without Russia, so whoever
-  // installed a store build has a storefront outside it. A phone that still
-  // says region RU (a Russian speaker in Kazakhstan, Georgia, the UAE…) can
-  // pay there; where the store has no product, the paywall already says
-  // "not available in your country" (prices_empty).
+check("store builds: the store decides the country, not the phone's region (founder, 2026-11-04)", () => {
+  // A phone that says region RU (a Russian speaker in Kazakhstan, Georgia,
+  // the UAE…) can pay through its store; where the store has no product, the
+  // paywall already says "not available in your country" (prices_empty).
+  // Russia stays in the stores' country lists (2026-11-11): a payment from a
+  // Russian storefront mostly fails in the store's own sheet.
   for (const distribution of ["play", "appstore"]) {
     assert.equal(purchaseAction({ signedIn: true, market: "ru", distribution }), "store", distribution);
     assert.equal(purchaseAction({ signedIn: false, market: "ru", distribution }), "sign_in", distribution);
@@ -464,7 +464,7 @@ check("upgrade entry points: hidden where the paywall says \"coming soon\", by t
   assert.equal(paidPlansVisible({ language: "ru", region: null, ...site }), false, "no region: the language decides");
   assert.equal(paidPlansVisible({ language: "en", region: "RU", ...site }), false, "an English phone in Russia cannot pay either");
   assert.equal(paidPlansVisible({ language: "en", region: "US", ...site }), true);
-  // Store builds: the store's own storefront decides (no Russian storefront carries the app).
+  // Store builds: the store's own storefront decides (not the phone's region).
   for (const distribution of ["play", "appstore"]) {
     assert.equal(paidPlansVisible({ language: "ru", region: "RU", distribution, storeBillingOn: true }), true, distribution);
     assert.equal(paidPlansVisible({ language: "ru", region: null, distribution, storeBillingOn: true }), true, distribution);
