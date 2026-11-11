@@ -23,7 +23,7 @@ import pytest
 
 from api.services import domain_validator as dv
 from api.services import site_probes
-from api.services.pinned_http import BlockedDestination, PinnedTransport
+from api.services.pinned_http import BlockedDestination, PinnedTransport, pinned_client
 
 
 def _answers(*addresses):
@@ -215,6 +215,19 @@ def test_rebinding_answer_is_never_contacted():
     with pytest.raises(BlockedDestination):
         asyncio.run(go())
     assert inner.requests == []
+
+
+def test_pinned_client_keeps_a_transport_it_is_given():
+    inner = _Recorder()
+    transport = PinnedTransport(resolver=_resolver({"shop.example.com": ["93.184.216.34"]}), inner=inner)
+
+    async def go():
+        async with pinned_client(transport=transport) as c:
+            assert c.follow_redirects is False
+            await c.get("https://shop.example.com/")
+
+    asyncio.run(go())
+    assert [r.headers["host"] for r in inner.requests] == ["shop.example.com"]
 
 
 def test_transport_uses_the_real_guard_by_default(monkeypatch):

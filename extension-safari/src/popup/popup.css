@@ -150,6 +150,20 @@ html.cw-ios body { width: auto; max-width: 100%; }
 }
 .confidence-chip[hidden] { display: none; }
 
+/* "Advisory provided by Google" + learn-more links, under a verdict built on
+   Google's lists (popup.js showGoogleAdvisory; Web Risk's rules for warnings). */
+.google-advisory {
+  margin: -4px 0 12px;
+  padding: 0 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--text-muted);
+}
+.google-advisory[hidden] { display: none; }
+.google-advisory a { color: var(--blue-text); text-decoration: underline; }
+.google-advisory-more { display: block; font-size: 11px; }
+
 /* Spinner (scanning state) */
 .spinner {
   width: 36px;

@@ -6,10 +6,16 @@
  * shares the URL, social platforms pull this image automatically.
  *
  * Sized 1200x630 (Twitter / Facebook / LinkedIn standard).
+ *
+ * A verdict resting on Google's lists is not drawn: the image is cached and
+ * shared, and Web Risk allows such a warning only while Google's answer is
+ * valid, with Google's credit — neither of which a picture can keep. The
+ * image then shows no grade, and the page checks live (lib/google-advisory.ts).
  */
 import { ImageResponse } from "next/og";
 
 import { hostFromSegment } from "@/lib/check-host";
+import { hasGoogleAdvisory } from "@/lib/google-advisory";
 
 export const runtime = "edge";
 export const alt = "Cleanway safety check";
@@ -19,6 +25,8 @@ export const contentType = "image/png";
 type ScanResult = {
   level?: "safe" | "caution" | "dangerous";
   score?: number;
+  reason_codes?: string[];
+  advisory_ttl?: number | null;
 };
 
 const COLORS = {
@@ -26,6 +34,9 @@ const COLORS = {
   caution: { fg: "#f59e0b", glow: "rgba(245,158,11,0.25)", label: "CAUTION" },
   dangerous: { fg: "#ef4444", glow: "rgba(239,68,68,0.25)", label: "DANGEROUS" },
 } as const;
+
+// No grade: the verdict rests on Google and is shown only live, on the page.
+const UNGRADED = { fg: "#94a3b8", glow: "rgba(148,163,184,0.2)", label: "CHECK LIVE" } as const;
 
 async function fetchScanResult(domain: string): Promise<ScanResult> {
   try {
@@ -52,9 +63,10 @@ export default async function OpenGraphImage({
   // Only a real site name goes to the API — never a pasted link's path/query.
   const decoded = hostFromSegment(params.domain) ?? "";
   const result = decoded ? await fetchScanResult(decoded) : {};
+  const google = hasGoogleAdvisory(result.reason_codes) || typeof result.advisory_ttl === "number";
   const level = (result.level ?? "caution") as keyof typeof COLORS;
-  const score = result.score ?? "?";
-  const palette = COLORS[level] ?? COLORS.caution;
+  const score = google ? "?" : (result.score ?? "?");
+  const palette = google ? UNGRADED : (COLORS[level] ?? COLORS.caution);
 
   return new ImageResponse(
     (

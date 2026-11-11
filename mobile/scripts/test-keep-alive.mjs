@@ -12,12 +12,14 @@
  *    never shown as missing);
  *  - the card's dynamic keys (`running_${shield}`, `state_${state}`,
  *    `oem_*_${family}`) exist in all 10 generated locales — the i18n contract
- *    check cannot see template-literal keys.
+ *    check cannot see template-literal keys — as Android gets them: the base
+ *    file plus i18n/android/ (src/i18n/resources.android.ts), where the
+ *    Always-on row's two strings live, out of the iPhone's bundle.
  * Same approach as test-history-model.mjs: compile with the tree's
  * TypeScript, run the table for real, exit non-zero on failure.
  */
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -73,9 +75,12 @@ try {
   check("phone makers match KeepAlivePolicy.OemFamily.wire", [...OEM_FAMILIES],
     ["samsung", "xiaomi", "huawei", "oppo", "vivo"]);
 
-  for (const d of ["start", "running", "not_wanted", "taken_away", "private_dns", "other_vpn", "budget", "no_consent"]) {
+  for (const d of ["start", "running", "not_wanted", "taken_away", "private_dns", "other_tunnel", "budget", "no_consent"]) {
     check(`rearm decision ${d}`, parseRearmDecision(d), d);
   }
+  // Kotlin says OTHER_VPN; src/native.android.ts passes it on as other_tunnel,
+  // so the raw name is unknown here.
+  check("Kotlin's raw other_vpn is not a decision the shared code knows", parseRearmDecision("other_vpn"), null);
   check("unknown rearm decision", parseRearmDecision("START"), null);
   check("no rearm decision", parseRearmDecision(undefined), null);
 
@@ -125,13 +130,15 @@ try {
     ...["ok", "todo", "optional", "manual", "unknown"].map((s) => `mobile.keep_alive.state_${s}`),
     ...OEM_FAMILIES.flatMap((f) => ["row", "title", "steps"].map((k) => `mobile.keep_alive.oem_${k}_${f}`)),
   ];
+  const keys = [...dynamic, "mobile.keep_alive.always_on_ok", "mobile.keep_alive.always_on_optional"];
   const i18nDir = resolve(root, "i18n");
+  const readFlat = (path) => (existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : {});
   const locales = readdirSync(i18nDir).filter((f) => f.endsWith(".json"));
   check("10 generated locales", locales.length, 10);
   for (const file of locales) {
-    const flat = JSON.parse(readFileSync(join(i18nDir, file), "utf8"));
-    const missing = dynamic.filter((k) => typeof flat[k] !== "string" || flat[k].length === 0);
-    check(`${file}: every dynamic keep-alive key`, missing, []);
+    const flat = { ...readFlat(join(i18nDir, file)), ...readFlat(join(i18nDir, "android", file)) };
+    const missing = keys.filter((k) => typeof flat[k] !== "string" || flat[k].length === 0);
+    check(`${file}: every keep-alive key Android shows`, missing, []);
   }
 } finally {
   rmSync(out, { recursive: true, force: true });

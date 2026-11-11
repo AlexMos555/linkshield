@@ -145,11 +145,16 @@ test("/ru/privacy-policy is Russian and describes only the released app", async 
   await expect(body).toContainText("9.9.9.9");
   await expect(body).toContainText(RELEASED_APP);
   await expect(body).not.toContainText(NEXT_PATCH);
-  // Every service that receives a checked site's name is named, and so are the
-  // 2026-10 infrastructure processors (email, captcha) and the EU server location.
-  for (const service of ["rdap.org", "MalwareBazaar", "1.1.1.1 for Families", "Resend", "Cloudflare Turnstile", "Амстердам"]) {
+  // Every service that receives a checked site's name is named (since 2026-10-26
+  // the zone's registry over RDAP, no longer rdap.org), and so are the 2026-10
+  // infrastructure processors (email, captcha) and the EU server location.
+  await expect(body).not.toContainText("rdap.org");
+  for (const service of ["RDAP", "Verisign", "MalwareBazaar", "1.1.1.1 for Families", "Resend", "Cloudflare Turnstile", "Амстердам"]) {
     await expect(body).toContainText(service);
   }
+  // Production asks Google Web Risk since 2026-11-03, no longer Safe Browsing.
+  await expect(body).toContainText("Google Web Risk");
+  await expect(body).not.toContainText("Safe Browsing");
   await expect(body).not.toContainText("в открытом виде он не хранится");
   // The contact block is attached by section id, inside the last section.
   const contact = page.locator("section#contact");

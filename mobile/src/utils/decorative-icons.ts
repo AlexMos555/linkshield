@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 /**
  * Side-effecting import (app/_layout.tsx): every Ionicons glyph is hidden

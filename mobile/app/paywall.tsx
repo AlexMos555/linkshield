@@ -11,7 +11,9 @@
  * Paying (src/utils/freemium.ts purchaseAction):
  *   • not signed in, on Android → sign in first (a plan belongs to an
  *     account), then the purchase continues by itself on return;
- *   • the APK from our site → the site's checkout, in the browser;
+ *   • the APK from our site → the site's checkout, in the browser; its price
+ *     comes from the server (GET /api/v1/pricing/for-country) — none is typed
+ *     into the app, and none is shown until the server answers;
  *   • the Google Play build → Google Play billing (src/services/store-billing.ts):
  *     monthly / yearly with the store's own prices, then our server confirms;
  *     never a link to the web checkout, never a price typed into the app;
@@ -32,8 +34,12 @@
  *     sign-in first (paywallSaleOff); Settings and Account have no entry to
  *     this sheet there (paidPlansVisible) — the same for a Play build made
  *     without its RevenueCat key;
- *   • Russia → phone-balance billing is not merged yet: "coming soon" (the
- *     Play build does not mention other ways to pay).
+ *   • Russia (the phone's region) → in the site APK and RuStore phone-balance
+ *     billing is not merged yet: "coming soon". In the Google Play and App
+ *     Store builds the store decides, not the phone's region: a storefront
+ *     without the plan shows "not available in your country". Russia stays
+ *     in both stores' country lists (founder, 2026-11-11); a payment there
+ *     mostly fails in the store's own sheet, and no sales are expected.
  * Coming back to the sheet re-reads the plan; once it is paid, it says so,
  * where it was paid, and (store plans) offers "Manage subscription".
  */
@@ -45,12 +51,12 @@ import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from "expo-
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Localization from "expo-localization";
 import Constants from "expo-constants";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 
 import { colors, type as typo, space, radius } from "../src/utils/theme";
 import { getSessionState } from "../src/services/auth";
-import { getEntitlement, type EntitlementResponse } from "../src/services/api";
+import { getEntitlement, getPricingForCountry, type EntitlementResponse } from "../src/services/api";
 import { FREEMIUM, PAID_PLANS_OFFERED, applyEntitlement, devicePlanPaid, isPaid } from "../src/services/freemium";
 import {
   BILLING_STORE, STORE_PURCHASE_WITHOUT_ACCOUNT, loadStorePlans, restoreStorePurchases, startStorePurchase,
@@ -58,7 +64,7 @@ import {
 } from "../src/services/store-billing";
 import {
   PRICES, WEB_CHECKOUT_URL, isPaidEntitlement, marketFor, paywallBenefits, paywallSaleOff, priceDisplay,
-  purchaseAction, revenueCatStore, webCheckoutAllowed, type PaywallBenefit,
+  purchaseAction, revenueCatStore, webCheckoutAllowed, type PaywallBenefit, type WebPricingLike,
 } from "../src/utils/freemium";
 import {
   APP_STORE_SUBSCRIPTIONS_URL, manageSubscriptionUrl, storeCopyKeys, storeErrorNoteKey, warnBeforeWithoutAccount,
@@ -139,12 +145,16 @@ function PaywallScreen() {
   const [selected, setSelected] = useState<PlanPeriod>("month");
   /** The iPhone app signed out: someone signed in on this phone before (storeHadAccount). */
   const [hadAccount, setHadAccount] = useState(false);
+  /** The site APK's price, from the server; null until (unless) it answers. */
+  const [webPricing, setWebPricing] = useState<WebPricingLike | null>(null);
   /** Sent to sign in from the button: buy when back. */
   const continueAfterSignIn = useRef(false);
 
   const storeOn = STORE && storeBillingOn();
-  const market = marketFor(i18n.language, Localization.getLocales()[0]?.regionCode);
-  const price = priceDisplay(market, FREEMIUM.distribution);
+  const region = Localization.getLocales()[0]?.regionCode ?? null;
+  const market = marketFor(i18n.language, region);
+  const price = priceDisplay(market, FREEMIUM.distribution, webPricing);
+  const wantsWebPrice = market === "world" && webCheckoutAllowed(FREEMIUM.distribution);
   const devices = PRICES[market].devices;
   const signedIn = acct?.signedIn === true;
   const paid = acct?.paid === true;
@@ -203,6 +213,19 @@ function PaywallScreen() {
   useEffect(() => {
     if (showStorePlans) void loadPlans();
   }, [showStorePlans, loadPlans]);
+
+  // The site APK: the price the web checkout charges in this country.
+  useEffect(() => {
+    if (!wantsWebPrice) return;
+    let alive = true;
+    void getPricingForCountry(region).then(
+      (r) => { if (alive && r.data) setWebPricing(r.data); },
+      () => undefined,
+    );
+    return () => {
+      alive = false;
+    };
+  }, [wantsWebPrice, region]);
 
   function showStoreError(kind: Parameters<typeof storeErrorNoteKey>[0]): void {
     setErrorKey(storeErrorNoteKey(kind, BILLING_STORE));

@@ -174,7 +174,7 @@ def has_paid_subscription(row: Optional[dict]) -> bool:
 
 
 def trial_available(row: Optional[dict]) -> bool:
-    """The 14-day trial is offered once per user. `trial_used_at` is the
+    """The trial (pricing.STRIPE_TRIAL_DAYS) is offered once per user. `trial_used_at` is the
     record; a row that ever carried a provider subscription predates the
     column (migration 021 backfills it, this is belt and braces)."""
     if not row:

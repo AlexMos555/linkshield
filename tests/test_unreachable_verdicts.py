@@ -228,7 +228,13 @@ def test_government_registry_vouches_for_its_names(domain, offline_analyzer):
     assert "not a widely known site" not in _unreachable_detail(result)
 
 
-@pytest.mark.parametrize("domain", ["gosuslugi.ru-gov.site", "x.go.com", "evil-gov.ru"])
+@pytest.mark.parametrize("domain", [
+    "gosuslugi.ru-gov.site", "x.go.com", "evil-gov.ru",
+    # Open zones with a government's label (data/cctld_second_levels.json
+    # 'registries'): FreeDNS's govt.hu and mil.nf, ChangeIP's gob.li,
+    # RCS&RDS's go.ro — anyone's names, not a government's.
+    "paypal-login.go.ro", "office365-login.govt.hu", "minsa.gob.li", "usmc.mil.nf",
+])
 def test_government_lookalikes_are_not_vouched_for(domain, offline_analyzer):
     offline_analyzer(site="unreachable")
     result = asyncio.run(analyze_domain(domain, budget_s=5.0))

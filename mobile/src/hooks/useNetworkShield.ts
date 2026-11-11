@@ -6,16 +6,16 @@ import type { ShieldState } from "../components/shield/ShieldCard";
 /**
  * Network shield state for the home screen.
  *
- * The native VPN module only exists on Android (and only in a dev/prod build,
- * not in Expo Go), so it is required lazily — an import failure must degrade to
- * "not available on this platform", never crash the home screen.
+ * The native shield module only exists on Android (and only in a dev/prod
+ * build, not in Expo Go), so it is required lazily — an import failure must
+ * degrade to "not available on this platform", never crash the home screen.
  *
  * Honesty contract (docs/MOBILE_AUTO_PROTECTION.md §2.2): the shield reports ON
  * only when the tunnel is running AND the canary probe confirms filtering is
  * live. `isRunning` alone is not verification.
  */
 
-interface VpnSubscription {
+interface ShieldSubscription {
   remove(): void;
 }
 
@@ -48,29 +48,8 @@ const NO_LIST: BlocklistStatusLike = {
  */
 export type ShieldStopReason = "revoked" | "private_dns";
 
-interface VpnModule {
-  startVpn(): Promise<boolean>;
-  stopVpn(): Promise<void>;
-  isVpnRunning(): boolean;
-  wasUserEnabled?(): boolean;
-  rearmShield?(): string | null;
-  lastStopReason?(): ShieldStopReason | null;
-  privateDnsStrictHost?(): string | null;
-  openPrivateDnsSettings?(): boolean;
-  requestBlockNotificationPermission?(): Promise<boolean>;
-  blocklistStatus?(): BlocklistStatusLike;
-  refreshBlocklist?(): void;
-  verifyFiltering(): Promise<boolean>;
-  verifyListFiltering?(): Promise<boolean>;
-  addVpnStoppedListener?(cb: () => void): VpnSubscription;
-  addPauseChangedListener?(cb: (p: { until: number }) => void): VpnSubscription;
-  addBlocklistChangedListener?(cb: () => void): VpnSubscription;
-  addNetworkChangedListener?(cb: () => void): VpnSubscription;
-  openVpnSettings?(): boolean;
-  pauseProtection?(untilMs: number): void;
-  resumeProtection?(): void;
-  pausedUntil?(): number;
-}
+/** The module itself, so a name it does not export cannot type-check here (test-no-vpn-names.mjs). */
+type ShieldModule = typeof import("../../modules/cleanway-vpn");
 
 /** A timed pause, in minutes — the default, and the only length the app offers. */
 export const PAUSE_MINUTES = 15;
@@ -103,11 +82,17 @@ async function hasInternet(): Promise<boolean> {
   }
 }
 
-function loadVpn(): VpnModule | null {
+/**
+ * Outside any try block on purpose: Metro keeps the path of a require()
+ * written in one, even in a release bundle (test-no-vpn-names.mjs).
+ */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const requireShieldModule = () => require("../../modules/cleanway-vpn") as ShieldModule;
+
+function loadShield(): ShieldModule | null {
   if (Platform.OS !== "android") return null;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("../../modules/cleanway-vpn") as VpnModule;
+    return requireShieldModule();
   } catch {
     return null;
   }
@@ -183,11 +168,11 @@ export interface NetworkShield {
    * canary-green with no tap). Always-on closes the remaining gap: the system
    * starts it with the phone, before BOOT_COMPLETED reaches any app.
    */
-  openVpnSettings: () => void;
+  openShieldSystemSettings: () => void;
 }
 
 export function useNetworkShield(): NetworkShield {
-  const [vpn] = useState<VpnModule | null>(loadVpn);
+  const [shield] = useState<ShieldModule | null>(loadShield);
   const [running, setRunning] = useState(false);
   const [verified, setVerified] = useState(false);
   const [probing, setProbing] = useState(false);
@@ -199,57 +184,57 @@ export function useNetworkShield(): NetworkShield {
   const [pausedUntil, setPausedUntil] = useState(0);
 
   const readBlocklist = useCallback(() => {
-    if (!vpn) return;
+    if (!shield) return;
     try {
-      const next = vpn.blocklistStatus?.() ?? NO_LIST;
+      const next = shield.blocklistStatus?.() ?? NO_LIST;
       setBlocklist((prev) => ({ ...next, proven: next.version === prev.version ? prev.proven : undefined }));
     } catch {
       setBlocklist(NO_LIST);
     }
-  }, [vpn]);
+  }, [shield]);
 
   /**
    * Prove the list is what the DNS path blocks from (list-canary counter),
    * rather than trusting the service's own description of itself.
    */
   const proveList = useCallback(async () => {
-    if (!vpn?.verifyListFiltering) return;
+    if (!shield?.verifyListFiltering) return;
     try {
-      const ok = await vpn.verifyListFiltering();
+      const ok = await shield.verifyListFiltering();
       setBlocklist((prev) => ({ ...prev, proven: ok }));
     } catch {
       setBlocklist((prev) => ({ ...prev, proven: false }));
     }
-  }, [vpn]);
+  }, [shield]);
 
   const sync = useCallback(async () => {
-    if (!vpn) return;
+    if (!shield) return;
     // Read the setting first: it decides whether anything below can be
     // trusted. With strict Private DNS on, a running tunnel means a phone
     // with no DNS, and a failed probe means nothing about our filtering.
-    setPrivateDnsHost(vpn.privateDnsStrictHost?.() ?? null);
-    let isUp = vpn.isVpnRunning();
+    setPrivateDnsHost(shield.privateDnsStrictHost?.() ?? null);
+    let isUp = shield.isShieldRunning();
     // Left ON and found off — an OEM battery manager killed it while the app
     // was closed. Bring it back now rather than show "protection stopped"
     // and wait for a tap: the person already said yes. The native side
     // applies the watchdog's rules (never after Android took the tunnel
     // away, never over another VPN or strict Private DNS, at most 3 times an
     // hour), so a refusal there simply leaves the "stopped" screen below.
-    if (!isUp && vpn.wasUserEnabled?.() === true && vpn.rearmShield?.() === "start") {
+    if (!isUp && shield.wasUserEnabled?.() === true && shield.rearmShield?.() === "start") {
       setProbing(true);
       await new Promise((r) => setTimeout(r, REARM_SETTLE_MS));
-      isUp = vpn.isVpnRunning();
+      isUp = shield.isShieldRunning();
     }
     setRunning(isUp);
-    setPausedUntil(isUp ? readPausedUntil(vpn) : 0);
+    setPausedUntil(isUp ? readPausedUntil(shield) : 0);
     readBlocklist();
     if (!isUp) {
       setVerified(false);
       setProbing(false);
       // Not running — but did the user WANT it running? That is the difference
       // between "set up" and "it stopped; turn it back on".
-      setInterrupted(vpn.wasUserEnabled?.() === true);
-      setStopReason(readStopReason(vpn));
+      setInterrupted(shield.wasUserEnabled?.() === true);
+      setStopReason(readStopReason(shield));
       return;
     }
     setInterrupted(false);
@@ -259,7 +244,7 @@ export function useNetworkShield(): NetworkShield {
     // an alarm at a user whose protection was fine.
     setProbing(true);
     try {
-      const ok = await vpn.verifyFiltering();
+      const ok = await shield.verifyFiltering();
       setVerified(ok);
       // A failed probe has two very different meanings. If our own API is
       // unreachable too, the device is offline and the honest message is
@@ -271,7 +256,7 @@ export function useNetworkShield(): NetworkShield {
     } finally {
       setProbing(false);
     }
-  }, [vpn, readBlocklist, proveList]);
+  }, [shield, readBlocklist, proveList]);
 
   useEffect(() => {
     // The connection came or went while the screen is open. 1.0.2 re-checked
@@ -289,10 +274,10 @@ export function useNetworkShield(): NetworkShield {
         void sync();
       }, NETWORK_SETTLE_MS);
     };
-    let netSub: VpnSubscription | undefined;
+    let netSub: ShieldSubscription | undefined;
     const followNetwork = (on: boolean) => {
       if (on) {
-        if (!netSub) netSub = vpn?.addNetworkChangedListener?.(onNetworkChanged);
+        if (!netSub) netSub = shield?.addNetworkChangedListener?.(onNetworkChanged);
         return;
       }
       netSub?.remove();
@@ -312,7 +297,7 @@ export function useNetworkShield(): NetworkShield {
     // tunnel while the user is looking at this screen, and without this the
     // shield would keep showing green over a dead tunnel until they navigate
     // away and back.
-    const stopSub = vpn?.addVpnStoppedListener?.(() => {
+    const stopSub = shield?.addShieldStoppedListener?.(() => {
       setRunning(false);
       setVerified(false);
       // The service also stops itself when Private DNS flips to strict; a
@@ -322,7 +307,7 @@ export function useNetworkShield(): NetworkShield {
     // The pause can change without this screen doing anything: the
     // notification's "turn back on", or the pause running out. Follow the
     // service; coming back from a pause is proven again, not assumed.
-    const pauseSub = vpn?.addPauseChangedListener?.(({ until }) => {
+    const pauseSub = shield?.addPauseChangedListener?.(({ until }) => {
       const pausedNow = until > Date.now();
       setPausedUntil(pausedNow ? until : 0);
       if (!pausedNow) void sync();
@@ -330,7 +315,7 @@ export function useNetworkShield(): NetworkShield {
     // A list lands seconds after the network comes back (the service's retry
     // on reconnect), usually with no re-check left to read it: without this
     // the screen kept «Списка ещё нет» over a phone that had one.
-    const listSub = vpn?.addBlocklistChangedListener?.(() => {
+    const listSub = shield?.addBlocklistChangedListener?.(() => {
       readBlocklist();
       void proveList();
     });
@@ -341,30 +326,30 @@ export function useNetworkShield(): NetworkShield {
       followNetwork(false);
       listSub?.remove();
     };
-  }, [sync, vpn, readBlocklist, proveList]);
+  }, [sync, shield, readBlocklist, proveList]);
 
   const turnOn = useCallback(async () => {
-    if (!vpn) return;
+    if (!shield) return;
     // Never even ask for consent while strict Private DNS is on: the service
     // would refuse anyway, and the user would have granted a permission for
     // nothing. Surface the setting instead.
-    const strictHost = vpn.privateDnsStrictHost?.() ?? null;
+    const strictHost = shield.privateDnsStrictHost?.() ?? null;
     setPrivateDnsHost(strictHost);
     if (strictHost) return;
-    const ok = await vpn.startVpn();
+    const ok = await shield.startShield();
     setRunning(ok);
     if (!ok) {
       setVerified(false);
       return;
     }
-    // startVpn resolves when consent lands, not when the tunnel is up —
+    // startShield resolves when consent lands, not when the tunnel is up —
     // establish() and the proxy-loop start happen asynchronously in the
     // service. Give the tunnel a beat before probing so a healthy turn-on
     // does not begin with a doomed probe, and show "checking…" meanwhile.
     setProbing(true);
     try {
       await new Promise((r) => setTimeout(r, 400));
-      const proven = await vpn.verifyFiltering();
+      const proven = await shield.verifyFiltering();
       setVerified(proven);
       // Proof outranks a stale read. The consent dialog closing fires an
       // AppState "active" sync that can read isRunning before the service
@@ -383,35 +368,35 @@ export function useNetworkShield(): NetworkShield {
     // site (Android 13+ drops notifications otherwise). After the probe so
     // the green state is not delayed by a dialog; result deliberately
     // ignored — a refusal is respected and the block log still records.
-    void vpn.requestBlockNotificationPermission?.();
-  }, [vpn, readBlocklist, proveList]);
+    void shield.requestBlockNotificationPermission?.();
+  }, [shield, readBlocklist, proveList]);
 
   const turnOff = useCallback(async () => {
-    if (!vpn) return;
-    await vpn.stopVpn();
+    if (!shield) return;
+    await shield.stopShield();
     setRunning(false);
     setVerified(false);
     setPausedUntil(0);
     // A deliberate pause is not an interruption.
     setInterrupted(false);
     setStopReason(null);
-  }, [vpn]);
+  }, [shield]);
 
   const pause = useCallback((minutes: number) => {
-    if (!vpn?.pauseProtection) return;
+    if (!shield?.pauseProtection) return;
     const until = Date.now() + minutes * 60_000;
-    vpn.pauseProtection(until);
+    shield.pauseProtection(until);
     setPausedUntil(until);
-  }, [vpn]);
+  }, [shield]);
 
   const resume = useCallback(() => {
     // The module clears the stored pause before it returns, so the sync
     // below reads the truth even though the service hears of the resume
     // later; the service's pause event then confirms it.
-    vpn?.resumeProtection?.();
+    shield?.resumeProtection?.();
     setPausedUntil(0);
     void sync();
-  }, [vpn, sync]);
+  }, [shield, sync]);
 
   // The service ends the pause on its own; re-read then, so the card and the
   // hero come back to "on" without the person touching anything.
@@ -445,40 +430,40 @@ export function useNetworkShield(): NetworkShield {
     // longer offer "turn it off" as the one obvious action.
     : "unverified";
 
-  const openVpnSettings = useCallback(() => {
-    vpn?.openVpnSettings?.();
-  }, [vpn]);
+  const openShieldSystemSettings = useCallback(() => {
+    shield?.openShieldSystemSettings?.();
+  }, [shield]);
 
   const openPrivateDnsSettings = useCallback(() => {
-    vpn?.openPrivateDnsSettings?.();
-  }, [vpn]);
+    shield?.openPrivateDnsSettings?.();
+  }, [shield]);
 
   const refreshBlocklist = useCallback(() => {
-    vpn?.refreshBlocklist?.();
+    shield?.refreshBlocklist?.();
     setTimeout(() => { readBlocklist(); void proveList(); }, 4000);
-  }, [vpn, readBlocklist, proveList]);
+  }, [shield, readBlocklist, proveList]);
 
   return {
-    available: vpn !== null,
+    available: shield !== null,
     state, verified: verified && !paused, probing, offline, interrupted, stopReason, privateDnsHost, blocklist,
     pausedUntil: paused ? pausedUntil : 0, pause, resume,
-    turnOn, turnOff, openVpnSettings, openPrivateDnsSettings, refreshBlocklist,
+    turnOn, turnOff, openShieldSystemSettings, openPrivateDnsSettings, refreshBlocklist,
   };
 }
 
 /** Why the shield stopped by itself, or null — also null on builds that do not say. */
-function readStopReason(vpn: VpnModule): ShieldStopReason | null {
+function readStopReason(shield: ShieldModule): ShieldStopReason | null {
   try {
-    return vpn.lastStopReason?.() ?? null;
+    return shield.lastStopReason?.() ?? null;
   } catch {
     return null;
   }
 }
 
 /** The pause end the service keeps, or 0 — also 0 on builds without timed pauses. */
-function readPausedUntil(vpn: VpnModule): number {
+function readPausedUntil(shield: ShieldModule): number {
   try {
-    const until = vpn.pausedUntil?.() ?? 0;
+    const until = shield.pausedUntil?.() ?? 0;
     return until > Date.now() ? until : 0;
   } catch {
     return 0;

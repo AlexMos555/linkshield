@@ -163,6 +163,9 @@ def top_hits() -> dict:
         if not hit:
             continue
         legit, method = hit
+        # The last two labels, as the rule itself reads a name outside the
+        # Russian zones (_check_typosquatting_v2): under a compound ccTLD that
+        # is the zone's label ('co'), where the rule makes no hit either.
         label = _extract_base_domain(domain).split(".")[0]
         if label == legit.split(".")[0]:
             own += 1  # the brand's own name under another TLD (amazon.de)

@@ -121,280 +121,291 @@ LOCALES = ("en", "es", "hi", "pt", "ru", "ar", "fr", "de", "it", "id")
 # Per-locale phrase fragments. Each (locale, category) entry
 # contains:
 #   - bait: nouns / brand names the scam typically targets
-#   - action: the verb of the harm (your money, your account, etc.)
+#   - action: the harm a page like this COULD do (your money, your
+#     account, etc.) — always a possibility ("could", «может»), never a
+#     fact: the category is a guess from signals, and a block page whose
+#     reasons include Google's carries "Advisory provided by Google", whose
+#     rules bar calling a page certainly unsafe (docs.cloud.google.com/
+#     web-risk/docs/user-warnings). tests/test_explainer_suspicion.py.
 #   - safe_action: what the user should do instead
 _CULTURAL: dict[str, dict[str, dict[str, str]]] = {
     "en": {
         "credential_phishing": {
             "bait": "your bank or email password",
-            "action": "the criminals running this page will use it within minutes to drain accounts",
+            "action": "whoever runs a page like this could use it within minutes to drain accounts",
             "safe_action": "type the company's address into a new tab instead of clicking links",
         },
         "package_delivery_scam": {
             "bait": "a fake DHL/UPS/FedEx tracking notice",
-            "action": "asks for a small \"customs fee\" by card — the real charge then runs to thousands",
+            "action": "may ask for a small \"customs fee\" by card — the real charge could then run to thousands",
             "safe_action": "log into your carrier account directly to see real shipments",
         },
         "bank_impostor": {
             "bait": "a clone of your bank's login page",
-            "action": "harvests credentials + 2FA codes in real time and empties accounts",
+            "action": "could capture passwords and 2FA codes in real time and empty accounts",
             "safe_action": "open the bank app on your phone, never click bank links from email",
         },
         "crypto_drainer": {
             "bait": "a fake MetaMask / wallet-approval dialog",
-            "action": "drains every token from your wallet in a single approve() call",
+            "action": "could drain every token from your wallet in a single approve() call",
             "safe_action": "disconnect this site from your wallet immediately; never approve unlimited spend",
         },
         "generic_suspicious": {
             "bait": "personal or payment details",
-            "action": "passes them to criminals",
+            "action": "could pass them to criminals",
             "safe_action": "leave the page and reach the real company through their official app or known URL",
         },
     },
     "ru": {
         "credential_phishing": {
             "bait": "пароли от Госуслуг, СберБанка или электронной почты",
-            "action": "мошенники используют их в первые минуты — выводят деньги, оформляют кредиты на ваше имя",
+            "action": "мошенники могут воспользоваться ими в первые же минуты — вывести деньги, оформить кредит на ваше имя",
             "safe_action": "наберите адрес банка вручную в новой вкладке, а не идите по ссылке из СМС",
         },
         "package_delivery_scam": {
             "bait": "поддельный трек СДЭК / Почты России / Boxberry",
-            "action": "требует «таможенный сбор» картой — настоящие списания вырастают в десятки тысяч",
+            "action": "может потребовать «таможенный сбор» картой — а настоящие списания могут дойти до десятков тысяч",
             "safe_action": "проверьте трек только через официальное приложение перевозчика",
         },
         "bank_impostor": {
             "bait": "копия страницы входа Тинькофф, Сбера или Альфа",
-            "action": "ворует пароль и код из СМС в режиме реального времени и тут же опустошает счёт",
+            "action": "может украсть пароль и код из СМС в реальном времени и сразу опустошить счёт",
             "safe_action": "откройте приложение банка на телефоне; никогда не входите в банк по ссылке из почты",
         },
         "crypto_drainer": {
             "bait": "фальшивое окно одобрения транзакции в MetaMask",
-            "action": "одним approve() выводит все токены кошелька",
+            "action": "может одним approve() вывести все токены кошелька",
             "safe_action": "отключите этот сайт от кошелька; никогда не разрешайте «безлимитную» трату",
         },
         "generic_suspicious": {
             "bait": "личные или платёжные данные",
-            "action": "передаст их злоумышленникам",
+            "action": "может передать их злоумышленникам",
             "safe_action": "закройте страницу и зайдите в нужный сервис через официальное приложение",
         },
     },
     "es": {
         "credential_phishing": {
             "bait": "contraseñas de tu banco, BBVA o Santander",
-            "action": "los estafadores las usan en minutos para vaciar cuentas o pedir créditos a tu nombre",
+            "action": "los estafadores podrían usarlas en minutos para vaciar cuentas o pedir créditos a tu nombre",
             "safe_action": "abre la web del banco escribiendo la dirección a mano, no por enlaces",
         },
         "package_delivery_scam": {
             "bait": "un aviso falso de Correos / DHL / FedEx",
-            "action": "pide una «comisión de aduana» con tarjeta — luego los cargos suben a cientos",
+            "action": "puede pedir una «comisión de aduana» con tarjeta — luego los cargos podrían subir a cientos",
             "safe_action": "entra a la cuenta de la mensajería directamente para ver envíos reales",
         },
         "bank_impostor": {
             "bait": "una copia de la página de tu banco (BBVA, CaixaBank, Santander)",
-            "action": "captura usuario, contraseña y SMS de 2FA en tiempo real",
+            "action": "podría capturar usuario, contraseña y SMS de 2FA en tiempo real",
             "safe_action": "usa la app oficial del banco; nunca abras enlaces a tu banco desde email",
         },
         "crypto_drainer": {
             "bait": "un cuadro falso de aprobación de MetaMask",
-            "action": "drena cada token de tu billetera con una sola firma approve()",
+            "action": "podría drenar cada token de tu billetera con una sola firma approve()",
             "safe_action": "desconecta este sitio de tu wallet; nunca apruebes gasto ilimitado",
         },
         "generic_suspicious": {
             "bait": "datos personales o de pago",
-            "action": "los entrega a delincuentes",
+            "action": "podría entregarlos a delincuentes",
             "safe_action": "cierra la página y entra al servicio real por la app oficial",
         },
     },
     "pt": {
         "credential_phishing": {
             "bait": "senha do banco (Bradesco, Itaú, Caixa) ou do PIX",
-            "action": "os criminosos usam em minutos para esvaziar contas via PIX",
+            "action": "os criminosos podem usá-la em minutos para esvaziar contas via PIX",
             "safe_action": "digite o endereço do banco direto no navegador; nunca pelo link do SMS",
         },
         "package_delivery_scam": {
             "bait": "aviso falso dos Correios / da Receita Federal",
-            "action": "pede taxa de \"liberação alfândega\" no cartão — o cobrança real chega a centenas",
+            "action": "pode pedir uma taxa de \"liberação alfandegária\" no cartão — a cobrança real pode chegar a centenas",
             "safe_action": "entre no site dos Correios pelo app oficial para ver a remessa real",
         },
         "bank_impostor": {
             "bait": "uma cópia da página de login do seu banco",
-            "action": "captura senha + código de 2FA em tempo real",
+            "action": "pode capturar senha e código de 2FA em tempo real",
             "safe_action": "abra o app do banco no celular; nunca pelo link do email",
         },
         "crypto_drainer": {
             "bait": "uma falsa janela approve() do MetaMask",
-            "action": "drena todos os tokens da carteira com uma única assinatura",
+            "action": "pode drenar todos os tokens da carteira com uma única assinatura",
             "safe_action": "desconecte esta página da carteira; nunca aprove gasto ilimitado",
         },
         "generic_suspicious": {
             "bait": "dados pessoais ou de pagamento",
-            "action": "vai entregá-los a criminosos",
+            "action": "pode entregá-los a criminosos",
             "safe_action": "feche a página e entre pelo aplicativo oficial",
         },
     },
     "hi": {
         "credential_phishing": {
             "bait": "आपका बैंक पासवर्ड या UPI PIN",
-            "action": "ठग कुछ ही मिनटों में UPI से पैसे निकाल लेते हैं",
+            "action": "ठग कुछ ही मिनटों में UPI से पैसे निकाल सकते हैं",
             "safe_action": "बैंक का पता खुद टाइप करके खोलें; SMS के लिंक से कभी न जाएँ",
         },
         "package_delivery_scam": {
             "bait": "नकली India Post / DHL डिलीवरी सूचना",
-            "action": "\"कस्टम ड्यूटी\" के नाम पर कार्ड पर शुल्क लेता है, फिर बड़ी रकम काट लेता है",
+            "action": "\"कस्टम ड्यूटी\" के नाम पर कार्ड से शुल्क माँग सकता है, फिर बड़ी रकम काट सकता है",
             "safe_action": "केवल ऑफिशियल ऐप में जाकर शिपमेंट देखें",
         },
         "bank_impostor": {
             "bait": "SBI / HDFC / ICICI लॉगिन पेज की नकली कॉपी",
-            "action": "पासवर्ड और OTP को रियल-टाइम में चुराकर खाता खाली कर देते हैं",
+            "action": "पासवर्ड और OTP रियल-टाइम में चुराकर खाता खाली कर सकते हैं",
             "safe_action": "अपने फोन में बैंक ऐप खोलें; ईमेल लिंक से कभी लॉगिन न करें",
         },
         "crypto_drainer": {
             "bait": "नकली MetaMask approve() डायलॉग",
-            "action": "एक ही सिग्नेचर में पूरा वॉलेट खाली कर देता है",
+            "action": "एक ही सिग्नेचर में पूरा वॉलेट खाली कर सकता है",
             "safe_action": "वॉलेट से इस साइट को तुरंत डिस्कनेक्ट करें",
         },
         "generic_suspicious": {
             "bait": "व्यक्तिगत या भुगतान विवरण",
-            "action": "उन्हें अपराधियों को सौंप देगा",
+            "action": "उन्हें अपराधियों को सौंप सकता है",
             "safe_action": "पेज बंद करें और ऑफिशियल ऐप से जाएँ",
         },
     },
     "ar": {
         "credential_phishing": {
             "bait": "كلمات مرور البنك أو البريد",
-            "action": "يستخدمها المحتالون خلال دقائق لسحب الأموال",
+            "action": "قد يستخدمها المحتالون خلال دقائق لسحب الأموال",
             "safe_action": "اكتب عنوان البنك يدوياً، ولا تستخدم رابط الرسالة",
         },
         "package_delivery_scam": {
             "bait": "إشعار شحنة مزيف من DHL/Aramex/SMSA",
-            "action": "يطلب \"رسوم جمركية\" على البطاقة، ثم يخصم مبالغ كبيرة",
+            "action": "قد يطلب \"رسوماً جمركية\" على البطاقة، ثم قد يخصم مبالغ كبيرة",
             "safe_action": "افتح تطبيق الشحن الرسمي مباشرة",
         },
         "bank_impostor": {
             "bait": "نسخة من صفحة دخول مصرفك",
-            "action": "تسرق كلمة المرور ورمز 2FA في الوقت الفعلي",
+            "action": "قد تسرق كلمة المرور ورمز 2FA في الوقت الفعلي",
             "safe_action": "افتح تطبيق المصرف على الهاتف، ولا تدخل من رابط البريد",
         },
         "crypto_drainer": {
             "bait": "نافذة approve() مزيفة لـ MetaMask",
-            "action": "تسحب كل العملات من المحفظة بتوقيع واحد",
+            "action": "قد تسحب كل العملات من المحفظة بتوقيع واحد",
             "safe_action": "افصل هذا الموقع من المحفظة فوراً",
         },
         "generic_suspicious": {
             "bait": "بيانات شخصية أو دفع",
-            "action": "ستسلمها إلى مجرمين",
+            "action": "قد تسلّمها إلى مجرمين",
             "safe_action": "أغلق الصفحة وادخل عبر التطبيق الرسمي",
         },
     },
     "fr": {
         "credential_phishing": {
             "bait": "vos identifiants Crédit Agricole, BNP ou La Poste",
-            "action": "les escrocs vident le compte en quelques minutes",
+            "action": "des escrocs pourraient vider le compte en quelques minutes",
             "safe_action": "tapez l'adresse de la banque directement dans le navigateur",
         },
         "package_delivery_scam": {
             "bait": "un faux suivi La Poste / Chronopost / DHL",
-            "action": "demande des « frais de douane » par carte, puis prélève des centaines d'euros",
+            "action": "peut demander des « frais de douane » par carte, puis prélever des centaines d'euros",
             "safe_action": "vérifiez via l'app officielle du transporteur",
         },
         "bank_impostor": {
             "bait": "une copie de la page de connexion de votre banque",
-            "action": "capture identifiant et code SMS en temps réel",
+            "action": "pourrait capturer identifiant et code SMS en temps réel",
             "safe_action": "ouvrez l'app de la banque sur le téléphone; jamais un lien d'email",
         },
         "crypto_drainer": {
             "bait": "une fausse fenêtre approve() de MetaMask",
-            "action": "vide chaque token du portefeuille en une seule signature",
+            "action": "pourrait vider chaque token du portefeuille en une seule signature",
             "safe_action": "déconnectez ce site du wallet immédiatement",
         },
         "generic_suspicious": {
             "bait": "vos données personnelles ou bancaires",
-            "action": "les remettra à des criminels",
+            "action": "pourrait les remettre à des criminels",
             "safe_action": "fermez la page et passez par l'app officielle",
         },
     },
     "de": {
         "credential_phishing": {
             "bait": "Zugangsdaten zu Sparkasse, Volksbank oder DKB",
-            "action": "Betrüger räumen das Konto innerhalb von Minuten leer",
+            "action": "Betrüger könnten das Konto innerhalb von Minuten leerräumen",
             "safe_action": "geben Sie die Bank-Adresse selbst im Browser ein, nicht aus einer E-Mail",
         },
         "package_delivery_scam": {
             "bait": "gefälschte DHL/Hermes/DPD-Zustellbenachrichtigung",
-            "action": "fordert „Zollgebühren\" per Karte, danach folgen dreistellige Abbuchungen",
+            "action": "kann „Zollgebühren\" per Karte verlangen, danach könnten dreistellige Abbuchungen folgen",
             "safe_action": "öffnen Sie das offizielle Versand-Konto direkt in der App",
         },
         "bank_impostor": {
             "bait": "eine Kopie Ihrer Bank-Anmeldeseite",
-            "action": "stiehlt Passwort und 2FA-Code in Echtzeit",
+            "action": "könnte Passwort und 2FA-Code in Echtzeit stehlen",
             "safe_action": "nutzen Sie die offizielle Bank-App; nie einen Link aus E-Mail anklicken",
         },
         "crypto_drainer": {
             "bait": "ein gefälschter MetaMask-approve()-Dialog",
-            "action": "leert die Wallet mit einer einzigen Signatur",
+            "action": "könnte die Wallet mit einer einzigen Signatur leeren",
             "safe_action": "trennen Sie diese Seite sofort von der Wallet",
         },
         "generic_suspicious": {
             "bait": "persönliche oder Zahlungsdaten",
-            "action": "übergibt sie Kriminellen",
+            "action": "könnte sie an Kriminelle weitergeben",
             "safe_action": "schließen Sie die Seite und nutzen Sie die offizielle App",
         },
     },
     "it": {
         "credential_phishing": {
             "bait": "le credenziali di Intesa Sanpaolo, Poste o UniCredit",
-            "action": "i truffatori svuotano il conto in pochi minuti",
+            "action": "i truffatori potrebbero svuotare il conto in pochi minuti",
             "safe_action": "digiti l'indirizzo della banca a mano, mai dal link di un SMS",
         },
         "package_delivery_scam": {
             "bait": "un finto avviso Poste Italiane / SDA / DHL",
-            "action": "chiede « spese doganali » con carta, poi sottrae cifre a tre zeri",
+            "action": "può chiedere « spese doganali » con carta, poi sottrarre cifre a tre zeri",
             "safe_action": "verifichi solo dall'app ufficiale del corriere",
         },
         "bank_impostor": {
             "bait": "copia della pagina di accesso della sua banca",
-            "action": "ruba password e OTP in tempo reale",
+            "action": "potrebbe rubare password e OTP in tempo reale",
             "safe_action": "apra l'app della banca sul telefono; mai dal link email",
         },
         "crypto_drainer": {
             "bait": "una falsa finestra approve() di MetaMask",
-            "action": "svuota ogni token del wallet con una sola firma",
+            "action": "potrebbe svuotare ogni token del wallet con una sola firma",
             "safe_action": "disconnetta subito questo sito dal wallet",
         },
         "generic_suspicious": {
             "bait": "dati personali o di pagamento",
-            "action": "li consegnerà ai criminali",
+            "action": "potrebbe consegnarli ai criminali",
             "safe_action": "chiuda la pagina e usi l'app ufficiale",
         },
     },
     "id": {
         "credential_phishing": {
             "bait": "kata sandi BCA, Mandiri, atau OVO",
-            "action": "penipu menguras saldo dalam hitungan menit lewat transfer real-time",
+            "action": "penipu bisa menguras saldo dalam hitungan menit lewat transfer real-time",
             "safe_action": "ketik alamat bank di tab baru, jangan klik dari SMS",
         },
         "package_delivery_scam": {
             "bait": "pemberitahuan palsu JNE / Pos Indonesia / DHL",
-            "action": "meminta \"biaya bea cukai\" di kartu, lalu menarik ratusan ribu",
+            "action": "bisa meminta \"biaya bea cukai\" di kartu, lalu menarik ratusan ribu",
             "safe_action": "cek pengiriman lewat aplikasi resmi kurir",
         },
         "bank_impostor": {
             "bait": "salinan halaman login bank Anda",
-            "action": "mencuri password + kode OTP secara real-time",
+            "action": "bisa mencuri password dan kode OTP secara real-time",
             "safe_action": "buka aplikasi bank di ponsel; jangan klik link email",
         },
         "crypto_drainer": {
             "bait": "dialog approve() MetaMask palsu",
-            "action": "menguras seluruh token dompet dengan satu tanda tangan",
+            "action": "bisa menguras seluruh token dompet dengan satu tanda tangan",
             "safe_action": "putuskan situs ini dari dompet sekarang juga",
         },
         "generic_suspicious": {
             "bait": "data pribadi atau pembayaran",
-            "action": "akan menyerahkannya ke pelaku kejahatan",
+            "action": "bisa menyerahkannya ke pelaku kejahatan",
             "safe_action": "tutup halaman dan masuk lewat aplikasi resmi",
         },
     },
 }
+
+
+# v2 (2026-11-04): the explanations read as possibilities. Those cached under
+# v1 (seven days, LLM ones included) stated the harm as fact; the new
+# namespace retires them at deploy without touching production Redis.
+_CACHE_VERSION = "v2"
 
 
 def _cache_key(category: str, signals: Iterable[str], locale: str) -> str:
@@ -406,7 +417,7 @@ def _cache_key(category: str, signals: Iterable[str], locale: str) -> str:
         "locale": locale,
     }, sort_keys=True)
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:24]
-    return f"explainer:v1:{digest}"
+    return f"explainer:{_CACHE_VERSION}:{digest}"
 
 
 def _deterministic_explanation(category: str, locale: str) -> str:
@@ -421,6 +432,20 @@ def _deterministic_explanation(category: str, locale: str) -> str:
         f"{cat['bait']} — {cat['action']}. "
         f"{cat['safe_action']}."
     )
+
+
+# The site is only suspected: its signals point that way, and a Google hit
+# (safe_browsing) comes with "Advisory provided by Google", whose rules bar
+# saying a page is unsafe "without a doubt" and ask for "may", "possibly".
+SYSTEM_PROMPT = (
+    "You write 2-3 SHORT sentences explaining why a flagged page "
+    "may be unsafe, in the user's native language. The site is only "
+    "suspected: say it may or could do harm, or is possibly a scam — "
+    "never state as certain that it is a scam or will steal anything. "
+    "NEVER invent foreign brand names — only use the brands in the "
+    "cultural-hints payload. Output ONLY the explanation, no "
+    "preamble. Total length under 320 characters."
+)
 
 
 def _llm_available() -> bool:
@@ -452,13 +477,6 @@ async def _llm_explanation(
     loc = _CULTURAL.get(locale) or _CULTURAL["en"]
     cat_hints = loc.get(category) or loc["generic_suspicious"]
 
-    sys_prompt = (
-        "You write 2-3 SHORT sentences explaining why a flagged "
-        "page is dangerous, in the user's native language. NEVER "
-        "invent foreign brand names — only use the brands in the "
-        "cultural-hints payload. Output ONLY the explanation, no "
-        "preamble. Total length under 320 characters."
-    )
     user_payload = json.dumps({
         "category": category,
         "locale": locale,
@@ -476,7 +494,7 @@ async def _llm_explanation(
         resp = await client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=400,
-            system=sys_prompt,
+            system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_payload}],
         )
         # Extract the text block.
@@ -496,7 +514,7 @@ _CATEGORY_CACHE_TTL_S = 7 * 24 * 3600
 def _category_cache_key(category: str, locale: str) -> str:
     """The last LLM explanation for a category + locale: what a caller gets
     once the day's LLM budget is spent."""
-    return f"explainer:v1:cat:{category}:{locale}"
+    return f"explainer:{_CACHE_VERSION}:cat:{category}:{locale}"
 
 
 async def _llm_budget_granted() -> bool:

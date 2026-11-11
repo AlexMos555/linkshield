@@ -547,12 +547,13 @@ def test_every_router_imports_rate_limit_helper():
 
 
 def test_every_public_endpoint_has_ip_rate_limit():
-    """public.py, pricing.py, email_unsubscribe.py all declare IP-based limits."""
+    """public.py and pricing.py declare IP-based limits; email_unsubscribe.py its
+    own (per IP only for links that do not verify)."""
     for fname in ("public.py", "pricing.py"):
         text = _read(ROUTERS_DIR / fname)
         assert 'mode="ip"' in text, f"{fname} missing mode='ip' rate_limit"
     unsub_text = _read(ROUTERS_DIR / "email_unsubscribe.py")
-    assert "unsubscribe_rate_limit()" in unsub_text
+    assert "unsubscribe_rate_limit(verify_token)" in unsub_text
 
 
 def test_sensitive_payment_endpoints_use_sensitive_mode():
@@ -585,7 +586,7 @@ def test_all_router_modules_declare_rate_limit_at_decoration():
     """
     All @router.post / @router.get decorators in protected routers must
     declare a `dependencies=[Depends(rate_limit(...))]`, a
-    `dependencies=[Depends(unsubscribe_rate_limit())]`, or be on the
+    `dependencies=[Depends(unsubscribe_rate_limit(verify_token))]`, or be on the
     `stripe_webhook` exemption list.
     """
     # Routers that use the new pattern
@@ -614,7 +615,7 @@ def test_all_router_modules_declare_rate_limit_at_decoration():
             if (fname, func_name) in EXEMPT_ENDPOINTS:
                 continue
             has_dep = "dependencies=" in kwargs and (
-                "rate_limit(" in kwargs or "unsubscribe_rate_limit()" in kwargs
+                "rate_limit(" in kwargs or "unsubscribe_rate_limit(verify_token)" in kwargs
             )
             if not has_dep:
                 violations.append(f"{fname}::{func_name}")

@@ -295,7 +295,7 @@ def test_completed_handshake_describes_the_certificate(monkeypatch):
     connected, sni = _handshake(monkeypatch, cert)
     out = asyncio.run(site_probes.check_ssl("shop.example.com"))
     assert out == {"reachable": True, "has_ssl": True, "issuer": "Let's Encrypt", "is_free_ssl": True,
-                   "cert_age_days": 40}
+                   "cert_age_days": 40, "cert_wildcard": False}
     # Connected to the vetted address (conftest resolves every name to it), SNI is the name.
     assert connected == [("93.184.216.34", 443)]
     assert sni == ["shop.example.com"]
@@ -314,7 +314,7 @@ def test_sparse_or_odd_certificate_is_reported_without_guessing(monkeypatch, cer
     _handshake(monkeypatch, cert)
     out = asyncio.run(site_probes.check_ssl("x.example.com"))
     assert out == {"reachable": True, "has_ssl": True, "issuer": "Unknown", "is_free_ssl": False,
-                   "cert_age_days": None}
+                   "cert_age_days": None, "cert_wildcard": False}
 
 
 def test_tls_probe_to_an_internal_answer_reports_not_connectable(monkeypatch):

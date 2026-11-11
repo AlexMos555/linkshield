@@ -15,18 +15,20 @@ export interface ShieldRow {
   source?: "dns" | "link" | null;
 }
 
-interface ShieldLogModule {
-  recentShieldBlocks(limit?: number): ShieldRow[];
-  allowedDomains(): string[];
-  allowDomain(domain: string): boolean;
-  removeAllowedDomain(domain: string): void;
-}
+/** The module itself, so a name it does not export cannot type-check here (test-no-vpn-names.mjs). */
+type ShieldLogModule = typeof import("../../modules/cleanway-vpn");
+
+/**
+ * Outside any try block on purpose: Metro keeps the path of a require()
+ * written in one, even in a release bundle (test-no-vpn-names.mjs).
+ */
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const requireShieldModule = () => require("../../modules/cleanway-vpn") as ShieldLogModule;
 
 function shieldModule(): ShieldLogModule | null {
   if (Platform.OS !== "android") return null;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("../../modules/cleanway-vpn") as ShieldLogModule;
+    return requireShieldModule();
   } catch {
     return null;
   }
@@ -66,8 +68,7 @@ export function removeAllowedSite(domain: string): void {
 export function recentShieldBlocks(limit = 100): ShieldRow[] {
   if (Platform.OS !== "android") return [];
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require("../../modules/cleanway-vpn") as ShieldLogModule;
+    const mod = requireShieldModule();
     return mod.recentShieldBlocks(limit) ?? [];
   } catch {
     return [];

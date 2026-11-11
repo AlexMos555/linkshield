@@ -17,7 +17,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import ml.train_model as tm  # noqa: E402
 from api.services.ml_features import shared_tenant  # noqa: E402
-from api.services.scoring import registrable_domain  # noqa: E402
+from api.services.scoring import legacy_registrable_domain  # noqa: E402
 
 
 def _write_feed(path, hosts):
@@ -160,7 +160,7 @@ def test_the_verified_brand_file_feeds_the_benign_class_minus_the_held_out_sites
     assert {"gosuslugi29.ru", "sberbank1.ru"} <= set(verified)
     held_out = tm.load_held_out()
     # The regional portals in the held-out LEGIT set stay out of training.
-    assert sum(registrable_domain(h) in held_out for h in verified) >= 14
+    assert sum(legacy_registrable_domain(h) in held_out for h in verified) >= 14
 
 
 def test_the_new_strata_reach_the_benign_class(tmp_path, monkeypatch):

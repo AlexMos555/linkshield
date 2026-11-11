@@ -16,6 +16,12 @@
         </intent>
     </queries>
 
+  <!-- The shield's VpnService (CleanwayVpnService below). Declared here, not in
+       app.json: expo-constants embeds app.json's public config, Android
+       permissions included, in the iOS app, and App Review flagged the iOS
+       build as "contains VPN functionality". The merged manifest is the same.
+       Pinned by check-android-permissions.mjs. -->
+  <uses-permission android:name="android.permission.BIND_VPN_SERVICE" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
   <!-- The shield reads the underlying network's DNS servers (UnderlyingNetworks).

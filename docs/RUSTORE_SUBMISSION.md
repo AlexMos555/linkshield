@@ -254,14 +254,20 @@ const fs = require("fs"); const [repo, m] = process.argv.slice(1);
 const p = JSON.parse(fs.readFileSync(repo + "/mobile/package.json", "utf8"));
 p.dependencies["@cleanway/api-client"] = "file:./vendor/api-client";
 p.dependencies["@cleanway/api-types"] = "file:./vendor/api-types";
-fs.writeFileSync(m + "/package.json", JSON.stringify(p, null, 2) + "\n");' "$REPO" "$M"
+fs.writeFileSync(m + "/package.json", JSON.stringify(p, null, 2) + "\n");
+// As in docs/IOS.md: without it a lock regenerated here says "*" for the
+// api-types of the vendored api-client, unlike one made in the iOS mirror.
+const c = JSON.parse(fs.readFileSync(m + "/vendor/api-client/package.json", "utf8"));
+c.dependencies["@cleanway/api-types"] = "file:../api-types";
+fs.writeFileSync(m + "/vendor/api-client/package.json", JSON.stringify(c, null, 2) + "\n");' "$REPO" "$M"
 cp "$REPO/mobile/package-lock.json" "$M/package-lock.json"
 node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"; "out of step" = STOP, regenerate the lock (end of §2)
 
 cd "$M"
-npm install                # postinstall applies patches/ ("expo-share-intent@5.1.1 ✔"). Exit ≠ 0 = STOP, fix it first
+npm install                # postinstall applies patches/ ("decode-uri-component@0.2.2 ✔", "expo-share-intent@5.1.1 ✔"). Exit ≠ 0 = STOP, fix it first
 cmp "$REPO/mobile/package-lock.json" package-lock.json && echo "installed exactly the committed lock"   # a difference = STOP, regenerate the lock (end of §2)
 node scripts/check-share-intent.mjs   # 3× "ok:"; "CHECK FAILED" = STOP (docs/EXPO_UPGRADE_PLAN.md §1.2)
+node scripts/test-decode-uri-component.mjs   # "all … checks pass"; "FAIL" = STOP (same §1.2)
 # (This block has no `set -e`, so the lines below would still run. A release
 # build refuses to start anyway without the fix — plugins/withShareIntentGuard.js
 # re-runs the check before compiling — but do not count on getting that far.)
@@ -530,6 +536,16 @@ locked. (Done this way on 2026-10-25 for #303's i18next and #230's
 react-native-web: i18next 26.5.10 and react-native-web 0.21.4, the same tree
 iOS 1.0.6 (6) was built with.)
 
+**`overrides` in `mobile/package.json` are read only by the mirror** (npm
+ignores them in a workspace; the root `package.json` carries the same ones for
+CI). Keep the two sets equal. `xcode` stays at `3.0.1` because
+`patches/xcode+3.0.1.patch` and `plugins/withSafariExtension.js` depend on it:
+`@expo/config-plugins` 54.0.6 asks for `xcode ^4.0.0`, and without the override
+the mirror got an unpatched `xcode` 4.0.0 nested under it while CI kept testing
+3.0.1 — a difference `check-mirror-lock.mjs` cannot see, since it compares
+direct dependencies only (#338). After a regeneration,
+`grep '/node_modules/xcode"' "$M/package-lock.json"` should find nothing.
+
 **The check names a version, not a range** (`<name>: mirror lock X, root
 package-lock.json Y`): the ranges match, but CI tests one release and the store
 builds ship another. Bring the older lock up to the newer release with
@@ -557,7 +573,8 @@ cp "$M/package-lock.json" "$REPO/mobile/package-lock.json"     # commit it, then
 ```
 
 (2026-10-25, #329: undici 6.29.0 → 6.29.1 — the same entry Dependabot wrote,
-without its `"*"`; #329 closed unmerged.)
+without its `"*"`; #329 closed unmerged. 2026-11-01, #373: node-forge 1.4.0 →
+1.4.2, under `@expo/cli`, the release the root lock got in #371.)
 
 ---
 
@@ -571,7 +588,7 @@ for the safety check).
 
 | Data type | Collected? | Sent off device? | Purpose | Shared w/ 3rd parties? |
 |---|---|---|---|---|
-| **Site names (hosts) of links the person checks** — typed, pasted, scanned from a QR code, shared, opened through the link guard, or found in a shared message (max 3 per message). Not full URLs, not page content | Yes, transient | Yes → `api.cleanway.ai` (`GET /api/v1/public/check/{host}`, no account token) | App functionality — the scam check | The server checks the bare host with threat-intelligence services (Google Safe Browsing and others listed in `docs/PRIVACY.md`) and Cloudflare's family resolver; no user identity goes with it |
+| **Site names (hosts) of links the person checks** — typed, pasted, scanned from a QR code, shared, opened through the link guard, or found in a shared message (max 3 per message). Not full URLs, not page content | Yes, transient | Yes → `api.cleanway.ai` (`GET /api/v1/public/check/{host}`, no account token) | App functionality — the scam check | The server checks the bare host with threat-intelligence services (Google Web Risk and others listed in `docs/PRIVACY.md`) and Cloudflare's family resolver; no user identity goes with it |
 | **Message (SMS) text** the person shares or pastes | Processed on the phone only | **No** — the text never leaves the phone and is never stored | Scam check of the message | No |
 | **Email address** | Only if the person signs in (optional) | Yes → our backend (Supabase) | Account, linked-devices list | No |
 | **Device list of the account** (a random device ID, platform, a name) | Only when signed in | Yes → our backend | Showing / unlinking the person's devices | No |
@@ -618,6 +635,14 @@ The "removed" rows are blocked in `mobile/app.json`
 (`expo.android.blockedPermissions` + `expo-camera` → `recordAudioAndroid: false`),
 which makes `expo prebuild` write `tools:node="remove"` entries so library
 manifests cannot re-add them. Only v1.0.0 (versionCode 100) still declared them.
+`BIND_VPN_SERVICE` is declared in the shield module's own manifest
+(`mobile/modules/cleanway-vpn/android/src/main/AndroidManifest.xml`), not in
+`app.json`: expo-constants copies `app.json`'s public config into the iPhone
+app. App Review flagged the iOS build as containing VPN functionality
+(2026-10-30, docs/IOS.md §3.6) without saying where it looked; the permission
+name in that embedded config was one candidate trigger. The APK's list is the
+same; `check-android-permissions.mjs` pins what our config declares (none of it
+in `blockedPermissions`) and keeps the permission out of `app.json`.
 Before uploading 1.0.6, run `aapt2 dump permissions` on the RuStore APK (§2 build B)
 and confirm the list matches this table (and that `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`
 is there, and `com.android.vending.BILLING` is not).
@@ -834,11 +859,11 @@ Cleanway — защита от мошенников в телефоне. Не д
 • Остальные сайты телефон находит как обычно — через вашего оператора или Wi-Fi, а если они не отвечают — через общедоступные сервисы Cloudflare или Quad9.
 • На Android одновременно может работать только один VPN. Если у вас уже включён другой VPN, придётся выбрать: он или защита Cleanway.
 • Текст СМС проверяется на телефоне и никуда не отправляется. На наш сервер могут уйти только имена сайтов из ссылок в сообщении — не больше трёх.
-• Когда вы проверяете ссылку, на сервер Cleanway уходит только имя сайта (например, example.ru), без остальной части адреса. Сервер сверяет его в том числе с внешними базами опасных сайтов, например Google Safe Browsing.
+• Когда вы проверяете ссылку, на сервер Cleanway уходит только имя сайта (например, example.ru), без остальной части адреса. Сервер сверяет его в том числе с внешними базами опасных сайтов, например Google Web Risk.
 • Мы не показываем рекламу и не продаём данные.
 
 ЧЕГО CLEANWAY НЕ ОБЕЩАЕТ
-Новые мошеннические сайты и сообщения появляются каждый день, и ни одна программа не ловит их все. Если сомневаетесь — не переходите по ссылке, никому не называйте коды из СМС и перезвоните в банк по номеру на обратной стороне карты.
+Новые мошеннические сайты и сообщения появляются каждый день, и ни одна программа не ловит их все. Бывает и наоборот: изредка безопасный сайт помечается по ошибке. Если сомневаетесь — не переходите по ссылке, никому не называйте коды из СМС и перезвоните в банк по номеру на обратной стороне карты.
 
 СКОЛЬКО СТОИТ
 Основная защита — бесплатно.

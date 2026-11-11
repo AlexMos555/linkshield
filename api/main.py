@@ -58,7 +58,7 @@ async def _warm_ml_model() -> None:
 
     Loaded lazily, the model was loaded by the FIRST fresh check after every
     deploy — ~7 s of onnxruntime start-up measured locally, synchronously on
-    the event loop, so that check blew its 3 s budget and every other request
+    the event loop, so that check blew its analysis budget and every other request
     stalled behind it. Failure is logged, never fatal: scoring runs without ML.
     """
     try:
@@ -121,6 +121,12 @@ async def lifespan(app: FastAPI):
     await doh_shutdown()
     from api.services.competitor_verdicts import close_client as close_competitor_client
     await close_competitor_client()
+    # The allowlist age gate's worker writes to Redis: stopped before it closes.
+    from api.services import allowlist_age
+    await allowlist_age.stop()
+    # So do the LLM judge's live calls, which end in the background.
+    from api.services import llm_judge
+    await llm_judge.stop()
     await close_redis()
     # The billing role's database pool (None on the api role — nothing to close).
     from api.billing.deps import close_context as close_billing_context

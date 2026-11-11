@@ -1,0 +1,6 @@
+{
+  "mobile.home.interrupted_revoked": "Android menghentikan perlindungan: izin VPN dicabut di setelan ponsel, atau aplikasi VPN lain mengambil alih. Ketuk tombol di bawah, lalu \"{{button}}\". Jika Android meminta izin untuk koneksi, ketuk \"Oke\". Aplikasi VPN lain akan mati: Android hanya menjalankan satu VPN pada satu waktu.",
+  "mobile.shield.disclosure.body": "Cleanway membuat VPN lokal di HP kamu. Hanya begitu Android mengizinkan sebuah aplikasi menyaring permintaan situs untuk semua aplikasi lain.\n\n• Daftar situs penipuan yang diketahui disimpan di HP kamu. Nama situs dicocokkan di sini, bukan dikirim ke kami.\n• Permintaan yang tidak kami blokir menuju server DNS jaringanmu sendiri — milik operator atau router, sama seperti tanpa Cleanway. Kalau server itu tidak menjawab, permintaan menuju resolver publik (Cloudflare atau Quad9).\n• Tidak ada lalu lintas lain yang dibaca, direkam, atau dialihkan. Ini bukan VPN privasi dan tidak menyembunyikan aktivitas kamu.\n\nJika Android meminta izin untuk koneksi, ketuk \"Oke\".",
+  "mobile.keep_alive.always_on_ok": "VPN selalu aktif: aktif",
+  "mobile.keep_alive.always_on_optional": "VPN selalu aktif (opsional): perlindungan mulai bersama ponsel"
+}

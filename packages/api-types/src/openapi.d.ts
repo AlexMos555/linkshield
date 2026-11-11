@@ -613,17 +613,20 @@ export interface paths {
          * @description Public domain safety check. No auth required.
          *
          *     Runs the full analyzer (threat-intel fan-out, site probes, ML, LLM judge)
-         *     inside a ~3 s budget, behind these short-circuits and defenses:
+         *     inside a 2.3 s budget (config.analysis_budget_seconds: the browser
+         *     extension waits 3 s for the whole round trip), behind these
+         *     short-circuits and defenses:
          *
          *       1. Top-domain allowlist (instant safe for popular sites that are not
          *          shared platforms — no API calls).
          *       2. Cleanway's own published blocklist, the list the phone blocks: a
          *          listed host is 'dangerous' at once (verdict_basis 'blocklist').
          *       3. The service host of a user-content platform (disk.yandex.ru,
-         *          onedrive.live.com): a fixed "real service, we cannot vouch for the
-         *          page" caution (verdict_basis 'user_content'), no analysis.
+         *          onedrive.live.com, disk.yandex.kz): a fixed "real service, we cannot
+         *          vouch for the page" caution (verdict_basis 'user_content'), no analysis.
          *       4. Per-endpoint Redis cache, in its own namespace: a day for a full
-         *          verdict, less for a not-found or partial one.
+         *          verdict, less for a not-found or partial one, and one resting on
+         *          Google only while Google's answer is valid.
          *       5. A fresh-analysis cap per minute — per IP, or per install when the
          *          app sends X-Cleanway-Install (CGNAT: one IP, thousands of phones).
          *       6. SINGLEFLIGHT coalescing: N concurrent requests for the same fresh
@@ -633,6 +636,10 @@ export interface paths {
          *     'threat_intel' are evidence a client may block on; everything else is
          *     advice. `exists` is false for a domain that does not exist, and
          *     `checks_incomplete` names checks the time budget cut off.
+         *     `advisory_ttl` (seconds, null when no reason is Google's) is how long a
+         *     verdict resting on Google may still be shown from a cache: Web Risk allows
+         *     a warning only while Google's answer is valid. 0: show it now, keep it
+         *     nowhere.
          */
         get: operations["public_check_api_v1_public_check__domain__get"];
         put?: never;
@@ -2148,6 +2155,8 @@ export interface components {
             exists?: boolean | null;
             /** Checks Incomplete */
             checks_incomplete?: string[];
+            /** Sources Down */
+            sources_down?: string[];
         };
         /**
          * EffectiveSkillResponse
@@ -2275,13 +2284,19 @@ export interface components {
              */
             list_blocking_unlimited: boolean;
             /**
-             * Detailed Checks Per Day
-             * @description Detailed checks (verdict, reasons, the scheme explained) a day without a plan.
+             * Manual Checks
+             * @description Manual site checks (a site typed, pasted or shared into the app, with the verdict, the reasons and the scheme explained) per period without a plan. FREE_MANUAL_CHECKS_PER_MONTH; the app enforces this number.
              */
-            detailed_checks_per_day: number;
+            manual_checks: number;
+            /**
+             * Manual Checks Period
+             * @description The counting period: a calendar month on the phone's clock (resets on the 1st).
+             * @constant
+             */
+            manual_checks_period: "month";
             /**
              * Unlimited Days After Install
-             * @description Days after install with everything unlimited, no card.
+             * @description Days after install with everything unlocked, no card (FREE_UNLIMITED_DAYS_AFTER_INSTALL).
              */
             unlimited_days_after_install: number;
         };

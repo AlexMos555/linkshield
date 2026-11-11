@@ -130,6 +130,9 @@ class WebRiskClient:
     """Same surface as safe_browsing.SafeBrowsingClient: `is_configured`,
     `check(domain)`, `check_batch(domains)`; never raises."""
 
+    # Its own cache namespace (safe_browsing.threat_seconds_left reads it).
+    cache_prefix = CACHE_PREFIX
+
     def __init__(self, api_key: str = "", timeout: float = WEB_RISK_TIMEOUT_SECONDS) -> None:
         self._api_key = api_key
         self._timeout = timeout

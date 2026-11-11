@@ -1,0 +1,6 @@
+{
+  "mobile.home.interrupted_revoked": "Android detuvo la protección: se retiró el permiso de VPN en los ajustes del teléfono u otra app de VPN ocupó su lugar. Toca el botón de abajo y luego «{{button}}». Si Android te pide permitir la conexión, toca «Aceptar». La otra app de VPN se desactivará: Android solo usa una a la vez.",
+  "mobile.shield.disclosure.body": "Cleanway crea una VPN local en tu teléfono. Es la única forma en que Android permite a una app filtrar las consultas de sitios para todas las demás.\n\n• La lista de sitios fraudulentos conocidos se guarda en tu teléfono. Los nombres se comparan aquí, no se nos envían.\n• Las consultas que no bloqueamos van al servidor DNS de tu propia red —el de tu operador o tu router—, igual que sin Cleanway. Si no responde, van a un resolutor público (Cloudflare o Quad9).\n• Ningún otro tráfico se lee, se guarda ni se redirige. No es una VPN de privacidad y no oculta tu navegación.\n\nSi Android te pide permitir la conexión, toca «Aceptar».",
+  "mobile.keep_alive.always_on_ok": "VPN siempre activa: activada",
+  "mobile.keep_alive.always_on_optional": "VPN siempre activa (opcional): la protección arranca con el teléfono"
+}

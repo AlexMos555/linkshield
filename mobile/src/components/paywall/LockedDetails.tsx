@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 
 import { colors, type as typo, space, radius } from "../../utils/theme";
@@ -61,7 +61,7 @@ export function NotListedCard({ domain }: { domain: string }) {
 }
 
 /**
- * "N free checks left today" under a check button — free plan only (not
+ * "N free checks left this month" under a check button — free plan only (not
  * during the first days, not on a paid plan, not with the limit off).
  */
 export function ChecksLeftHint({ access }: { access: Access | null }) {

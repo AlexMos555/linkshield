@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator,
 } from "react-native";
 import * as Haptics from "expo-haptics";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 import { useAnnounce } from "../src/hooks/useAnnounce";
 import { colors, type as typo, space, radius, sectionHeader } from "../src/utils/theme";
@@ -53,7 +53,7 @@ export default function BreachScreen() {
       // The API deliberately returns padding rows with count 0 so a network
       // observer can't size-match a real hit. A padding row is not a hit, so
       // only a positive count may be shown as "found" — otherwise the card
-      // reads "turned up 0 times", which is nonsense and scares people.
+      // reads "(times found: 0)", which is nonsense and scares people.
       if (match && match.count > 0) {
         setResult({ kind: "found", count: match.count });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

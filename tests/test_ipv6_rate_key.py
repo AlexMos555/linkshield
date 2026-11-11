@@ -136,11 +136,12 @@ async def test_the_install_ceiling_keys_by_prefix(settings, limiter_redis, monke
 
 @pytest.mark.asyncio
 async def test_unsubscribe_limit_keys_by_prefix(settings, limiter_redis, monkeypatch):
+    # Only a link that does not verify is limited per IP.
     monkeypatch.setattr(settings, "unsubscribe_limit_per_window", 1, raising=False)
-    dep = rl.unsubscribe_rate_limit()
-    await dep(_req("2001:db8:5:5::1"))
+    dep = rl.unsubscribe_rate_limit(lambda _token: None)
+    await dep(_req("2001:db8:5:5::1"), "not-a-token")
     with pytest.raises(HTTPException):
-        await dep(_req("2001:db8:5:5::2"))
+        await dep(_req("2001:db8:5:5::2"), "not-a-token")
 
 
 # ── /public/check fresh-analysis budget (its own keys) ──

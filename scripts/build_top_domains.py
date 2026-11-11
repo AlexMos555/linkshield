@@ -46,9 +46,10 @@ none of it may stay in a product people pay for (docs/THIRD_PARTY_FEEDS.md
     names someone reported.
 
 How the rank is made (each step is a parameter below):
-  1. Every host is folded to its registrable domain the way the scorer
-     reads it (registrable_domain(): play.google.com → google.com,
-     kvs.gov.spb.ru → gov.spb.ru), each list keeping a domain's best rank.
+  1. Every host is folded to its registrable domain the way the model
+     reads it (scoring.legacy_registrable_domain(): play.google.com →
+     google.com, kvs.gov.spb.ru → gov.spb.ru), each list keeping a domain's
+     best rank.
      A tenant of a shared suffix (foo.github.io, x.us.org) is dropped: its
      traffic is its own, not the platform's, and the scorer never looks a
      tenant up by name. Where the scorer's reading is an ICANN public
@@ -87,6 +88,12 @@ How the rank is made (each step is a parameter below):
      CrUX's top 10,000), rezultati.com, dub.sh, filemail.com, eim.ae and
      ~700 more out of the guard that exists to overrule one feed's report,
      and the publisher would have blocked them whole for every DNS user.
+  4b. For the ALLOWLIST only, again: a name tombstoned as dead
+     (data/top_domains_dead.json, data/top_1m_dead.json —
+     api/services/dead_top_names.py) is skipped and the next name moves up.
+     The tombstone already takes its trust at read time; the rebuild just
+     stops carrying it, so a retrain on the rebuilt file no longer learns it
+     as popular. The Redis ranking keeps it (tranco.get_tranco_rank skips it).
   5. Top-N by that rank: the thresholds the consumers use (1,000 / 10,000 /
      100,000 / 1,000,000) mean the same positions they meant in Tranco.
 
@@ -138,7 +145,7 @@ for _p in (_ROOT, _SCRIPTS):
 import build_public_suffixes_in_top as psl_in_top  # noqa: E402
 from ranking_attribution import attribution_lines  # noqa: E402,F401 — re-exported
 import refresh_training_feeds as feeds  # noqa: E402
-from api.services import hosting_platforms  # noqa: E402
+from api.services import dead_top_names, hosting_platforms  # noqa: E402
 
 logger = logging.getLogger("top-domains")
 
@@ -204,13 +211,20 @@ CHANGES = (
 )
 
 
-# ── Registrable domains, the scorer's reading ──
+# ── Registrable domains, the model's reading ──
 #
-# api.services.scoring.registrable_domain() is the rule; it cannot be
+# api.services.scoring.legacy_registrable_domain() is the rule; it cannot be
 # imported here (scoring needs pydantic, the Redis runner has httpx and
 # redis only). This is the same rule — a Russian PSL rule plus one label,
-# else the compound-ccTLD heuristic of doh_gateway._registrable_domain — and
-# tests/test_build_top_domains.py holds the two to the same answer.
+# else the compound-ccTLD heuristic (public_suffix.heuristic_registrable_domain)
+# — and tests/test_build_top_domains.py holds the two to the same answer.
+# Not scoring.registrable_domain(), which reads the Public Suffix List since
+# 2026-10-28: top_100k.json and public_suffixes_in_top.json are the model's
+# feature data (in_top_domains, is_hosting_subdomain), and folding with the
+# PSL would have merged 71 keys into 27 registrables, 19 of them new keys
+# that are no PSL suffix but zones (com.be, com.nl, gov.hu: every *.com.be
+# host instant-safe through top_domain_key). The PSL's ICANN section
+# already folds the hosts this rule reads as a suffix (fold(), below).
 
 _CCTLD_SECOND_LEVELS = frozenset({
     "com", "co", "org", "net", "gov", "edu", "ac", "mil", "gob", "gouv",
@@ -252,7 +266,7 @@ def _ru_registrable(parts: list[str]) -> Optional[str]:
 
 
 def registrable_domain(host: str) -> str:
-    """The registrable domain a host is judged by (scoring.registrable_domain)."""
+    """The registrable domain the model reads a host by (scoring.legacy_registrable_domain)."""
     dom = (host or "").lower().strip(".")
     if not dom:
         return ""
@@ -624,9 +638,25 @@ def reported_popular(ranking: Ranking, limit: int = REDIS_N) -> dict[str, int]:
     return {d: position[d] for d in ranking.removed_reported if d in position}
 
 
-def render(ranking: Ranking, sources: Sources, today: datetime.date) -> dict[str, str]:
-    """{file name: content} for the five data files."""
-    top = ranking.names[:TOP_N]
+def load_tombstones(data_dir: str = DATA) -> frozenset[str]:
+    """The dead names of data_dir (step 4b): both tombstone files."""
+    return dead_top_names.load(os.path.join(data_dir, dead_top_names.DEAD_FILE)) | dead_top_names.load(
+        os.path.join(data_dir, dead_top_names.BAND_FILE))
+
+
+def render(ranking: Ranking, sources: Sources, today: datetime.date,
+           dead: frozenset[str] = frozenset()) -> dict[str, str]:
+    """{file name: content} for the five data files. `dead` (step 4b) are
+    skipped on the allowlist files."""
+    top: list[str] = []
+    skipped = 0
+    for d in ranking.names:
+        if len(top) == TOP_N:
+            break
+        if d in dead:
+            skipped += 1
+        else:
+            top.append(d)
     if len(top) < TOP_N:
         raise ValueError(f"ranking has {len(ranking.names)} names, need {TOP_N}")
     rules = psl_in_top.shared_suffix_rules(set(top), sources.psl.text)
@@ -661,6 +691,7 @@ def render(ranking: Ranking, sources: Sources, today: datetime.date) -> dict[str
         },
         "ranked_names": len(ranking.popular),
         "reported_names_removed": len(ranking.removed_reported),
+        "tombstoned_names_skipped": skipped,
         "reported_names_in_redis_rank": len(reported),
         "russian_names": {"top_10k": sum(d.endswith(ru) for d in top[:TOP_RANKED_N]),
                           "top_100k": sum(d.endswith(ru) for d in top)},
@@ -788,7 +819,7 @@ def build(args: argparse.Namespace, data_dir: str = DATA, meta_path: str = MODEL
         ranking = rank(sources)
         if len(ranking.popular) < REDIS_N:
             raise ValueError(f"ranking has {len(ranking.popular)} names, need {REDIS_N}")
-        files = render(ranking, sources, today)
+        files = render(ranking, sources, today, load_tombstones(data_dir))
     except Exception as e:  # noqa: BLE001 — any failure keeps the previous files
         logger.error("Top-domain build failed, keeping the previous files: %s", e)
         return 2

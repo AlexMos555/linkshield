@@ -8,7 +8,8 @@ Outputs:
   extension-firefox/_locales/{locale}/messages.json
   extension-safari/_locales/{locale}/messages.json
   landing/messages/{locale}.json                    (next-intl format)
-  mobile/i18n/{locale}.json                         (react-i18next, flat)
+  mobile/i18n/{locale}.json                         (react-i18next, flat; no landing.*/email.*)
+  mobile/i18n/android/{locale}.json                 (the strings only Android shows — scripts/i18n_mobile.py)
   mobile/modules/cleanway-vpn/android/src/main/res/values*/strings.xml
   mobile/i18n/ios/{locale}.json                     (Expo `locales`: iOS Info.plist strings)
 
@@ -21,6 +22,9 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from i18n_mobile import ANDROID_ONLY_KEYS, split_for_mobile  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -36,6 +40,7 @@ EXTENSION_DIRS = [
 ]
 LANDING_MESSAGES_DIR = ROOT / "landing" / "messages"
 MOBILE_MESSAGES_DIR = ROOT / "mobile" / "i18n"
+MOBILE_ANDROID_DIR = MOBILE_MESSAGES_DIR / "android"
 # Android-native strings for the VPN service (notifications live in the
 # service, which runs when no JS is alive — so they cannot come from i18next).
 ANDROID_RES_DIR = ROOT / "mobile" / "modules" / "cleanway-vpn" / "android" / "src" / "main" / "res"
@@ -80,6 +85,10 @@ EXTENSION_NS_TO_FLAT_PREFIX = {
     "extension.reason": "reason_",
     # Block-page evidence card bodies, keyed by the same reason groups.
     "extension.evidence": "evidence_",
+    # "Advisory provided by Google" + learn-more links under a verdict built
+    # on Google's lists (content/reason-labels.js). The app reads the same
+    # keys as extension.advisory.*, the site as the Advisory namespace.
+    "extension.advisory": "advisory_",
     # Overlays opened from the popup, the password-leak banner, the webmail
     # banner and the settings page (all used to be hard-coded English).
     "extension.weekly": "weekly_",
@@ -170,6 +179,12 @@ def namespace_for_landing(source: dict[str, Any]) -> dict[str, Any]:
     reasons = source.get("mobile", {}).get("reason")
     if reasons:
         out["Reasons"] = reasons
+    # Google's credit under a verdict built on Google's lists: one set of
+    # words for the extension, the app and the /check page (Web Risk's rules
+    # for warnings), kept as extension.advisory with chrome.i18n's {text}.
+    advisory = source.get("extension", {}).get("advisory")
+    if advisory:
+        out["Advisory"] = {key: entry["text"] for key, entry in advisory.items()}
     return out
 
 
@@ -183,7 +198,7 @@ def flatten_for_mobile(source: dict[str, Any]) -> dict[str, str]:
 
     Leaf extraction:
       - if value is {text, placeholders?}  →  take text, convert $DOMAIN$ → {{domain}}
-      - if value is plain string (landing namespace)  →  keep as-is
+      - if value is a plain string  →  keep as-is
     Result: {"extension.popup.status_safe_title": "This page is safe", ...}
     """
     out: dict[str, str] = {}
@@ -341,10 +356,13 @@ def main() -> int:
         total_written += 1
 
     for loc in SUPPORTED_LOCALES:
-        flat = flatten_for_mobile(sources[loc])
-        path = MOBILE_MESSAGES_DIR / f"{loc}.json"
-        write_atomic(path, flat)
-        total_written += 1
+        base, android = split_for_mobile(flatten_for_mobile(sources[loc]))
+        lost = sorted(set(ANDROID_ONLY_KEYS) - set(android))
+        if loc == "en" and lost:
+            sys.exit(f"ERROR: ANDROID_ONLY_KEYS (scripts/i18n_mobile.py) not in the source: {lost}")
+        write_atomic(MOBILE_MESSAGES_DIR / f"{loc}.json", base)
+        write_atomic(MOBILE_ANDROID_DIR / f"{loc}.json", android)
+        total_written += 2
 
     android_written = 0
     for loc in SUPPORTED_LOCALES:
@@ -368,7 +386,7 @@ def main() -> int:
     print(f"\n✓ Wrote {total_written} locale files")
     print(f"  {len(EXTENSION_DIRS) * len(SUPPORTED_LOCALES)} extension _locales/")
     print(f"  {len(SUPPORTED_LOCALES)} landing/messages/")
-    print(f"  {len(SUPPORTED_LOCALES)} mobile/i18n/")
+    print(f"  {len(SUPPORTED_LOCALES)} mobile/i18n/ + {len(SUPPORTED_LOCALES)} mobile/i18n/android/")
     print(f"  {android_written} android res/values*/strings.xml")
     print(f"  {ios_written} mobile/i18n/ios/ (InfoPlist.strings via app.json locales)")
 

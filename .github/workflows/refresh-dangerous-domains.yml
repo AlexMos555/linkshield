@@ -33,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.11'
 
@@ -53,15 +53,20 @@ jobs:
           LOOKALIKE_GENERATOR_ENABLED: ${{ vars.LOOKALIKE_GENERATOR_ENABLED }}
           # Licence switches (docs/THIRD_PARTY_FEEDS.md) — repository
           # variables, unset = today's list. BLOCKLIST_LICENSED_ONLY=true
-          # leaves OpenPhish, phishing.army and CSIRT Italia out; the first run
-          # after flipping needs the `force` input (the set changes by more
-          # than the churn gate allows). BLOCKLIST_PHISHTANK_SOURCE=true hands
-          # the PHISHTANK_API_KEY secret to the job, which makes PhishTank a
-          # source (one cached download a day) — and no longer the held-out
-          # benchmark. The secret alone does nothing here: the weekly
-          # benchmark uses the same secret for a different purpose.
+          # leaves OpenPhish, phishing.army and CSIRT Italia out. A switch
+          # moves the set by a few percent (~2-3 %, 2026-11-03), far under
+          # the 50 % churn gate, so no `force` input is needed.
+          # BLOCKLIST_PHISHTANK_SOURCE=true makes PhishTank a source (one
+          # cached download a day) — and no longer the held-out benchmark:
+          # with the PHISHTANK_API_KEY secret the keyed URL, without it the
+          # public dump (a failed keyless pull waits ~12 h). The secret alone
+          # does nothing here: the weekly benchmark uses the same secret for
+          # a different purpose. Both lines read the variable the same way
+          # ('true', any case), so the key and the keyless switch never
+          # disagree.
           BLOCKLIST_LICENSED_ONLY: ${{ vars.BLOCKLIST_LICENSED_ONLY }}
           PHISHTANK_API_KEY: ${{ vars.BLOCKLIST_PHISHTANK_SOURCE == 'true' && secrets.PHISHTANK_API_KEY || '' }}
+          BLOCKLIST_PHISHTANK_SOURCE: ${{ vars.BLOCKLIST_PHISHTANK_SOURCE == 'true' }}
           # Dispatch inputs reach the shell as env vars, never spliced in.
           DRY_RUN: ${{ github.event.inputs.dry_run }}
           FORCE: ${{ inputs.force }}

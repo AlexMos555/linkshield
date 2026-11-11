@@ -2732,7 +2732,6 @@ euroki.org
 euromonitor.com
 euronews.com
 europa.eu
-europa.eu.int
 europapress.es
 europe1.fr
 europeana.eu
@@ -2892,7 +2891,6 @@ fdj.fr
 fdown.net
 fdownloader.net
 fec.gov
-fed.us
 federalregister.gov
 federalreserve.gov
 federatedjournals.com
@@ -2940,7 +2938,6 @@ filmshut.com
 filmslog.com
 filmsmx.com
 filmstarts.de
-filmvup.com
 filmweb.pl
 filmyfly.army
 filmyfly.bingo
@@ -2948,7 +2945,6 @@ filmyfly.farm
 filmyfly.green
 filmyfly.io
 filmyfly.sale
-filmywap.bet
 filmywap.doctor
 filmywap.wtf
 filmyzilla64.com
@@ -3670,7 +3666,6 @@ havadurumu15gunluk.xyz
 hawaii.edu
 hawaii.gov
 haxx.se
-haysex.cam
 hbo.com
 hbomax.com
 hbr.org
@@ -3682,7 +3677,6 @@ hdfilmcehennemi.nl
 hdhindisex.com
 hdhub4u.bi
 hdhub4u.cl
-hdhub4u.free
 hdmaal.name
 hdporncomics.com
 hdtube.porn
@@ -4086,7 +4080,6 @@ index.hr
 index.hu
 india.com
 india.gov.in
-indiafinance.online
 indiamart.com
 indiamobiletube.com
 indiana.edu
@@ -4489,7 +4482,6 @@ kakaku.com
 kakao.com
 kakuyomu.jp
 kaldagan.com
-kaliscan.io
 kaltura.com
 kaluga-poisk.ru
 kamababa1.com
@@ -5323,7 +5315,6 @@ merkur.de
 merriam-webster.com
 meshok.net
 mesibaza.com
-meslibertines.com
 mesrs.dz
 messefrankfurt.com
 messenger.com
@@ -5633,7 +5624,6 @@ mudah.my
 muenchen.de
 mufg.jp
 muji.com
-multimovies.casa
 multiply.com
 multporn.net
 mumsnet.com
@@ -5848,7 +5838,6 @@ net77.cc
 netapp.com
 netcraft.com
 netdna-cdn.com
-netdna-ssl.com
 netfirms.com
 netflix.com
 netgear.com
@@ -5905,7 +5894,6 @@ newtoki1.org
 newyorker.com
 newyorkfed.org
 nexon.com
-nexorapaybd.com
 next.co.uk
 nextcloud.com
 nextdoor.com
@@ -6615,7 +6603,6 @@ plati.market
 platinmods.com
 platorelay.com
 playbill.com
-playcasinoonline.ca
 player.fm
 playerok.com
 playfootball.games
@@ -6742,7 +6729,6 @@ postgresql.org
 postheaven.net
 postimage.org
 postimg.cc
-postimg.org
 postman.com
 potterybarn.com
 povar.ru
@@ -6950,7 +6936,6 @@ qvc.de
 qwant.com
 qwen.ai
 qwerwgsdgs.icu
-qxbroker.com
 qz.com
 r-project.org
 r7.com
@@ -7441,7 +7426,6 @@ scu.edu
 sd.gov
 sdamgia.ru
 sdna.gr
-sdpay.co.in
 sdsu.edu
 sdu.dk
 se-video.com
@@ -9192,7 +9176,6 @@ vedantu.com
 vedomosti.ru
 veeam.com
 veed.io
-vega-hot.com
 vegamoviess.foo
 vegamoviess.mobi
 veikkaus.fi
@@ -9350,7 +9333,6 @@ vuzopedia.ru
 vybory.gov.ru
 vz.ru
 vzsar.ru
-w2rt6byl5nf1opmc-a.com
 w3.org
 w3n7z2qt.top
 w3schools.com

@@ -16,6 +16,10 @@ Rules, in order of importance:
     other EDNS options (see doh_wire.query_shape). The key folds case but the
     answer echoes the client's exact question bytes and transaction ID.
   * Bounded: LRU over max_entries. Memory is roughly max_entries x ~250 B.
+  * Swept: the gateway calls sweep() every minute with a two-minute margin
+    (api/routers/doh.py), so an answer nobody asks for again is gone before
+    its TTL plus the serve-stale window ends — the privacy policy (section 11)
+    promises at most an hour and up to 6 more hours.
   * Per process. Workers and replicas each hold their own copy; nothing here
     is shared or persisted, so nothing about who asked what outlives the TTL.
 """
@@ -78,6 +82,15 @@ class ResponseCache:
         while len(self._data) > self.max_entries:
             self._data.popitem(last=False)
         return shape.ttl
+
+    def sweep(self, margin_s: float = 0.0) -> int:
+        """Drop every answer within `margin_s` of the end of its TTL plus the
+        serve-stale window (past it, get() no longer serves it). How many went."""
+        now = self._clock()
+        dead = [k for k, e in self._data.items() if now - e.stored >= e.ttl + self.stale_for - margin_s]
+        for k in dead:
+            del self._data[k]
+        return len(dead)
 
     def get(self, query: QueryShape, wire: bytes, allow_stale: bool = False) -> Optional[CachedAnswer]:
         """A fresh answer for `query`, or (allow_stale) one past its TTL but

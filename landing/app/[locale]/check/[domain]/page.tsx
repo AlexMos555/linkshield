@@ -1,57 +1,23 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getMessages, getTranslations } from "next-intl/server";
 
 import CheckForm from "@/components/CheckForm";
+import CheckResultCard from "@/components/CheckResultCard";
 import { InstallButtons } from "@/components/InstallButtons";
+import LiveCheckResult from "@/components/LiveCheckResult";
 import { PrimaryInstallLink } from "@/components/PrimaryInstallLink";
-import ShareScanButton from "@/components/ShareScanButton";
 import { routing, type Locale } from "@/i18n/routing";
+import { checkCardProps, isLevel, restsOnGoogle, type AdvisoryStrings, type Level, type ScanResult } from "@/lib/check-card";
 import { hostFromSegment } from "@/lib/check-host";
 import { displayHost } from "@/lib/display-host";
 import { localePath } from "@/lib/locale-path";
-import { reasonLines } from "@/lib/reason-label";
 import { safeJsonLd } from "@/lib/json-ld";
 import { isIndexedCheckHost } from "@/lib/seo-domains";
 
 const SITE_URL = "https://cleanway.ai";
 
 type Props = { params: Promise<{ domain: string; locale: string }> };
-
-type Level = "safe" | "caution" | "dangerous";
-
-type ScanResult = {
-  level?: Level;
-  score?: number;
-  verdict?: string;
-  signals?: string[];
-  // Machine-readable code per signal, positionally aligned with `signals`.
-  reason_codes?: string[];
-  confidence?: string;
-  // Strategy doc #12 — numeric confidence band 50..99.
-  confidence_pct?: number;
-};
-
-const LEVELS: readonly Level[] = ["safe", "caution", "dangerous"];
-
-const LEVEL_COLORS: Record<Level, string> = {
-  safe: "#22c55e",
-  caution: "#f59e0b",
-  dangerous: "#ef4444",
-};
-
-// Text on the dark card needs AA contrast; the red above is 3.9:1 there.
-const LEVEL_TEXT_COLORS: Record<Level, string> = {
-  safe: "#22c55e",
-  caution: "#f59e0b",
-  dangerous: "#f87171",
-};
-
-const LEVEL_ICONS: Record<Level, string> = {
-  safe: "✅",
-  caution: "⚠️",
-  dangerous: "❌",
-};
 
 /**
  * Build the locale-prefixed path. With `localePrefix: "as-needed"`,
@@ -76,6 +42,10 @@ function resolveLocale(locale: string): Locale {
  * hour the API verdict is cached for in fetchScan). It used to render on every
  * request — `private, no-store`, a cold serverless start on the first visit
  * — for a page whose content changes at most hourly. No site is prebuilt.
+ * A verdict resting on Google's lists never goes into this cached render: the
+ * browser fetches it live (components/LiveCheckResult.tsx) — Web Risk allows
+ * such a warning only while Google's answer is valid, and a page regenerated
+ * in the background can be served at any age.
  */
 export const revalidate = 3600;
 
@@ -157,17 +127,17 @@ async function fetchScan(domain: string): Promise<ScanResult> {
   }
 }
 
-function isLevel(value: unknown): value is Level {
-  return typeof value === "string" && (LEVELS as readonly string[]).includes(value);
+/** The Reasons namespace as plain strings, for the live check in the browser. */
+async function reasonMessages(locale: Locale): Promise<Record<string, string>> {
+  const all = (await getMessages({ locale })) as Record<string, unknown>;
+  const reasons = all.Reasons;
+  if (!reasons || typeof reasons !== "object") return {};
+  return Object.fromEntries(Object.entries(reasons).filter((e): e is [string, string] => typeof e[1] === "string"));
 }
 
-/**
- * Plain-language reason labels in the page's language, each once. The API
- * sends an English `detail` per reason plus a code; a known code gets the
- * app's label, anything else keeps the API's wording rather than disappearing.
- */
-function reasonLabels(result: ScanResult, label: (key: string) => string): string[] {
-  return reasonLines(result.signals ?? [], result.reason_codes, label);
+/** The API as the visitor's browser reaches it (the live check). */
+function browserApiBase(): string {
+  return process.env.NEXT_PUBLIC_API_URL || "https://api.cleanway.ai";
 }
 
 export default async function CheckPage({ params }: Props) {
@@ -186,20 +156,34 @@ export default async function CheckPage({ params }: Props) {
   const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
   const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
   const reasons = await getTranslations({ locale: safeLocale, namespace: "Reasons" });
+  const advisory = await getTranslations({ locale: safeLocale, namespace: "Advisory" });
   const result = await fetchScan(decodedDomain);
 
-  // No verdict (API down, timed out, rate-limited): say so. Showing a yellow
-  // "Caution — Score ?/100" for a check that never ran is a verdict we never made.
+  // No verdict (API down, timed out, rate-limited): the card says so
+  // (lib/check-card.ts) — never a yellow "Caution — Score ?/100" for a check
+  // that never ran. One of the reasons is Google's (Web Risk): the browser
+  // checks live (LiveCheckResult), and nothing of this answer goes into the
+  // cached page — not the card, not the JSON-LD.
+  const google = restsOnGoogle(result);
   const level: Level | null = isLevel(result.level) ? result.level : null;
   const score = typeof result.score === "number" ? result.score : null;
-  const color = level ? LEVEL_COLORS[level] : "#8796ab";
   const canonical = urlFor(safeLocale, decodedDomain);
-  const signals = level ? reasonLabels(result, (key) => reasons(key)) : [];
   const href = (path: string) => localePath(safeLocale, path);
+  const methodologyHref = href("/transparency/methodology");
+  const advisoryStrings: AdvisoryStrings = {
+    google: advisory("google"),
+    learn_more: advisory("learn_more"),
+    learn_phishing: advisory("learn_phishing"),
+    learn_malware: advisory("learn_malware"),
+    learn_unwanted: advisory("learn_unwanted"),
+  };
+  // The live check's reason labels: only on a page that needs them.
+  const liveReasons = google ? await reasonMessages(safeLocale) : {};
 
   // ── JSON-LD: rich structured data ──────────────────────────────
-  // Only when there is a verdict: a Review with no rating would be invented.
-  const jsonLd = level
+  // Only when there is a verdict: a Review with no rating would be invented —
+  // and never a Google verdict, which must not outlive Google's answer.
+  const jsonLd = level && !google
     ? {
         "@context": "https://schema.org",
         "@graph": [
@@ -270,92 +254,29 @@ export default async function CheckPage({ params }: Props) {
 
       <main style={{ maxWidth: 800, margin: "0 auto", padding: "48px 24px" }}>
         {/* Main Result Card */}
-        <div
-          data-testid="check-result"
-          style={{
-            background: "#1e293b",
-            borderRadius: 16,
-            padding: "32px",
-            border: `1px solid ${color}40`,
-            marginBottom: 24,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
-            <div
-              aria-hidden="true"
-              style={{
-                width: 64,
-                height: 64,
-                borderRadius: "50%",
-                background: `${color}20`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 32,
-                flexShrink: 0,
-              }}
-            >
-              {level ? LEVEL_ICONS[level] : "…"}
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <h1 style={{ fontSize: 28, fontWeight: 800, color: "#f8fafc", margin: 0, overflowWrap: "anywhere" }}>
-                {t("heading", { domain: shownDomain })}
-              </h1>
-              {level && (
-                <p style={{ fontSize: 18, color: LEVEL_TEXT_COLORS[level], fontWeight: 600, margin: "4px 0 0" }}>
-                  {t(`level_${level}`)}
-                  {score !== null && <> &mdash; {t("risk_score", { score })}</>}
-                </p>
-              )}
-              {/* Strategy doc #12: numeric confidence band chip. The
-                  number is sourced from the API's calculate_confidence_pct
-                  output, which blends data coverage × signal margin. */}
-              {level && typeof result.confidence_pct === "number" && (
-                <p
-                  style={{ fontSize: 13, color: "#94a3b8", margin: "4px 0 0", fontWeight: 500 }}
-                  title={t("confidence_hint")}
-                >
-                  {t("confidence", { pct: result.confidence_pct })} &middot;{" "}
-                  <a href={href("/transparency/methodology")} style={{ color: "#60a5fa", textDecoration: "underline" }}>
-                    {t("how_we_measure")}
-                  </a>
-                </p>
-              )}
-            </div>
-          </div>
-
-          <p style={{ fontSize: 16, color: "#94a3b8", lineHeight: 1.6, marginBottom: 20 }}>
-            {level ? t(`verdict_${level}`, { domain: shownDomain }) : t("check_failed", { domain: shownDomain })}
-          </p>
-
-          {signals.length > 0 && (
-            <div style={{ marginBottom: 20 }}>
-              <h2 style={{ fontSize: 14, color: "#8796ab", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
-                {t("signals_heading")}
-              </h2>
-              {signals.map((s, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, padding: "6px 0", fontSize: 14, color: "#94a3b8" }}>
-                  <span aria-hidden="true" style={{ color }}>&#x2022;</span>
-                  <span>{s}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {level && result.confidence === "low" && (
-            <p style={{ fontSize: 13, color: "#f59e0b", fontStyle: "italic", marginBottom: 20 }}>
-              {t("low_confidence")}
-            </p>
-          )}
-
-          {level && (
-            <ShareScanButton
-              text={t("share_text", { verdict: t(`level_${level}`), domain: shownDomain, score: String(score ?? "?") })}
-              title={t("share_title", { domain: shownDomain })}
-              url={canonical}
-            />
-          )}
-        </div>
+        {google ? (
+          <LiveCheckResult
+            domain={decodedDomain}
+            shownDomain={shownDomain}
+            canonical={canonical}
+            methodologyHref={methodologyHref}
+            apiBase={browserApiBase()}
+            reasons={liveReasons}
+            advisory={advisoryStrings}
+          />
+        ) : (
+          <CheckResultCard
+            {...checkCardProps({
+              result,
+              shownDomain,
+              canonical,
+              methodologyHref,
+              t: (key, values) => t(key, values),
+              reason: (key) => reasons(key),
+              advisory: advisoryStrings,
+            })}
+          />
+        )}
 
         {/* CTA */}
         <div style={{ background: "#1e293b", borderRadius: 16, padding: 24, textAlign: "center" }}>
@@ -402,7 +323,7 @@ export default async function CheckPage({ params }: Props) {
 
         <p style={{ textAlign: "center", fontSize: 12, color: "#8796ab", marginTop: 32 }}>
           {t("footer_note")}{" "}
-          <a href={href("/transparency/methodology")} style={{ color: "#60a5fa", textDecoration: "underline" }}>
+          <a href={methodologyHref} style={{ color: "#60a5fa", textDecoration: "underline" }}>
             {t("how_we_measure")}
           </a>{" "}&middot;{" "}
           <a href={href("/privacy-policy")} style={{ color: "#60a5fa", textDecoration: "underline" }}>

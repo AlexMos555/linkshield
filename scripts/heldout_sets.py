@@ -161,9 +161,16 @@ def tenant_suffix(host: str, shared: set[str]) -> Optional[str]:
 
 
 def top_domains(limit: int = 10_000) -> list[str]:
+    """The first `limit` names of the top 10k that still exist: a tombstoned
+    one (data/top_domains_dead.json) is no legit sample — the publisher may
+    list it now."""
+    try:
+        dead = set(json.loads((ROOT / "data" / "top_domains_dead.json").read_text())["names"])
+    except Exception:  # noqa: BLE001
+        dead = set()
     try:
         raw = json.loads((ROOT / "data" / "top_10k.json").read_text())
-        return list(raw.keys() if isinstance(raw, dict) else raw)[:limit]
+        return [d for d in (raw.keys() if isinstance(raw, dict) else raw) if d not in dead][:limit]
     except Exception:  # noqa: BLE001
         return []
 

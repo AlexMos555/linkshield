@@ -64,12 +64,21 @@ from api.services.pinned_http import pinned_client
 logger = logging.getLogger("cleanway.site_probes")
 
 # Per connection phase (connect, read, …), below the analysis budget
-# (config.analysis_budget_seconds, 3 s), so a site that never answers is
-# reported as unreachable, not merely cut off.
-SITE_PROBE_TIMEOUT_S = 2.0
+# (config.analysis_budget_seconds, 2.3 s) counted from when the probes start
+# (~0.3 s in), so a site that never answers is reported as unreachable, not
+# merely cut off: "unreachable" says why the site was not checked. A probe
+# that times out reports 0.13 s (p50), at most 0.5 s, after this limit (its
+# own name lookup, the TLS probe's thread), so 2.0 s, the limit under the old
+# 3 s budget, ended 2.0-2.5 s in and the 2.3 s deadline cut a hidden phishing
+# site to 'safe' (2026-11-04, tests/test_budget_fits_client_wait.py; since
+# then a site no probe saw in time keeps the analyzer's floor for an
+# unvouched name too, tests/test_cut_probes_floor.py). 1.5 s still outlasts one lost SYN
+# (resent after 1 s): side by side on 232 sites, one was reached at 2.0 s
+# and not at 1.5 s, one the other way round.
+SITE_PROBE_TIMEOUT_S = 1.5
 # Whole probe, all phases and hops together: httpx's timeout is per phase, so
 # a server that trickles a byte a second would otherwise never time out.
-SITE_PROBE_TOTAL_S = 2.5
+SITE_PROBE_TOTAL_S = 2.0
 
 _SECURITY_HEADERS = (
     "strict-transport-security", "content-security-policy",
@@ -190,7 +199,7 @@ def _check_ssl_sync(domain: str) -> dict:
         if _may_have_no_https(exc) and _serves_plain_http(domain, address, deadline):
             return {"reachable": True, "has_ssl": False, "http_only": True}
         return _unreachable(exc)
-    return _describe_certificate(cert or {})
+    return _describe_certificate(cert or {}, domain)
 
 
 def _may_have_no_https(exc: BaseException) -> bool:
@@ -276,7 +285,7 @@ def _parse_head(raw: bytes) -> Optional[tuple[int, Optional[str]]]:
     return int(status_line[1]), location
 
 
-def _describe_certificate(cert: dict) -> dict:
+def _describe_certificate(cert: dict, domain: str = "") -> dict:
     issuer = dict(x[0] for x in cert.get("issuer", []))
     issuer_org = issuer.get("organizationName", "Unknown")
     issuer_cn = issuer.get("commonName", "")
@@ -287,7 +296,28 @@ def _describe_certificate(cert: dict) -> dict:
         "issuer": issuer_org,
         "is_free_ssl": is_free,
         "cert_age_days": _cert_age_days(cert.get("notBefore")),
+        "cert_wildcard": _covered_only_by_wildcard(cert, domain),
     }
+
+
+def _covered_only_by_wildcard(cert: dict, domain: str) -> bool:
+    """True when the certificate names `domain` only through a wildcard
+    (*.vercel.app for verifiedbadgehub.vercel.app) and not by itself.
+
+    On a hosting platform such a certificate is the platform's, shared by
+    every site under it, and its age says when the platform last renewed it
+    — nothing about this site: every Vercel tenant showed the same
+    57-day-old *.vercel.app certificate on 2026-10-26 (the scorer decides
+    whose wildcard it is: scoring._certificate_is_a_renewal). A wildcard
+    covers exactly one label (RFC 6125 §6.4.3), so *.example.com does not
+    cover a.b.example.com.
+    """
+    host = (domain or "").lower().rstrip(".")
+    names = [v.lower().rstrip(".") for k, v in cert.get("subjectAltName", ()) or () if k == "DNS"]
+    if not host or host in names:
+        return False
+    parent = host.split(".", 1)[1] if "." in host else ""
+    return bool(parent) and f"*.{parent}" in names
 
 
 def _cert_age_days(not_before: Optional[str]) -> Optional[int]:

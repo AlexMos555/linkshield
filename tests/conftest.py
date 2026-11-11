@@ -38,7 +38,7 @@ class FakeRedis:
     """Minimal async Redis-compatible stand-in.
 
     Covers the surface every Cleanway service actually uses:
-      - get / set / setex / delete
+      - get / mget / set / setex / delete
       - incr / incrby
       - smembers / sadd (personal whitelist)
       - expire / ttl (rate-limiter window inspection)
@@ -69,6 +69,9 @@ class FakeRedis:
         self._kv[key] = val
         self._ttls[key] = ttl
         return True
+
+    async def mget(self, keys):
+        return [self._kv.get(k) for k in keys]
 
     async def delete(self, *keys: str):
         for k in keys:
@@ -432,6 +435,30 @@ def _hermetic_ssrf_dns(monkeypatch):
     monkeypatch.setattr(domain_validator, "_getaddrinfo", _fake)
 
 
+# ─── RDAP bootstrap file: one per test ─────────────────────────────
+
+@pytest.fixture(autouse=True)
+def _fresh_rdap_bootstrap(monkeypatch):
+    """The RDAP lookup keeps IANA's zone → server file in memory for a day
+    (api/services/rdap.py). A test whose stubbed network answered that fetch
+    must not leave its zone list to the next test."""
+    from api.services import rdap
+
+    monkeypatch.setattr(rdap, "_bootstrap", rdap._Bootstrap())
+
+
+@pytest.fixture(autouse=True)
+def _fresh_allowlist_age():
+    """The allowlist age gate keeps its queue, its copy of recent answers and
+    its shadow-log times per process (api/services/allowlist_age.py): none of
+    one test's may reach the next."""
+    from api.services import allowlist_age
+
+    allowlist_age.reset_for_tests()
+    yield
+    allowlist_age.reset_for_tests()
+
+
 # ─── Site probes over a table instead of the network ───────────────
 
 @pytest.fixture
@@ -676,6 +703,17 @@ def _fresh_health_deep_cache():
     health_deep_guard.reset_for_tests()
     yield
     health_deep_guard.reset_for_tests()
+
+
+@pytest.fixture(autouse=True)
+def _fresh_unsubscribe_fallback():
+    """Verified unsubscribe links count in process while Redis is down
+    (rate_limiter._unsubscribe_fallback); one test's count is not another's."""
+    from api.services import rate_limiter
+
+    rate_limiter.reset_for_tests()
+    yield
+    rate_limiter.reset_for_tests()
 
 
 @pytest.fixture(autouse=True)

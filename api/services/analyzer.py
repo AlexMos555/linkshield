@@ -23,7 +23,14 @@ consulted: they leave the plan and the total, so an analysis is 13 checks of
 13, not 13 of 19. LICENSED_INTEL=all consults all 19.
 
 A check still running at the deadline is cancelled and named in
-`checks_incomplete`; the LLM judge only gets whatever budget is left. Every
+`checks_incomplete`, and so is a source its own time limit ended
+(SOURCE_TIMEOUT_S, below the budget). A source whose breaker is open is not
+asked at all: it is down, nothing was cut, so it is named only in the
+machine-readable `sources_down`. The LLM judge is never waited for:
+only its cached opinion counts, and a live call it needs runs on in the
+background for the next check (named `llm_judge` in `checks_incomplete`
+meanwhile). Its
+opinion moves the score inside caution only, never the level. Every
 check waits for the worker's outbound gate first (load_shedding.OUTBOUND), so
 the source calls open at once stay bounded however many analyses run.
 
@@ -33,21 +40,23 @@ Privacy: only domain names processed — never full URLs or user data.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import logging
-from datetime import datetime, timezone
-from typing import Any, Optional
+from datetime import date, datetime, timezone
+from typing import Any, Optional, Sequence
 
 import httpx
 
 from api.config import get_settings
-from api.services import licensed_intel, load_shedding, paid_budget, security_alerts
+from api.services import allowlist_age, licensed_intel, load_shedding, paid_budget, rdap, scoring, security_alerts
 from api.services import verdict_basis as vb
 from api.services.analysis_budget import MIN_STEP_S, Deadline, run_within_budget
 from api.services.tls_contexts import client_tls_context
-from api.services.hosting_platforms import is_user_content_service
+from api.services.public_suffix import CCTLD_OPEN_ZONES
 from api.services.scoring import (
-    calculate_score, calculate_confidence, calculate_confidence_pct, is_hosting_platform_site,
-    is_regional_government_domain, popularity_rank, registrable_domain,
+    calculate_score, calculate_confidence, calculate_confidence_pct, is_evidence_only_tenant,
+    is_hosting_platform_site, is_regional_government_domain, is_user_content_service_host, level_for_score,
+    otx_reports_are_history, popularity_rank, rank_registrable_domain, registrable_domain, _platform_tenant_site,
 )
 from api.services.domain_validator import (
     validate_domain,
@@ -86,8 +95,8 @@ from api.models.schemas import DomainResult, DomainReason, RiskLevel, Confidence
 logger = logging.getLogger("cleanway.analyzer")
 
 # Every check the analyzer knows. The number a verdict is measured against
-# is licensed_intel.total_checks(TOTAL_CHECKS): fewer when sources are
-# switched off for their licence.
+# is TOTAL_CHECKS minus _not_consulted(domain): fewer when sources are
+# switched off for their licence, and for an IP literal (_NOT_FOR_IPS).
 TOTAL_CHECKS = 19
 # The checks that connect to the site itself. They are skipped when the SSRF
 # guard could not finish (we would not know where we are connecting), and an
@@ -95,11 +104,33 @@ TOTAL_CHECKS = 19
 _SITE_PROBES = frozenset({"favicon", "ssl", "headers", "redirect"})
 # Cap for the SSRF resolution step inside the overall budget.
 RESOLUTION_TIMEOUT_S = 1.5
-# Every external source gives up BELOW the analysis budget (3 s), so a source
-# that hangs raises — and its circuit breaker counts the failure and opens —
-# instead of being silently cancelled at the deadline on every single check.
-# (PhishStats hung like that, holding each fresh check to the full budget.)
-SOURCE_TIMEOUT_S = 2.5
+# Every external source gives up BELOW the analysis budget
+# (config.analysis_budget_seconds), so a source that hangs raises — and its
+# circuit breaker counts the failure and opens — instead of being silently
+# cancelled at the deadline on every single check. (PhishStats hung like
+# that, holding each fresh check to the full budget; since 2026-11-04 it
+# hangs again.) Half a second below the 2.3 s budget: the existence and SSRF
+# lookups before the sources took up to 0.5 s in 194 of 235 analyses through
+# a home router and 172 of 232 through 1.1.1.1 (2026-11-04). From a later
+# start the deadline cancels a hang first, which a closed breaker never sees
+# (with 2.0 s it saw only those that started within 0.3 s: 178 and 71); a
+# half-open one opens again for its cooldown (circuit_breaker
+# ._on_probe_cancelled), so the next check does not wait for it again. Of the
+# 235 recorded analyses' source calls, one ended between 1.8 and 2.0 s — a
+# keyless PhishTank error at 1.86 s; RDAP at 1.71 s still fits, and those
+# past 2.0 s (DNS 2.11 s three times, RDAP 2.40, OTX 2.76 and 2.85) were cut
+# at 2.0 s already.
+SOURCE_TIMEOUT_S = 1.8
+# The sources whose own time limit (above) ended them in THIS analysis
+# (_within_source_timeout): they did not finish in time, as surely as one the
+# deadline cut, and are named in `checks_incomplete` with those — the answer
+# says it is partial, and the public cache keeps it for an hour, not a day.
+_TIMED_OUT: contextvars.ContextVar[Optional[set]] = contextvars.ContextVar("analyzer_timed_out", default=None)
+# The checks whose breaker did not let them run in THIS analysis (_consult):
+# open, or half-open with its one probe already out. Down, not cut off.
+_DOWN: contextvars.ContextVar[Optional[set]] = contextvars.ContextVar("analyzer_sources_down", default=None)
+# The probes that tell whether the site answered (site_probes.site_reachability).
+_REACHABILITY_PROBES = frozenset({"ssl", "headers", "redirect"})
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -108,11 +139,14 @@ SOURCE_TIMEOUT_S = 2.5
 
 async def analyze_domain(
     domain: str, raw_url: str = "", budget_s: Optional[float] = None,
+    allowlist_withheld: bool = False,
 ) -> DomainResult:
     """Analyze a domain inside one time budget.
 
     Returns a DomainResult with score, level, confidence, reasons,
-    `verdict_basis`, `exists` and `checks_incomplete`.
+    `verdict_basis`, `exists` and `checks_incomplete`. `allowlist_withheld`:
+    a router's age gate (allowlist_age) withheld the allowlist from this
+    name — whatever this analysis's own registry lookup gives.
     """
     # ── Validate & normalize domain (SSRF protection) ──
     try:
@@ -127,10 +161,11 @@ async def analyze_domain(
             verdict_basis=vb.BASIS_HEURISTICS,
         )
 
-    # A user-content service host (disk.yandex.ru, onedrive.live.com): its
-    # name is the platform's, so scoring it judges Yandex or Microsoft, not
-    # the page. Fixed answer, no analysis.
-    if is_user_content_service(domain):
+    # A user-content service host (disk.yandex.ru, onedrive.live.com, and
+    # disk.yandex.kz on another domain of its operator): its name is the
+    # platform's, so scoring it judges Yandex or Microsoft, not the page.
+    # Fixed answer, no analysis.
+    if is_user_content_service_host(domain):
         return vb.user_content_result(domain)
 
     budget = get_settings().analysis_budget_seconds if budget_s is None else budget_s
@@ -159,28 +194,57 @@ async def analyze_domain(
             await security_alerts.record("ssrf_blocked")
         return vb.not_found_result(domain)
 
-    outcomes, unfinished = await run_within_budget(
-        _check_calls(domain, probes_allowed), deadline.remaining(),
-    )
+    timed_out: set[str] = set()
+    down: set[str] = set()
+    tokens = _TIMED_OUT.set(timed_out), _DOWN.set(down)
+    try:
+        outcomes, unfinished = await run_within_budget(
+            _check_calls(domain, probes_allowed), deadline.remaining(),
+        )
+    finally:
+        _TIMED_OUT.reset(tokens[0])
+        _DOWN.reset(tokens[1])
+    unfinished = unfinished + sorted(timed_out.difference(unfinished))
     if not probes_allowed:
         unfinished = unfinished + sorted(_SITE_PROBES)
-    return await _judge(domain, raw_url, is_ip, exists, outcomes, unfinished, deadline)
+    return await _judge(domain, raw_url, is_ip, exists, outcomes, unfinished, deadline, allowlist_withheld,
+                        sources_down=sorted(down))
 
 
 async def _judge(
     domain: str, raw_url: str, is_ip: bool, exists: Optional[bool],
     outcomes: dict, unfinished: list[str], deadline: Deadline,
+    allowlist_withheld: bool = False, sources_down: Sequence[str] = (),
 ) -> DomainResult:
-    """Score the gathered evidence, let the LLM judge use what budget is left,
-    and assemble the result."""
-    total = licensed_intel.total_checks(TOTAL_CHECKS)
-    signals = _build_signals(domain, raw_url, is_ip, outcomes, total)
+    """Score the gathered evidence, apply the LLM judge's cached opinion (or
+    start its live call for the next check), and assemble the result.
+    `sources_down`: the checks their breakers skipped (_DOWN)."""
+    total = TOTAL_CHECKS - len(_not_consulted(domain))
+    # The argument only when it says something: wrappers of the old
+    # signature (tests/test_licensed_intel.py) see the call they always did.
+    withheld = {"allowlist_withheld": True} if allowlist_withheld else {}
+    signals = _build_signals(domain, raw_url, is_ip, outcomes, total, **withheld)
     whois_age = signals["domain_age_days"]
     measured = _measured_checks(outcomes, signals["site_reachable"])
     signals["checks_succeeded"] = measured
 
     score, level, reasons = calculate_score(signals)
     confidence = calculate_confidence(measured, total, whois_age)
+    if (signals["young_rank"] is not None and not signals["popularity_withheld"]
+            and get_settings().popularity_age_gate == "shadow"):
+        # Shadow: what withholding the young name's rank would change.
+        gated = _build_signals(domain, raw_url, is_ip, outcomes, total, withhold_young_rank=True, **withheld)
+        gated["checks_succeeded"] = measured
+        gated_score, gated_level, _ = calculate_score(gated)
+        # The unreachable-site floor below, as "on" would apply it: a
+        # withheld rank vouches for nothing but a government zone.
+        if ((gated["site_reachable"] is False or _site_unseen(gated, unfinished))
+                and gated_level == RiskLevel.safe and not _government_name(domain)):
+            gated_score, gated_level = max(gated_score, vb.CANNOT_VOUCH_SCORE), RiskLevel.caution
+        logger.info("popularity_age_gate_shadow", extra={
+            "domain": domain, "rank": signals["young_rank"], "age_days": whois_age,
+            "score": score, "verdict": level.value, "gated_score": gated_score, "gated_verdict": gated_level.value,
+        })
 
     if confidence == ConfidenceLevel.low and level == RiskLevel.safe:
         score = max(score, vb.CANNOT_VOUCH_SCORE)
@@ -194,24 +258,41 @@ async def _judge(
     # benefit of the doubt: no listing is not evidence of safety for a fresh,
     # geo-fenced Госуслуги look-alike — the ML model and the brand list both
     # miss those. Caution, never 'safe' (and 'unreachable' never blocks).
+    # Not under an evidence-only zone (scoring.EVIDENCE_ONLY_TENANT_ZONES):
+    # there no probe judges the site, an unreachable one included, and
+    # neither does the LLM judge below, whose features are the probes'.
+    #
+    # Nor a site no probe could see in time (_site_unseen): the deadline that
+    # cut its probes would otherwise clear the same hidden site the floor
+    # holds when they say "unreachable" — bradesco.biajuridicopj.app went
+    # from caution to 'safe' that way in the replay of 2026-11-04.
+    evidence_only = is_evidence_only_tenant(domain)
     vouched = True
-    if signals["site_reachable"] is False:
+    if (signals["site_reachable"] is False or _site_unseen(signals, unfinished)) and not evidence_only:
         vouched = await _name_is_vouched_for(domain, signals, deadline)
         if not vouched and level == RiskLevel.safe:
             score = max(score, vb.CANNOT_VOUCH_SCORE)
             level = RiskLevel.caution
 
-    # A verdict on a site we could not open, or on partial data near 'safe',
-    # is never 'high' confidence.
-    if (measured < total and score < 20) or signals["site_reachable"] is False:
+    # A verdict on a site we could not open (or see in time), or on partial
+    # data near 'safe', is never 'high' confidence.
+    if (measured < total and score < 20) or signals["site_reachable"] is False or _site_unseen(signals, unfinished):
         confidence = _at_most(confidence, ConfidenceLevel.medium)
 
-    score, level, judge_reason, judge_finished = await _llm_judge_within(signals, score, level, deadline)
-    if judge_reason is not None:
-        reasons.append(judge_reason)
-    if not judge_finished:
-        unfinished = unfinished + ["llm_judge"]
-    reasons.extend(_informational_reasons(domain, outcomes, signals, unfinished, vouched))
+    judge_reason = None
+    if not evidence_only:
+        score, level, judge_reason, judge_finished = await _llm_judge_within(signals, score, level, deadline)
+        if judge_reason is not None:
+            reasons.append(judge_reason)
+        if not judge_finished:
+            unfinished = unfinished + ["llm_judge"]
+    # The person is told only of checks the verdict lacks. The judge is not
+    # one: it is never waited for, and its opinion moves the score inside
+    # caution, never the level — "did not finish in time" would be untrue.
+    # It stays in `checks_incomplete`, which keeps the answer in the public
+    # cache for an hour, not a day, so the next check can apply the opinion.
+    cut_off = [name for name in unfinished if name != "llm_judge"]
+    reasons.extend(_informational_reasons(domain, outcomes, signals, cut_off, vouched))
 
     _log_features(domain, signals, score)
     # With PUBLISH_CONFIRMED_THREATS on (off by default — a licence
@@ -231,21 +312,30 @@ async def _judge(
         ssl_issuer=_value(outcomes, "ssl", {}).get("issuer"),
         exists=exists,
         checks_incomplete=sorted(set(unfinished)),
+        sources_down=sorted(set(sources_down)),
     )
-    basis = vb.derive_verdict_basis(result, ml_consulted=_ml_available())
+    # The model judges nothing under an evidence-only zone (scoring._evidence_only_verdict).
+    basis = vb.derive_verdict_basis(result, ml_consulted=_ml_available() and not evidence_only)
     logger.info("analysis_complete", extra={
         "domain": domain, "score": score, "verdict": level.value,
         "confidence": confidence.value, "confidence_pct": confidence_pct,
         "checks": measured, "basis": basis, "incomplete": result.checks_incomplete,
+        "sources_down": result.sources_down,
+        # The LLM judge's applied shift (None: not applied), so where its
+        # opinions land against the scorer's lines can be counted.
+        "judge_shift": judge_reason.weight if judge_reason is not None else None,
     })
     return result.model_copy(update={"verdict_basis": basis})
 
 
-def rule_only_result(domain: str, raw_url: str = "") -> DomainResult:
+def rule_only_result(domain: str, raw_url: str = "", allowlist_withheld: bool = False) -> DomainResult:
     """The verdict on the address alone, no check run — what a caller gets
     when the analysis failed or there was no capacity to run it. It says it
-    is partial (`checks_incomplete: ["analysis"]`), and is never cached."""
+    is partial (`checks_incomplete: ["analysis"]`), and is never cached. A
+    name the age gate withheld the allowlist from stays without it."""
     signals = {"domain": domain, "raw_url": raw_url or domain}
+    if allowlist_withheld:
+        signals.update(allowlist_withheld=True, popularity_withheld=True)
     score, level, reasons = calculate_score(signals)
     partial = DomainResult(
         domain=domain,
@@ -306,7 +396,7 @@ def _check_calls(domain: str, probes_allowed: bool) -> dict[str, Any]:
     Built per call rather than at import so a monkeypatched check function
     is the one that runs.
     """
-    skipped = licensed_intel.skipped_checks()
+    skipped = _not_consulted(domain)
     plan = {
         # Blocklist sources (11)
         "safe_browsing": (safe_browsing_breaker, check_safe_browsing),
@@ -332,10 +422,51 @@ def _check_calls(domain: str, probes_allowed: bool) -> dict[str, Any]:
         "redirect": (redirect_breaker, check_redirect_chain),
     }
     return {
-        name: breaker.call(_through_outbound_gate(fn if name in _SITE_PROBES else _within_source_timeout(fn)), domain)
+        name: _consult(name, breaker, _through_outbound_gate(
+            fn if name in _SITE_PROBES else _within_source_timeout(fn, name)), domain)
         for name, (breaker, fn) in plan.items()
         if (probes_allowed or name not in _SITE_PROBES) and name not in skipped
     }
+
+
+async def _consult(name: str, breaker: Any, fn: Any, domain: str) -> tuple[Any, bool]:
+    """`breaker.call(fn, domain)`, noting in the analysis's _DOWN when the
+    breaker did not let `fn` run: open, or half-open with its probe out. Such
+    a check returns its fallback at once and is not counted as measured, as
+    before — it is just not "cut off" either: nothing could have finished."""
+    asked = False
+
+    async def _asked(d: str) -> Any:
+        nonlocal asked
+        asked = True
+        return await fn(d)
+
+    outcome = await breaker.call(_asked, domain)
+    if not asked:
+        down = _DOWN.get()
+        if down is not None:
+            down.add(name)
+    return outcome
+
+
+# Checks that cannot look up an IP literal, which the analyzer accepts as a
+# host. OTX's domain endpoint answers 400 "Invalid domain (8.8.8.8)" for every
+# IP (measured 2026-10-27); since #349 a non-2xx is a breaker failure, so three
+# IP checks switched OTX off for 60 s for every domain. Its IPv4 endpoint does
+# answer, but not with the same thing: shared hosting addresses carry bulk
+# IOC dumps and honeypot feeds (Vercel 76.76.21.21, GitHub Pages
+# 185.199.109.153, Microsoft 13.107.42.14: 50 pulses each; example.com's
+# 93.184.215.14: 9), which scoring would read as +60. Not consulted, OTX is
+# not counted as measured, nor among the checks a verdict is measured
+# against, as for a source switched off.
+_NOT_FOR_IPS = frozenset({"alienvault"})
+
+
+def _not_consulted(domain: str) -> frozenset:
+    """The checks an analysis of `domain` does not run: switched off for
+    their licence (licensed_intel), or unable to look up an IP literal."""
+    skipped = licensed_intel.skipped_checks()
+    return skipped | _NOT_FOR_IPS if _is_ip_address(domain) else skipped
 
 
 def _through_outbound_gate(fn: Any) -> Any:
@@ -350,7 +481,7 @@ def _through_outbound_gate(fn: Any) -> Any:
     return _call
 
 
-def _within_source_timeout(fn: Any) -> Any:
+def _within_source_timeout(fn: Any, name: Optional[str] = None) -> Any:
     """`fn` with a TOTAL time limit that raises inside the breaker.
 
     httpx's timeout is per phase (connect, then each read), so a source that
@@ -360,9 +491,21 @@ def _within_source_timeout(fn: Any) -> Any:
     an Exception). This limit fires first, as a failure the breaker counts.
     The site probes keep their own limits: one slow SITE must not open a
     breaker that skips the probe for everyone.
+
+    A source ended by this limit, or by one of httpx's per-phase limits, is
+    recorded as `name` in the analysis's _TIMED_OUT: it did not finish in
+    time. Any other failure (an error answer, a 429, a page that is not
+    JSON) is not — it would be untrue to call it late, and an hour later the
+    answer would not be better.
     """
     async def _call(domain: str) -> Any:
-        return await asyncio.wait_for(fn(domain), timeout=SOURCE_TIMEOUT_S)
+        try:
+            return await asyncio.wait_for(fn(domain), timeout=SOURCE_TIMEOUT_S)
+        except (asyncio.TimeoutError, httpx.TimeoutException):
+            timed_out = _TIMED_OUT.get()
+            if timed_out is not None and name:
+                timed_out.add(name)
+            raise
     return _call
 
 
@@ -409,14 +552,58 @@ def _popularity_rank(tranco_result: dict, domain: str) -> Optional[int]:
     }, domain)
 
 
+_UNRANKED = {"ranked": False, "rank": None, "weight": 0, "label": "", "registrable_rank": None}
+
+
+def _is_young(age: Any) -> bool:
+    """A registration age (days) under popularity_min_age_days."""
+    limit = get_settings().popularity_min_age_days
+    return isinstance(age, int) and not isinstance(age, bool) and 0 < limit and age < limit
+
+
+def _young_rank(tranco_result: dict, whois_data: dict, domain: str) -> Optional[int]:
+    """The rank of a name registered fewer than popularity_min_age_days ago
+    (the registry's date for its registrable name, check_whois_age), else
+    None. A dropped name keeps the links of its earlier holder and a link
+    farm's name buys them, so such a rank is not the name's own: 11 *.uk/*.nl
+    names registered the same day ranked 130k-360k, ruhlinkpay.com #17,140
+    at 80 days (2026-10-31). An unknown age (.ru, .de, a failed lookup)
+    keeps the rank, as before."""
+    if not _is_young(whois_data.get("age_days")):
+        return None
+    return _popularity_rank(tranco_result, domain)
+
+
 def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
-                   total_checks: int = TOTAL_CHECKS) -> dict:
+                   total_checks: int = TOTAL_CHECKS, withhold_young_rank: Optional[bool] = None,
+                   allowlist_withheld: bool = False) -> dict:
     """The scorer's input — all 42+ signals, from the gathered outcomes. A
     source that was not consulted is simply absent from `outcomes`, so its
-    hit reads False and it is not counted as measured."""
+    hit reads False and it is not counted as measured.
+
+    A young name's rank (_young_rank) is replaced by "unranked" before
+    anything reads it when popularity_age_gate is "on", or when
+    `withhold_young_rank` says so (the shadow comparison in _judge): no
+    popularity bonus, vouch, OTX waiver, LLM popularity prior, certificate
+    renewal or self-hosted-product exemption then comes from it.
+
+    The allowlist is withheld from a young registration of a top-100k name
+    (`allowlist_withheld`: a router's age gate said so, or the gate is "on"
+    and this analysis found the age itself): no instant "safe" (scoring
+    Layer 2), and its rank goes with it."""
     alienvault_data = _value(outcomes, "alienvault", {})
     ipqs_data = _value(outcomes, "ipqs", {})
     tranco_result = _value(outcomes, "tranco", {"ranked": False, "rank": None, "weight": 0, "label": ""})
+    young_rank = _young_rank(tranco_result, _value(outcomes, "whois", {}), domain)
+    gate = get_settings().popularity_age_gate
+    list_withheld = allowlist_withheld or (
+        get_settings().allowlist_age_gate == "on"
+        and _is_young(_value(outcomes, "whois", {}).get("age_days"))
+        and allowlist_age.gated_entry(domain) is not None)
+    withheld = list_withheld or (
+        young_rank is not None and (gate == "on" if withhold_young_rank is None else withhold_young_rank))
+    if withheld:
+        tranco_result = dict(_UNRANKED)
     favicon_result = _value(outcomes, "favicon", {"cloned": False, "brand": None, "weight": 0, "detail": ""})
     watchtower_result = _value(outcomes, "watchtower", {"matched": False, "weight": 0})
     whois_data = _value(outcomes, "whois", {})
@@ -434,7 +621,14 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
     # is not a blocklist hit: counted as one it would also stop the LLM judge
     # (llm_judge gate 2) from looking at the caution it causes. A hosting
     # platform's rank is not its tenant's: a pulse about x.workers.dev counts.
-    otx_counts = bool(alienvault_data.get("hit")) and not _popularity_rank(tranco_result, domain)
+    # Old reports about a hostname count nowhere (otx_reports_are_history).
+    otx_indicator = _otx_indicator(domain)[0] if alienvault_data else None
+    otx_summary = {"alienvault_indicator": otx_indicator,
+                   "alienvault_pulse_count": alienvault_data.get("pulse_count", 0),
+                   "alienvault_distinct_pulses": alienvault_data.get("distinct_pulses"),
+                   "alienvault_newest_report_days": alienvault_data.get("newest_report_days")}
+    otx_counts = (bool(alienvault_data.get("hit")) and not _popularity_rank(tranco_result, domain)
+                  and not otx_reports_are_history(otx_summary))
 
     return {
         "domain": domain,
@@ -450,6 +644,13 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
         "spamhaus_hit": _value(outcomes, "spamhaus", False),
         "surbl_hit": _value(outcomes, "surbl", False),
         "alienvault_pulse_count": alienvault_data.get("pulse_count", 0),
+        # Separate reports among them (copies of one pulse are one report),
+        # and how many days ago the newest was made (_otx_reports).
+        "alienvault_distinct_pulses": alienvault_data.get("distinct_pulses"),
+        "alienvault_newest_report_days": alienvault_data.get("newest_report_days"),
+        # The indicator type OTX was asked for: "domain" or "hostname"
+        # (_otx_indicator); None when OTX did not answer.
+        "alienvault_indicator": otx_indicator,
         "ipqs_risk_score": ipqs_data.get("risk_score", 0),
         "ipqs_phishing": ipqs_data.get("phishing", False),
         "malware_bazaar_hit": _value(outcomes, "malware_bazaar", False),
@@ -463,6 +664,11 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
         "tranco_registrable_rank": tranco_result.get("registrable_rank"),
         "tranco_weight": tranco_result.get("weight", 0),
         "tranco_label": tranco_result.get("label", ""),
+        # The rank a young registration did not earn (_young_rank), and
+        # whether it was withheld.
+        "young_rank": young_rank,
+        "popularity_withheld": withheld,
+        "allowlist_withheld": list_withheld,
         # Strategy #2 — favicon brand-clone
         "favicon_cloned": bool(favicon_result.get("cloned")),
         "favicon_brand": favicon_result.get("brand"),
@@ -484,6 +690,10 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
         "certificate_problem": ssl_data.get("certificate_problem"),
         "free_ssl": ssl_data.get("is_free_ssl", False),
         "cert_age_days": ssl_data.get("cert_age_days"),
+        # The certificate names this host only through a wildcard (site_probes);
+        # on a hosting platform that is the platform's, and its age is not the
+        # site's (scoring._certificate_is_a_renewal).
+        "cert_wildcard": bool(ssl_data.get("cert_wildcard")),
         "missing_security_headers": headers_data.get("missing"),
         # DNS
         "dns_ttl": dns_data.get("ttl"),
@@ -502,21 +712,27 @@ def _build_signals(domain: str, raw_url: str, is_ip: bool, outcomes: dict,
 async def _llm_judge_within(
     signals: dict, score: int, level: RiskLevel, deadline: Deadline,
 ) -> tuple[int, RiskLevel, Optional[DomainReason], bool]:
-    """Strategy #21 — the LLM judge for caution-band verdicts, inside the budget.
+    """Strategy #21 — the LLM judge for caution-band verdicts, never waited for.
 
     When the rule-based scorer landed in the caution band (no blocklist hit,
     no allowlist short-circuit), Claude weighs in on a domain-FREE feature
-    vector and proposes a signed score shift capped at ±20. Returns
-    (score, level, reason or None, finished). `finished` is False when the
-    judge was still running at the deadline — the verdict then stands
-    without it, and says so. The live call itself is not lost: it finishes
-    in the background and fills the judge's cache (llm_judge._live_opinion),
-    so the next domain with the same pattern gets the answer in time.
+    vector and proposes a signed score shift capped at ±20. A positive one
+    stops at scoring.DANGEROUS_ABOVE, so the judge alone never makes a
+    caution 'dangerous'. Returns (score, level, reason or None, finished).
+
+    Only an opinion already cached for this pattern is applied. Otherwise
+    the live call is started (llm_judge.opinion_now) and the scorer's
+    verdict goes out at once with `finished` False — the call ends in the
+    background and caches its answer for the next check. Waiting for it
+    held 60 of 63 caution answers past 3 s (2026-11-01), where the browser
+    extension (Safari's on the iPhone too) gives up. The cache lookup itself
+    stays inside the budget; a judge that is not asked (no key, the day's
+    budget spent) is finished.
     """
     try:
-        from api.services.llm_judge import judge_ambiguous_verdict
-        judge = await asyncio.wait_for(
-            judge_ambiguous_verdict(signals, score, level.value),
+        from api.services.llm_judge import STARTED, opinion_now
+        state, judge = await asyncio.wait_for(
+            opinion_now(signals, score, level.value),
             timeout=max(MIN_STEP_S, deadline.remaining()),
         )
     except asyncio.TimeoutError:
@@ -526,18 +742,34 @@ async def _llm_judge_within(
         logger.debug("LLM judge wrapper failed", exc_info=True)
         return score, level, None, True
     if judge is None:
-        return score, level, None, True
+        return score, level, None, state != STARTED
     shift = int(judge.get("score_shift", 0))
-    if shift != 0:
-        score = max(0, min(score + shift, 100))
-        if score >= 70:
-            level = RiskLevel.dangerous
-        elif score >= 30:
-            level = RiskLevel.caution
-        else:
-            level = RiskLevel.safe
-    reason = DomainReason(signal="llm_judge", weight=shift, detail=judge["one_line_reason"])
-    return score, level, reason, True
+    if shift > 0:
+        # Never past the top of caution: on its own the judge, which sees no
+        # domain and whose opinion is cached per feature pattern, never makes
+        # a caution 'dangerous'. The extension blocks the page on any API
+        # 'dangerous' (extension/src/content/index.js) and tells the family;
+        # Android warns. Without the cap a cached "dangerous" took real sites
+        # there: syktyvkar-sovet.ru 39 -> 59 on weak signals alone (which the
+        # scorer itself stops at caution), ognimos.ru 38 -> 58, simaz-bus.ru
+        # 40 -> 60 (2026-11-03).
+        judged = max(score, min(score + shift, scoring.DANGEROUS_ABOVE))
+        if judged - score < shift:
+            logger.info("llm_judge_capped", extra={
+                "domain": signals.get("domain"), "score": score, "judge_shift": shift,
+            })
+    else:
+        judged = max(0, score + shift)
+    if judged != score:
+        # The scorer's own lines (20 / 50), not the judge's old caution band
+        # of 30-70: with that, a "safe" opinion took a caution of 30-49 to 29
+        # and showed it 'safe' — two phishing hosts on 2026-11-01. The judge
+        # aims its "safe" at 29, so it can no longer clear a caution either:
+        # its opinion moves the score inside caution, never the level.
+        level = level_for_score(judged)
+    # The shift applied, so the reasons add up to the score.
+    reason = DomainReason(signal="llm_judge", weight=judged - score, detail=judge["one_line_reason"])
+    return judged, level, reason, True
 
 
 # Second-level labels of registries only a government can register in, under
@@ -570,9 +802,20 @@ def _government_name(domain: str) -> bool:
         return len(parts) >= 2
     if len(parts) < 3 or len(parts[-1]) != 2 or parts[-2] not in _GOVERNMENT_LABELS:
         return False
+    zone = ".".join(parts[-2:])
     if parts[-1] in ("ru", "su"):
-        return ".".join(parts[-2:]) in _RU_GOVERNMENT_ZONES
-    return True
+        return zone in _RU_GOVERNMENT_ZONES
+    # Nor the open zones with a government's label (CCTLD_OPEN_ZONES):
+    # FreeDNS's govt.hu and mil.nf, ChangeIP's gob.li, RCS&RDS's go.ro — an
+    # unreachable paypal-login.go.ro stayed 'safe' here (2026-10-31).
+    return zone not in CCTLD_OPEN_ZONES
+
+
+def _site_unseen(signals: dict, unfinished: list[str]) -> bool:
+    """No probe could tell in time whether the site answers: every one that
+    decides it was cut off by the deadline, or skipped because the SSRF
+    lookup did not finish (analyze_domain names those incomplete too)."""
+    return signals.get("site_reachable") is None and _REACHABILITY_PROBES <= set(unfinished)
 
 
 async def _name_is_vouched_for(domain: str, signals: dict, deadline: Deadline) -> bool:
@@ -586,11 +829,29 @@ async def _name_is_vouched_for(domain: str, signals: dict, deadline: Deadline) -
     reading that rank as a vouch for every host anyone registers under it
     let an unreachable gosuslugi-lk.spb.ru through as 'safe'. (The ranking
     since 2026-10-23 folds every host to its registrable domain the same
-    way, so it carries gov.spb.ru, not spb.ru.)"""
+    way, so it carries gov.spb.ru, not spb.ru.)
+
+    Nor does a zone's above the registrant (scoring.rank_registrable_domain):
+    acessar-conta-br.co.ua is its own registrable domain, not a name under
+    co.ua (#278,678 of the Tranco top-1M) — public_suffix's ccTLD default —
+    and a zone it names as one owner's lends its rank to no name the reading
+    before 2026-10-28 kept apart from it (login.web.de).
+
+    Nor a platform's to its customers (_platform_tenant_site, as in
+    popularity_rank()): since 2026-10-28 an unreachable x.duckdns.org,
+    x.repl.co or bucket.s3.amazonaws.com is not vouched for by its platform's
+    rank — 35,631 of the 699,287 hosts of the 2026-10-24 feed snapshot were,
+    none of the labelled legit sets or the top-100k."""
+    if signals.get("popularity_withheld") or (
+            get_settings().popularity_age_gate == "on" and _is_young(signals.get("domain_age_days"))):
+        # A young registration's rank (_young_rank) vouches for nothing, nor
+        # does its registrable's — also when the rank check itself gave no
+        # data (cut off, breaker open) and the lookup below would ask again.
+        return _government_name(domain)
     if signals.get("tranco_ranked") or _government_name(domain):
         return True
-    registrable = registrable_domain(domain)
-    if registrable == domain or is_hosting_platform_site(domain):
+    registrable = rank_registrable_domain(domain)
+    if registrable == domain or is_hosting_platform_site(domain) or _platform_tenant_site(domain):
         return False
     try:
         rank = await asyncio.wait_for(get_tranco_rank(registrable), timeout=deadline.step(_VOUCH_LOOKUP_S))
@@ -612,7 +873,7 @@ def _informational_reasons(
             ),
             known_site=vouched,
         ))
-    if is_hosting_platform_site(domain):
+    if is_hosting_platform_site(domain) or is_evidence_only_tenant(domain):
         out.append(vb.user_content_reason())
     if unfinished:
         out.append(vb.checks_incomplete_reason(unfinished))
@@ -700,34 +961,11 @@ async def check_urlhaus(domain: str) -> bool:
 # ═══════════════════════════════════════════════════════════════
 
 async def check_whois_age(domain: str) -> dict:
-    async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
-        resp = await client.get(f"https://rdap.org/domain/{domain}")
-        if resp.status_code != 200:
-            return {}
-
-        data = resp.json()
-        result = {}
-
-        # Extract registration date
-        for event in data.get("events", []):
-            if event.get("eventAction") == "registration":
-                reg_date_str = event.get("eventDate", "")
-                if reg_date_str:
-                    reg_date = datetime.fromisoformat(reg_date_str.replace("Z", "+00:00"))
-                    result["age_days"] = (datetime.now(timezone.utc) - reg_date).days
-                    result["registered"] = reg_date_str
-
-        # Extract registrar
-        for entity in data.get("entities", []):
-            roles = entity.get("roles", [])
-            if "registrar" in roles:
-                vcard = entity.get("vcardArray", [None, []])[1]
-                for field in vcard:
-                    if field[0] == "fn":
-                        result["registrar"] = field[3]
-                        break
-
-        return result
+    """Registration age and registrar from the registry of the domain's zone,
+    over RDAP (api/services/rdap.py): {} when there is no one to ask (.ru has
+    no RDAP; a hosting tenant's registrable is its platform), raises when the
+    registry cannot be read."""
+    return await rdap.registration(domain, timeout=SOURCE_TIMEOUT_S)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -911,24 +1149,158 @@ async def check_feodo_tracker(domain: str) -> bool:
 
 async def check_alienvault_otx(domain: str) -> dict:
     """
-    Check domain reputation via AlienVault OTX (free, no key for basic lookup).
-    Returns reputation data including pulse count (community threat reports).
+    Check domain reputation via AlienVault OTX (free community API).
+    Returns reputation data including pulse count (community threat reports),
+    how many of those pulses are distinct reports and how many days ago the
+    newest of them was made (_otx_reports).
+
+    The name is looked up as the indicator OTX files it under
+    (_otx_indicator): one request per check.
+
+    Without a key OTX allows 100 lookups an hour per IP, then answers 429
+    (measured 2026-10-26); the free account key (OTX_API_KEY, sent as
+    X-OTX-API-KEY) lifts that. A non-2xx answer raises — a failed, unmeasured
+    check the breaker counts — never reads as "no pulses".
     """
+    headers = {"Accept": "application/json"}
+    key = get_settings().otx_api_key
+    if key:
+        headers["X-OTX-API-KEY"] = key
+    kind, indicator = _otx_indicator(domain)
     async with httpx.AsyncClient(timeout=SOURCE_TIMEOUT_S, verify=client_tls_context()) as client:
         resp = await client.get(
-            f"https://otx.alienvault.com/api/v1/indicators/domain/{domain}/general",
-            headers={"Accept": "application/json"},
+            f"https://otx.alienvault.com/api/v1/indicators/{kind}/{indicator}/general",
+            headers=headers,
         )
-        if resp.status_code != 200:
-            return {}
+        resp.raise_for_status()
         data = resp.json()
-        pulse_count = data.get("pulse_info", {}).get("count", 0)
+        pulse_info = data.get("pulse_info") or {}
+        pulse_count = pulse_info.get("count", 0) or 0
         reputation = data.get("reputation", 0)
+        distinct, newest = _otx_reports(pulse_info.get("pulses"), pulse_count)
         return {
             "pulse_count": pulse_count,  # Number of community threat reports
+            "distinct_pulses": distinct,
+            "newest_report_days": newest,
             "reputation": reputation,
             "hit": pulse_count > 0,
         }
+
+
+def _otx_indicator(domain: str) -> tuple[str, str]:
+    """What OTX is asked about `domain`: ('domain', name) for a registrable
+    domain (example.com, example.co.uk, edgeone.dev, gov.spb.ru) and for
+    www. in front of one (www.example.com → example.com), ('hostname', name)
+    for any other name below one (x.workers.dev, login.example.co.uk,
+    kvs.gov.spb.ru) — the two indicator types OTX keeps a name's pulses
+    under.
+
+    Until 2026-11-03 every name was asked of /indicators/domain/ as it was,
+    and for a name below a registrable domain OTX answers there that it has
+    no such domain (count 0, an empty base_indicator), so OTX was blind for
+    every subdomain and every hosting-platform tenant: keyless, the hostname
+    endpoint gave mailbox-dpr3yixp1qk1.edgeone.dev 5 pulses,
+    tf-app.vercel.app 5 and fb-profile.github.io 5, the domain endpoint 0
+    for each. Each name is asked about as itself: the platform's own pulses
+    (edgeone.dev: 3, one an article about device-code phishing) are not its
+    tenants', nor theirs the platform's.
+
+    www. is the domain's own site, and OTX files reports about it under the
+    domain: of 12 benchmark phishing www. hosts, 11 of their domains had
+    reports and 3 of the www. names had them as hostnames (2026-11-03). Of
+    30 other names below a registered domain (not a platform's), the
+    hostname had reports for 26 and the registrable domain for 10; the
+    registrable had some where the hostname had none only for three www. in
+    front of a subdomain (www.allegrolokalnie.pl-oferta84bd74bx4f.click).
+    So no name is asked about twice, which would double the keyless budget
+    (100 lookups an hour)."""
+    host = (domain or "").lower().strip(".")
+    registrable = registrable_domain(host)
+    if registrable == host or host == "www." + registrable:
+        return "domain", registrable
+    return "hostname", host
+
+
+def _otx_reports(pulses: Any, count: int, today: Optional[date] = None) -> tuple[int, Optional[int]]:
+    """How many of a name's `count` OTX pulses are separate reports, and how
+    many days before `today` (UTC) the newest of them was made — None when
+    that is not known for every report.
+
+    Copies. Anyone can clone a pulse, and OTX marks the clone with the pulse
+    it was cloned from (`cloned_from`). tztu.ru (a carbon-black plant,
+    benchmark 2026-10-25) had 44 pulses: one 12,732-indicator malspam-header
+    dump made in 2021, and 43 clones of it and of its clones, under names like
+    "test" and "test CREATED 1 YEAR AGO by testivk1 clone" — "Flagged in 44
+    AlienVault OTX threat reports", +60. So a pulse is traced back along
+    `cloned_from` through the listed pulses to its original, and one report
+    is an original with its copies; clones of a pulse OTX did not list are
+    copies of that one. Pulses that are not marked as clones are separate
+    reports even when tags and size repeat: a daily feed ("Phishing | Oct 24,
+    2026 | Part 193/566", the tag 'phishing', 2,000 indicators, one a day) is
+    one report a day — spotifypremiumapk.pk had 50. Only an answer without
+    the field falls back to the content a copy keeps (tags and indicator
+    count); a pulse with neither is never merged. Pulses OTX counted but did
+    not list are taken as distinct, so a truncated list never lowers the
+    count by guesswork.
+
+    Age. A report is as old as its original (_otx_pulse_date): a copy made
+    later repeats old content. Unknown — None — when some report has no
+    date, its original was not listed, or some counted pulses were not
+    listed (scoring then treats the reports as current).
+    """
+    listed = [p for p in pulses if isinstance(p, dict)] if isinstance(pulses, list) else []
+    by_id = {str(p["id"]): p for p in listed if p.get("id")}
+    reports: dict[tuple, Optional[date]] = {}
+    for i, p in enumerate(listed):
+        if "cloned_from" in p:
+            original, seen = p, set()
+            while original.get("cloned_from") and str(original["cloned_from"]) in by_id \
+                    and id(original) not in seen:
+                seen.add(id(original))
+                original = by_id[str(original["cloned_from"])]
+            if original.get("cloned_from") and id(original) not in seen:
+                # A copy of a pulse OTX did not list: dated by that pulse, unknown.
+                reports[("pulse", str(original["cloned_from"]))] = None
+                continue
+            key = ("pulse", str(original.get("id") or f"#{i}"))
+            reports[key] = _otx_pulse_date(original)
+        else:
+            tags = frozenset(str(t).strip().lower() for t in (p.get("tags") or []) if str(t).strip())
+            size = p.get("indicator_count")
+            key = ("content", tags, size) if tags or size else ("pulse", str(p.get("id") or f"#{i}"))
+            when = _otx_pulse_date(p)
+            if key in reports:
+                # Which of the same content is the original is not known: the newest stands.
+                before = reports[key]
+                when = None if before is None or when is None else max(before, when)
+            reports[key] = when
+    unlisted = max(0, int(count or 0) - len(listed))
+    dates = list(reports.values())
+    if unlisted or not dates or any(d is None for d in dates):
+        newest = None
+    else:
+        newest = max(0, ((today or datetime.now(timezone.utc).date()) - max(dates)).days)
+    return len(reports) + unlisted, newest
+
+
+def _otx_pulse_date(pulse: dict) -> Optional[date]:
+    """When a pulse was made: its `created` (OTX: '2021-09-24T15:35:11.574000'),
+    else its `modified`, else None.
+
+    Not the later of the two: some pulses are kept up to date for months —
+    phishdestroy's "Active Phishing & Crypto Scam Domains (Live)", made
+    2026-03-22, was modified on 2026-10-26 — and would make every name ever
+    put on them look freshly reported (centralnic-dns.com, CentralNic's DNS
+    domain, is on it). An auto-feed of fresh phishing makes a new pulse
+    every day or month instead (CyberHunterAutoFeed's "Malware Filter -
+    Phishing List - 24-10-2026", "PhishDestroy Monthly - All Domains -
+    2026-10")."""
+    for field in ("created", "modified"):
+        try:
+            return date.fromisoformat(str(pulse.get(field) or "")[:10])
+        except ValueError:
+            continue
+    return None
 
 
 # ═══════════════════════════════════════════════════════════════

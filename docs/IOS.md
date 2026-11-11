@@ -43,7 +43,8 @@ const c=JSON.parse(fs.readFileSync("vendor/api-client/package.json"));
 c.dependencies["@cleanway/api-types"]="file:../api-types";
 fs.writeFileSync("vendor/api-client/package.json",JSON.stringify(c,null,2)+"\n");'
 node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"; "out of step" = regenerate mobile/package-lock.json first (docs/RUSTORE_SUBMISSION.md §2)
-npm install                                    # installs mobile/package-lock.json, which came along
+npm install                                    # installs mobile/package-lock.json, which came along; postinstall prints "decode-uri-component@0.2.2 ✔"
+node scripts/test-decode-uri-component.mjs     # "all … checks pass" (docs/EXPO_UPGRADE_PLAN.md §1.2); "FAIL" = stop
 # The Safari extension target bundles the repo's built extension-safari/
 # (plugins/withSafariExtension.js); outside the repo it must be told where.
 bash "$REPO/scripts/build-extensions.sh" > /dev/null
@@ -353,6 +354,15 @@ EAS creates these on the first `eas build` if you let it log in; to do it by han
    (the paywall links them too). Support URL `https://cleanway.ai`.
 4. Account deletion: in the app (Settings → Delete account, and Account →
    Delete account). Mention it in review notes.
+5. **Pricing and Availability → Countries or Regions: every territory except
+   France. Russia stays on the list.** Decision 2026-11-04: worldwide launch
+   that does not wait for Russia; founder's clarification 2026-11-11: the app
+   stays available in Russia, paid plans are simply not expected to sell there
+   (App Store payments mostly do not work in Russia). France is off since
+   2026-10-24 (encryption declaration, §2 table). Check the list before every
+   submission (174 territories were on on 2026-10-24). The subscriptions
+   (§3.4) follow the app's availability, so no separate country setting is
+   needed for them.
 
 ### 3.4 In-app purchases (Subscriptions)
 
@@ -363,6 +373,28 @@ The server already knows these ids (`api/services/store_products.py`):
 | `Cleanway` | `cleanway.devices.monthly` | 1 month | Personal plan (3 devices) |
 | `Cleanway` | `cleanway.devices.yearly` | 1 year | Personal plan |
 | `Cleanway devices` (separate group) | `cleanway.extra_device.monthly` / `.yearly` | — | +1 device (not sold in the app yet) |
+
+**Prices (founder decision 2026-11-04: US$1.99 a month in every country).**
+Apple no longer has numbered "price tiers"; it has price points. For each
+subscription: App Store Connect → the app → Subscriptions → group `Cleanway` →
+the product → Subscription Prices → Add Subscription Price → base country
+**United States**, price **USD 1.99** → Next: Apple fills every other storefront
+with its equalized local price for the same point (keep them, do not edit
+countries by hand — "the same price everywhere" is exactly Apple's
+equalization) → Confirm.
+
+| Product | Base price (United States) | Note |
+|---|---|---|
+| `cleanway.devices.monthly` | USD 1.99 | the founder's price |
+| `cleanway.devices.yearly` | USD 19.99 | approved by the founder 2026-11-11 (≈ 2 months free), already created in App Store Connect; the paywall shows only what the `default` offering has |
+| `cleanway.extra_device.*` | — | not sold in the app yet: no need to create before it is |
+
+Introductory offer (free trial): do **not** add one unless the founder says so —
+the app already gives 7 days with everything unlocked, then 5 free manual checks
+a month (server settings), and a store trial on top would double it. The app never types a
+price: it shows StoreKit's own string (RevenueCat `priceString`), so a price change
+here needs no new build. Apple's price changes for existing subscribers follow
+Apple's rules (notice, consent for an increase) — irrelevant before the first sale.
 
 Then in RevenueCat (runbook §3, §9): add the App Store app, upload the
 In-App Purchase key (`.p8`), set App Store Server Notifications V2 to
@@ -472,14 +504,15 @@ rather than to rely on Cloudflare not keeping it.
 > the public DNS Settings API (NEDNSSettingsManager with
 > NEDNSOverHTTPSSettings, Network Extensions entitlement value
 > `dns-settings`). It is not a VPN: there is no tunnel, no NEVPNManager and no
-> network extension target. The app saves an encrypted DNS-over-HTTPS setting
+> Network Extension provider target. The app saves an encrypted DNS-over-HTTPS setting
 > pointing at our resolver, https://dns.cleanway.ai/dns-query, which answers
 > NXDOMAIN for known scam and phishing sites and forwards every other name to
 > Cloudflare's DNS. Nothing changes until the user selects "Cleanway" in
 > Settings → General → VPN & Device Management → DNS. Before the user adds
 > it, the app explains that site names are sent to our DNS server (the
-> matching happens on our server) and that we keep no record of who looked up
-> what — privacy policy, section 11. The user can remove it in the app, or
+> matching happens on our server) and that our server keeps no log of them;
+> our host's standard request logs can include the IP address and requested
+> URL — privacy policy, section 11. The user can remove it in the app, or
 > choose "Automatic" on the same Settings page, at any time.
 >
 > The scam-text filter is an SMS filter extension. On iOS 26, enable it in
@@ -493,8 +526,99 @@ rather than to rely on Cloudflare not keeping it.
 > The Safari Web Extension warns about scam sites: Settings → Apps → Safari →
 > Extensions → Cleanway → Allow Extension, then Other Websites → Allow; open
 > any site in Safari (or the home screen's "Set up" → "Test it in Safari").
-> It sends only site names to api.cleanway.ai to check them; it has no
+> It sends the names of the sites it checks to api.cleanway.ai; it has no
 > purchases or upsell of its own.
+>
+> VPN (2.1): no VPN, no tunnel, no NEVPNManager/NETunnelProviderManager, no
+> Network Extension provider target. Only the DNS Settings API (entitlement
+> "dns-settings"), which iOS lists under VPN & Device Management. The app's
+> DNS module is "CleanwayDns" (save, read, remove the setting); Android's
+> shield module is not built into the iOS app, and Android-only VPN text is
+> never shown. With DNS protection on, our server gets DNS queries (name,
+> record type) and the request's IP. It logs no names or IPs. It keeps
+> aggregate counters, an in-memory answer cache keyed by the question only,
+> and an hourly rate-limit count under a keyed hash of the IP. Unblocked,
+> uncached names go to Cloudflare from our server. Railway hosts us (EU West);
+> its edge nearest the user ends HTTPS and keeps request logs that can include
+> the IP and URL (a GET query's URL holds the name). iOS 26+ may fall back to
+> the network's DNS. No sale, ads or profiling.
+
+**"The app contains VPN functionality" (2.1, 2026-10-30).** App Review's
+automated analysis flagged 1.0.4 (3) and asked what user information the
+"VPN" collects, why, and who else gets it. Likely triggers: the
+`dns-settings` Network Extensions entitlement with NetworkExtension.framework
+linked, the `CleanwayVpn` module name (`modules/cleanway-vpn`, startVpn/stopVpn
+are no-ops on iOS) and the Android-only VPN strings in `i18n/en.json`, which
+the iOS bundle carries but never shows. The reply below went on 2026-11-02
+(founder's «да»), the VPN paragraph above was added to Notes first because the
+reply says so, and the submission moved to 1.0.6 (6). Every statement was
+checked against the code (`api/routers/doh.py`, `api/services/doh_*.py`,
+`api/services/logger.py`, `modules/cleanway-vpn/ios/CleanwayVpnModule.swift`).
+Re-check it before reusing: GET vs POST from iOS and what Railway's request
+logs keep were not verified (the Railway session had expired); renaming the
+module or dropping the Android strings from the iOS bundle changes the second
+paragraph; a change to the DoH cache, rate limiter, upstreams or logging
+changes "2." and "3.". The module was split after the reply went: a build
+that has `modules/cleanway-dns` links `CleanwayDns` (iOS only) and no
+`CleanwayVpn`, which is Android-only now (`modules/cleanway-vpn`). The reply's
+"native module CleanwayVpn" sentence describes 1.0.6 (6) and earlier; the
+Notes paragraph above says what the newer builds carry
+(`mobile/scripts/test-ios-native-modules.mjs` pins the split). The shared
+JS's names no longer say VPN either: `startShield`/`stopShield`/
+`isShieldRunning` and the rest are neutral, and the Kotlin names live only in
+`modules/cleanway-vpn/src/native.android.ts`, which the iOS bundle does not
+include (`mobile/scripts/test-no-vpn-names.mjs`; its one exception is the
+i18n key `mobile.ios.dns.note_vpn`, which goes with the iOS strings).
+
+> Hello,
+>
+> Cleanway has no VPN features: no tunnel, no NEVPNManager or
+> NETunnelProviderManager, and no Network Extension provider target (packet
+> tunnel, app proxy, DNS proxy or content filter). Its extensions are a share
+> extension, an SMS filter and a Safari Web Extension.
+>
+> The app uses only the DNS Settings API (NEDNSSettingsManager,
+> NEDNSOverHTTPSSettings, entitlement value "dns-settings"). The analysis most
+> likely matched that entitlement and framework and our native module
+> "CleanwayVpn", shared with our Android app. On iOS its startVpn/stopVpn do
+> nothing, and Android-only VPN text in the shared code is never shown. iOS
+> also lists DNS settings under VPN & Device Management.
+>
+> When the user taps "Add to iPhone", the app saves one encrypted DNS setting
+> for https://dns.cleanway.ai/dns-query. It stays off until the user selects
+> "Cleanway" in Settings > General > VPN & Device Management > DNS, and can be
+> removed in the app or there at any time.
+>
+> 1. What is collected
+> The app itself receives no DNS data. While the setting is on, iOS sends our
+> server the device's DNS queries: standard DNS messages with the name looked
+> up (e.g. example.com) and record type. Never a page link or content, other
+> traffic, or an account or device identifier. Our server sees each request's
+> IP address.
+>
+> 2. Purposes
+> To answer NXDOMAIN for known scam and phishing sites and resolve all other
+> names. The IP address is used only to reply and to rate-limit abuse. No ads,
+> profiling or sale.
+> Our server writes no log of names or IP addresses. It keeps aggregate
+> counters; recent answers in memory, keyed by the question, never by who
+> asked (served for at most the TTL, max 1 hour, +6 hours if the upstream
+> fails; dropped when replaced, evicted or on restart); and an hourly
+> rate-limit count under a keyed hash of the IP, never with a name.
+>
+> 3. Third parties and storage
+> - Cloudflare's public DNS resolver gets names that are neither blocked nor
+>   cached, from our server's IP, not the user's, under Cloudflare's resolver
+>   privacy policy.
+> - Railway hosts our server (EU West, Amsterdam) and the database the filter
+>   checks names against (no IP). HTTPS ends at Railway's edge nearest the
+>   user, possibly outside the EU. Railway's standard request logs can include
+>   the IP and requested URL, which for an HTTP GET query contains the encoded
+>   name; Railway's retention applies.
+> Our server shares queries with no one else. On iOS 26+, if it does not
+> answer, iOS may use the network's own DNS.
+>
+> We have added this to App Review Information.
 
 **Purchases: which sentence.** The text above is for a build made **without**
 `EXPO_PUBLIC_REVENUECAT_IOS_KEY` — every iPhone build so far (1.0.6 builds 5
@@ -572,13 +696,13 @@ existing DoH gateway.
 
 | Piece | Where |
 |---|---|
-| Native: save / read / remove the configuration, change notice | `mobile/modules/cleanway-vpn/ios/CleanwayVpnModule.swift` (`CleanwayDnsSettings`; JS names `dnsSettingsStatus`, `installDnsSettings`, `removeDnsSettings`, event `onDnsSettingsChanged`) |
-| JS bridge + report parser | `modules/cleanway-vpn/index.ts` (`isIosDnsSupported`, `iosDnsStatus`, `installIosDns`, `removeIosDns`, `addIosDnsChangedListener`), `modules/cleanway-vpn/src/IosDnsSettings.ts` |
+| Native: save / read / remove the configuration, change notice | `mobile/modules/cleanway-dns/ios/CleanwayDnsModule.swift` — its own iOS-only module `CleanwayDns` (`CleanwayDnsSettings`; JS names `dnsSettingsStatus`, `installDnsSettings`, `removeDnsSettings`, event `onDnsSettingsChanged`). Android's shield module (`modules/cleanway-vpn`) has no iOS half |
+| JS bridge + report parser | `modules/cleanway-dns/index.ts` (`isIosDnsSupported`, `iosDnsStatus`, `installIosDns`, `removeIosDns`, `addIosDnsChangedListener`; the native module is optional and asked for on iOS only), `modules/cleanway-dns/src/IosDnsSettings.ts` |
 | State machine (pure) | `src/utils/ios-dns.ts` — phases `unavailable → checking → add → turn_on → on`, the sheet model, the error wording |
 | Live hook | `src/hooks/useIosDnsProtection.ts` — reads iOS on mount, on every foreground (back from Settings) and on `NEDNSSettingsConfigurationDidChange` |
 | UI | home card row "DNS protection" (`IosProtectionCard`: "Set up" / check mark — both open the sheet) → `src/components/shield/IosDnsSetupSheet.tsx`; home privacy line and hero follow it |
 | Entitlement | `com.apple.developer.networking.networkextension = ["dns-settings"]`, added by `plugins/withIosAppStore.js` (VPN values stripped) — no `app.json` change |
-| Tests (CI) | `mobile/scripts/test-ios-dns.mjs`, `mobile/scripts/test-platform-gating.mjs` |
+| Tests (CI) | `mobile/scripts/test-ios-dns.mjs`, `mobile/scripts/test-platform-gating.mjs`, `mobile/scripts/test-ios-native-modules.mjs` |
 
 The configuration: `NEDNSOverHTTPSSettings(servers: [])`, `serverURL =
 https://dns.cleanway.ai/dns-query`, `localizedDescription = "Cleanway"`, no

@@ -226,7 +226,7 @@ curl -s https://api.cleanway.ai/health/deep           # 200, "warnings":[]
 
 ## Приложения
 
-Менять ничего не нужно. iPhone (`CleanwayVpnModule.swift`, `serverURL`),
+Менять ничего не нужно. iPhone (`CleanwayDnsModule.swift`, `serverURL`),
 профиль `.mobileconfig` (`api/services/mobileconfig.py`) и страница
 `cleanway.ai/dns` всегда указывали `https://dns.cleanway.ai/dns-query`: имя
 и путь не меняются, установленные профили и настройки продолжают работать.

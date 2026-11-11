@@ -132,6 +132,33 @@ class Settings(BaseSettings):
     # IPQualityScore (free: 5K/month)
     ipqualityscore_key: str = ""
 
+    # A popularity rank is links and visits a name gathered, maybe under an
+    # earlier holder (a dropped name keeps its backlinks) or bought from a
+    # link farm: of ranked names with a known registration date, 24% of ranks
+    # 100k-1M and 8% of the top 100k were registered within a year
+    # (2026-10-31, mostly casinos, link farms, piracy). A ranked name
+    # registered fewer than popularity_min_age_days ago gets none of the
+    # rank's trust (analyzer._young_rank). "shadow" logs what that would
+    # change (popularity_age_gate_shadow), "on" applies it, "off" neither.
+    popularity_min_age_days: int = 365
+    popularity_age_gate: Literal["off", "shadow", "on"] = "shadow"
+
+    # The same limit for the top-100k allowlist's instant "safe", which the
+    # rank gate cannot reach: the allowlist answers before any analysis, so
+    # nobody asked a registry about those names (api/services/allowlist_age.py).
+    # "shadow" asks (RDAP, at most one lookup a second per worker, records
+    # kept in Redis) and logs a young or unregistered one (allowlist_age_gate_shadow);
+    # "on" sends it to the full analysis instead, where neither the allowlist
+    # nor its rank vouches for it. Off until the founder says yes to asking
+    # registries about allowlisted names too (Verisign's RDAP terms,
+    # docs/THIRD_PARTY_FEEDS.md). "on" also withholds the rank of such a name
+    # whatever popularity_age_gate says.
+    allowlist_age_gate: Literal["off", "shadow", "on"] = "off"
+
+    # AlienVault OTX: a free account key. Without one OTX answers 100
+    # lookups an hour per IP, then 429 (analyzer.check_alienvault_otx).
+    otx_api_key: str = ""
+
     # Sentry (error tracking)
     sentry_dsn: str = ""
 
@@ -178,6 +205,17 @@ class Settings(BaseSettings):
     free_account_device_limit: int = 2
     entitlement_grace_hours: int = 72
 
+    # The free plan (founder decision 2026-11-04, docs/ACCOUNTS_BILLING_PLAN.md §5):
+    # FREE_MANUAL_CHECKS_PER_MONTH manual site checks per calendar month after
+    # FREE_UNLIMITED_DAYS_AFTER_INSTALL days with everything unlocked. Published
+    # by GET /api/v1/pricing/for-country (`free`); the app and the site read
+    # them from there, so a change here needs no app release. The phone does
+    # the counting (no site names or check history are kept on the server).
+    # Automatic protection (scam list, DNS, link guard, iPhone SMS filter) is
+    # never limited.
+    free_manual_checks_per_month: int = Field(default=5, ge=0, le=1000)
+    free_unlimited_days_after_install: int = Field(default=7, ge=0, le=365)
+
     # Rate limits — authenticated (per user)
     free_tier_daily_limit: int = 10
     paid_tier_daily_limit: int = 10000
@@ -223,11 +261,31 @@ class Settings(BaseSettings):
     # service; past it, cached or template text (api/services/scam_explainer.py).
     explainer_daily_budget: int = 500
 
-    # Wall-clock budget for ONE fresh domain analysis (all sources, the site
-    # probes and the LLM judge). Checks still running at the deadline are cut
-    # off and named in the verdict's `checks_incomplete`. The phone waits 5 s
-    # and the app 6 s, so the verdict must be back well inside that.
-    analysis_budget_seconds: float = 3.0
+    # Wall-clock budget for ONE fresh domain analysis (all sources and the
+    # site probes) of /public/check, and the default of analyze_domain().
+    # Checks still running at the deadline are cut off and named in the
+    # verdict's `checks_incomplete`. The LLM judge is never waited for: only
+    # its cached opinion counts (api/services/llm_judge.opinion_now). The
+    # browser extension waits 3 s for the whole round trip (LOOKUP_TIMEOUT_MS
+    # in background/public-check.js; Safari's on the iPhone is the same code).
+    # Until 2026-11-04 this budget was those same 3 s, so an answer whose
+    # checks ran to the deadline arrived after the extension had given up
+    # (3.2-3.7 s from Dubai) and it used its offline verdict. 2.3 s leaves
+    # the network its share: a new connection from Dubai took 0.44-0.68 s
+    # (p50 0.54), a kept-alive one 0.26-0.35 s, so the client sees ~2.86 s at
+    # p95 on a median new connection and ~3.0 s on the slowest (0-2 of 232
+    # replayed answers still late there): the margin rests on the users being
+    # closer to EU West than Dubai is. Replayed over 235 live analyses
+    # (2026-11-04): server p95 3.02 -> 2.32 s, and no phishing site lost
+    # 'dangerous' — on heuristics and the ML model; Web Risk and IPQS ran
+    # without keys and OTX answered live for 23 hosts only. Lowering it
+    # further also needs analyzer.SOURCE_TIMEOUT_S and the site probes'
+    # limits (site_probes) lowered with it: tests/test_budget_fits_client_wait.py
+    # holds the arithmetic.
+    analysis_budget_seconds: float = 2.3
+    # The same for the app's /check (routers/check.py), which waits 12 s: a
+    # budget cut to the extension's wait would only cut its checks.
+    check_analysis_budget_seconds: float = 3.0
 
     # Load shedding (api/services/load_shedding.py, docs/runbooks/capacity.md).
     # Every limit is PER WORKER PROCESS (WEB_CONCURRENCY=2: twice per
@@ -254,8 +312,8 @@ class Settings(BaseSettings):
     # Fresh analyses running at once (the full fan-out of /check and the fresh
     # path of /public/check); past it /public/check answers 503. One /check
     # runs at most a quarter of them; the rest of its batch waits its turn.
-    # 32: a fresh analysis takes up to the 3 s budget (p50 1.4 s in the
-    # 2026-08-17 benchmark), so ~10-20 fresh analyses/s per worker. Not
+    # 32: a fresh analysis takes up to the budget above (it was 3 s then; p50
+    # 1.4 s in the 2026-08-17 benchmark), so ~10-20 fresh analyses/s per worker. Not
     # measured against prod latency yet (the local run used stub sources of
     # 40-400 ms) — see docs/runbooks/capacity.md before lowering it.
     load_shed_fresh_analysis_max_inflight: int = 32
@@ -394,7 +452,13 @@ class Settings(BaseSettings):
     # validate_settings() enforces this is set when env=production.
     trusted_proxy_cidrs: str = ""
 
-    # Rate limits — unsubscribe endpoint (per IP, very strict to prevent abuse)
+    # Rate limits — unsubscribe links (rate_limiter.unsubscribe_rate_limit).
+    # A link that verifies is limited per subscription (user + template),
+    # GET and POST apart, never per IP: one-click POSTs and link scanners
+    # arrive from a few shared provider addresses. While Redis is down the
+    # same budget is counted in each worker process.
+    unsubscribe_link_limit_per_window: int = 20    # per subscription and method
+    # A link that does not verify (forged, expired) is limited per IP.
     unsubscribe_limit_per_window: int = 20         # 20 attempts per hour per IP
     unsubscribe_window_seconds: int = 3600
 

@@ -346,6 +346,27 @@ class MainActivity : ReactActivity() {
   check("app.json registers the distribution guard", () => {
     assert.ok((appJson.plugins || []).includes("./plugins/withDistributionGuard"));
   });
+  // expo-constants embeds the public app config, android section and plugin
+  // list included, in the iOS app (EXConstants.bundle/app.config), and App
+  // Review's scan flagged the iOS build as "contains VPN functionality"
+  // (2026-10-30). BIND_VPN_SERVICE lives in the module's AndroidManifest.xml
+  // (check-android-permissions.mjs). The second check resolves the config the
+  // way expo-constants does, so a plugin that adds it back through
+  // AndroidConfig.Permissions.withPermissions fails here too.
+  const vpnHits = (text) => text.match(/.{0,40}vpn.{0,20}/gi) || [];
+  check("app.json never says VPN: it ships inside the iOS app", () => {
+    const hits = vpnHits(fs.readFileSync(path.join(__dirname, "..", "..", "app.json"), "utf8"));
+    assert.deepStrictEqual(hits, [], "app.json");
+  });
+  check("the public config embedded in the iOS app never says VPN", () => {
+    const mobileDir = path.join(__dirname, "..", "..");
+    const constantsDir = path.dirname(require.resolve("expo-constants/package.json", { paths: [mobileDir] }));
+    const { getConfig } = require(require.resolve("@expo/config", { paths: [constantsDir] }));
+    const { exp } = getConfig(mobileDir, { isPublicConfig: true, skipSDKVersionRequirement: true });
+    // expo-camera's plugin adds CAMERA: proof the plugins ran.
+    assert.ok(((exp.android && exp.android.permissions) || []).includes("android.permission.CAMERA"), "plugins ran");
+    assert.deepStrictEqual(vpnHits(JSON.stringify(exp)), [], "public config");
+  });
   // EAS release profiles carry their store in eas.json, so an EAS Android
   // build passes the guard by itself: production is the Play AAB.
   check("eas.json: every release profile names its store, production is Google Play", () => {

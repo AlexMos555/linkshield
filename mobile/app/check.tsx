@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView 
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 import { colors, type as typo, space, radius, sectionHeader } from "../src/utils/theme";
 import { getRecentChecks, MESSAGE_CHECK_SOURCE } from "../src/services/database";
