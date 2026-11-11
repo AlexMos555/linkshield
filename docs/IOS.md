@@ -121,6 +121,28 @@ the team profile, which lists the founder's iPhone, so the archive's
 phone shows 1.1.0 (8)). A development-signed install and a TestFlight install
 both buy in the App Store sandbox (§3.4); installing one replaces the other.
 
+**1.1.0 (9), 2026-11-12 — build 8 plus the eight phone fixes of #423.** Same
+recipe and the same `.env` (the `appl_` key and
+`EXPO_PUBLIC_FREEMIUM_ENABLED=1`), mirror
+`~/Library/Caches/cleanway-dev/cwi110b9`, branch at `13721aaf` (main up to
+#423). Archive `~/Desktop/cleanway-android-out/ios/Cleanway-1.1.0-9.xcarchive`,
+ARCHIVE SUCCEEDED; `ios-1.1.0-9-archive-checks.txt` differs from build 8's
+only in the build number and the commit (1.1.0 (9), "sells", StoreKit and
+RevenueCat, the §3.6 "VPN" search, entitlements, `codesign --deep --strict`;
+the freemium flag read from an unminified export as for build 8), and the
+bundle no longer holds the old example `paypa1-verify.tk`. Uploaded to
+TestFlight ("Uploaded Cleanway", EXPORT SUCCEEDED, the same four "Upload
+Symbols Failed" warnings) and installed on the founder's iPhone with
+`devicectl` (the phone lists 1.1.0 (9)). Logs: `ios-1.1.0-9-*.log` in
+`~/Desktop/cleanway-android-out/logs/`. Checked on the phone through a UI
+test runner (English UI): "Try these" is google.com, list-canary.cleanway.ai,
+pay-pal.com; list-canary.cleanway.ai answers "Dangerous" 90/100, "On
+Cleanway's list of scam sites"; the back button reads "Back" (was "(tabs)").
+The Settings Plan row says "Protection on this phone is free" / Upgrade and
+the plan screen offers Subscribe: the phone has no active sandbox
+subscription now, so the row's subscribed wording (#423, item 1) is still to
+be seen after a sandbox purchase (§3.4).
+
 **For App Store Connect** (how 1.0.6 builds 5 and 6 were made), archive Release
 from the same mirror, then check what the bundle carries **before** uploading
 (Xcode Organizer, or `xcodebuild -exportArchive` with an `ExportOptions.plist`
@@ -583,6 +605,7 @@ LC_ALL=C grep -aci vpn "$A/EXConstants.bundle/app.config"  # 0: no BIND_VPN_SERV
 # Build 8 (2026-11-11, ios-1.1.0-8-archive-checks.txt): the three searches
 # above as expected (no output, 20, 0); case-insensitive: main.jsbundle 1
 # ("…IUvpNINCw…"), Cleanway 0, hermesvm 2, ReactNativeDependencies 2.
+# Build 9 (2026-11-12, ios-1.1.0-9-archive-checks.txt): the same as build 8.
 ```
 
 > Cleanway checks links and text messages for scams. No account is needed:

@@ -555,6 +555,25 @@ in place (no "App not installed"). That proves B2 is fixed end-to-end.
 > `CLEANWAY_REPO_ROOT=<checkout>` when run from the mirror. Nothing was run on a
 > phone or an emulator: everything in docs/EXPO_UPGRADE_PLAN.md §6.2 is still open.
 
+> **1.1.0 (111), 2026-11-12 — not built: the release key could not be read.**
+> `mobile/app.json` says versionCode 111 since `13721aaf` (main up to #423,
+> the eight phone fixes; the 110 files of 2026-11-03 do not have them). The
+> key files in the iCloud folder "Cleanway - code" were not downloaded to the
+> build Mac (reading them times out, the case `cw_build` stops on) and there
+> was no copy in `~/Downloads`, so no gradle release build was started and
+> nothing was installed on the Samsung (still 1.0.6 (107)). Done without the
+> key, in the mirror: steps 1–3 above (`npm install` = the committed lock,
+> `check-share-intent` 4× `ok:`, the seed; `npx expo install --check` now
+> reports `react-native-safe-area-context` 5.10.1, expected ~5.11.1), a site
+> prebuild with `check-prebuild-gradle` ok, and
+> `:cleanway-vpn:testDebugUnitTest`, which compiles #423's Kotlin: 342 of 344,
+> the same two `MessageAnalyzerTest` time budgets
+> (`~/Desktop/cleanway-android-out/logs/1.1.0-111-kotlin-tests.log`, stop
+> record `1.1.0-111-build-run.log`). The `cw_build` block and the file checks
+> are kept as scripts in `~/Desktop/cleanway-android-out/scripts/`
+> (`build-android-111.sh`, `check-android-111.sh`; they write
+> `SHA256SUMS-1.1.0-111.txt`): run them once the key is readable.
+
 ### Android 15/16 behaviour (targetSdk 34 → 36) and what the app does about it
 
 - **Edge-to-edge is mandatory** (Android 15 enforces it at targetSdk 35; Android
