@@ -26,7 +26,9 @@
  *   • after the limit a message keeps the scam list's verdict: a listed link
  *     is still "dangerous", and nothing else is claimed;
  *   • a store build never links out to the web checkout; Russia shows
- *     "coming soon"; signed out → sign in first;
+ *     "coming soon" in the site APK and RuStore, while a Google Play or App
+ *     Store build leaves the country to its store; signed out → sign in
+ *     first;
  *   • a build that cannot take a payment (RuStore: no billing built; a
  *     store build without its billing SDK) says "coming soon" up front —
  *     the button off, no sign-in first for a purchase that cannot happen;
@@ -411,11 +413,22 @@ check("no listed link: no verdict claimed (no_signals, no reasons)", () => {
 });
 
 console.log("paying");
-check("Russia: \"coming soon\" — phone-balance billing is not merged yet", () => {
+check("Russia: \"coming soon\" in the builds that sell by themselves (site APK, RuStore)", () => {
   for (const signedIn of [true, false]) {
-    for (const distribution of ["site", "play", "rustore", "appstore"]) {
+    for (const distribution of ["site", "rustore"]) {
       assert.equal(purchaseAction({ signedIn, market: "ru", distribution }), "soon");
     }
+  }
+});
+check("store builds: the store decides the country, not the phone's region (founder, 2026-11-04)", () => {
+  // A phone that says region RU (a Russian speaker in Kazakhstan, Georgia,
+  // the UAE…) can pay through its store; where the store has no product, the
+  // paywall already says "not available in your country" (prices_empty).
+  // Russia stays in the stores' country lists (2026-11-11): a payment from a
+  // Russian storefront mostly fails in the store's own sheet.
+  for (const distribution of ["play", "appstore"]) {
+    assert.equal(purchaseAction({ signedIn: true, market: "ru", distribution }), "store", distribution);
+    assert.equal(purchaseAction({ signedIn: false, market: "ru", distribution }), "sign_in", distribution);
   }
 });
 check("signed out: sign in first, on every build", () => {
@@ -470,7 +483,7 @@ check("the site APK sells on the web: its button stays on, store billing or not"
   }
 });
 check("Russia keeps its own \"coming soon\" (action soon), not the store one", () => {
-  for (const distribution of DISTRIBUTIONS) {
+  for (const distribution of ["site", "rustore"]) {
     const action = purchaseAction({ signedIn: true, market: "ru", distribution });
     assert.equal(paywallSaleOff({ action, distribution, storeBillingOn: false }), false, distribution);
   }
@@ -495,11 +508,17 @@ check("upgrade entry points: hidden where the paywall says \"coming soon\", by t
       }
     }
   }
-  const play = { distribution: "play", storeBillingOn: true };
-  assert.equal(paidPlansVisible({ language: "ru", region: "RU", ...play }), false);
-  assert.equal(paidPlansVisible({ language: "ru", region: null, ...play }), false, "no region: the language decides");
-  assert.equal(paidPlansVisible({ language: "en", region: "RU", ...play }), false, "an English phone in Russia cannot pay either");
-  assert.equal(paidPlansVisible({ language: "en", region: "US", ...play }), true);
+  const site = { distribution: "site", storeBillingOn: false };
+  assert.equal(paidPlansVisible({ language: "ru", region: "RU", ...site }), false);
+  assert.equal(paidPlansVisible({ language: "ru", region: null, ...site }), false, "no region: the language decides");
+  assert.equal(paidPlansVisible({ language: "en", region: "RU", ...site }), false, "an English phone in Russia cannot pay either");
+  assert.equal(paidPlansVisible({ language: "en", region: "US", ...site }), true);
+  // Store builds: the store's own storefront decides (not the phone's region).
+  for (const distribution of ["play", "appstore"]) {
+    assert.equal(paidPlansVisible({ language: "ru", region: "RU", distribution, storeBillingOn: true }), true, distribution);
+    assert.equal(paidPlansVisible({ language: "ru", region: null, distribution, storeBillingOn: true }), true, distribution);
+    assert.equal(paidPlansVisible({ language: "ru", region: "RU", distribution, storeBillingOn: false }), false, distribution);
+  }
 });
 check("RuStore hides \"Upgrade\" everywhere: its paywall can only say \"coming soon\"", () => {
   for (const [language, region] of [["ru", "KZ"], ["ru", "BY"], ["ru", "UA"], ["en", "US"], ["ru", null], ["ru", "RU"]]) {
