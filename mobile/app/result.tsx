@@ -11,6 +11,8 @@ import type { ApiError } from "../src/services/api";
 import { useDomainCheck } from "../src/hooks/useDomainCheck";
 import { isNotFound, reasonsToShow, serverLevel, showScore, shownLevel } from "../src/utils/check-verdict";
 import { ListedMark, NotFoundCard, ServerDetailsNote } from "../src/components/check/CheckStates";
+import { GoogleAdvisory } from "../src/components/check/GoogleAdvisory";
+import { hasGoogleAdvisory } from "../src/utils/google-advisory";
 import { LockedDetailsCard, NotListedCard } from "../src/components/paywall/LockedDetails";
 import { useAutoPaywall, useDetailGate } from "../src/hooks/useFreemium";
 import { useAnnounce } from "../src/hooks/useAnnounce";
@@ -174,6 +176,9 @@ export default function ResultScreen() {
               )}
             </View>
           ))}
+          {/* One of the server's reasons is Google's (Web Risk): its credit
+              and the learn-more links, under the reasons. */}
+          {hasGoogleAdvisory(serverReasons) && <GoogleAdvisory />}
         </View>
       )}
 

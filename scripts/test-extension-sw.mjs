@@ -236,6 +236,12 @@ function startMockApi(family) {
           state.limited.add(domain);
           return json(429, { detail: { error: "Too many checks from this app.", retry_after_seconds: 2 } }, { "Retry-After": "2" });
         }
+        // gscam-* is on Google's lists (Web Risk's hit has the safe_browsing code);
+        // advisory_ttl: how long Google's answer stays valid, as the API says.
+        if (domain.startsWith("gscam-")) {
+          return json(200, { domain, score: 98, level: "dangerous",
+            signals: ["Google lists this site as possibly unsafe"], reason_codes: ["safe_browsing"], advisory_ttl: 600 });
+        }
         const scam = domain.startsWith("scam-");
         return json(200, scam
           ? { domain, score: 97, level: "dangerous", signals: ["Reported as phishing"], reason_codes: ["phishtank"] }
@@ -855,6 +861,34 @@ async function runTree(tree) {
       }
       assert.ok(!text.includes(english.options_skill_regular_desc.message), `English left on the settings page`);
       await opts.close();
+    });
+
+    // Web Risk's rules for warnings (docs.cloud.google.com/web-risk/docs/
+    // user-warnings): a block on Google's verdict says "Advisory provided by
+    // Google" with a link to the Web Risk Advisory and learn-more links; a
+    // block on other sources does not name Google.
+    await check("the block page credits Google for Google's verdict only", async () => {
+      const { messages } = await activeCatalog(sw, tree);
+      const google = await openBlocked(context, `http://gscam-advisory.example:${port}/landing.html`);
+      const links = await google.$$eval(".ls-google-advisory a", (as) => as.map((a) => ({
+        href: a.getAttribute("href"), text: a.textContent, target: a.target, rel: a.rel,
+      })));
+      assert.deepEqual(links.map((a) => a.href), [
+        "https://docs.cloud.google.com/web-risk/docs/advisory",
+        "https://www.antiphishing.org/",
+        "https://developers.google.com/search/docs/advanced/security/malware",
+        // The server asks Web Risk about unwanted software too: its own page.
+        "https://www.google.com/about/company/unwanted-software-policy.html",
+      ], `advisory links: ${JSON.stringify(links)}`);
+      assert.equal(links[0].text, messages.advisory_google.message);
+      assert.ok(links.every((a) => a.target === "_blank" && a.rel === "noopener noreferrer"), JSON.stringify(links));
+      assert.ok(await google.isVisible(".ls-google-advisory"), "the advisory is drawn but not visible");
+      const card = await google.innerText(".ls-block-evidence");
+      assert.ok(card.includes(messages.reason_flagged_dangerous.message), `Google's evidence card: ${card}`);
+      await google.close();
+      const other = await openBlocked(context, `http://scam-advisory.example:${port}/landing.html`);
+      assert.equal(await other.$$eval(".ls-google-advisory", (els) => els.length), 0, "Google credited for PhishTank's verdict");
+      await other.close();
     });
 
     // Accessibility in the real browser (the static half is in

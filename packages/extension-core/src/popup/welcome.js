@@ -9,6 +9,7 @@ try {
       welcome_page_title: "Welcome to Cleanway",
       welcome_hero_title: "You're protected now",
       welcome_hero_subtitle: "Every link you see is being checked. Dangerous ones will be blocked automatically.",
+      welcome_limits: "No protection is perfect: now and then a safe site may be flagged by mistake, and a dangerous one may be missed.",
       welcome_step1_title: "Automatic scanning",
       welcome_step1_desc: "Every page, every link. Green badge means safe. Red means scam.",
       welcome_step2_title: "Privacy comes first",

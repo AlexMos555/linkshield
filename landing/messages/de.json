@@ -115,7 +115,7 @@
       "Deine IP-Adresse, um zu begrenzen, wie viele Prüfungen eine Verbindung machen kann – dafür wird sie höchstens eine Stunde im Klartext gespeichert",
       "Deine E-Mail-Adresse und dein Tarif – nur wenn du ein Konto anlegst"
     ],
-    "server_note": "Um eine Seite zu beurteilen, kann unser Server Dienste wie Google Safe Browsing nach ihrem Namen fragen – nur nach dem Namen, nie danach, wer du bist.",
+    "server_note": "Um eine Seite zu beurteilen, kann unser Server Dienste wie Google Web Risk nach ihrem Namen fragen – nur nach dem Namen, nie danach, wer du bist.",
     "device_heading": "Was auf deinem Handy bleibt",
     "device_items": [
       "Die Liste der Betrugsseiten, mit der der Schutz abgleicht",
@@ -152,7 +152,7 @@
     "items": [
       {
         "q": "Was erfährt Cleanway über mich?",
-        "a": "Seiten werden direkt auf deinem Handy mit der Liste abgeglichen. Muss eine Seite genauer geprüft werden, geht nur ihr Name (etwa example.com) an unseren Server, der Dienste wie Google Safe Browsing nach diesem Namen fragen kann. Wir erhalten keine vollständigen Links, keine Seiteninhalte und keine Nachrichtentexte, und wir führen keine Liste der Seiten, die du öffnest. Die Einzelheiten stehen in unserer Datenschutzerklärung."
+        "a": "Seiten werden direkt auf deinem Handy mit der Liste abgeglichen. Muss eine Seite genauer geprüft werden, geht nur ihr Name (etwa example.com) an unseren Server, der Dienste wie Google Web Risk nach diesem Namen fragen kann. Wir erhalten keine vollständigen Links, keine Seiteninhalte und keine Nachrichtentexte, und wir führen keine Liste der Seiten, die du öffnest. Die Einzelheiten stehen in unserer Datenschutzerklärung."
       },
       {
         "q": "Wird mein Handy langsamer?",
@@ -163,8 +163,8 @@
         "a": "Nicht gleichzeitig. Der Schutz von Cleanway nutzt den VPN-Mechanismus von Android nur für Seitennamen: Das Handy vergleicht jeden Namen mit der Liste und fragt Namen, die nicht darauf stehen, so ab wie ohne Cleanway – beim DNS deines Netzes oder, wenn der nicht antwortet, bei Cloudflare oder Quad9. Dein übriger Datenverkehr läuft wie gewohnt – weder über Cleanway noch über ein anderes Land. Android lässt immer nur einen solchen Dienst laufen; schaltest du ein anderes VPN ein, geht der Schutz von Cleanway aus. Wenn du fertig bist, öffne Cleanway und schalte den Schutz wieder ein. Eine Seite oder Nachricht von Hand in der App zu prüfen, funktioniert in jedem Fall."
       },
       {
-        "q": "Was ist anders als bei Google Safe Browsing?",
-        "a": "Google Safe Browsing ist eine der Quellen, die wir nutzen. Cleanway blockiert zusätzlich bekannte Betrugsseiten in allen Apps auf dem Handy, nicht nur im Browser, prüft verdächtige Nachrichten direkt auf dem Handy und erklärt seine Urteile in einfachen Worten. Wenn wir Google nach einer Seite fragen, senden wir nur ihren Namen – nicht, wer du bist."
+        "q": "Was ist anders als bei den Warnungen im Browser?",
+        "a": "Chrome, Firefox und Safari warnen selbst vor einem Teil der gefährlichen Seiten – mit Listen von Google. Auch wir fragen Google, über Google Web Risk, und nutzen weitere Quellen. Darüber hinaus blockiert Cleanway bekannte Betrugsseiten in allen Apps auf dem Handy, nicht nur im Browser, prüft verdächtige Nachrichten direkt auf dem Handy und erklärt seine Urteile in einfachen Worten. Wenn wir Google nach einer Seite fragen, senden wir nur ihren Namen – nicht, wer du bist."
       },
       {
         "q": "Ist es kostenlos?",
@@ -566,7 +566,6 @@
     "caveat_endpoint": "Cleanway wird über die öffentliche Seitenprüfung gemessen – denselben anonymen Weg, den ein Besucher nutzt – und nicht über einen privilegierten. Gemessen wird die Antwort unseres Servers, nicht das Blockieren auf dem Handy: Der Schutz auf dem Handy blockiert sofort nur Seiten auf seiner Liste, daher sagt diese Zahl nicht, wie viele dieser Links ein Handy blockieren würde.",
     "caveat_rate_limit": "Derzeit wird der wöchentliche Lauf durch das Anfragelimit dieser Prüfung gebremst, daher bekommen viele Links kein Urteil und die meisten Messungen sind zu klein zum Veröffentlichen.",
     "caveat_phishtank": "Die kostenlose Abfrage von PhishTank antwortet bei frischen Links oft mit „nicht indexiert“, weil die Datenbank ein paar Stunden hinterherhinkt; deshalb zeigt die Spalte oft „—“.",
-    "caveat_gsb": "Google Safe Browsing braucht einen API-Schlüssel; ist für den Lauf keiner eingerichtet, zeigt die Spalte „—“.",
     "caveat_nxdomain": "Eine Domain, die nicht mehr existiert, bekommt von Cloudflare ebenfalls NXDOMAIN und wird als Blockierung durch Cloudflare gezählt – das schönt das Ergebnis von Cloudflare bei bereits abgeschalteten Phishing-Domains.",
     "caveat_latency": "Antwortzeiten werden von dem Rechner aus gemessen, auf dem das Skript läuft (ein Cloud-Server in den USA oder der EU); aus anderen Regionen sehen sie anders aus.",
     "caveat_allowlist": "Unser Server behandelt Seiten aus den Tranco-Top-100.000 ohne Analyse als sicher, und die Stichprobe echter Seiten oben stammt aus genau diesem Bereich. Sie kann also nicht zeigen, wie oft Cleanway eine weniger bekannte echte Seite fälschlich für gefährlich hält, und wir veröffentlichen daraus keine Fehlalarmrate. Das tun wir, sobald die Stichprobe echte Seiten außerhalb dieser Liste enthält.",
@@ -685,6 +684,7 @@
     "verdict_caution": "{domain} zeigt einige verdächtige Anzeichen. Sei vorsichtig.",
     "verdict_dangerous": "{domain} zeigt starke Anzeichen einer Phishing- oder Betrugsseite. Gib dort keine persönlichen Daten ein.",
     "check_failed": "Wir konnten {domain} gerade nicht prüfen. Versuche es in ein paar Minuten noch einmal.",
+    "checking": "Wir prüfen {domain} gerade…",
     "signals_heading": "Warum",
     "low_confidence": "Das ist eine schnelle Prüfung mit begrenzten Daten.",
     "cta_title": "Schütze jede App auf deinem Handy",
@@ -832,7 +832,7 @@
     "meta_description": "Was Cleanway erhält, was auf deinem Handy oder in deinem Browser bleibt, wer sonst was sieht und wie lange alles gespeichert wird.",
     "back": "Zurück zu Cleanway",
     "title": "Datenschutzerklärung",
-    "updated": "Zuletzt aktualisiert: 22. Oktober 2026",
+    "updated": "Zuletzt aktualisiert: 4. November 2026",
     "intro": "Diese Erklärung beschreibt in einfachen Worten, welche Daten Cleanway verarbeitet, warum und wer sie sonst noch sieht. Sie beschreibt den Dienst so, wie er heute funktioniert. Wenn hier etwas nicht zu dem passt, was Cleanway tatsächlich tut, ist das ein Fehler, und wir möchten davon erfahren.",
     "contact_live": "Fragen und Anfragen zu deinen Daten:",
     "contact_not_live": "Unser Support-Postfach funktioniert vorübergehend nicht, daher können wir gerade keine E-Mails empfangen. Die Adresse erscheint hier wieder, sobald es funktioniert.",
@@ -875,7 +875,7 @@
           "Um zu entscheiden, ob die Seite gefährlich ist, kann unser Server:"
         ],
         "items": [
-          "externe Prüfdienste nach dem Namen fragen: Google Safe Browsing, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX und IPQualityScore, und per RDAP beim Register der Domain-Endung nachsehen, wann die Seite registriert wurde (für .com ist das Verisign). Sie erhalten nur den Seitennamen, nicht, wer du bist;",
+          "externe Prüfdienste nach dem Namen fragen: Google Web Risk, PhishTank, URLhaus, MalwareBazaar, ThreatFox, PhishStats, Spamhaus DBL, SURBL, AlienVault OTX und IPQualityScore, und per RDAP beim Register der Domain-Endung nachsehen, wann die Seite registriert wurde (für .com ist das Verisign). Sie erhalten nur den Seitennamen, nicht, wer du bist;",
           "seine Antwort mit der des DNS-Filters von Cloudflare (1.1.1.1 for Families) vergleichen, der den Seitennamen in einer gewöhnlichen DNS-Anfrage erhält;",
           "sich die Seite selbst ansehen (Adresse, Zertifikat und Einstellungen) – von unserem Server aus, nicht von deinem Handy;",
           "in Grenzfällen ein KI-Modell von Anthropic um eine zweite Meinung bitten. Es erhält nur abstrakte Merkmale, ohne den Seitennamen."
@@ -1311,7 +1311,7 @@
     }
   },
   "Reasons": {
-    "flagged_dangerous": "Google stuft diese Seite als gefährlich ein",
+    "flagged_dangerous": "Google warnt: Diese Seite ist möglicherweise gefährlich",
     "flagged_phishing": "Als Phishing gemeldet",
     "on_blocklists": "Auf vertrauenswürdigen Betrugs- und Spam-Listen",
     "threat_reports": "In Bedrohungsberichten erwähnt",
@@ -1346,5 +1346,12 @@
     "checks_incomplete": "Einige Prüfungen wurden nicht fertig, das Ergebnis ist daher weniger sicher",
     "user_content_platform": "Auf diesem Dienst kann jeder eine Seite anlegen – auch Betrüger",
     "on_device_list": "Steht auf der Liste der Betrugsseiten auf deinem Handy"
+  },
+  "Advisory": {
+    "google": "Hinweis bereitgestellt von Google",
+    "learn_more": "Mehr erfahren:",
+    "learn_phishing": "Phishing",
+    "learn_malware": "Schadsoftware",
+    "learn_unwanted": "unerwünschte Software"
   }
 }

@@ -359,7 +359,7 @@ counts only data **sent off the device**; data processed only on the phone is
 
 **"Shared" note (decide once, keep in step with the privacy policy):** the
 server sends the bare host, with no user identity, to threat-intelligence
-services (Google Safe Browsing and the others in `docs/PRIVACY.md`) to answer
+services (Google Web Risk and the others in `docs/PRIVACY.md`) to answer
 the check. Play's definition excludes transfers to service providers that
 process data on your behalf; these services answer a lookup under their own
 terms, so the conservative answer is **Shared: Web browsing history — Fraud

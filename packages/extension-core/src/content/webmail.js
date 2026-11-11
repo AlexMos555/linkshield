@@ -203,6 +203,53 @@
     };
   }
 
+  // ── Google's credit ──────────────────────────────────────────────────────
+  // POST /email/analyze checks the domains of an email's links with Google
+  // Web Risk only (api/routers/email.py), so a known_dangerous_link finding is
+  // Google's verdict. Web Risk's rules for warnings (docs.cloud.google.com/
+  // web-risk/docs/user-warnings): such a warning says "Advisory provided by
+  // Google", linked to the Web Risk Advisory, with learn-more links; a
+  // banner on other signs says nothing of Google. Same pages as
+  // content/reason-labels.js (scripts/test-extension-core.mjs).
+  const GOOGLE_FINDING = "known_dangerous_link";
+  const GOOGLE_LINKS = Object.freeze({
+    advisory: "https://docs.cloud.google.com/web-risk/docs/advisory",
+    phishing: "https://www.antiphishing.org/",
+    malware: "https://developers.google.com/search/docs/advanced/security/malware",
+    unwanted: "https://www.google.com/about/company/unwanted-software-policy.html",
+  });
+
+  function fromGoogle(findings) {
+    return (Array.isArray(findings) ? findings : []).some((f) => Boolean(f) && f.code === GOOGLE_FINDING);
+  }
+
+  function googleLink(href, text) {
+    const a = document.createElement("a");
+    a.href = href;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = text;
+    a.style.color = "inherit";
+    a.style.textDecoration = "underline";
+    return a;
+  }
+
+  // The credit as a line of the banner: text and links only, no markup.
+  function googleAdvisoryLine() {
+    const line = document.createElement("div");
+    line.className = "cleanway-google-advisory";
+    line.style.fontSize = "12px";
+    line.style.marginTop = "2px";
+    line.appendChild(googleLink(GOOGLE_LINKS.advisory, t("advisory_google")));
+    line.appendChild(document.createTextNode(` \u00B7 ${t("advisory_learn_more")} `));
+    line.appendChild(googleLink(GOOGLE_LINKS.phishing, t("advisory_learn_phishing")));
+    line.appendChild(document.createTextNode(" \u00B7 "));
+    line.appendChild(googleLink(GOOGLE_LINKS.malware, t("advisory_learn_malware")));
+    line.appendChild(document.createTextNode(" \u00B7 "));
+    line.appendChild(googleLink(GOOGLE_LINKS.unwanted, t("advisory_learn_unwanted")));
+    return line;
+  }
+
   // ── Links, not HTML ──────────────────────────────────────────────────────
   // The analyzer reads body_html for one thing: <a href="…">text</a> pairs
   // (a link whose text shows one address but goes to another). So we send
@@ -257,7 +304,9 @@
   // scripts/test-extension-core.mjs. Set
   // before the host and switch checks, so the test can load this file off
   // a mail page; none of them reads the page by itself.
-  window.__cleanwayWebmail = Object.freeze({ describeResult, findingText, topFinding, linksAsHtml, buildPayload });
+  window.__cleanwayWebmail = Object.freeze({
+    describeResult, findingText, topFinding, linksAsHtml, buildPayload, fromGoogle, googleLinks: GOOGLE_LINKS,
+  });
 
   // ── Resolve adapter ──────────────────────────────────────────────────────
   const host = location.hostname;
@@ -403,6 +452,7 @@
     let icon = "🛡️";
     let headline = "";
     let detail = "";
+    let google = false;
     let bg = "#f1f5f9", fg = "#334155", border = "#cbd5e1";
 
     if (opts.state === "scanning") {
@@ -422,6 +472,7 @@
       const verdict = describeResult(opts.result);
       headline = verdict.headline;
       detail = verdict.detail;
+      google = verdict.level !== "safe" && fromGoogle(findings);
       if (verdict.level === "dangerous") {
         icon = "🛑";
         bg = "#fee2e2"; fg = "#7f1d1d"; border = "#fca5a5";
@@ -454,6 +505,7 @@
     iconEl.textContent = icon;
     textWrap.children[0].textContent = headline;
     textWrap.children[1].textContent = detail;
+    if (google) textWrap.appendChild(googleAdvisoryLine());
     closeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       banner.remove();

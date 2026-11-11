@@ -50,11 +50,11 @@ HOW IT WORKS, HONESTLY
 • DNS protection uses iPhone's built-in encrypted DNS setting. While it is on, your iPhone asks our server, dns.cleanway.ai, for the address of every site it opens. Known scam sites get no address, so they don't open; every other name is passed on to Cloudflare's DNS. We keep no record of who looked up what. You can switch it off in the app or in Settings at any time.
 • It is not a VPN: your IP address does not change, and your pages and messages do not pass through Cleanway.
 • The SMS filter sees only texts from unknown numbers, as iOS allows. It never sends a message anywhere. iMessage is not available to any filter app.
-• When you check a link, only the site name (for example, example.com) goes to our server, never the rest of the address. The server checks it against sources that include outside lists of dangerous sites such as Google Safe Browsing.
+• When you check a link, only the site name (for example, example.com) goes to our server, never the rest of the address. The server checks it against sources that include outside lists of dangerous sites such as Google Web Risk.
 • No ads, and we don't sell data.
 
 WHAT CLEANWAY DOESN'T PROMISE
-New scam sites and messages appear every day, and no app catches them all. If in doubt, don't open the link, never share codes from text messages, and call your bank on the number printed on your card.
+New scam sites and messages appear every day, and no app catches them all. Now and then a safe site may also be flagged by mistake. If in doubt, don't open the link, never share codes from text messages, and call your bank on the number printed on your card.
 
 Help: support@cleanway.ai
 Privacy policy: cleanway.ai/privacy-policy
@@ -107,11 +107,11 @@ Cleanway защищает iPhone от мошенников. Не даёт отк
 • Защита DNS использует встроенную в iPhone настройку зашифрованного DNS. Пока она включена, iPhone спрашивает у нашего сервера dns.cleanway.ai адрес каждого открываемого сайта. Известные мошеннические сайты адреса не получают и не открываются, остальные имена передаются в DNS Cloudflare. Мы не храним, кто какие сайты открывал. Выключить защиту можно в приложении или в Настройках в любой момент.
 • Это не VPN: ваш IP-адрес не меняется, страницы и сообщения не проходят через Cleanway.
 • Фильтр SMS видит только сообщения с незнакомых номеров — так устроен iOS. Он никуда не отправляет сообщения. iMessage недоступен ни одному приложению-фильтру.
-• При проверке ссылки на наш сервер уходит только имя сайта (например, example.com), а не весь адрес. Сервер сверяет его с источниками, среди которых внешние списки опасных сайтов, например Google Safe Browsing.
+• При проверке ссылки на наш сервер уходит только имя сайта (например, example.com), а не весь адрес. Сервер сверяет его с источниками, среди которых внешние списки опасных сайтов, например Google Web Risk.
 • Без рекламы, мы не продаём данные.
 
 ЧЕГО CLEANWAY НЕ ОБЕЩАЕТ
-Новые мошеннические сайты и сообщения появляются каждый день, и ни одно приложение не ловит их все. Если сомневаетесь — не открывайте ссылку, никому не сообщайте коды из SMS и звоните в банк по номеру на карте.
+Новые мошеннические сайты и сообщения появляются каждый день, и ни одно приложение не ловит их все. Бывает и наоборот: изредка безопасный сайт помечается по ошибке. Если сомневаетесь — не открывайте ссылку, никому не сообщайте коды из SMS и звоните в банк по номеру на карте.
 
 Помощь: support@cleanway.ai
 Политика конфиденциальности: cleanway.ai/privacy-policy

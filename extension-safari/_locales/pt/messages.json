@@ -37,10 +37,10 @@
     }
   },
   "status_danger_title": {
-    "message": "Este é um site fraudulento"
+    "message": "Parece um site fraudulento"
   },
   "status_danger_subtitle": {
-    "message": "$DOMAIN$ está se passando por outro site para roubar seus dados",
+    "message": "$DOMAIN$ pode estar se passando por outro site para roubar seus dados",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -362,10 +362,10 @@
     "message": "PARE"
   },
   "block_subtitle_scam": {
-    "message": "Este é um site fraudulento"
+    "message": "Parece um site fraudulento"
   },
   "block_explanation": {
-    "message": "$DOMAIN$ está se passando por outro site para roubar seus dados.",
+    "message": "$DOMAIN$ pode estar se passando por outro site para roubar seus dados.",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -384,13 +384,13 @@
     "message": "Como golpistas usam sites assim:"
   },
   "block_scheme_step1": {
-    "message": "Vão pedir sua senha ou dados do banco"
+    "message": "Um site assim pode pedir sua senha ou dados do banco"
   },
   "block_scheme_step2": {
-    "message": "O golpista rouba tudo que você digitar"
+    "message": "Um golpista poderia roubar tudo o que você digitar"
   },
   "block_scheme_step3": {
-    "message": "Esvaziam sua conta ou roubam sua identidade"
+    "message": "Poderiam esvaziar sua conta ou roubar sua identidade"
   },
   "block_back_button": {
     "message": "Voltar para um lugar seguro"
@@ -410,7 +410,7 @@
     "message": "Protegido pelo Cleanway. Nunca vendemos seus dados."
   },
   "block_voice_alert": {
-    "message": "Pare. O site $DOMAIN$ é perigoso. Não digite sua senha.",
+    "message": "Pare. O site $DOMAIN$ pode ser perigoso. Não digite sua senha.",
     "placeholders": {
       "domain": {
         "content": "$1"
@@ -421,7 +421,7 @@
     "message": "Por que bloqueamos este site"
   },
   "block_explainer_heading": {
-    "message": "Que tipo de golpe é este?"
+    "message": "Que tipo de golpe pode ser este?"
   },
   "block_evidence_other_title": {
     "message": "Um sinal de alerta"
@@ -429,11 +429,64 @@
   "block_evidence_other_body": {
     "message": "Nossas verificações encontraram algo incomum neste site."
   },
+  "block_rechecking": {
+    "message": "Verificando $DOMAIN$ novamente…",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_recheck_title": {
+    "message": "Verificado novamente"
+  },
+  "block_recheck_clear": {
+    "message": "$DOMAIN$ não está marcado como perigoso agora. O aviso anterior expirou.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_recheck_caution": {
+    "message": "Ainda assim, ele mostra alguns sinais de fraude. Não digite senhas nem dados do cartão lá se não confiar neste site."
+  },
+  "block_recheck_failed": {
+    "message": "O Cleanway não conseguiu verificar $DOMAIN$ novamente agora. O aviso anterior expirou.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "block_recheck_open": {
+    "message": "Abrir o site"
+  },
+  "block_recheck_back": {
+    "message": "Voltar"
+  },
+  "block_recheck_failed_title": {
+    "message": "Não foi possível verificar novamente"
+  },
+  "block_recheck_retry": {
+    "message": "Tentar novamente"
+  },
+  "block_recheck_paused": {
+    "message": "O aviso anterior sobre $DOMAIN$ expirou. Clique em “Tentar novamente” para verificar o site outra vez.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
   "welcome_hero_title": {
     "message": "Você está protegido agora"
   },
   "welcome_hero_subtitle": {
     "message": "Cada link que você vê é verificado. Os perigosos são bloqueados automaticamente."
+  },
+  "welcome_limits": {
+    "message": "Nenhuma proteção é perfeita: de vez em quando um site seguro pode ser marcado por engano, e um perigoso pode passar despercebido."
   },
   "welcome_step1_title": {
     "message": "Verificação automática"
@@ -717,7 +770,7 @@
     "message": "Um familiar foi avisado sobre um site suspeito."
   },
   "reason_flagged_dangerous": {
-    "message": "O Google marca este site como perigoso"
+    "message": "O Google alerta que este site pode ser perigoso"
   },
   "reason_flagged_phishing": {
     "message": "Denunciado como phishing"
@@ -843,7 +896,7 @@
     "message": "O certificado de segurança do site é inválido"
   },
   "evidence_flagged_dangerous": {
-    "message": "O Google Safe Browsing, a lista que Chrome, Firefox e Safari usam para alertar as pessoas, marca este site como perigoso."
+    "message": "Este site está nas listas do Google de sites suspeitos de golpe ou de programas nocivos (Google Web Risk). Ele pode tentar arrancar seus dados ou instalar programas nocivos."
   },
   "evidence_flagged_phishing": {
     "message": "Este site está em bases antiphishing — listas de sites que enganam as pessoas para roubar senhas ou dados de cartão."
@@ -967,6 +1020,21 @@
   },
   "evidence_broken_certificate": {
     "message": "O certificado que comprova quem está por trás deste site expirou, não foi emitido por uma autoridade confiável ou pertence a outro endereço. Seu navegador também vai avisar."
+  },
+  "advisory_google": {
+    "message": "Aviso fornecido pelo Google"
+  },
+  "advisory_learn_more": {
+    "message": "Saiba mais:"
+  },
+  "advisory_learn_phishing": {
+    "message": "phishing"
+  },
+  "advisory_learn_malware": {
+    "message": "malware"
+  },
+  "advisory_learn_unwanted": {
+    "message": "software indesejado"
   },
   "weekly_title": {
     "message": "Minha semana"
@@ -1123,7 +1191,7 @@
     "message": "Fechar"
   },
   "webmail_finding_url_reputation": {
-    "message": "Um link deste e-mail leva a um site perigoso conhecido"
+    "message": "Um link deste e-mail pode levar a um site perigoso"
   },
   "webmail_finding_auth_fail": {
     "message": "O e-mail não passou nas verificações que confirmam quem realmente o enviou"
@@ -1177,7 +1245,7 @@
     "message": "Verificar se há phishing nos e-mails que abro no Gmail, Outlook e Yahoo"
   },
   "webmail_setting_consent": {
-    "message": "Desativado, a menos que você ative. Quando ativado, cada e-mail que você abre no Gmail, Outlook ou Yahoo Mail é enviado ao servidor da Cleanway (api.cleanway.ai) para verificar se é phishing: o assunto, o nome e o endereço do remetente, o endereço Reply-To, o texto da mensagem e o endereço e o texto de cada link. O e-mail é verificado e não é guardado; os domínios dos links também são verificados com o Google Safe Browsing. Desative quando quiser e a verificação para na hora."
+    "message": "Desativado, a menos que você ative. Quando ativado, cada e-mail que você abre no Gmail, Outlook ou Yahoo Mail é enviado ao servidor da Cleanway (api.cleanway.ai) para verificar se é phishing: o assunto, o nome e o endereço do remetente, o endereço Reply-To, o texto da mensagem e o endereço e o texto de cada link. O e-mail é verificado e não é guardado; os domínios dos links também são verificados com o Google Web Risk. Desative quando quiser e a verificação para na hora."
   },
   "webmail_setting_denied": {
     "message": "O navegador não deu à Cleanway acesso aos sites de e-mail, então a verificação de e-mails continua desativada."

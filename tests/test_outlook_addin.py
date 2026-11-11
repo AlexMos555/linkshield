@@ -130,3 +130,27 @@ def test_readme_links_a_doc_that_exists() -> None:
     readme = (ADDIN / "README.md").read_text(encoding="utf-8")
     for target in re.findall(r"\]\((\.\./docs/[^)]+)\)", readme):
         assert (ADDIN / target).resolve().is_file(), target
+
+
+def test_a_link_google_flagged_credits_google_in_the_task_pane() -> None:
+    # POST /email/analyze checks link domains with Google Web Risk only, so a
+    # known_dangerous_link finding is Google's verdict. Web Risk's rules for
+    # warnings (docs.cloud.google.com/web-risk/docs/user-warnings): "Advisory
+    # provided by Google" linked to the Web Risk Advisory, and a learn-more
+    # link; never on a verdict built on other sources.
+    source = (ADDIN / "taskpane" / "taskpane.js").read_text(encoding="utf-8")
+    html = (ADDIN / "taskpane" / "taskpane.html").read_text(encoding="utf-8")
+    assert 'f.code === "known_dangerous_link"' in source
+    assert "Advisory provided by Google" in html
+    for url in (
+        "https://docs.cloud.google.com/web-risk/docs/advisory",
+        "https://www.antiphishing.org/",
+        "https://developers.google.com/search/docs/advanced/security/malware",
+        # The server asks Web Risk about UNWANTED_SOFTWARE too: each threat
+        # type gets its learn-more page.
+        "https://www.google.com/about/company/unwanted-software-policy.html",
+    ):
+        assert f'href="{url}"' in html, url
+    box = re.search(r'<[a-z]+\b[^>]*\bid="google-advisory"[^>]*>', html)
+    assert box and " hidden" in box.group(0), "the credit shows before any verdict"
+    assert re.search(r"googleAdvisory\.hidden = !", source), "the task pane never decides whether to show the credit"
