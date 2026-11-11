@@ -308,8 +308,8 @@ Google's PEPK tool) keeps one signature everywhere.
       on 3 devices (phone, tablet, or browser with the extension)."
       Numbers: founder decision 2026-11-04 (server settings
       FREE_MANUAL_CHECKS_PER_MONTH / FREE_UNLIMITED_DAYS_AFTER_INSTALL — if they
-      change, change the line). Add "or $19.99 a year" only if the yearly plan is
-      created. The extra device is not sold in the app — not in the line. Russian: see `docs/RUSTORE_SUBMISSION.md` §7.0 (99 ₽ / +29 ₽).
+      change, change the line). Add "or $19.99 a year" once the yearly plan exists in
+      Play Console (founder approved it 2026-11-11). The extra device is not sold in the app — not in the line. Russian: see `docs/RUSTORE_SUBMISSION.md` §7.0 (99 ₽ / +29 ₽).
 - [x] **Screenshots and feature graphic** — EN and RU, 1080×1920, from 1.0.4
       (`mobile/assets/store/google-play/`, README there); feature graphic
       1024×500 per language; icon `mobile/assets/store/icon-512.png`.

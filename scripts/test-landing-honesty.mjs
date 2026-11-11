@@ -740,7 +740,7 @@ const DEVICE_PLAN_RESPONSE = {
       monthly: { amount: 0.49, monthly_equivalent: 0.49, interval: "monthly", stripe_price_id: "p3" },
       yearly: { amount: 2.49, monthly_equivalent: 0.21, interval: "yearly", stripe_price_id: "p4" },
     },
-    trial_days: 14,
+    trial_days: 7,
   },
   free: { list_blocking_unlimited: true, manual_checks: 5, manual_checks_period: "month", unlimited_days_after_install: 7 },
   messaging: { blocking_is_free_forever: true, what_paid_unlocks: [] },
@@ -751,6 +751,7 @@ check("the base tier fallback is the founder's world price: $1.99 / $19.99, +$0.
   assert.equal(DEFAULT_PRICING.freeChecksPerMonth, 5);
   assert.equal(DEFAULT_PRICING.extraDevice.monthly.amount, 0.49);
   assert.equal(DEFAULT_PRICING.includedDevices, 3);
+  assert.equal(DEFAULT_PRICING.trialDays, 7, "the trial is 7 days everywhere (founder, 2026-11-11)");
   assert.equal(DEFAULT_PRICING.country, null);
   assert.equal(monthsFree(DEFAULT_PRICING), 2);
 });

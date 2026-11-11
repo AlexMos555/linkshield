@@ -386,7 +386,7 @@ equalization) → Confirm.
 | Product | Base price (United States) | Note |
 |---|---|---|
 | `cleanway.devices.monthly` | USD 1.99 | the founder's price |
-| `cleanway.devices.yearly` | USD 19.99 | proposed (≈ 2 months free); if the founder drops the yearly plan, do not create it — the paywall shows only what the `default` offering has |
+| `cleanway.devices.yearly` | USD 19.99 | approved by the founder 2026-11-11 (≈ 2 months free), already created in App Store Connect; the paywall shows only what the `default` offering has |
 | `cleanway.extra_device.*` | — | not sold in the app yet: no need to create before it is |
 
 Introductory offer (free trial): do **not** add one unless the founder says so —

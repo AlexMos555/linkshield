@@ -269,7 +269,7 @@ def test_pricing_for_country_us(client):
     assert plan["price"]["yearly"]["monthly_equivalent"] == 1.67
     assert plan["extra_device"]["monthly"]["amount"] == 0.49
     assert plan["extra_device"]["yearly"]["interval"] == "yearly"
-    assert plan["trial_days"] == 14
+    assert plan["trial_days"] == 7
     assert body["free"] == {
         "list_blocking_unlimited": True,
         "manual_checks": 5,

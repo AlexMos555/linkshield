@@ -84,8 +84,10 @@ def free_unlimited_days() -> int:
     return get_settings().free_unlimited_days_after_install
 
 #: Free trial on the FIRST paid web subscription (Stripe Checkout), once per
-#: account — subscriptions.trial_used_at, migration 021.
-STRIPE_TRIAL_DAYS = 14
+#: account — subscriptions.trial_used_at, migration 021. Seven days, the same
+#: as the app's "everything unlocked" week (founder, 2026-11-11: the trial is
+#: 7 days everywhere).
+STRIPE_TRIAL_DAYS = 7
 
 # ─── Country → Tier mapping ────────────────────────────────────
 # Keep in sync with migration 003 SQL function `get_pricing_tier()`.

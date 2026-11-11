@@ -54,7 +54,7 @@ export const DEFAULT_PRICING: WorldPricing = {
     monthly: { amount: 0.49, monthlyEquivalent: 0.49 },
     yearly: { amount: 4.99, monthlyEquivalent: 0.42 },
   },
-  trialDays: 14,
+  trialDays: 7,
   freeChecksPerMonth: 5,
   freeUnlimitedDays: 7,
 };
