@@ -93,6 +93,34 @@ asked for, inside its xcframework
 but it did not reach the archive's `dSYMs/`. The upload still succeeds. The
 app, its extensions and the other frameworks have dSYMs.
 
+**1.1.0 (8), 2026-11-11 — the first iPhone build that sells.** Same recipe,
+mirror `~/Library/Caches/cleanway-dev/cwi110b8`, branch at `30a4a994` (main
+up to #344, #411, #403, #408, #409). The mirror's `.env` is `mobile/.env`
+with `EXPO_PUBLIC_REVENUECAT_IOS_KEY` plus one added line,
+`EXPO_PUBLIC_FREEMIUM_ENABLED=1` (the free limit of #411; without the flag
+the build sells but limits nothing). Archive
+`~/Desktop/cleanway-android-out/ios/Cleanway-1.1.0-8.xcarchive`, ARCHIVE
+SUCCEEDED; uploaded to TestFlight the same day ("Uploaded Cleanway",
+EXPORT SUCCEEDED; the same four "Upload Symbols Failed" warnings). Logs in
+`~/Desktop/cleanway-android-out/logs/`: `ios-1.1.0-8-npm-install.log`,
+`-prebuild.log`, `-pod-install.log` (129 pods, with RevenueCat 5.92.0,
+PurchasesHybridCommon 19.5.0, RNPurchases 10.11.0), `-archive.log`,
+`-archive-checks.txt`, `-upload.log`, `-device-install.log`. The checks:
+1.1.0 (8), `ai.cleanway.app`, iOS 16.4, `ITSAppUsesNonExemptEncryption`
+false; Supabase host, review email, publishable and anon keys and the
+`appl_` key from `.env` in `main.jsbundle` ("sells"); StoreKit linked,
+RevenueCat in the app binary, `RevenueCat.bundle` and
+`PurchasesHybridCommon.bundle` in the app; the §3.6 "VPN" search as expected.
+Hermes bytecode cannot show the freemium flag, so it was read from an
+unminified bundle exported from the same mirror (`npx expo export:embed
+--platform ios --dev false --minify false`): `EXPO_PUBLIC_FREEMIUM_ENABLED:
+"1"`. Automatic signing archives with the Apple Development certificate and
+the team profile, which lists the founder's iPhone, so the archive's
+`Cleanway.app` installs on it as it is: `xcrun devicectl device install app
+--device <id> …/Products/Applications/Cleanway.app` (done for build 8; the
+phone shows 1.1.0 (8)). A development-signed install and a TestFlight install
+both buy in the App Store sandbox (§3.4); installing one replaces the other.
+
 **For App Store Connect** (how 1.0.6 builds 5 and 6 were made), archive Release
 from the same mirror, then check what the bundle carries **before** uploading
 (Xcode Organizer, or `xcodebuild -exportArchive` with an `ExportOptions.plist`
@@ -552,6 +580,9 @@ LC_ALL=C grep -aci vpn "$A/EXConstants.bundle/app.config"  # 0: no BIND_VPN_SERV
 # and ReactNativeDependencies 2 (C++ mangled names: "…IFvPN6hermes…",
 # "…EEvPNSt3__1…"). Anything else: find out what matches and record it here
 # before pasting.
+# Build 8 (2026-11-11, ios-1.1.0-8-archive-checks.txt): the three searches
+# above as expected (no output, 20, 0); case-insensitive: main.jsbundle 1
+# ("…IUvpNINCw…"), Cleanway 0, hermesvm 2, ReactNativeDependencies 2.
 ```
 
 > Cleanway checks links and text messages for scams. No account is needed:
@@ -806,8 +837,10 @@ reply's second) if they ask the three questions point by point again.
 
 **Purchases: which sentence.** The Notes block at the top of §3.6 is for a
 build made **without** `EXPO_PUBLIC_REVENUECAT_IOS_KEY` — every iPhone build
-so far (1.0.6 builds 5 and 6 checked on 2026-10-25: no `appl_` key in their
-bundles; check a new one with §1.1). `PAID_PLANS_OFFERED` is false there: the paywall sends anyone who
+up to 1.1.0 (7) (1.0.6 builds 5 and 6 checked on 2026-10-25: no `appl_` key in their
+bundles; check a new one with §1.1). **1.1.0 (8)** (2026-11-11) is made with
+the key — its check prints "sells" — so its Notes take the In-App Purchase
+sentence below, and its subscriptions must be attached to the version. `PAID_PLANS_OFFERED` is false there: the paywall sends anyone who
 reaches it home (`app/paywall.tsx`), Settings has no Plan row, Account shows
 the plan as "Free" with no Upgrade, and "Restore purchases" appears only when
 App Store billing is on (`storeBillingOn()`, `app/account.tsx`). Attach **no**
