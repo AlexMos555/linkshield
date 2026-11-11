@@ -28,7 +28,8 @@
  *   • a store build never links out to the web checkout; Russia shows
  *     "coming soon" in the site APK and RuStore, while a Google Play or App
  *     Store build leaves the country to its store; signed out → sign in
- *     first;
+ *     first on Android, while the iPhone app buys without an account (App
+ *     Review 5.1.1);
  *   • a build that cannot take a payment (RuStore: no billing built; a
  *     store build without its billing SDK) says "coming soon" up front —
  *     the button off, no sign-in first for a purchase that cannot happen;
@@ -70,6 +71,7 @@ import {
   webPlanPrice,
   quotaForPeriod,
   readFreemiumConfig,
+  storePurchaseWithoutAccount,
   termsFresh,
   trialDaysLeft,
   webCheckoutAllowed,
@@ -428,13 +430,25 @@ check("store builds: the store decides the country, not the phone's region (foun
   // Russian storefront mostly fails in the store's own sheet.
   for (const distribution of ["play", "appstore"]) {
     assert.equal(purchaseAction({ signedIn: true, market: "ru", distribution }), "store", distribution);
-    assert.equal(purchaseAction({ signedIn: false, market: "ru", distribution }), "sign_in", distribution);
+  }
+  // Signed out: Google Play signs in first; the iPhone app buys without an account.
+  assert.equal(purchaseAction({ signedIn: false, market: "ru", distribution: "play" }), "sign_in");
+  assert.equal(purchaseAction({ signedIn: false, market: "ru", distribution: "appstore" }), "store");
+});
+check("signed out: sign in first on every Android build", () => {
+  for (const distribution of ["site", "play", "rustore"]) {
+    assert.equal(purchaseAction({ signedIn: false, market: "world", distribution }), "sign_in");
+    assert.equal(storePurchaseWithoutAccount(distribution), false, distribution);
   }
 });
-check("signed out: sign in first, on every build", () => {
-  for (const distribution of ["site", "play", "rustore", "appstore"]) {
-    assert.equal(purchaseAction({ signedIn: false, market: "world", distribution }), "sign_in");
-  }
+check("signed out on the iPhone: the App Store purchase itself — no sign-in first (App Review 5.1.1)", () => {
+  // docs/STORE_DECISIONS_2026-10.md §3, option Б: buying and restoring work
+  // without an account; signing in is offered after, to use it elsewhere.
+  assert.equal(storePurchaseWithoutAccount("appstore"), true);
+  assert.equal(purchaseAction({ signedIn: false, market: "world", distribution: "appstore" }), "store");
+  // A phone whose region says Russia: the App Store decides, as for any
+  // store build (above) — still no sign-in first.
+  assert.equal(purchaseAction({ signedIn: false, market: "ru", distribution: "appstore" }), "store");
 });
 check("signed in: site APK → web checkout; store builds → store billing, never the web", () => {
   assert.equal(purchaseAction({ signedIn: true, market: "world", distribution: "site" }), "web_checkout");
