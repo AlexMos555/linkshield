@@ -415,8 +415,8 @@ Terms + Privacy links, no link to the web checkout anywhere in the iOS build,
 and for App Store subscribers the account screen explains that only Apple can
 cancel the subscription and that deleting the account does not.
 
-**No account needed to buy or restore** (branch `feat/iap-without-account`, a
-draft until the founder answers "Б" — `docs/STORE_DECISIONS_2026-10.md` §3).
+**No account needed to buy or restore** (#344; the founder answered "Б" on
+2026-11-11 — `docs/STORE_DECISIONS_2026-10.md` §3).
 App Review 5.1.1(v) rejects an app that asks for an account before an in-app
 purchase its main function does not need. So, signed out, the purchase and
 "Restore purchases" run under RevenueCat's anonymous id. The phone keeps its

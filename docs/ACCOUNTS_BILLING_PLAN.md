@@ -544,7 +544,7 @@ RevenueCat — id аккаунта, выход — при любом выход�
 тарифов (`upgrade.tsx`, $4,99 / $9,99) убран — везде открывается экран оплаты. Подробно:
 `docs/runbooks/revenuecat.md` §5.
 
-**iPhone: покупка без аккаунта (`feat/iap-without-account`, черновик, ждёт «Б»).** В
+**iPhone: покупка без аккаунта (#344, основатель ответил «Б» 2026-11-11).** В
 iPhone-сборке с ключом `appl_…` покупка и «Восстановить покупки» работают без входа
 (App Review 5.1.1): под анонимным id RevenueCat. Телефон сам помнит свой тариф из
 App Store (`storePlanActive` в `mobile/src/utils/store-billing.ts`, по ответу
