@@ -1,39 +1,38 @@
-"""World pricing — one subscription that covers devices, priced by PPP tier.
+"""World pricing — one subscription that covers devices, one price everywhere.
 
-Founder decision (docs/ACCOUNTS_BILLING_PLAN.md §5, 2026-10-07): the
-subscription counts devices, not people.
+Founder decisions (docs/ACCOUNTS_BILLING_PLAN.md §5): the subscription counts
+devices, not people (2026-10-07); free = 5 manual site checks a month after a
+7-day trial, and the plan costs $1.99 a month in every country (2026-11-04).
 
-  * Free, forever: blocking known scam sites from the list (unlimited),
-    3 detailed checks a day, everything unlimited for the first 7 days
-    after install.
+  * Free, forever: automatic protection (blocking known scam sites from the
+    list, DNS, the link guard, the iPhone SMS filter) with no limit; 5 manual
+    site checks a month after 7 days with everything unlocked (both are
+    settings: FREE_MANUAL_CHECKS_PER_MONTH, FREE_UNLIMITED_DAYS_AFTER_INSTALL).
   * Paid: one plan — unlimited detailed checks on PLAN_INCLUDED_DEVICES (3)
-    devices of one account, $0.99 a month or $9.99 a year at the base tier,
-    plus $0.49 a month for every device beyond the included ones.
+    devices of one account, $1.99 a month or $19.99 a year, plus $0.49 a
+    month for every device beyond the included ones.
 
 A device is a phone, tablet or browser with the extension signed in to the
 account (api/routers/account.py). Russia is not priced here: the operator-
 billed subscription (api/billing) sells it in rubles.
 
-Regional (PPP) tiers are kept — same countries as before (migration 003
-`get_pricing_tier()`), new numbers:
+The regional (PPP) tiers stay — same countries as before (migration 003
+`get_pricing_tier()`) — but the plan no longer differs between them:
 
   | Tier | Who            | Monthly | Yearly | Extra device /mo | /yr   |
   |------|----------------|---------|--------|------------------|-------|
-  | 1    | Premium        | $0.99   | $9.99  | $0.49            | $4.99 |
-  | 2    | Base (default) | $0.99   | $9.99  | $0.49            | $4.99 |
-  | 3    | Mid-emerging   | $0.99   | $6.99  | $0.49            | $3.49 |
-  | 4    | Affordable     | $0.99   | $4.99  | $0.49            | $2.49 |
+  | 1    | Premium        | $1.99   | $19.99 | $0.49            | $4.99 |
+  | 2    | Base (default) | $1.99   | $19.99 | $0.49            | $4.99 |
+  | 3    | Mid-emerging   | $1.99   | $19.99 | $0.49            | $3.49 |
+  | 4    | Affordable     | $1.99   | $19.99 | $0.49            | $2.49 |
 
-Why not the old multipliers (T1 ×1.2, T3 ×0.5, T4 ×0.3):
-  * $0.99 is the founder's headline world price; a +20% premium on it is
-    $1.19, an odd number nobody else charges, so tier 1 = base.
-  * Monthly is at the payment floor. Stripe takes $0.30 + 2.9% per charge,
-    so $0.49 a month (×0.5) would leave ~$0.18 and $0.30 (×0.3) nothing.
-    The regional discount therefore goes into the YEARLY price, where one
-    fee covers twelve months: ~30% off at tier 3, ~50% off at tier 4.
-  * Extra devices ride on the same invoice (no second fixed fee), so their
-    monthly price stays $0.49 everywhere; yearly ≈ 10 × monthly at tiers
-    1–2 ("2 months free"), discounted like the plan at tiers 3–4.
+  * $1.99 a month is the founder's price in every country; the App Store and
+    Google Play show their own local equivalent of the same price point.
+  * Yearly $19.99 ≈ 10 × monthly ("≈ 2 months free"): the proposal in the PR
+    of 2026-11-04 — drop the yearly plan instead by not creating it in the
+    stores and Stripe; the app shows only what the store offers.
+  * The extra device was not part of the 2026-11-04 decision and is not sold
+    in the app yet: its prices (and their tier discount) are unchanged.
 
 Every amount is integer cents (no float drift); USD floats are derived for
 display. A change here is a change to scripts/create_stripe_prices.py too
@@ -65,15 +64,30 @@ STORED_TIER = "personal"
 #: "family_*" / "business_*" are no longer sold (400).
 LEGACY_PLAN_ALIASES: frozenset[str] = frozenset({"personal"})
 
-# ─── Free tier (founder decision §5) ───────────────────────────
-# The phone counts the checks (resets at local midnight); these are the
-# numbers the site and the app say out loud.
-FREE_DETAILED_CHECKS_PER_DAY = 3
-FREE_UNLIMITED_DAYS_AFTER_INSTALL = 7
+# ─── Free tier (founder decision §5, 2026-11-04) ───────────────
+# Settings, not constants: FREE_MANUAL_CHECKS_PER_MONTH and
+# FREE_UNLIMITED_DAYS_AFTER_INSTALL (api/config.py). The phone counts the
+# checks (resets on the 1st, local time); /api/v1/pricing/for-country
+# publishes the numbers the site and the app say out loud and enforce.
+FREE_CHECKS_PERIOD = "month"
+
+
+def free_manual_checks() -> int:
+    from api.config import get_settings
+
+    return get_settings().free_manual_checks_per_month
+
+
+def free_unlimited_days() -> int:
+    from api.config import get_settings
+
+    return get_settings().free_unlimited_days_after_install
 
 #: Free trial on the FIRST paid web subscription (Stripe Checkout), once per
-#: account — subscriptions.trial_used_at, migration 021.
-STRIPE_TRIAL_DAYS = 14
+#: account — subscriptions.trial_used_at, migration 021. Seven days, the same
+#: as the app's "everything unlocked" week (founder, 2026-11-11: the trial is
+#: 7 days everywhere).
+STRIPE_TRIAL_DAYS = 7
 
 # ─── Country → Tier mapping ────────────────────────────────────
 # Keep in sync with migration 003 SQL function `get_pricing_tier()`.
@@ -133,10 +147,10 @@ class TierPrices:
 
 
 TIER_PRICES: dict[Tier, TierPrices] = {
-    1: TierPrices(plan_monthly=99, plan_yearly=999, extra_device_monthly=49, extra_device_yearly=499),
-    2: TierPrices(plan_monthly=99, plan_yearly=999, extra_device_monthly=49, extra_device_yearly=499),
-    3: TierPrices(plan_monthly=99, plan_yearly=699, extra_device_monthly=49, extra_device_yearly=349),
-    4: TierPrices(plan_monthly=99, plan_yearly=499, extra_device_monthly=49, extra_device_yearly=249),
+    1: TierPrices(plan_monthly=199, plan_yearly=1999, extra_device_monthly=49, extra_device_yearly=499),
+    2: TierPrices(plan_monthly=199, plan_yearly=1999, extra_device_monthly=49, extra_device_yearly=499),
+    3: TierPrices(plan_monthly=199, plan_yearly=1999, extra_device_monthly=49, extra_device_yearly=349),
+    4: TierPrices(plan_monthly=199, plan_yearly=1999, extra_device_monthly=49, extra_device_yearly=249),
 }
 
 

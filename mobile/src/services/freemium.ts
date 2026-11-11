@@ -1,5 +1,6 @@
 /**
- * The free plan on this phone: the daily counter, the first-days trial and
+ * The free plan on this phone: the monthly counter, the first-days trial,
+ * the server's numbers for both (GET /api/v1/pricing/for-country `free`) and
  * the paid status, stored in the app's settings table. The rules themselves
  * are pure (src/utils/freemium.ts); this file reads and writes their state.
  *
@@ -7,14 +8,15 @@
  * storage or the network: every check is detailed, as before.
  *
  * No analytics: nothing about the counter, the paywall or a purchase leaves
- * the phone. The only request is GET /api/v1/me/entitlement, when signed in.
+ * the phone. Requests: GET /api/v1/pricing/for-country (anonymous, the free
+ * plan's numbers, at most every 6 h) and GET /api/v1/me/entitlement, when signed in.
  */
 import { EventEmitter } from "events";
 import { Platform } from "react-native";
 
 import { getSetting, setSetting } from "./database";
 import { getSessionState } from "./auth";
-import { getEntitlement, type EntitlementResponse } from "./api";
+import { getEntitlement, getPricingForCountry, type EntitlementResponse } from "./api";
 import {
   accessFor,
   entitlementFresh,
@@ -22,13 +24,18 @@ import {
   installedAtOr,
   isPaidEntitlement,
   localDayKey,
+  localMonthKey,
   paidFromCache,
   parseEntitlementCache,
-  quotaForDay,
+  parseFreeTerms,
+  parseTermsCache,
+  quotaForPeriod,
   readFreemiumConfig,
+  termsFresh,
   withPaywallShown,
   type Access,
   type EntitlementCache,
+  type FreeTerms,
   type FreemiumConfig,
   type QuotaState,
 } from "../utils/freemium";
@@ -58,8 +65,6 @@ export const FREEMIUM: FreemiumConfig = readFreemiumConfig(
   typeof process !== "undefined"
     ? {
         EXPO_PUBLIC_FREEMIUM_ENABLED: process.env.EXPO_PUBLIC_FREEMIUM_ENABLED,
-        EXPO_PUBLIC_FREE_CHECKS_PER_DAY: process.env.EXPO_PUBLIC_FREE_CHECKS_PER_DAY,
-        EXPO_PUBLIC_FREE_TRIAL_DAYS: process.env.EXPO_PUBLIC_FREE_TRIAL_DAYS,
         EXPO_PUBLIC_DISTRIBUTION: process.env.EXPO_PUBLIC_DISTRIBUTION,
       }
     : {},
@@ -69,7 +74,9 @@ export const FREEMIUM: FreemiumConfig = readFreemiumConfig(
   PAID_PLANS_OFFERED,
 );
 
-const QUOTA_KEY = "freemium_quota";
+// A new key: the daily counter of earlier builds (freemium_quota) is not carried over.
+const QUOTA_KEY = "freemium_quota_month";
+const TERMS_KEY = "freemium_terms";
 const INSTALLED_KEY = "freemium_installed_at";
 const ENTITLEMENT_KEY = "freemium_entitlement";
 
@@ -85,7 +92,30 @@ function parseJson(raw: string): unknown {
 }
 
 async function readQuota(now: number): Promise<QuotaState> {
-  return quotaForDay(parseJson(await getSetting(QUOTA_KEY)), localDayKey(now));
+  return quotaForPeriod(parseJson(await getSetting(QUOTA_KEY)), localMonthKey(now));
+}
+
+async function fetchTerms(): Promise<FreeTerms | null> {
+  const { data } = await getPricingForCountry(null);
+  const terms = parseFreeTerms(data);
+  if (terms) await setSetting(TERMS_KEY, JSON.stringify({ terms, fetchedAt: Date.now() }));
+  return terms;
+}
+
+/**
+ * The free plan's numbers. The stored answer while fresh; a stale one answers
+ * at once and the server is asked in the background; with none stored, the
+ * server is asked now. Null only when the server has never answered — then
+ * nothing is limited (accessFor).
+ */
+async function freeTerms(now: number): Promise<FreeTerms | null> {
+  const cache = parseTermsCache(parseJson(await getSetting(TERMS_KEY)));
+  if (termsFresh(cache, now)) return cache?.terms ?? null;
+  if (cache) {
+    void fetchTerms().catch(() => null);
+    return cache.terms;
+  }
+  return fetchTerms().catch(() => null);
 }
 
 /** First launch with the limit on; stored the first time it is asked for. */
@@ -170,12 +200,12 @@ export async function isPaid(force: boolean = false): Promise<boolean> {
   return paid ?? paidFromCache(cache, account, now);
 }
 
-/** What the next check gets — for the "N checks left today" hint. */
+/** What the next check gets — for the "N checks left this month" hint. */
 export async function currentAccess(): Promise<Access> {
   if (!FREEMIUM.enabled) return { kind: "unlimited", why: "off" };
   const now = Date.now();
-  const [paid, at, quota] = await Promise.all([isPaid(), installedAt(now), readQuota(now)]);
-  return accessFor({ config: FREEMIUM, paid, installedAt: at, quota, nowMs: now });
+  const [paid, at, quota, terms] = await Promise.all([isPaid(), installedAt(now), readQuota(now), freeTerms(now)]);
+  return accessFor({ config: FREEMIUM, terms, paid, installedAt: at, quota, nowMs: now });
 }
 
 export interface CheckDecision {
@@ -189,8 +219,8 @@ export interface CheckDecision {
 let chain: Promise<unknown> = Promise.resolve();
 
 /**
- * A detailed check is about to start. Decides, and spends one free check
- * when it is allowed. [key] = the site (re-opening it today is free); null =
+ * A manual check is about to start. Decides, and spends one free check
+ * when it is allowed. [key] = the site (re-opening it this month is free); null =
  * a message, which always counts. Any storage failure lets the check
  * through — a broken counter never hides an analysis.
  */
@@ -199,9 +229,9 @@ export function beginDetailedCheck(key: string | null): Promise<CheckDecision> {
   const run = chain.then(async (): Promise<CheckDecision> => {
     try {
       const now = Date.now();
-      const [paid, at, quota] = await Promise.all([isPaid(), installedAt(now), readQuota(now)]);
-      const access = accessFor({ config: FREEMIUM, paid, installedAt: at, quota, nowMs: now });
-      const gate = gateCheck(access, quota, key);
+      const [paid, at, quota, terms] = await Promise.all([isPaid(), installedAt(now), readQuota(now), freeTerms(now)]);
+      const access = accessFor({ config: FREEMIUM, terms, paid, installedAt: at, quota, nowMs: now });
+      const gate = gateCheck(access, quota, key, localDayKey(now));
       if (gate.quota !== quota) {
         await setSetting(QUOTA_KEY, JSON.stringify(gate.quota));
         freemiumEvents.emit("changed");
@@ -220,8 +250,9 @@ export function notePaywallShown(): Promise<void> {
   if (!FREEMIUM.enabled) return Promise.resolve();
   const run = chain.then(async () => {
     try {
-      const quota = await readQuota(Date.now());
-      await setSetting(QUOTA_KEY, JSON.stringify(withPaywallShown(quota)));
+      const now = Date.now();
+      const quota = await readQuota(now);
+      await setSetting(QUOTA_KEY, JSON.stringify(withPaywallShown(quota, localDayKey(now))));
     } catch {
       // At worst it opens by itself once more.
     }

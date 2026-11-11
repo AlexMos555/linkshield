@@ -205,6 +205,17 @@ class Settings(BaseSettings):
     free_account_device_limit: int = 2
     entitlement_grace_hours: int = 72
 
+    # The free plan (founder decision 2026-11-04, docs/ACCOUNTS_BILLING_PLAN.md §5):
+    # FREE_MANUAL_CHECKS_PER_MONTH manual site checks per calendar month after
+    # FREE_UNLIMITED_DAYS_AFTER_INSTALL days with everything unlocked. Published
+    # by GET /api/v1/pricing/for-country (`free`); the app and the site read
+    # them from there, so a change here needs no app release. The phone does
+    # the counting (no site names or check history are kept on the server).
+    # Automatic protection (scam list, DNS, link guard, iPhone SMS filter) is
+    # never limited.
+    free_manual_checks_per_month: int = Field(default=5, ge=0, le=1000)
+    free_unlimited_days_after_install: int = Field(default=7, ge=0, le=365)
+
     # Rate limits — authenticated (per user)
     free_tier_daily_limit: int = 10
     paid_tier_daily_limit: int = 10000

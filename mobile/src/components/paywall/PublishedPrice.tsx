@@ -1,7 +1,9 @@
 /**
  * The plan's published price, large (src/utils/freemium.ts priceDisplay) —
- * for the APK from our site and RuStore. The Google Play build never shows
- * it: there only Google Play's own quote is shown (StorePlans.tsx).
+ * for the APK from our site (the server's price) and Russia's "coming soon".
+ * Store builds never show it: there only the store's own quote is shown
+ * (StorePlans.tsx). With no price (RuStore, or the server has not answered)
+ * only the devices line is shown.
  */
 import { View, Text, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
@@ -11,6 +13,13 @@ import type { priceDisplay } from "../../utils/freemium";
 
 export function PublishedPrice({ price, devices }: { price: ReturnType<typeof priceDisplay>; devices: number }) {
   const { t } = useTranslation();
+  if (!price) {
+    return (
+      <View style={s.priceBlock}>
+        <Text style={s.priceSub}>{t("mobile.paywall.devices_note", { n: devices })}</Text>
+      </View>
+    );
+  }
   return (
     <View
       style={s.priceBlock}

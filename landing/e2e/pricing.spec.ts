@@ -1,5 +1,6 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 
+import { DEFAULT_PRICING, normalizePricing, usd, type WorldPricing } from "../lib/world-pricing";
 import { STRIPE_LIVE } from "./billing-flag";
 
 // The API the page calls from the browser.
@@ -10,13 +11,29 @@ const API = process.env.NEXT_PUBLIC_API_URL || "https://api.cleanway.ai";
  * (docs/ACCOUNTS_BILLING_PLAN.md §5). Prices come from the API; when it is
  * unreachable or still serves the pre-device-plan shape, the page shows the
  * base tier (lib/world-pricing.ts) — the same numbers a visitor without a
- * country gets from the API. Either way: $0.99 a month, $9.99 a year, +$0.49
- * a month per extra device. Same page in both billing-flag states.
+ * country gets from the API. The expected numbers are read the same way
+ * (expectedPricing), so a price change on the API (2026-11-04: $1.99 a month)
+ * is tested against the API that is deployed, before and after it ships.
+ * Same page in both billing-flag states.
  *
  * Only while Stripe checkout is live (NEXT_PUBLIC_STRIPE_LIVE, inlined at build
  * time): until then the world gets the free page — no plan cards, no buy
  * button that would end in an error, no Offer for search engines.
  */
+
+/**
+ * What the page should show a visitor without a country: the API's base tier,
+ * or DEFAULT_PRICING when the API is down or older — as the page decides.
+ */
+async function expectedPricing(request: APIRequestContext): Promise<WorldPricing> {
+  try {
+    const resp = await request.get(`${API}/api/v1/pricing/for-country`);
+    if (resp.ok()) return normalizePricing(await resp.json()) ?? DEFAULT_PRICING;
+  } catch {
+    // Unreachable: the page falls back the same way.
+  }
+  return DEFAULT_PRICING;
+}
 
 /** Every "@type" in the page's JSON-LD, nested ones included. */
 async function jsonLdTypes(page: Page): Promise<string[]> {
@@ -52,26 +69,30 @@ test.describe("Stripe checkout live — the device plan", () => {
     expect(types).toContain("Offer");
   });
 
-  test("yearly is pre-selected and says how many months it saves", async ({ page }) => {
+  test("yearly is pre-selected and says how many months it saves", async ({ page, request }) => {
+    const pricing = await expectedPricing(request);
     await page.goto("/pricing");
     await expect(page.getByTestId("world-pricing")).toBeVisible();
     await expect(page.getByTestId("interval-yearly")).toHaveAttribute("aria-checked", "true");
     await expect(page.getByTestId("yearly-saving")).toHaveText("≈ 2 months free");
     const price = page.getByTestId("plan-price");
-    await expect(price).toContainText("$9.99");
+    await expect(price).toContainText(usd(pricing.price.yearly.amount));
     await expect(price).toContainText("/year");
-    await expect(page.getByTestId("plan-card-unlimited")).toContainText("≈ $0.83 a month, billed once a year");
-    await expect(page.getByTestId("plan-extra-device")).toContainText("+$4.99 a year");
+    await expect(page.getByTestId("plan-card-unlimited")).toContainText(
+      `≈ ${usd(pricing.price.yearly.monthlyEquivalent)} a month, billed once a year`,
+    );
+    await expect(page.getByTestId("plan-extra-device")).toContainText(`+${usd(pricing.extraDevice.yearly.amount)} a year`);
   });
 
-  test("monthly shows the monthly price and the extra device per month", async ({ page }) => {
+  test("monthly shows the monthly price and the extra device per month", async ({ page, request }) => {
+    const pricing = await expectedPricing(request);
     await page.goto("/pricing");
     await page.getByTestId("interval-monthly").click();
     await expect(page.getByTestId("interval-monthly")).toHaveAttribute("aria-checked", "true");
     const price = page.getByTestId("plan-price");
-    await expect(price).toContainText("$0.99");
+    await expect(price).toContainText(usd(pricing.price.monthly.amount));
     await expect(price).toContainText("/month");
-    await expect(page.getByTestId("plan-extra-device")).toContainText("+$0.49 a month");
+    await expect(page.getByTestId("plan-extra-device")).toContainText(`+${usd(pricing.extraDevice.monthly.amount)} a month`);
   });
 
   test("?interval=monthly after sign-up keeps the visitor's choice", async ({ page }) => {
@@ -79,11 +100,12 @@ test.describe("Stripe checkout live — the device plan", () => {
     await expect(page.getByTestId("interval-monthly")).toHaveAttribute("aria-checked", "true");
   });
 
-  test("the cards say what is free and what the plan adds — in devices", async ({ page }) => {
+  test("the cards say what is free and what the plan adds — in devices", async ({ page, request }) => {
+    const pricing = await expectedPricing(request);
     await page.goto("/pricing");
     const free = page.getByTestId("plan-card-free");
     await expect(free).toContainText("Blocks known scam sites from our list — no limit");
-    await expect(free).toContainText("3 detailed checks a day");
+    await expect(free).toContainText(`${pricing.freeChecksPerMonth} detailed checks a month`);
     await expect(free).toContainText("first 7 days after install");
     const plan = page.getByTestId("plan-card-unlimited");
     await expect(plan).toContainText("3 devices on one account");

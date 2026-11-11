@@ -498,7 +498,7 @@ def test_first_checkout_gets_the_trial(client, stripe_configured, stripe_stub, s
     subs_db.row = _row()
     _checkout(client)
     kwargs = stripe_stub[0]
-    assert kwargs["subscription_data"]["trial_period_days"] == 14
+    assert kwargs["subscription_data"]["trial_period_days"] == 7
     assert kwargs["metadata"]["trial"] == "1"
 
 
