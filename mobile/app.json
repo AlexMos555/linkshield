@@ -22,7 +22,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ai.cleanway.app",
-      "buildNumber": "8",
+      "buildNumber": "9",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -55,7 +55,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "ai.cleanway.app",
-      "versionCode": 110,
+      "versionCode": 111,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
