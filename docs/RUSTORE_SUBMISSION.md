@@ -555,24 +555,68 @@ in place (no "App not installed"). That proves B2 is fixed end-to-end.
 > `CLEANWAY_REPO_ROOT=<checkout>` when run from the mirror. Nothing was run on a
 > phone or an emulator: everything in docs/EXPO_UPGRADE_PLAN.md §6.2 is still open.
 
-> **1.1.0 (111), 2026-11-12 — not built: the release key could not be read.**
-> `mobile/app.json` says versionCode 111 since `13721aaf` (main up to #423,
-> the eight phone fixes; the 110 files of 2026-11-03 do not have them). The
-> key files in the iCloud folder "Cleanway - code" were not downloaded to the
-> build Mac (reading them times out, the case `cw_build` stops on) and there
-> was no copy in `~/Downloads`, so no gradle release build was started and
-> nothing was installed on the Samsung (still 1.0.6 (107)). Done without the
-> key, in the mirror: steps 1–3 above (`npm install` = the committed lock,
-> `check-share-intent` 4× `ok:`, the seed; `npx expo install --check` now
-> reports `react-native-safe-area-context` 5.10.1, expected ~5.11.1), a site
-> prebuild with `check-prebuild-gradle` ok, and
-> `:cleanway-vpn:testDebugUnitTest`, which compiles #423's Kotlin: 342 of 344,
-> the same two `MessageAnalyzerTest` time budgets
-> (`~/Desktop/cleanway-android-out/logs/1.1.0-111-kotlin-tests.log`, stop
-> record `1.1.0-111-build-run.log`). The `cw_build` block and the file checks
-> are kept as scripts in `~/Desktop/cleanway-android-out/scripts/`
-> (`build-android-111.sh`, `check-android-111.sh`; they write
-> `SHA256SUMS-1.1.0-111.txt`): run them once the key is readable.
+> **1.1.0 (111), 2026-11-12 — built with the release key, installed on the
+> founder's Samsung; the first try died at start, and so do the 110 files.**
+> Branch at `c13e82ea` plus the `build.gradle` fix below; `cw_build` as above
+> (kept as `~/Desktop/cleanway-android-out/scripts/build-android-111.sh`, key
+> folder `~/Downloads`, moved to the Trash afterwards; no key or `.env` left
+> in the mirror). No `EXPO_PUBLIC_FREEMIUM_ENABLED` and no RevenueCat key, as
+> for 110 (the script drops the iPhone key that `mobile/.env` holds since
+> 2026-11-11, so it is not in the Android bundle).
+>
+> ⛔ **Never upload a 1.1.0 (110) file, nor the first 111 files (site
+> `2956930b…`): the app dies at every start.** `modules/cleanway-vpn/android/build.gradle`
+> still used the SDK 52 wiring (`apply from: ExpoModulesCorePlugin.gradle`).
+> On SDK 58 a module must be built with `expo-module-gradle-plugin`: it adds
+> the "pika" Kotlin compiler plugin that fills in expo-modules-core's type
+> intrinsics. Without it the module compiles, its unit tests pass, and
+> `CleanwayVpnModule.definition()` throws "This function has a reified type
+> parameter and thus can only be inlined at compilation time" when React
+> Native starts (the shield service itself kept running). Nothing had been run
+> on a phone before, so 110 went unnoticed; its dex has the same 24 calls.
+> Fixed in `build.gradle` (the `plugins { id 'expo-module-gradle-plugin' }`
+> block); `check-android-111.sh` now counts those calls in every APK
+> (`scripts/reified-check.sh`: 110 → 24, 111 → 0) and stops on any.
+>
+> Second build, with the fix: site and RuStore `assembleRelease`, Play
+> `bundleRelease assembleRelease` — BUILD SUCCESSFUL in 6 min 32 s, 7 min 7 s
+> and 7 min 53 s; no "signing with the DEBUG key" line. Every APK and the AAB:
+> `CN=Cleanway, OU=Mobile, O=Cleanway, L=Moscow, C=RU`, SHA-256
+> `6d3813a1…2daa3233` — the certificate of the published 1.0.3. versionCode
+> 111, minSdk 24, targetSdk 36, compileSdk 37, `armeabi-v7a` + `arm64-v8a`;
+> 32 permissions (the same list as 110; Play +BILLING); share filter
+> `text/plain` only; `zipalign -c -P 16` ok and 27 of 27 `arm64-v8a` libraries
+> 16 KB-aligned; the seed and the publishable key in every file.
+> `:cleanway-vpn:testDebugUnitTest` with the new plugin: 344 of 344.
+>
+> | File | SHA-256 |
+> |---|---|
+> | `cleanway-1.1.0-111-arm.apk` | `c2ee47186ac750f871dbad3c42b6a974bfdc29ea6cf7b5198528f13a2ec9b1c5` |
+> | `cleanway-1.1.0-111-rustore.apk` | `3f347346a0c909f6d2eba83ff751ccbab91ccdae34976f0c39ee37ea503fa1e9` |
+> | `cleanway-1.1.0-111-play.aab` | `b1e2deccc76f4a62952c6375454c3a1fd06b8725410926b1f93037368b2c562a` |
+> | `cleanway-1.1.0-111-play-check.apk` | `25d93c53b330eb6e6bda349c87efd8677cde2d8282498af33248ccde7fc96659` |
+>
+> Files, `SHA256SUMS-1.1.0-111.txt` and `mapping-1.1.0-111-*.txt` in
+> `~/Desktop/cleanway-android-out/`; logs in `logs/`: `1.1.0-111-build-run-signed.log`,
+> `1.1.0-111-{site,rustore,play}-gradle.log`, `1.1.0-111-artifact-checks.txt`,
+> `1.1.0-111-bundle-keys.txt`, `1.1.0-111-kotlin-tests.log`; the first try in
+> `logs/1.1.0-111-attempt1-crashes-at-start/` (with the phone's crash log).
+>
+> **On the Samsung (SM-A165F, Android 16)**, `adb install -r` of the site APK
+> over 1.0.6 (107) — same key, history and settings kept, shield still on
+> (`logs/1.1.0-111-device-checks.txt`, `1.1.0-111-device-logcat.txt`): Settings
+> shows 1.1.0; Privacy and Terms open `/ru/`; the plan screen ends above the
+> system buttons; History dates read `13.10.2026`; the examples include
+> `list-canary.cleanway.ai` and it answers «Опасно» (90/100); the back arrow
+> works; `example.com` is safe; `apple-com.ru` does not open in Chrome and the
+> block notification comes; a shared scam text is recognised; the persistent
+> notification follows the language; Arabic (mirrored) → Russian with the
+> shield on shows the restart dialog and the screen comes back unmirrored; no
+> crash in logcat. **One thing left from #423:** Russian → Arabic restarts into
+> Arabic text but the screen is mirrored only after the app is closed and
+> opened again. Not checked on the phone: payment (no key in this build), boot
+> restart, mobile data, the battery manager, the QR scanner, the after-call screen.
+> The Play AAB still has no `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`.
 
 ### Android 15/16 behaviour (targetSdk 34 → 36) and what the app does about it
 
