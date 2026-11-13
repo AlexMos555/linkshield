@@ -97,8 +97,9 @@ async def report_phone(
     """
     Record a scam/spam/legit report against a hashed phone number.
 
-    Auth required — we throttle per user, which prevents the most common
-    mass-poisoning attack on crowd-sourced number databases.
+    Auth required and throttled per user. That alone does not stop one
+    account from voting many times on one number, so storage is switched
+    off by default (Settings.phone_crowd_reports_enabled).
     """
     if payload.kind not in ("scam", "spam", "legit"):
         raise HTTPException(status_code=422, detail="kind must be scam|spam|legit")
@@ -108,6 +109,10 @@ async def report_phone(
     _, _ = user, _validate_hash(payload.phone_hash)  # typing assertions
 
     settings = get_settings()
+    if not settings.phone_crowd_reports_enabled:
+        # The tally cannot tell one reporter from many, so nothing is stored
+        # (see Settings.phone_crowd_reports_enabled).
+        return {"accepted": False, "reason": "disabled"}
     if not settings.supabase_url or not supabase_keys.server_key(settings):
         # Degraded mode — accept silently so the client doesn't crash, but log.
         logger.warning(
@@ -161,6 +166,8 @@ async def lookup_phone(
       can show "📞 Sberbank (bank)".
     - `scam` / `spam` — 3+ reports of that kind dominate the counts.
     - `legit` — opposite: legitimate reports outweigh.
+      (Crowd verdicts are served only when
+      Settings.phone_crowd_reports_enabled is on; off by default.)
     - `unknown` — no data; native UI shows no badge.
     """
     _validate_hash(phone_hash)
@@ -200,7 +207,10 @@ async def lookup_phone(
                     org_category=row.get("org_category"),
                 )
 
-        # 2. Crowd-sourced report counts.
+        # 2. Crowd-sourced report counts — only when the tally is trusted
+        #    (see Settings.phone_crowd_reports_enabled).
+        if not settings.phone_crowd_reports_enabled:
+            return PhoneLookupResponse(known=False, verdict="unknown")
         params = {
             "phone_hash": f"eq.{phone_hash.lower()}",
             "select": "scam_count,spam_count,legit_count,tags",

@@ -1233,8 +1233,9 @@ export interface paths {
          * Report Phone
          * @description Record a scam/spam/legit report against a hashed phone number.
          *
-         *     Auth required — we throttle per user, which prevents the most common
-         *     mass-poisoning attack on crowd-sourced number databases.
+         *     Auth required and throttled per user. That alone does not stop one
+         *     account from voting many times on one number, so storage is switched
+         *     off by default (Settings.phone_crowd_reports_enabled).
          */
         post: operations["report_phone_api_v1_phone_report_post"];
         delete?: never;
@@ -1260,6 +1261,8 @@ export interface paths {
          *       can show "📞 Sberbank (bank)".
          *     - `scam` / `spam` — 3+ reports of that kind dominate the counts.
          *     - `legit` — opposite: legitimate reports outweigh.
+         *       (Crowd verdicts are served only when
+         *       Settings.phone_crowd_reports_enabled is on; off by default.)
          *     - `unknown` — no data; native UI shows no badge.
          */
         get: operations["lookup_phone_api_v1_phone_lookup__phone_hash__get"];
