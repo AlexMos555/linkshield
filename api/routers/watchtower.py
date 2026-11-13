@@ -42,7 +42,18 @@ from api.services import supabase_keys
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/v1/watchtower", tags=["watchtower"])
+def _require_enabled() -> None:
+    """Every route answers 503 while the feature is off
+    (see Settings.watchtower_enabled)."""
+    if not get_settings().watchtower_enabled:
+        raise HTTPException(503, "Watchtower is not available yet")
+
+
+router = APIRouter(
+    prefix="/api/v1/watchtower",
+    tags=["watchtower"],
+    dependencies=[Depends(_require_enabled)],
+)
 
 BRAND_QUOTA_BY_TIER: dict[UserTier, int] = {
     UserTier.free: 1,
