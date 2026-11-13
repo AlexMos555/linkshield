@@ -59,6 +59,10 @@ async def check_typosquat_alert(domain: str) -> dict:
         return neutral
 
     settings = get_settings()
+    if not settings.watchtower_enabled:
+        # The table is filled from watchlists nobody had to prove
+        # (see Settings.watchtower_enabled).
+        return neutral
     if not settings.supabase_url or not supabase_keys.server_key(settings):
         return neutral
 

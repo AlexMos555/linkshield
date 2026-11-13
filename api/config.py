@@ -429,6 +429,13 @@ class Settings(BaseSettings):
     # from the operator-curated `verified_numbers` only. Do not switch on
     # before votes are counted once per reporter and can be pruned.
     phone_crowd_reports_enabled: bool = False
+    # Typosquat Watchtower (/api/v1/watchtower/*, the `typosquat_alerts`
+    # lookup in the analyzer). OFF: any account could watch any name with no
+    # proof of owning it, and the look-alike hosts its scan found were then
+    # scored up for every user (watch `targer.com`, and `target.com` turns
+    # "caution"). No shipped client uses it. Do not switch on before a brand
+    # has to be proven (DNS record or site file) by whoever adds it.
+    watchtower_enabled: bool = False
     # Optional, 0 < x < 1. Unset = the thresholds shipped in the APK. The phone
     # only ever RAISES a threshold with these (MessageAnalyzer: quieter, never
     # louder), so a typo cannot turn every SMS into a warning. A value that is
