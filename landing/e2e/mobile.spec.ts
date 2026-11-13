@@ -6,7 +6,11 @@ import { test, expect } from "@playwright/test";
  * without horizontal scroll.
  *
  * Runs under two projects (see playwright.config.ts):
- *   - mobile-safari (iPhone 14, WebKit)  — iOS keeps the DoH profile path (/dns).
+ *   - mobile-safari (iPhone 14, WebKit)  — server-rendered layout only. WebKit
+ *     applies the CSP's `upgrade-insecure-requests` to http://localhost, so
+ *     every script and stylesheet goes to https://localhost, fails, and the
+ *     page never hydrates here. The iPhone's routing to the App Store is
+ *     tested in home.spec.ts, with the iPhone 14 profile in Chromium.
  *   - android       (Pixel 7, Chromium)  — Android must be routed to the app
  *     page (/android) after hydration: strict Private DNS conflicts with the
  *     app's VPN shield, so /dns is the wrong door for these visitors.
@@ -18,6 +22,9 @@ const IOS_PROJECT = "mobile-safari";
 /** Label the compact nav CTA settles on after hydration, per project. */
 const COMPACT_INSTALL_LABEL: Record<string, RegExp> = {
   [ANDROID_PROJECT]: /^Android app$/,
+  // A real iPhone shows nav.install_ios_short once hydrated; WebKit here
+  // never hydrates (see above) and keeps the server label.
+  [IOS_PROJECT]: /^(Install|App Store)$/,
 };
 const DEFAULT_COMPACT_INSTALL_LABEL = /^Install$/;
 
@@ -30,7 +37,8 @@ test("mobile nav shows compact install button", async ({ page }) => {
   // Target the mobile-only wrapper directly (``md:hidden``) so we don't race
   // with Tailwind breakpoint evaluation in headless browsers. The button
   // inside it renders the ``nav.install_short`` translation key — or, on
-  // Android, ``nav.install_android`` once PrimaryInstallLink has hydrated.
+  // Android, ``nav.install_android_short`` (on iPhone ``nav.install_ios_short``)
+  // once PrimaryInstallLink has hydrated.
   const mobileWrapper = page.locator("nav div.md\\:hidden").first();
   await expect(mobileWrapper).toBeVisible();
   const label =
@@ -62,8 +70,9 @@ test("mobile hero still renders", async ({ page }) => {
 //
 // Every funnel-facing primary CTA is one component (PrimaryInstallLink). It
 // server-renders /dns for everyone, then re-points Android visitors at the
-// app page after hydration. `toHaveAttribute` auto-retries, so these
-// assertions wait for hydration instead of racing it.
+// app page (and iPhone visitors at the App Store — home.spec.ts) after
+// hydration. `toHaveAttribute` auto-retries, so these assertions wait for
+// hydration instead of racing it.
 
 test.describe("primary install CTA routing", () => {
   test("Android visitors are sent to /android after hydration", async ({ page }) => {
@@ -82,20 +91,5 @@ test.describe("primary install CTA routing", () => {
     // it is the same component, and a CSS breakpoint is not a platform check.
     await expect(page.getByTestId("primary-install-nav")).toHaveAttribute("href", "/android");
     await expect(page.getByTestId("primary-install-final")).toHaveAttribute("href", "/android");
-  });
-
-  test("iOS visitors keep the DNS profile path", async ({ page }) => {
-    onlyOnProject(IOS_PROJECT);
-    await page.goto("/en");
-    // Wait for hydration to settle so a late client-side swap can't slip past.
-    await page.waitForLoadState("networkidle");
-
-    const navMobile = page.getByTestId("primary-install-nav-mobile");
-    await expect(navMobile).toHaveAttribute("href", "/dns");
-    await expect(navMobile).toHaveText("Install");
-
-    const hero = page.getByTestId("primary-install-hero");
-    await expect(hero).toHaveAttribute("href", "/dns");
-    await expect(hero).toHaveText("Get protected — free");
   });
 });

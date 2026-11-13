@@ -137,6 +137,7 @@ export default async function PricingPage({
   }
   const t = await getTranslations({ locale: safeLocale, namespace: "Pricing" });
   const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
+  const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
   // The prices shown are the prices of the visitor's country — and the same
   // country goes to checkout (pricing.country), so the charge matches.
   const pricing = await fetchPricing(country);
@@ -217,7 +218,7 @@ export default async function PricingPage({
         <div className="max-w-2xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4">{t("footer_cta_title")}</h2>
           <p className="text-slate-400 mb-8">{t("footer_cta_body")}</p>
-          <PrimaryInstallLink androidLabel={hero("cta_android")} className="inline-block bg-green-500 text-green-950 px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition">
+          <PrimaryInstallLink androidLabel={hero("cta_android")} iosLabel={nav("install_ios")} className="inline-block bg-green-500 text-green-950 px-8 py-4 rounded-xl text-lg font-bold hover:bg-green-400 transition">
             {hero("cta_primary")}
           </PrimaryInstallLink>
           <div className="mt-8">
