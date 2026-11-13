@@ -260,6 +260,12 @@ class Settings(BaseSettings):
     # POST /api/v1/explain (anonymous): live Haiku calls a day for the whole
     # service; past it, cached or template text (api/services/scam_explainer.py).
     explainer_daily_budget: int = 500
+    # Google Web Risk lookups a day for the whole service (cache hits are
+    # free). Billed past 100,000 a month; reached from anonymous routes
+    # (/public/check, /email/analyze: up to 100 link domains a request).
+    # Past it the lookup is skipped until the next UTC day and an alert goes
+    # out (paid_budget_exhausted) — raise it when real traffic needs more.
+    web_risk_daily_budget: int = 10_000
 
     # Wall-clock budget for ONE fresh domain analysis (all sources and the
     # site probes) of /public/check, and the default of analyze_domain().
