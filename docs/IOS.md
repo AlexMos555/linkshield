@@ -567,8 +567,9 @@ Notes paragraph above says what the newer builds carry
 JS's names no longer say VPN either: `startShield`/`stopShield`/
 `isShieldRunning` and the rest are neutral, and the Kotlin names live only in
 `modules/cleanway-vpn/src/native.android.ts`, which the iOS bundle does not
-include (`mobile/scripts/test-no-vpn-names.mjs`; its one exception is the
-i18n key `mobile.ios.dns.note_vpn`, which goes with the iOS strings).
+include (`mobile/scripts/test-no-vpn-names.mjs`, with no exception: the
+last i18n key that said VPN, `mobile.ios.dns.note_vpn`, is
+`mobile.ios.dns.note_other_dns` since #387).
 
 > Hello,
 >
