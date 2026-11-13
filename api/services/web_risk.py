@@ -147,6 +147,11 @@ class WebRiskClient:
         cached = await _cache_get(domain, prefix=CACHE_PREFIX)
         if cached is not None:
             return cached
+        from api.config import get_settings
+        from api.services import paid_budget
+        if not await paid_budget.take("web_risk", get_settings().web_risk_daily_budget):
+            # Not cached: the answer is "not asked", and it ends with the day.
+            return CheckResult(status=CheckStatus.unavailable, reason="daily_budget")
         try:
             result = parse_response(await _request_with_retry(domain, self._api_key, self._timeout), domain)
         except Exception as e:  # noqa: BLE001
