@@ -415,6 +415,14 @@ class Settings(BaseSettings):
     # SMS_TEXT_MODEL_ENABLED=false: the SMS text model stops scoring messages;
     # the message rules and the link check keep working.
     sms_text_model_enabled: bool = True
+    # Crowd-sourced caller verdicts (POST /phone/report, the scam/spam/legit
+    # tally in GET /phone/lookup). OFF: `phone_reports` keeps bare counters
+    # with no reporter identity, so one account could label any number "scam"
+    # with 3 votes or erase a real warning with "legit" votes (security report
+    # of 2026-11-13). While off, reports are not stored and lookup answers
+    # from the operator-curated `verified_numbers` only. Do not switch on
+    # before votes are counted once per reporter and can be pruned.
+    phone_crowd_reports_enabled: bool = False
     # Optional, 0 < x < 1. Unset = the thresholds shipped in the APK. The phone
     # only ever RAISES a threshold with these (MessageAnalyzer: quieter, never
     # louder), so a typo cannot turn every SMS into a warning. A value that is
