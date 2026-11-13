@@ -1,7 +1,7 @@
 # Cleanway for iPhone — build, targets, App Store
 
-The iOS app is the same Expo app as Android (`mobile/`, Expo SDK 54, React
-Native 0.81, legacy architecture), shipped through the App Store only. This
+The iOS app is the same Expo app as Android (`mobile/`, Expo SDK 58, React
+Native 0.88, New Architecture — the only one since SDK 55), shipped through the App Store only. This
 file covers how to build it, what is in the binary today, what comes next, and
 what the founder has to set up in Apple's consoles.
 
@@ -43,23 +43,105 @@ const c=JSON.parse(fs.readFileSync("vendor/api-client/package.json"));
 c.dependencies["@cleanway/api-types"]="file:../api-types";
 fs.writeFileSync("vendor/api-client/package.json",JSON.stringify(c,null,2)+"\n");'
 node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"; "out of step" = regenerate mobile/package-lock.json first (docs/RUSTORE_SUBMISSION.md §2)
-npm install                                    # installs mobile/package-lock.json, which came along; postinstall prints "decode-uri-component@0.2.2 ✔"
-node scripts/test-decode-uri-component.mjs     # "all … checks pass" (docs/EXPO_UPGRADE_PLAN.md §1.2); "FAIL" = stop
+npm install                                    # installs mobile/package-lock.json, which came along (1.0.x: then node scripts/test-decode-uri-component.mjs, docs/EXPO_UPGRADE_PLAN.md §1.2)
 # The Safari extension target bundles the repo's built extension-safari/
 # (plugins/withSafariExtension.js); outside the repo it must be told where.
 bash "$REPO/scripts/build-extensions.sh" > /dev/null
 CLEANWAY_SAFARI_EXTENSION_DIR="$REPO/extension-safari" CI=1 npx expo prebuild -p ios --no-install
 cd ios && LANG=en_US.UTF-8 pod install --repo-update   # --repo-update: RevenueCat's pods are newer than a stale CDN index
+SIM="iPhone 16e"   # a name `xcrun simctl list devices available` prints — the set differs per Xcode
 xcodebuild -workspace Cleanway.xcworkspace -scheme Cleanway -configuration Debug \
-  -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone Air' \
+  -sdk iphonesimulator -destination "platform=iOS Simulator,name=$SIM" \
   -derivedDataPath ../build build
 ```
 
 Debug loads JS from Metro (`npx expo start` in `$M`); Release embeds the bundle.
 Both configurations were built and run on the iOS 26.2 simulator with Xcode 26.3
-(2026-10-09). `plugins/withXcode26Patches.js` keeps fmt / Sentry /
-expo-localization compiling on Xcode 26. A full build is ~4 GB of DerivedData —
-delete the mirror and `build/` afterwards.
+(2026-10-09, Expo SDK 54). `plugins/withXcode26Patches.js` keeps fmt / Sentry /
+expo-localization compiling on Xcode 26 (SDK 54). On SDK 58 only its patch 4
+acts: expo-modules-jsi on Xcode below 26.4, so this Mac's Xcode 26.3 needs it.
+A full build is ~4 GB of DerivedData — delete the mirror and `build/` afterwards.
+
+**Expo SDK 58 (1.1.0, #327, 2026-10-25):** the same recipe builds the Debug
+simulator app with Xcode 26.3 (BUILD SUCCEEDED; `pod install` 123 pods —
+a session record, the log was not kept). Later SDK 58 builds have logs in
+`~/Desktop/cleanway-android-out/logs/`: on 2026-11-02 a Release simulator build
+with patch 4 succeeded twice (`ios-1.1.0-sim-release-0211-run1-full.log`,
+`…-run2-summary.log`) and launched on the iPhone 16e simulator (a session
+record: the launch has no log); then the Release archives below
+(`ios-1.1.0-7-archive.log` on 2026-11-02, rebuilt after #392 as
+`ios-1.1.0-7b-archive.log` on 2026-11-03). `pod install` was not kept with its full output. Not
+yet run on a device: that is the TestFlight phone check
+(docs/EXPO_UPGRADE_PLAN.md §6.2, §10.3). Expo
+officially wants Xcode 26.4+ from SDK 56, and in #253 the Swift 6.2.4 compiler
+crashed on `expo-modules-core`; since `expo@58.0.19` `ExpoModulesCore` and five
+other Expo modules come as precompiled xcframeworks, and Xcode 26.3 imports
+them. Short on disk, build one architecture without the index or dSYMs (~2 GB
+of DerivedData instead of ~4 GB): add `ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES
+COMPILER_INDEX_STORE_ENABLE=NO DEBUG_INFORMATION_FORMAT=dwarf` to the
+`xcodebuild` line. App Store builds are made here too, with the archive steps
+below (founder, 2026-11-02: Xcode 26.3, EAS §1.2 only as the fallback;
+docs/EXPO_UPGRADE_PLAN.md §9, decision 3). 1.1.0 (7) was archived that way
+and uploaded to TestFlight on 2026-11-03; the logs are
+`~/Desktop/cleanway-android-out/logs/ios-1.1.0-7b-archive.log`, `…-checks.txt`
+and `ios-1.1.0-7-upload.log`. The upload warns "Upload Symbols Failed" for
+four frameworks. React, ReactNativeDependencies and hermesvm come prebuilt
+without dSYMs, so crash reports in App Store Connect leave their frames
+unsymbolicated. ExpoCameraBarcodeScanning does ship a dSYM with the UUID Apple
+asked for, inside its xcframework
+(`Pods/ExpoCameraBarcodeScanning/ExpoCameraBarcodeScanning.xcframework/ios-arm64/dSYMs`),
+but it did not reach the archive's `dSYMs/`. The upload still succeeds. The
+app, its extensions and the other frameworks have dSYMs.
+
+**1.1.0 (8), 2026-11-11 — the first iPhone build that sells.** Same recipe,
+mirror `~/Library/Caches/cleanway-dev/cwi110b8`, branch at `30a4a994` (main
+up to #344, #411, #403, #408, #409). The mirror's `.env` is `mobile/.env`
+with `EXPO_PUBLIC_REVENUECAT_IOS_KEY` plus one added line,
+`EXPO_PUBLIC_FREEMIUM_ENABLED=1` (the free limit of #411; without the flag
+the build sells but limits nothing). Archive
+`~/Desktop/cleanway-android-out/ios/Cleanway-1.1.0-8.xcarchive`, ARCHIVE
+SUCCEEDED; uploaded to TestFlight the same day ("Uploaded Cleanway",
+EXPORT SUCCEEDED; the same four "Upload Symbols Failed" warnings). Logs in
+`~/Desktop/cleanway-android-out/logs/`: `ios-1.1.0-8-npm-install.log`,
+`-prebuild.log`, `-pod-install.log` (129 pods, with RevenueCat 5.92.0,
+PurchasesHybridCommon 19.5.0, RNPurchases 10.11.0), `-archive.log`,
+`-archive-checks.txt`, `-upload.log`, `-device-install.log`. The checks:
+1.1.0 (8), `ai.cleanway.app`, iOS 16.4, `ITSAppUsesNonExemptEncryption`
+false; Supabase host, review email, publishable and anon keys and the
+`appl_` key from `.env` in `main.jsbundle` ("sells"); StoreKit linked,
+RevenueCat in the app binary, `RevenueCat.bundle` and
+`PurchasesHybridCommon.bundle` in the app; the §3.6 "VPN" search as expected.
+Hermes bytecode cannot show the freemium flag, so it was read from an
+unminified bundle exported from the same mirror (`npx expo export:embed
+--platform ios --dev false --minify false`): `EXPO_PUBLIC_FREEMIUM_ENABLED:
+"1"`. Automatic signing archives with the Apple Development certificate and
+the team profile, which lists the founder's iPhone, so the archive's
+`Cleanway.app` installs on it as it is: `xcrun devicectl device install app
+--device <id> …/Products/Applications/Cleanway.app` (done for build 8; the
+phone shows 1.1.0 (8)). A development-signed install and a TestFlight install
+both buy in the App Store sandbox (§3.4); installing one replaces the other.
+
+**1.1.0 (9), 2026-11-12 — build 8 plus the eight phone fixes of #423.** Same
+recipe and the same `.env` (the `appl_` key and
+`EXPO_PUBLIC_FREEMIUM_ENABLED=1`), mirror
+`~/Library/Caches/cleanway-dev/cwi110b9`, branch at `13721aaf` (main up to
+#423). Archive `~/Desktop/cleanway-android-out/ios/Cleanway-1.1.0-9.xcarchive`,
+ARCHIVE SUCCEEDED; `ios-1.1.0-9-archive-checks.txt` differs from build 8's
+only in the build number and the commit (1.1.0 (9), "sells", StoreKit and
+RevenueCat, the §3.6 "VPN" search, entitlements, `codesign --deep --strict`;
+the freemium flag read from an unminified export as for build 8), and the
+bundle no longer holds the old example `paypa1-verify.tk`. Uploaded to
+TestFlight ("Uploaded Cleanway", EXPORT SUCCEEDED, the same four "Upload
+Symbols Failed" warnings) and installed on the founder's iPhone with
+`devicectl` (the phone lists 1.1.0 (9)). Logs: `ios-1.1.0-9-*.log` in
+`~/Desktop/cleanway-android-out/logs/`. Checked on the phone through a UI
+test runner (English UI): "Try these" is google.com, list-canary.cleanway.ai,
+pay-pal.com; list-canary.cleanway.ai answers "Dangerous" 90/100, "On
+Cleanway's list of scam sites"; the back button reads "Back" (was "(tabs)").
+The Settings Plan row says "Protection on this phone is free" / Upgrade and
+the plan screen offers Subscribe: the phone has no active sandbox
+subscription now, so the row's subscribed wording (#423, item 1) is still to
+be seen after a sandbox purchase (§3.4).
 
 **For App Store Connect** (how 1.0.6 builds 5 and 6 were made), archive Release
 from the same mirror, then check what the bundle carries **before** uploading
@@ -105,7 +187,10 @@ legacy Supabase keys are disabled (docs/MOBILE_AUTH.md §1) — add the key to
 
 ### 1.2 For TestFlight / the App Store (EAS)
 
-`eas build -p ios --profile production` (or `preview` for TestFlight testers).
+`eas build -p ios --profile production`, then `eas submit -p ios` for TestFlight
+and the App Store. `preview` is not TestFlight: it is `distribution: internal`,
+on iOS an ad-hoc build that installs only on devices registered with
+`eas device:create`.
 EAS manages certificates, provisioning profiles and the build number
 (`appVersionSource: remote`). Set these as **EAS environment variables**
 (Expo dashboard → project → Environment variables), not in `eas.json`:
@@ -137,12 +222,12 @@ iOS (`readStoreBillingConfig`).
 | Bundle id | `ai.cleanway.app` |
 | Targets | `Cleanway` (app), `CleanwayCheckLink` (share extension, `ai.cleanway.app.share-extension`), `CleanwaySmsFilter` (scam-text filter, `ai.cleanway.app.sms-filter`, §5), `CleanwaySafariExtension` (Safari Web Extension, `ai.cleanway.app.safari-extension`, iOS 16.4+, §2.5) |
 | App group | `group.ai.cleanway.app` (app + share extension + Safari extension; the share extension hands the shared link/text to the app through it, the Safari extension the time it last ran on a web page) |
-| Devices | iPhone only (`supportsTablet: false`, see §2.3); iOS 15.1+ |
+| Devices | iPhone only (`supportsTablet: false`, see §2.3); iOS 16.4+ (Expo SDK 56+ minimum) |
 | Entitlements | App group; Network Extensions = `["dns-settings"]` (DNS protection, §4 — added by `plugins/withIosAppStore.js`). No push (`aps-environment` is stripped by the same plugin), no VPN value |
 | Usage strings | Camera only (QR scanner). Microphone and Face ID strings are switched off in `app.json`. The camera prompt is in the phone's language: `app.json` `locales` → `<lang>.lproj/InfoPlist.strings` for all 10 app languages, generated by `scripts/build-i18n.py` from `packages/i18n-strings` (`mobile.ios_info_plist`) into `mobile/i18n/ios/`. The share-sheet name of `CleanwayCheckLink` (`iosShareExtensionName`) stays English: it lives in the extension's own Info.plist, and expo-share-intent has no option to localise it (it would take a plugin that adds InfoPlist.strings to that target, checked on a real build) |
 | Encryption | `ITSAppUsesNonExemptEncryption = false` — no export-compliance question on upload. The app does ship its own standard cryptography (TweetNaCl, "Семья" end-to-end), so `false` is right **only while the app is not on the App Store in France**: France was removed from Pricing and Availability on 2026-10-24 (174 territories remain), and App Store Connect then requires no encryption documentation — its API refuses a declaration "unless either containsProprietaryCryptography is True or containsThirdPartyCryptography and availableOnFrenchStore are both True". Re-adding France needs the ANSSI declaration first ([docs/STORE_DECISIONS_2026-10.md](STORE_DECISIONS_2026-10.md) §1.9) |
 | Privacy manifest | `ios.privacyManifests` in `app.json` → `PrivacyInfo.xcprivacy` (UserDefaults: `CA92.1` own defaults, `1C8F.1` the app group); pods ship their own (RN core, Expo modules, RevenueCat, Sentry); the Safari extension has its own (UserDefaults `1C8F.1`, nothing collected) |
-| Launch screen | `SplashScreen.storyboard` from `app.json` `splash` (dark `#0f172a` + logo) |
+| Launch screen | `SplashScreen.storyboard` from the `expo-splash-screen` plugin entry in `app.json` (dark `#0f172a` + logo) |
 | App icon | `assets/icon.png`, 1024², alpha removed at prebuild (App Store rejects transparent icons) |
 | Payments | RevenueCat SDK (StoreKit). No other purchase path in the iOS app |
 
@@ -210,7 +295,7 @@ the prebuild.
 |---|---|
 | Target | `CleanwaySafariExtension`, app extension, point `com.apple.Safari.web-extension`, embedded in the app |
 | Bundle id | `ai.cleanway.app.safari-extension` (EAS: `extra.eas.build.experimental.ios.appExtensions`, set by the plugin) |
-| iOS | 16.4+ — the background is an ES-module service worker, which Safari supports from 16.4 (release notes: "Added support for modules in background service workers"). The app stays at 15.1; on older iOS the extension just does not show up in Safari. iPhone only, like the app |
+| iOS | 16.4+ — the background is an ES-module service worker, which Safari supports from 16.4 (release notes: "Added support for modules in background service workers"). Since Expo SDK 56 the app is 16.4+ too. iPhone only, like the app |
 | Entitlements | App group `group.ai.cleanway.app` only |
 | Native half | `SafariWebExtensionHandler.swift` (generated by the plugin): answers `{type: "seen"}` by storing the time in the app group. Nothing about the page is sent or stored |
 | Why our own plugin | One fixed target needs no new dependency (`@bacons/apple-targets` would add one plus a `targets/` convention); the other plugins here are ours too; it uses the same `xcode` project API Expo and expo-share-intent use |
@@ -486,6 +571,43 @@ rather than to rely on Cloudflare not keeping it.
 
 ### 3.6 Review notes (paste into "Notes")
 
+**Which text for which build.** For **1.1.0 (iOS build 7) and later**, paste
+the block below as it is: its last paragraph, the one that starts "VPN
+(2.1):", is the one for build 7+. Pasted, the block is 3,808 characters of the
+4,000 App Review allows (3,824 with the In-App Purchase sentence swapped in,
+below; counted with each paragraph's lines joined, a blank line between
+paragraphs and no backticks); count again after any edit. The Notes that went
+with **1.0.6 (6)** on 2026-11-02 differed only in that paragraph; it is kept
+as history after the reply, marked "do not paste". Before pasting for build 7,
+repeat on its archive the whole search of docs/EXPO_UPGRADE_PLAN.md §10.4 —
+every file of the app, the UTF-16 strings of `main.jsbundle` and the
+EXConstants config — and attach the output to the 1.1.0 PR (#327). Done on the
+build 7 archive on 2026-11-03, after #392, with the expected output below
+(the #327 checklist); repeat on any rebuilt archive. With `$M` the mirror of
+§1.1:
+
+```bash
+A="$M/Cleanway.xcarchive/Products/Applications/Cleanway.app"
+# Every file in the app — its executable, Frameworks/, PlugIns/*.appex and
+# their resources — for the word as it is written (VPN, Vpn, vpn; ASCII).
+LC_ALL=C grep -rcaE 'VPN|Vpn|vpn' "$A" | grep -v ':0$'   # no output
+# The bundle's UTF-16 strings: only the Settings path ("General → VPN &
+# Device Management → DNS" and its translations: 2 keys × 10 locales).
+python3 -c 'import sys; print(open(sys.argv[1],"rb").read().count("VPN".encode("utf-16-le")))' "$A/main.jsbundle"   # 20
+LC_ALL=C grep -aci vpn "$A/EXConstants.bundle/app.config"  # 0: no BIND_VPN_SERVICE in the app's config
+# A case-insensitive search (grep -rcai vpn) also finds byte noise, none of it
+# a word (build 7, 2026-11-03): main.jsbundle 2 ("…IUvpNINCwL…", a sample AWS
+# request id in @sentry/conventions, and "vPn" inside bytecode), Cleanway 1
+# (code-signature bytes; they change when the app is re-signed), hermesvm 2
+# and ReactNativeDependencies 2 (C++ mangled names: "…IFvPN6hermes…",
+# "…EEvPNSt3__1…"). Anything else: find out what matches and record it here
+# before pasting.
+# Build 8 (2026-11-11, ios-1.1.0-8-archive-checks.txt): the three searches
+# above as expected (no output, 20, 0); case-insensitive: main.jsbundle 1
+# ("…IUvpNINCw…"), Cleanway 0, hermesvm 2, ReactNativeDependencies 2.
+# Build 9 (2026-11-12, ios-1.1.0-9-archive-checks.txt): the same as build 8.
+```
+
 > Cleanway checks links and text messages for scams. No account is needed:
 > paste a link or a message on the home screen, or share one to Cleanway from
 > Safari or Messages. A message is checked on the device and never sent; only
@@ -530,18 +652,21 @@ rather than to rely on Cloudflare not keeping it.
 > purchases or upsell of its own.
 >
 > VPN (2.1): no VPN, no tunnel, no NEVPNManager/NETunnelProviderManager, no
-> Network Extension provider target. Only the DNS Settings API (entitlement
-> "dns-settings"), which iOS lists under VPN & Device Management. The app's
-> DNS module is "CleanwayDns" (save, read, remove the setting); Android's
-> shield module is not built into the iOS app, and Android-only VPN text is
-> never shown. With DNS protection on, our server gets DNS queries (name,
-> record type) and the request's IP. It logs no names or IPs. It keeps
-> aggregate counters, an in-memory answer cache keyed by the question only,
-> and an hourly rate-limit count under a keyed hash of the IP. Unblocked,
-> uncached names go to Cloudflare from our server. Railway hosts us (EU West);
-> its edge nearest the user ends HTTPS and keeps request logs that can include
-> the IP and URL (a GET query's URL holds the name). iOS 26+ may fall back to
-> the network's DNS. No sale, ads or profiling.
+> Network Extension provider target. NetworkExtension.framework is used only
+> for the DNS Settings API (entitlement "dns-settings"), which iOS lists under
+> VPN & Device Management; that Settings path is the only "VPN" in the app's
+> text. The app's DNS module is "CleanwayDns" (save, read, remove the
+> setting). Since 1.1.0 the native module, the Android-only text that names
+> VPN and the BIND_VPN_SERVICE permission of our Android app's VPN-based
+> filter are not in the iOS build.
+> With DNS protection on, our server gets DNS queries (name, record type) and
+> the request's IP. It logs no names or IPs. It keeps aggregate counters, an
+> in-memory answer cache keyed by the question only, and an hourly rate-limit
+> count under a keyed hash of the IP. Unblocked, uncached names go to
+> Cloudflare from our server. Railway hosts us (EU West); its edge nearest the
+> user ends HTTPS and keeps request logs that can include the IP and URL (a
+> GET query's URL holds the name). iOS 26+ may fall back to the network's DNS.
+> No sale, ads or profiling.
 
 **"The app contains VPN functionality" (2.1, 2026-10-30).** App Review's
 automated analysis flagged 1.0.4 (3) and asked what user information the
@@ -558,17 +683,8 @@ Re-check it before reusing: GET vs POST from iOS and what Railway's request
 logs keep were not verified (the Railway session had expired); renaming the
 module or dropping the Android strings from the iOS bundle changes the second
 paragraph; a change to the DoH cache, rate limiter, upstreams or logging
-changes "2." and "3.". The module was split after the reply went: a build
-that has `modules/cleanway-dns` links `CleanwayDns` (iOS only) and no
-`CleanwayVpn`, which is Android-only now (`modules/cleanway-vpn`). The reply's
-"native module CleanwayVpn" sentence describes 1.0.6 (6) and earlier; the
-Notes paragraph above says what the newer builds carry
-(`mobile/scripts/test-ios-native-modules.mjs` pins the split). The shared
-JS's names no longer say VPN either: `startShield`/`stopShield`/
-`isShieldRunning` and the rest are neutral, and the Kotlin names live only in
-`modules/cleanway-vpn/src/native.android.ts`, which the iOS bundle does not
-include (`mobile/scripts/test-no-vpn-names.mjs`; its one exception is the
-i18n key `mobile.ios.dns.note_vpn`, which goes with the iOS strings).
+changes "2." and "3.". (Below: the reply as recorded when it went, the Notes
+paragraph that went with it, then what changed for 1.1.0.)
 
 > Hello,
 >
@@ -620,10 +736,134 @@ i18n key `mobile.ios.dns.note_vpn`, which goes with the iOS strings).
 >
 > We have added this to App Review Information.
 
-**Purchases: which sentence.** The text above is for a build made **without**
-`EXPO_PUBLIC_REVENUECAT_IOS_KEY` — every iPhone build so far (1.0.6 builds 5
-and 6 checked on 2026-10-25: no `appl_` key in their bundles; check a new one
-with §1.1). `PAID_PLANS_OFFERED` is false there: the paywall sends anyone who
+**History — the Notes "VPN (2.1)" paragraph as pasted for 1.0.6 (6) on
+2026-11-02, before the reply went** (the narrative's "the VPN paragraph
+above"; do not paste it for build 7 — that build has no `CleanwayVpn` and no
+startVpn/stopVpn):
+
+> VPN (2.1): no VPN, no tunnel, no NEVPNManager/NETunnelProviderManager, no
+> Network Extension provider target. Only the DNS Settings API (entitlement
+> "dns-settings"), which iOS lists under VPN & Device Management. The native
+> module "CleanwayVpn" is shared with Android; on iOS startVpn/stopVpn do
+> nothing and Android-only VPN text is never shown. With DNS protection on,
+> our server gets DNS queries (name, record type) and the request's IP. It
+> logs no names or IPs. It keeps aggregate counters, an in-memory answer cache
+> keyed by the question only, and an hourly rate-limit count under a keyed
+> hash of the IP. Unblocked, uncached names go to Cloudflare from our server.
+> Railway hosts us (EU West); its edge nearest the user ends HTTPS and keeps
+> request logs that can include the IP and URL (a GET query's URL holds the
+> name). iOS 26+ may fall back to the network's DNS. No sale, ads or
+> profiling.
+
+**1.1.0 (build 7 and later): what changed for the "VPN" question.** After
+the reply went, four PRs took out of the iPhone build the parts of the
+Android shield that name VPN: its native module, its four VPN strings,
+`BIND_VPN_SERVICE` and the `vpn-…` icon names (in `main` on SDK 54, in 1.1.0
+with the SDK 58 merge; docs/EXPO_UPGRADE_PLAN.md §10.4). The rest of the
+shield still ships in the iPhone bundle, without the word: its shared JS
+(`modules/cleanway-vpn/index.ts`, `useNetworkShield`, `KeepAliveCard` and
+others) under neutral names, and its other on-screen text (#387 below). The
+reply's second paragraph ("native module CleanwayVpn … startVpn/stopVpn")
+describes 1.0.6 (6) and earlier; the Notes paragraph for build 7+ above and
+the reply below say what 1.1.0 carries.
+
+- #388: the iPhone's DNS protection is its own iOS-only module, `CleanwayDns`
+  (`modules/cleanway-dns`); `CleanwayVpn` (`modules/cleanway-vpn`) is
+  Android-only (`mobile/scripts/test-ios-native-modules.mjs`). The shared
+  JS's names no longer say VPN: `startShield`/`stopShield`/`isShieldRunning`
+  and the rest are neutral, and the Kotlin names live only in
+  `modules/cleanway-vpn/src/native.android.ts`, which the iOS bundle does not
+  include (`mobile/scripts/test-no-vpn-names.mjs`; its allowlist still names
+  `mobile.ios.dns.note_vpn`, which #387 renamed to `note_other_dns` without
+  the word, so nothing uses that exception).
+- #387: the four Android-only strings (the VpnService disclosure, the
+  "permission taken back" notice, the two Always-on VPN rows) live in
+  `mobile/i18n/android/`, which only `src/i18n/resources.android.ts` imports,
+  and the landing and email strings are no longer in the mobile JSON. In the
+  strings the iPhone carries, "VPN" is left only in
+  `mobile.ios.dns.step_on_body` and `mobile.ios.dns.error_remove`: Apple's
+  Settings path, in all 10 languages (`mobile/scripts/test-ios-strings-no-vpn.mjs`).
+  The rest of the Android shield's text stays in `i18n/{locale}.json`, which
+  `src/i18n/resources.ts` imports on the iPhone too, in all 10 languages: 51
+  `mobile.shield.*` keys ("Every app", the Private DNS and pause states, "How
+  the shield works"), 42 `mobile.keep_alive.*` (battery and keep-protection
+  rows) and 29 `mobile.android_native.*` (the foreground notification and
+  block alerts). None of them says VPN.
+- #386: `BIND_VPN_SERVICE` is declared in
+  `modules/cleanway-vpn/android/src/main/AndroidManifest.xml` instead of
+  `app.json`, so `expo-constants` no longer copies it into the iPhone app's
+  config (`mobile/scripts/check-android-permissions.mjs`).
+- #389: icons are imported per family, so the bundle carries no `vpn-key` or
+  `vpn-lock` names (`mobile/scripts/check-icon-imports.mjs`).
+
+What stays, because DNS protection needs it: NetworkExtension.framework and
+the `dns-settings` entitlement (`plugins/withIosAppStore.js`; only
+`CleanwayDnsModule.swift` imports NetworkExtension). The automated analysis
+can flag 1.1.0 for them again, so the Notes keep the VPN paragraph. Gone
+since #392: the SMS filter's `message_model.json` (copied from
+`modules/cleanway-vpn/android/src/main/assets` into
+`PlugIns/CleanwaySmsFilter.appex` and `CleanwayMessageEngineAssets.bundle`)
+named 8 files under `mobile/modules/cleanway-vpn/` in its `data_sha256`; it
+now names them from the module's `src/` (`ml/sms/data.py` `provenance_key`),
+and `mobile/scripts/test-ios-sms-filter.mjs` keeps the shared text assets
+free of "vpn". Checked on the build 7 archive (SDK 58, 2026-11-03): no
+VPN/Vpn/vpn in any file of the app, UTF-16 "VPN" only in the Settings path,
+none in the EXConstants config. Repeat the searches at the top of §3.6 on any
+rebuilt archive before pasting the build 7+ paragraph or sending the reply
+below.
+
+If App Review asks about the "VPN" again for 1.1.0, reply with the text below.
+Re-check it first, as for the 1.0.6 reply: GET vs POST from iOS and what
+Railway's request logs keep are still unverified, and a change to the DoH
+cache, rate limiter, upstreams or logging changes its "While it is on"
+paragraph. It is shorter than the 1.0.6 reply and carries the same data
+facts; send the longer one (with its second paragraph replaced by this
+reply's second) if they ask the three questions point by point again.
+
+> Hello,
+>
+> Cleanway has no VPN features: no tunnel, no NEVPNManager or
+> NETunnelProviderManager, and no Network Extension provider target (packet
+> tunnel, app proxy, DNS proxy or content filter). Its extensions are a share
+> extension, an SMS filter and a Safari Web Extension.
+>
+> The app links NetworkExtension.framework only for the DNS Settings API
+> (NEDNSSettingsManager, NEDNSOverHTTPSSettings, entitlement value
+> "dns-settings"), which iOS lists under VPN & Device Management. That
+> Settings path, which the app names where it explains the DNS setting, is
+> the only "VPN" in the app's text. In version 1.1.0 the DNS setting has its
+> own iOS module, "CleanwayDns", and the native module, the Android-only text
+> that names VPN and the BIND_VPN_SERVICE permission of our Android app's
+> VPN-based filter are not in the iOS build.
+>
+> The app saves one encrypted DNS setting for
+> https://dns.cleanway.ai/dns-query. It stays off until the user selects
+> "Cleanway" in Settings > General > VPN & Device Management > DNS, and can be
+> removed in the app or there at any time.
+>
+> While it is on, iOS sends our server the device's DNS queries (the name
+> looked up and the record type; never a page link or content, other traffic,
+> or an account or device identifier), and our server sees each request's IP
+> address. They are used only to answer NXDOMAIN for known scam and phishing
+> sites, to resolve all other names and to rate-limit abuse. Our server writes
+> no log of names or IP addresses; it keeps aggregate counters, recent
+> answers in memory keyed by the question only, and an hourly rate-limit
+> count under a keyed hash of the IP. Names neither blocked nor cached go to
+> Cloudflare's public DNS resolver from our server's IP, not the user's.
+> Railway hosts our server (EU West, Amsterdam); HTTPS ends at its edge
+> nearest the user, and its standard request logs can include the IP and the
+> requested URL, which for a GET query contains the name. On iOS 26+, if our
+> server does not answer, iOS may use the network's own DNS. No ads,
+> profiling or sale.
+>
+> The same is in App Review Information.
+
+**Purchases: which sentence.** The Notes block at the top of §3.6 is for a
+build made **without** `EXPO_PUBLIC_REVENUECAT_IOS_KEY` — every iPhone build
+up to 1.1.0 (7) (1.0.6 builds 5 and 6 checked on 2026-10-25: no `appl_` key in their
+bundles; check a new one with §1.1). **1.1.0 (8)** (2026-11-11) is made with
+the key — its check prints "sells" — so its Notes take the In-App Purchase
+sentence below, and its subscriptions must be attached to the version. `PAID_PLANS_OFFERED` is false there: the paywall sends anyone who
 reaches it home (`app/paywall.tsx`), Settings has no Plan row, Account shows
 the plan as "Free" with no Upgrade, and "Restore purchases" appears only when
 App Store billing is on (`storeBillingOn()`, `app/account.tsx`). Attach **no**

@@ -21,8 +21,12 @@
  * A patch that no longer applies fails the install too, everywhere. On its
  * own patch-package fails only when it detects CI: the mirror's plain
  * `npm install` would print the error, exit 0 and build the unpatched code —
- * for expo-share-intent+5.1.1.patch that is a security fix gone missing from
- * a release (docs/EXPO_UPGRADE_PLAN.md §1.2). Hence --error-on-fail.
+ * for 1.0.6's expo-share-intent+5.1.1.patch that was a security fix gone
+ * missing from a release (docs/EXPO_UPGRADE_PLAN.md §1.2). Hence --error-on-fail.
+ *
+ * Since Expo SDK 58 (1.1.0) mobile/patches/ is empty: expo-share-intent 9 and
+ * xcode 4.0.0 (which @expo/config-plugins 58.0.10 requires) carry both fixes
+ * upstream. No patches folder = nothing to do; the script stays for the next one.
  */
 const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");

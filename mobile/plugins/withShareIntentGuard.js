@@ -2,26 +2,26 @@
  * Expo config plugin: an Android release build fails unless expo-share-intent
  * keeps a shared file inside the cache.
  *
- * Why (docs/EXPO_UPGRADE_PLAN.md §1.2, #318): expo-share-intent 5.1.1 copied a
- * shared file to cacheDir/<the sender's file name>, so any app on the phone
- * could write "../shared_prefs/…" into Cleanway's private data.
- * patches/expo-share-intent+5.1.1.patch fixes it on `npm install`, and a
- * patch that fails fails the install (scripts/apply-patches.js). That is not
+ * Why (docs/EXPO_UPGRADE_PLAN.md §1.2, #318): expo-share-intent 2.0.0–8.0.0
+ * copied a shared file to cacheDir/<the sender's file name>, so any app on the
+ * phone could write "../shared_prefs/…" into Cleanway's private data. 1.0.6
+ * (Expo SDK 54, 5.1.1) fixed it with a patch; since Expo SDK 58 the app
+ * installs ^9.0.0, which has upstream's fix (8.0.1+). That is still not
  * enough on its own: the build mirror keeps its node_modules between runs,
- * so after a failed install the old, unpatched file is still there, and
- * `npm install --ignore-scripts` skips the patch altogether. Nothing in
- * `expo prebuild` or gradle looks at that Kotlin source, so the release still
- * said BUILD SUCCESSFUL, signed, with the hole.
+ * so after a failed or partial install an old, unfixed copy can still be
+ * there. Nothing in `expo prebuild` or gradle looks at that Kotlin source, so
+ * the release would say BUILD SUCCESSFUL, signed, with the hole.
  *
  * What it adds to android/app/build.gradle: every non-debug
  * `pre<Variant>Build` task (release, and any other non-debug build type) runs
  * `node scripts/check-share-intent.mjs` from mobile/ before anything is
  * compiled, and the build fails when the check does. The check is the one CI
- * runs (installed Kotlin = the patched file, the patch applied cleanly,
- * text/plain-only share filter), plus the AndroidManifest.xml this android/
- * actually builds from, so an android/ generated before the filter was
- * narrowed fails too. There is no switch to skip it: a release without the
- * fix is never what we want. Debug builds are not checked.
+ * runs (the installed Kotlin keeps a shared file inside the cache, a fixed
+ * version, no patch left behind, text/plain-only share filter), plus the
+ * AndroidManifest.xml this android/ actually builds from, so an android/
+ * generated before the filter was narrowed fails too. There is no switch to
+ * skip it: a release without the fix is never what we want. Debug builds are
+ * not checked.
  *
  * Fail-safe: groovy build files only; idempotent across prebuilds.
  */
@@ -44,7 +44,7 @@ tasks.matching { it.name ==~ /pre\\w+Build/ && !(it.name ==~ /(?i).*debug.*/) }.
             throw new GradleException(
                 (cleanwayShareOut.toString() + cleanwayShareErr.toString()).trim() +
                 "\\nThis release would let any app on the phone write into Cleanway's private files. " +
-                "Run npm install in mobile/ (it applies patches/expo-share-intent+5.1.1.patch), " +
+                "Run npm install in mobile/ (expo-share-intent ^9.0.0 has the fix), " +
                 "then expo prebuild -p android --clean.")
         }
         logger.lifecycle(cleanwayShareOut.toString().trim())

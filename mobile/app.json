@@ -2,17 +2,11 @@
   "expo": {
     "name": "Cleanway",
     "slug": "cleanway",
-    "version": "1.0.6",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "cleanway",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": false,
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0f172a"
-    },
     "locales": {
       "en": "./i18n/ios/en.json",
       "ru": "./i18n/ios/ru.json",
@@ -28,7 +22,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "ai.cleanway.app",
-      "buildNumber": "6",
+      "buildNumber": "9",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -61,7 +55,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "ai.cleanway.app",
-      "versionCode": 107,
+      "versionCode": 111,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
@@ -86,6 +80,14 @@
         "expo-router",
         {
           "sitemap": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0f172a"
         }
       ],
       [

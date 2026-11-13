@@ -30,8 +30,8 @@
  *
  * iOS 16.4: the background is an ES-module service worker, which Safari
  * supports from 16.4 ("Added support for modules in background service
- * workers", Safari 16.4 release notes). The app itself stays at 15.1;
- * on older iOS the extension simply does not appear in Safari.
+ * workers", Safari 16.4 release notes). Since Expo SDK 56 the app is 16.4+ too;
+ * before that, on older iOS the extension simply did not appear in Safari.
  */
 const fs = require("fs");
 const path = require("path");

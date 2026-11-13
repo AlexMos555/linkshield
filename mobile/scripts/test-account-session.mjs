@@ -21,6 +21,9 @@
  * And src/services/auth.ts itself, against a fake GoTrue (SecureStore is a
  * Map, fetch a function — loaded the way test-domain-check-hook.mjs loads a
  * hook, with the tree's TypeScript and stubs for the expo modules):
+ *   • a call its own 10-second timer aborts is a "timeout", however fetch
+ *     names the rejection (expo/fetch, the global fetch since Expo SDK 56,
+ *     says plain Error); a failure on its own is a "network_error";
  *   • sign-out ends only THIS phone's session (/logout?scope=local) — without
  *     the scope GoTrue's default is global, and signing out on the phone
  *     signed the account out on the website, the extension and other phones;
@@ -271,6 +274,43 @@ function authWith({ stored, answer }) {
   auth.authEvents.on("signed_out", () => events.push("signed_out"));
   return { auth, store, calls, events };
 }
+
+console.log("timeouts (services/auth.ts)");
+// Since Expo SDK 56 the app's global fetch is expo/fetch, and a request
+// aborted before its answer arrives rejects with expo's FetchError
+// ("fetch failed: The operation was aborted.", name "Error"), not an
+// AbortError (expo@58.0.19 src/winter/fetch/fetch.ts). auth.ts must tell a
+// timeout by its own timer, not by the error's name.
+await check("a request auth.ts's own timer aborts is a timeout, though expo/fetch calls it a plain Error", async () => {
+  const realSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = (fn) => realSetTimeout(fn, 0); // the 10 s timer, at once
+  try {
+    const { auth } = authWith({
+      stored: {},
+      answer: (url, init) =>
+        new Promise((_, reject) => {
+          init.signal.addEventListener("abort", () => reject(new Error("fetch failed: The operation was aborted.")));
+        }),
+    });
+    await assert.rejects(auth.signIn("anna@example.com", "correct horse battery"), (e) => {
+      assert.equal(e.name, "AuthError");
+      assert.equal(e.code, "timeout");
+      return true;
+    });
+  } finally {
+    globalThis.setTimeout = realSetTimeout;
+  }
+});
+await check("a connection that fails on its own is a network error, not a timeout", async () => {
+  const { auth } = authWith({
+    stored: {},
+    answer: () => { throw new Error("fetch failed: The Internet connection appears to be offline."); },
+  });
+  await assert.rejects(auth.signIn("anna@example.com", "correct horse battery"), (e) => {
+    assert.equal(e.code, "network_error");
+    return true;
+  });
+});
 
 console.log("sign-out (services/auth.ts)");
 await check("ends only this phone's session: POST /auth/v1/logout?scope=local", async () => {
