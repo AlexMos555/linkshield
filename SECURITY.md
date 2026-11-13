@@ -16,7 +16,6 @@ Cleanway protects people from scammers. If we get breached or backdoored, we bec
 - Acknowledge within **48 hours**
 - Triage + fix timeline within **7 days** (CVSS-dependent)
 - Credit you in changelog and `SECURITY.md` honor roll (opt-in)
-- For high/critical: bug bounty up to $2k (paid via Stripe / wire / crypto)
 
 ## Coordinated Disclosure Timeline
 
