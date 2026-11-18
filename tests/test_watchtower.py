@@ -322,3 +322,125 @@ async def test_scan_brand_surfaces_typo_candidates():
         assert c.variant_kind == "typo"
         assert c.edit_distance == 1
         assert c.issuer == "Let's Encrypt"
+
+
+# ─────────────────────────────────────────────────────────────
+# Off by default (security review of 2026-11-13)
+# ─────────────────────────────────────────────────────────────
+
+
+class _WtResp:
+    def __init__(self, status_code=200, payload=None):
+        self.status_code = status_code
+        self._payload = payload if payload is not None else []
+        self.headers = {"Content-Range": "0-0/0"}
+        self.text = ""
+
+    def json(self):
+        return self._payload
+
+
+class _WtSupabase:
+    """Stands in for httpx.AsyncClient: records calls, serves one alert row."""
+
+    calls: list = []
+    alert_rows: list = []
+
+    def __init__(self, *a, **kw):
+        pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *a):
+        return False
+
+    async def get(self, url, **kw):
+        type(self).calls.append(("GET", url))
+        return _WtResp(200, type(self).alert_rows)
+
+    async def request(self, method, url, **kw):
+        type(self).calls.append((method, url))
+        return _WtResp(200, [])
+
+
+@pytest.fixture
+def wt_supabase(monkeypatch):
+    import httpx
+
+    from api import config
+
+    settings = config.get_settings()
+    monkeypatch.setattr(settings, "supabase_url", "https://db.test", raising=False)
+    monkeypatch.setattr(settings, "supabase_service_key", "k", raising=False)
+    _WtSupabase.calls = []
+    _WtSupabase.alert_rows = [
+        {"brand_root_domain": "targer.com", "variant_kind": "typo", "edit_distance": 1}
+    ]
+    monkeypatch.setattr(httpx, "AsyncClient", _WtSupabase)
+    return _WtSupabase
+
+
+@pytest.fixture
+def wt_authed_client():
+    from fastapi.testclient import TestClient
+
+    from api.main import app
+    from api.models.schemas import AuthUser, UserTier
+    from api.services.auth import get_current_user
+
+    async def _user():
+        return AuthUser(id="11111111-1111-1111-1111-111111111111", email="u@t.test", tier=UserTier.free)
+
+    app.dependency_overrides[get_current_user] = _user
+    yield TestClient(app)
+    app.dependency_overrides.clear()
+
+
+class TestWatchtowerOffByDefault:
+    """
+    Any account could put any name on its watchlist with no proof of owning
+    it; the scan then wrote look-alike hosts into a table that raised the
+    score of those hosts for EVERY user (watch `targer.com` and `target.com`
+    turns "caution"). No shipped client uses Watchtower, so until a brand
+    has to be proven, the table is neither written through the API nor read
+    by the analyzer.
+    """
+
+    def test_setting_defaults_to_off(self):
+        from api.config import Settings
+
+        assert Settings().watchtower_enabled is False
+
+    @pytest.mark.asyncio
+    async def test_analyzer_lookup_ignores_alerts(self, wt_supabase):
+        from api.services.watchtower_lookup import check_typosquat_alert
+
+        result = await check_typosquat_alert("target.com")
+        assert result["matched"] is False
+        assert result["weight"] == 0
+        assert wt_supabase.calls == []
+
+    @pytest.mark.asyncio
+    async def test_analyzer_lookup_works_when_switched_on(self, wt_supabase, monkeypatch):
+        from api import config
+        from api.services.watchtower_lookup import check_typosquat_alert
+
+        monkeypatch.setattr(config.get_settings(), "watchtower_enabled", True, raising=False)
+        result = await check_typosquat_alert("target.com")
+        assert result["matched"] is True
+        assert result["weight"] > 0
+
+    @pytest.mark.parametrize(
+        "method, path, body",
+        [
+            ("GET", "/api/v1/watchtower/brands", None),
+            ("POST", "/api/v1/watchtower/brands", {"brand_name": "Targer", "brand_root_domain": "targer.com"}),
+            ("GET", "/api/v1/watchtower/alerts", None),
+            ("POST", "/api/v1/watchtower/scan", None),
+        ],
+    )
+    def test_routes_answer_disabled_and_touch_nothing(self, wt_authed_client, wt_supabase, method, path, body):
+        resp = wt_authed_client.request(method, path, json=body)
+        assert resp.status_code == 503
+        assert wt_supabase.calls == []

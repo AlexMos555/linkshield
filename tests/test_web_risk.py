@@ -238,3 +238,52 @@ async def test_confirmed_threats_sees_web_risk_threat_types(fake_redis, keys, mo
     keys(web_risk="wr-key")
     _http(monkeypatch, [(200, _threat(["SOCIAL_ENGINEERING"], 300))])
     assert await confirmed_threats._safe_browsing_types("evil.xyz") == frozenset({"SOCIAL_ENGINEERING"})
+
+
+# ── Service-wide daily cap (security review of 2026-11-13) ────────────────────
+# Web Risk is billed per lookup past the free 100,000 a month. Per-IP limits
+# bound one caller only: an anonymous /email/analyze request alone may ask
+# about 100 link domains. The cap bounds what the whole service spends a day.
+
+
+def test_the_daily_budget_has_a_default():
+    from api.config import Settings
+
+    assert Settings().web_risk_daily_budget == 10_000
+
+
+@pytest.mark.asyncio
+async def test_past_the_daily_budget_no_request_is_made_and_nothing_is_cached(fake_redis, monkeypatch):
+    from api.services import paid_budget
+
+    asked = []
+
+    async def _take(source, daily_limit):
+        asked.append((source, daily_limit))
+        return False
+
+    monkeypatch.setattr(paid_budget, "take", _take)
+    seen = _http(monkeypatch, [(200, _threat(["SOCIAL_ENGINEERING"], 900))])
+    result = await web_risk.WebRiskClient(api_key="wr-key").check("evil.xyz")
+    assert result.status is sb.CheckStatus.unavailable and result.reason == "daily_budget"
+    assert seen == [], "no billed lookup"
+    assert "wr:evil.xyz" not in fake_redis.data, "tomorrow's first check asks Google again"
+    assert asked == [("web_risk", 10_000)]
+
+
+@pytest.mark.asyncio
+async def test_a_cached_answer_costs_nothing_from_the_budget(fake_redis, monkeypatch):
+    from api.services import paid_budget
+
+    taken = []
+
+    async def _take(source, daily_limit):
+        taken.append(source)
+        return True
+
+    monkeypatch.setattr(paid_budget, "take", _take)
+    _http(monkeypatch, [(200, {})])
+    client = web_risk.WebRiskClient(api_key="wr-key")
+    await client.check("fine.example")
+    await client.check("fine.example")
+    assert taken == ["web_risk"]

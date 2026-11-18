@@ -149,6 +149,122 @@ class TestPhoneLookup:
         assert resp.status_code == 200
 
 
+class _FakeResp:
+    def __init__(self, status_code, payload):
+        self.status_code = status_code
+        self._payload = payload
+
+    def json(self):
+        return self._payload
+
+
+class _FakeSupabase:
+    """Stands in for httpx.AsyncClient: records writes, serves canned rows."""
+
+    calls: list = []
+    crowd_rows: list = []
+    verified_rows: list = []
+
+    def __init__(self, *a, **kw):
+        pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *a):
+        return False
+
+    async def post(self, url, **kw):
+        type(self).calls.append(("POST", url))
+        return _FakeResp(204, None)
+
+    async def get(self, url, **kw):
+        type(self).calls.append(("GET", url))
+        if url.endswith("/verified_numbers"):
+            return _FakeResp(200, type(self).verified_rows)
+        return _FakeResp(200, type(self).crowd_rows)
+
+
+@pytest.fixture
+def fake_supabase(monkeypatch):
+    import httpx
+
+    from api import config
+
+    settings = config.get_settings()
+    monkeypatch.setattr(settings, "supabase_url", "https://db.test", raising=False)
+    monkeypatch.setattr(settings, "supabase_service_key", "k", raising=False)
+    _FakeSupabase.calls = []
+    _FakeSupabase.crowd_rows = []
+    _FakeSupabase.verified_rows = []
+    monkeypatch.setattr(httpx, "AsyncClient", _FakeSupabase)
+    return _FakeSupabase
+
+
+class TestCrowdVerdictsOffByDefault:
+    """
+    Report of 2026-11-13: the tally has no per-reporter identity, so one
+    account could label any number "scam" (3 votes) or wipe a real warning
+    ("legit" votes). Until votes are counted once per reporter, the crowd
+    tally is neither written nor served.
+    """
+
+    def test_setting_defaults_to_off(self):
+        from api.config import Settings
+
+        assert Settings().phone_crowd_reports_enabled is False
+
+    def test_report_is_not_stored(self, authed_client, fake_supabase):
+        resp = authed_client.post(
+            "/api/v1/phone/report",
+            json={"phone_hash": SAMPLE_HASH, "country_code": "US", "kind": "scam"},
+        )
+        assert resp.status_code == 200
+        assert resp.json() == {"accepted": False, "reason": "disabled"}
+        assert fake_supabase.calls == []
+
+    def test_report_still_validates_input(self, authed_client, fake_supabase):
+        resp = authed_client.post(
+            "/api/v1/phone/report",
+            json={"phone_hash": SAMPLE_HASH, "country_code": "US", "kind": "dangerous"},
+        )
+        assert resp.status_code == 422
+
+    def test_lookup_ignores_crowd_tally(self, authed_client, fake_supabase):
+        fake_supabase.crowd_rows = [
+            {"scam_count": 3, "spam_count": 0, "legit_count": 0, "tags": {"bank_fraud": 3}}
+        ]
+        resp = authed_client.get(f"/api/v1/phone/lookup/{SAMPLE_HASH}?cc=US")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["known"] is False
+        assert body["verdict"] == "unknown"
+        assert body["scam_count"] == 0
+        assert body["top_tags"] == []
+        assert not any(u.endswith("/phone_reports") for _, u in fake_supabase.calls)
+
+    def test_lookup_still_serves_verified_numbers(self, authed_client, fake_supabase):
+        fake_supabase.verified_rows = [{"org_name": "Example Bank", "org_category": "bank"}]
+        resp = authed_client.get(f"/api/v1/phone/lookup/{SAMPLE_HASH}?cc=US")
+        body = resp.json()
+        assert body["verdict"] == "verified_legit"
+        assert body["org_name"] == "Example Bank"
+
+    def test_switch_on_restores_old_behaviour(self, authed_client, fake_supabase, monkeypatch):
+        from api import config
+
+        monkeypatch.setattr(config.get_settings(), "phone_crowd_reports_enabled", True, raising=False)
+        fake_supabase.crowd_rows = [
+            {"scam_count": 3, "spam_count": 0, "legit_count": 0, "tags": {}}
+        ]
+        assert authed_client.get(f"/api/v1/phone/lookup/{SAMPLE_HASH}?cc=US").json()["verdict"] == "scam"
+        resp = authed_client.post(
+            "/api/v1/phone/report",
+            json={"phone_hash": SAMPLE_HASH, "country_code": "US", "kind": "scam"},
+        )
+        assert resp.json() == {"accepted": True}
+
+
 # ─── /scam/analyze_text ──────────────────────────────────────────────────────
 
 

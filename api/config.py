@@ -260,6 +260,12 @@ class Settings(BaseSettings):
     # POST /api/v1/explain (anonymous): live Haiku calls a day for the whole
     # service; past it, cached or template text (api/services/scam_explainer.py).
     explainer_daily_budget: int = 500
+    # Google Web Risk lookups a day for the whole service (cache hits are
+    # free). Billed past 100,000 a month; reached from anonymous routes
+    # (/public/check, /email/analyze: up to 100 link domains a request).
+    # Past it the lookup is skipped until the next UTC day and an alert goes
+    # out (paid_budget_exhausted) — raise it when real traffic needs more.
+    web_risk_daily_budget: int = 10_000
 
     # Wall-clock budget for ONE fresh domain analysis (all sources and the
     # site probes) of /public/check, and the default of analyze_domain().
@@ -415,6 +421,21 @@ class Settings(BaseSettings):
     # SMS_TEXT_MODEL_ENABLED=false: the SMS text model stops scoring messages;
     # the message rules and the link check keep working.
     sms_text_model_enabled: bool = True
+    # Crowd-sourced caller verdicts (POST /phone/report, the scam/spam/legit
+    # tally in GET /phone/lookup). OFF: `phone_reports` keeps bare counters
+    # with no reporter identity, so one account could label any number "scam"
+    # with 3 votes or erase a real warning with "legit" votes (security report
+    # of 2026-11-13). While off, reports are not stored and lookup answers
+    # from the operator-curated `verified_numbers` only. Do not switch on
+    # before votes are counted once per reporter and can be pruned.
+    phone_crowd_reports_enabled: bool = False
+    # Typosquat Watchtower (/api/v1/watchtower/*, the `typosquat_alerts`
+    # lookup in the analyzer). OFF: any account could watch any name with no
+    # proof of owning it, and the look-alike hosts its scan found were then
+    # scored up for every user (watch `targer.com`, and `target.com` turns
+    # "caution"). No shipped client uses it. Do not switch on before a brand
+    # has to be proven (DNS record or site file) by whoever adds it.
+    watchtower_enabled: bool = False
     # Optional, 0 < x < 1. Unset = the thresholds shipped in the APK. The phone
     # only ever RAISES a threshold with these (MessageAnalyzer: quieter, never
     # louder), so a typo cannot turn every SMS into a warning. A value that is
