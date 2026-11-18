@@ -364,7 +364,7 @@ export default function SignupForm({ planFromQuery, intervalFromQuery, errorFrom
       {step === "email" && (
         <p style={STYLES.footer}>
           {t("footer_lead")} {t("footer_or")}{" "}
-          <PrimaryInstallLink androidLabel={nav("install_android")} style={{ color: "#60a5fa", textDecoration: "underline" }}>
+          <PrimaryInstallLink androidLabel={nav("install_android")} iosLabel={nav("install_ios")} style={{ color: "#60a5fa", textDecoration: "underline" }}>
             {t("footer_install_cta")}
           </PrimaryInstallLink>{" "}
           {t("footer_install_tail")}

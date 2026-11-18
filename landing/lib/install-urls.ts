@@ -66,10 +66,15 @@ export const PLATFORMS: Record<Platform, PlatformInfo> = {
     statusKey: "coming_soon",
   },
   ios: {
+    // Live on the App Store ("Cleanway: Scam Protection", id 6821030874). The
+    // id-only link carries no country or slug on purpose: Apple sends it to
+    // the visitor's own storefront, so one URL serves all ten locales. The app
+    // also sets up the DNS filter itself, so iPhone visitors get the app
+    // rather than the /dns profile (PrimaryInstallLink), and /ios redirects
+    // here (next.config.ts).
     label: "iOS",
-    href: "/dns",                   // DoH profile install works today
-    available: false,
-    statusKey: "coming_soon",
+    href: "https://apps.apple.com/app/id6821030874",
+    available: true,
   },
   android: {
     // The Android CTA now leads to the download/install page (/android), the
@@ -92,7 +97,9 @@ export const PLATFORMS: Record<Platform, PlatformInfo> = {
  *  listing is live (the DoH profile is the one install path that works today
  *  without any store account). Android visitors are redirected client-side to
  *  `PLATFORMS.android.href` by `PrimaryInstallLink` — strict Private DNS
- *  conflicts with the app's VPN shield, so /dns is the wrong door for them. */
+ *  conflicts with the app's VPN shield, so /dns is the wrong door for them.
+ *  iPhone and iPad visitors are redirected the same way to `PLATFORMS.ios.href`,
+ *  the App Store listing. */
 export const PRIMARY_INSTALL_HREF = "/dns";
 
 export function isLive(platform: Platform): boolean {
