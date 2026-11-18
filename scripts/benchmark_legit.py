@@ -124,16 +124,9 @@ def select_legit_sample(
     return pool[:max(0, limit)]
 
 
-def cleanway_outcome(verdict: str, detail: str) -> str:
-    """One bucket per Cleanway answer: safe / caution / dangerous / not_found /
-    no_answer (rate-limited, HTTP error, timeout)."""
-    if verdict in ("safe", "dangerous"):
-        return verdict
-    if detail in ("caution", "not_found"):
-        return detail
-    return "no_answer"
-
-
+# One bucket per answer: safe / caution / dangerous / not_found / no_answer
+# (rate-limited, HTTP error, timeout). Which answer goes where is
+# benchmark_method.outcome, the same rule for every resolver since 2026-11-03.
 OUTCOMES = ("safe", "caution", "dangerous", "not_found", "no_answer")
 
 
