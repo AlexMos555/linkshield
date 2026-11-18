@@ -212,6 +212,55 @@ await test("account calls hit the right method + path", async () => {
   ]);
 });
 
+/** A fetchImpl that never answers and rejects with `onAbort(signal)` once the client's timer aborts it. */
+function hangingFetch(onAbort) {
+  return (url, init) =>
+    new Promise((_, reject) => {
+      init.signal.addEventListener("abort", () => reject(onAbort(init.signal)));
+    });
+}
+
+// The client's timer is what makes a "timeout": the slow-check retry
+// (mobile/src/utils/check-verdict.ts) and the "the check is slow" message
+// hang on that kind. Since Expo SDK 56 the app's global fetch is expo/fetch,
+// and an abort before the answer arrives rejects with its FetchError
+// ("fetch failed: The operation was aborted.", name "Error"), not an
+// AbortError (expo@58.0.19 src/winter/fetch/fetch.ts).
+await test("timeout: our abort is a timeout when fetch rejects with a plain Error (expo/fetch's FetchError)", async () => {
+  const client = createClient({
+    baseUrl: "https://api.test",
+    timeoutMs: 10,
+    fetchImpl: hangingFetch(() => new Error("fetch failed: The operation was aborted.")),
+  });
+  const { data, error } = await client.health();
+  assert.equal(data, null);
+  assert.equal(error.kind, "timeout");
+  assert.equal(error.message, "request exceeded 10ms");
+});
+
+await test("timeout: the standard AbortError (browsers, Node) is a timeout too", async () => {
+  const client = createClient({
+    baseUrl: "https://api.test",
+    timeoutMs: 10,
+    fetchImpl: hangingFetch((signal) => signal.reason),
+  });
+  const { error } = await client.health();
+  assert.equal(error.kind, "timeout");
+});
+
+await test("network: a failure before our timer fires is not a timeout", async () => {
+  const client = createClient({
+    baseUrl: "https://api.test",
+    timeoutMs: 1000,
+    fetchImpl: async () => {
+      throw new Error("fetch failed: The Internet connection appears to be offline.");
+    },
+  });
+  const { error } = await client.health();
+  assert.equal(error.kind, "network");
+  assert.equal(error.message, "fetch failed: The Internet connection appears to be offline.");
+});
+
 await test("public check: reason_codes map onto reasons[].code, aligned with detail", () => {
   const norm = normalizePublicCheck({
     domain: "evil.tk",

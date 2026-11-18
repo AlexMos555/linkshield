@@ -120,16 +120,22 @@ function ShareIntentRouter() {
     const text = shareIntent?.text ?? "";
     const shared = shareIntent?.webUrl ?? text;
     const message = Boolean(text) && isMessageText(text);
+    // navigate, not push: a share that arrives while its check screen is on
+    // top goes to that screen as new params, as it did in 1.0.6 (Expo SDK
+    // 54). Since SDK 58 router.push always stacks one more screen. The screens
+    // take new params (message-handoff.ts, useDomainCheck.ts);
+    // scripts/test-domain-check-hook.mjs and test-message-handoff.mjs pin
+    // what each router call does.
     if (message && isMessageCheckSupported()) {
       // The id makes this share a new route param even when the message
       // screen is already open — see message-handoff.ts (report #5).
       const handoff = handOffMessage(text);
-      router.push({ pathname: "/message", params: { from: "share", handoff } });
+      router.navigate({ pathname: "/message", params: { from: "share", handoff } });
     } else if (message) {
       // No host → an empty param, which /shared answers with "no link found".
-      router.push({ pathname: "/shared", params: { url: toCheckableHost(shared) ?? "" } });
+      router.navigate({ pathname: "/shared", params: { url: toCheckableHost(shared) ?? "" } });
     } else if (shared) {
-      router.push({ pathname: "/shared", params: { url: shared } });
+      router.navigate({ pathname: "/shared", params: { url: shared } });
     }
     resetShareIntent();
   }, [hasShareIntent, shareIntent]);

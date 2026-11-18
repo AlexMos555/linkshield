@@ -18,7 +18,7 @@
         "simulator": true
       }
     },
-    "//preview": "`preview` is the TestFlight / Play Internal Testing track — signed but distributed to a small allowlist. Auto-increment is on so internal-test builds don't collide on the same version number.",
+    "//preview": "`preview` is an internal build (distribution: internal), not TestFlight: on iOS an ad-hoc IPA that installs only on devices registered with `eas device:create`; on Android an APK to install by hand. TestFlight and the App Store take the `production` build (`eas submit -p ios`). Auto-increment is on so internal-test builds don't collide on the same version number.",
     "preview": {
       "distribution": "internal",
       "autoIncrement": true,

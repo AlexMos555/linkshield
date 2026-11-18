@@ -18,7 +18,9 @@
  * messages live in plugins/distribution.js, next to its tests.
  *
  * Debug builds and unit-test tasks are not checked. Fail-safe: groovy build
- * files only; re-running prebuild without --clean re-bakes the value.
+ * files only; every prebuild re-bakes the value (since Expo SDK 57 `expo
+ * prebuild` regenerates android/ from scratch unless told otherwise, and the
+ * patch replaces an already baked value too).
  */
 const { withAppBuildGradle } = require("@expo/config-plugins");
 const { STORES, distributionOf } = require("./distribution");

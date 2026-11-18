@@ -17,9 +17,10 @@ RuStore is the **primary** channel for the Tele2 RF launch.
 > **Google Play: the target-API blocker is fixed in code (2026-10-08), not yet
 > shipped.** Since **31 Aug 2026** Play requires new apps and updates to target
 > **API 36** (Android 16) — [Target API level requirements](https://developer.android.com/google/play/requirements/target-sdk)
-> (an extension to 1 Nov 2026 can be requested). The app is now on **Expo SDK 54
-> / React Native 0.81**, and the build from §2 produces an APK/AAB with
-> `targetSdkVersion 36` (compileSdk 36) whose 64-bit native libraries are all
+> (an extension to 1 Nov 2026 can be requested). From 1.1.0 the app is on **Expo
+> SDK 58 / React Native 0.88** (1.0.x, `release/1.0.x`: SDK 54 / RN 0.81), and the
+> build from §2 produces an APK/AAB with `targetSdkVersion 36` (compileSdk 37;
+> 36 on 1.0.x) whose 64-bit native libraries are all
 > 16 KB-aligned (Play's [16 KB page-size requirement](https://developer.android.com/guide/practices/page-sizes)
 > for apps targeting Android 15+). What is still open before a Play upload: a
 > release-signed build retested on a real phone (VPN shield, boot restart, link
@@ -198,19 +199,25 @@ Turning the model back on = unset `SMS_TEXT_MODEL_ENABLED` (or `true`).
 
 > ⚠️ **Build from a mirror outside the monorepo, NOT from the repo checkout.**
 > npm workspaces hoist the app's packages to the repo root next to landing's
-> React (19.2 at the root, while the app pins **19.1.0** for Expo SDK 54), and
+> React (19.2 at the root, while the app pins **19.3.0** for Expo SDK 58), and
 > root-hoisted Expo/RN packages then resolve the wrong copies. A standalone copy
-> of `mobile/` with its own `node_modules` has exactly one `react-native@0.81.5`
-> and one `react@19.1.0`. (On SDK 52 the same hoisting put `react-native@0.86`
+> of `mobile/` with its own `node_modules` has exactly one `react-native@0.88.1`
+> and one `react@19.3.0`. (On SDK 52 the same hoisting put `react-native@0.86`
 > at the root and Metro died in `VirtualView.js`.) Fixing the hoisting is a
 > nice-to-have, not a launch blocker; the mirror is the proven path.
 >
-> **Toolchain (Expo SDK 54 / RN 0.81, verified 2026-10-08):** Node ≥ 20.19.4
-> (22 is fine), JDK 17+ (Android Studio's bundled JBR 21 works), the Android SDK
-> with platform **android-36** and build-tools **36.0.0**. Gradle 8.14.3, AGP
-> 8.11, Kotlin 2.1.20 and **NDK 27.1.12297006** come with the generated project;
-> Gradle downloads the NDK on the first build (≈2.5 GB, slow). The first full
-> build took ~22 min on the 6-core Intel Mac, later ones ~2 min.
+> **Toolchain (Expo SDK 58 / RN 0.88, 1.1.0+, verified 2026-10-24 in #327):**
+> Node ≥ 22.13 (22.14 here), JDK 17+ (Android Studio's bundled JBR 21 works),
+> the Android SDK with platform **android-37** and build-tools **37.0.0**
+> (compileSdk 37, targetSdk 36, minSdk 24). Gradle 9.4.1, AGP 9.2.1, Kotlin
+> 2.2 and **NDK 27.1.12297006** come with the generated project; Gradle
+> downloads what is missing on the first build. SDK 58 turns R8 on for release
+> builds (`android.enableMinifyInReleaseBuilds=true`): keep each release's
+> `android/app/build/outputs/mapping/release/mapping.txt` (Play wants it for
+> readable crash stacks). Expo SDK 54 (1.0.x, `release/1.0.x`) used Node ≥
+> 20.19.4, android-36 / build-tools 36.0.0, Gradle 8.14.3, AGP 8.11 and Kotlin
+> 2.1.20; the first full build took ~22 min on the 6-core Intel Mac, later ones
+> ~2 min.
 > `mobile/package-lock.json` is the lock of the verified mirror (its
 > `@cleanway/*` entries point at `vendor/`). npm workspaces and CI's `npm ci`
 > never touch it, and Dependabot's weekly version updates change only the root
@@ -264,14 +271,14 @@ cp "$REPO/mobile/package-lock.json" "$M/package-lock.json"
 node "$REPO/mobile/scripts/check-mirror-lock.mjs" --dir "$M"   # "ok:"; "out of step" = STOP, regenerate the lock (end of §2)
 
 cd "$M"
-npm install                # postinstall applies patches/ ("decode-uri-component@0.2.2 ✔", "expo-share-intent@5.1.1 ✔"). Exit ≠ 0 = STOP, fix it first
+npm install                # postinstall: mobile/patches/ is empty since SDK 58 (1.0.x: "decode-uri-component@0.2.2 ✔", "expo-share-intent@5.1.1 ✔"). Exit ≠ 0 = STOP, fix it first
 cmp "$REPO/mobile/package-lock.json" package-lock.json && echo "installed exactly the committed lock"   # a difference = STOP, regenerate the lock (end of §2)
-node scripts/check-share-intent.mjs   # 3× "ok:"; "CHECK FAILED" = STOP (docs/EXPO_UPGRADE_PLAN.md §1.2)
-node scripts/test-decode-uri-component.mjs   # "all … checks pass"; "FAIL" = STOP (same §1.2)
+node scripts/check-share-intent.mjs   # 4× "ok:" (1.0.x: 3×); "CHECK FAILED" = STOP (docs/EXPO_UPGRADE_PLAN.md §1.2)
+# 1.0.x only: node scripts/test-decode-uri-component.mjs → "all … checks pass"; "FAIL" = STOP (same §1.2). SDK 58 does not install the package.
 # (This block has no `set -e`, so the lines below would still run. A release
 # build refuses to start anyway without the fix — plugins/withShareIntentGuard.js
 # re-runs the check before compiling — but do not count on getting that far.)
-npx expo install --check   # "Dependencies are up to date" (reanimated is excluded on purpose)
+npx expo install --check   # "Dependencies are up to date" (typescript is excluded on purpose: 1.1.0 stays on TS 5.9, docs/EXPO_UPGRADE_PLAN.md §10.1 item 3)
 
 # 3) The starter blocklist (1.0.2+): download + verify it into the module's
 #    assets, AFTER the rsync (its --delete removes the gitignored file). It
@@ -286,8 +293,8 @@ bash scripts/fetch-seed-blocklist.sh
 #    succeeds but is signed with the DEBUG key (big warning in the log).
 KEYS="/path/to/the/folder/with/keystore.properties"
 OUT="$HOME/Desktop/cleanway-android-out"; mkdir -p "$OUT"
-V=$(node -p "require('./app.json').expo.version")                  # 1.0.6
-VC=$(node -p "require('./app.json').expo.android.versionCode")     # 107
+V=$(node -p "require('./app.json').expo.version")                  # 1.1.0
+VC=$(node -p "require('./app.json').expo.android.versionCode")     # 110
 
 # 5) One build per store. EXPO_PUBLIC_DISTRIBUTION decides the paywall (a web
 #    checkout link or not), the "download the new version" banner and whether
@@ -300,12 +307,25 @@ cw_build() {   # cw_build <site|rustore|play> <gradle task>...
   export EXPO_PUBLIC_DISTRIBUTION="$1"; shift
   cd "$M"
   CI=1 npx expo prebuild -p android --clean       # CI=1: the mirror is not a git repo
-  grep -n "cleanwayKeystoreProps" android/app/build.gradle          # release signing wired
-  grep -n "cleanway-seed-guard" android/app/build.gradle            # seed guard wired
-  grep -n "cleanway-share-intent-guard" android/app/build.gradle    # share-intent fix guard wired
-  grep -n "cleanwayPrebuildDistribution = '$EXPO_PUBLIC_DISTRIBUTION'" android/app/build.gradle
-  cp "$KEYS/keystore.properties" "$KEYS/cleanway-release.jks" android/
-  (cd android && ./gradlew "$@")                  # prints "Cleanway: building the … build"
+  # Every gradle/Kotlin plugin landed (signing, ABI filters, seed, store and
+  # share-intent guards, dark system bars) and android/ is for this store.
+  # "PREBUILD CHECK FAILED" = STOP: a plugin found no anchor in this template.
+  node scripts/check-prebuild-gradle.mjs --distribution="$EXPO_PUBLIC_DISTRIBUTION" || return 1
+  # A key that does not copy must stop the build: an iCloud file that is not
+  # downloaded to this Mac times out ("fcopyfile failed"), and gradle then
+  # signs every artifact with the DEBUG key (2026-11-02, 1.1.0's first try).
+  cp "$KEYS/keystore.properties" "$KEYS/cleanway-release.jks" android/ \
+    && [ -s android/keystore.properties ] && [ -s android/cleanway-release.jks ] \
+    || { echo "STOP: the release key did not copy — download $KEYS in Finder first"; return 1; }
+  # The gradle log is the evidence for the PR (a ticked box without it is not):
+  # keep it. Before compiling, the store guard prints "Cleanway: building the …"
+  # and the share-intent guard 5× "ok:" (under > Task :app:preReleaseBuild).
+  # No such lines = a guard did not run on this template = STOP.
+  local log="$OUT/logs/$V-$VC-$EXPO_PUBLIC_DISTRIBUTION-gradle.log"; mkdir -p "$OUT/logs"
+  (set -o pipefail; cd android && ./gradlew "$@" 2>&1 | tee "$log") || return 1
+  grep -q '^Cleanway: building' "$log" && [ "$(grep -c '^ok: ' "$log")" -ge 5 ] \
+    || { echo "STOP: a release guard printed nothing ($log)"; return 1; }
+  ! grep -q 'signing with the DEBUG key' "$log" || { echo "STOP: signed with the DEBUG key ($log)"; return 1; }
 }
 APK=android/app/build/outputs/apk/release/app-release.apk
 AAB=android/app/build/outputs/bundle/release/app-release.aab
@@ -317,21 +337,27 @@ AAB=android/app/build/outputs/bundle/release/app-release.aab
 export EXPO_PUBLIC_REVIEW_EMAILS="review@cleanway.ai"
 
 # A) Site APK — cleanway.ai/android and the GitHub release (web checkout,
-#    self-update banner). Do NOT pass -PreactNativeArchitectures: it does NOT
-#    slim the APK (it only feeds splits.abi.include, and splits are off by
-#    default). Slimming is handled by plugins/withAbiFilters.js, which drops the
-#    emulator-only x86/x86_64. Result: 56 MB with armeabi-v7a + arm64-v8a, i.e.
-#    every real phone. (arm64-only, ~20 MB smaller but excludes old 32-bit
+#    self-update banner). Do NOT pass -PreactNativeArchitectures: slimming is
+#    plugins/withAbiFilters.js's job, release builds only (debug keeps x86_64
+#    for emulators). It drops the emulator-only x86/x86_64: on the New
+#    Architecture (Expo SDK 58, 1.1.0) it also has to move React Native's own
+#    defaultConfig ABIs to debug, or the release APK keeps all four (117 MB).
+#    Result: 62 MB on SDK 58 (56–60 MB on SDK 54) with armeabi-v7a + arm64-v8a,
+#    i.e. every real phone. (arm64-only, ~20 MB smaller but excludes old 32-bit
 #    phones: also export CLEANWAY_ABIS=arm64-v8a before cw_build.)
 cw_build site assembleRelease
 cp "$APK" "$OUT/cleanway-$V-$VC-arm.apk"
+# R8 is on for release since SDK 58: keep each build's mapping for its crash
+# stacks (Play wants the AAB's; `prebuild --clean` deletes android/ next time).
+cp android/app/build/outputs/mapping/release/mapping.txt "$OUT/mapping-$V-$VC-site.txt"
 
 # B) RuStore APK — no web-checkout link, no self-update banner, no Play
 #    Billing; paying in the app says "coming soon".
 cw_build rustore assembleRelease
 cp "$APK" "$OUT/cleanway-$V-$VC-rustore.apk"
+cp android/app/build/outputs/mapping/release/mapping.txt "$OUT/mapping-$V-$VC-rustore.txt"
 
-# C) Google Play AAB (35 MB) — pays only through Google Play. Needs the public
+# C) Google Play AAB (35 MB on SDK 54, 49 MB on SDK 58) — pays only through Google Play. Needs the public
 #    RevenueCat key too (goog_…, docs/runbooks/revenuecat.md §5; never sk_):
 #    export it or put it in mobile/.env, else the paywall says "coming soon".
 #    The APK built next to it (same prebuild) is only for the checks below and
@@ -343,6 +369,7 @@ export EXPO_PUBLIC_REVENUECAT_ANDROID_KEY="goog_…"   # the real public key fro
 cw_build play bundleRelease assembleRelease
 cp "$AAB" "$OUT/cleanway-$V-$VC-play.aab"
 cp "$APK" "$OUT/cleanway-$V-$VC-play-check.apk"
+cp android/app/build/outputs/mapping/release/mapping.txt "$OUT/mapping-$V-$VC-play.txt"   # upload with the AAB (Play Console → App bundle explorer → Downloads)
 unset EXPO_PUBLIC_DISTRIBUTION EXPO_PUBLIC_REVENUECAT_ANDROID_KEY EXPO_PUBLIC_REVIEW_EMAILS
 
 # The seed is inside every build (≈2.8 MB):
@@ -372,7 +399,9 @@ more reason those are rebuilt, together with the #318 rebuild above.
 **Play Billing only in the Play build** — check before uploading anything:
 
 ```bash
-BT="$ANDROID_HOME/build-tools/36.0.0"
+BT="$ANDROID_HOME/build-tools/37.0.0"   # SDK 58 (1.1.0+); 1.0.x: 36.0.0
+# `script -q` below starts a new shell, which sees exported variables only:
+export V VC OUT BT APK AAB
 cd "$OUT"
 "$BT/aapt2" dump permissions cleanway-$V-$VC-arm.apk        | grep -c com.android.vending.BILLING   # → 0
 "$BT/aapt2" dump permissions cleanway-$V-$VC-rustore.apk    | grep -c com.android.vending.BILLING   # → 0
@@ -405,12 +434,15 @@ shasum -a 256 cleanway-$V-$VC-arm.apk cleanway-$V-$VC-rustore.apk cleanway-$V-$V
 ```
 
 Confirm the **target API, the signer and 16 KB alignment** before uploading —
-for each of the three APKs (the Play one stands in for its AAB):
+for each of the three APKs (the Play one stands in for its AAB). Keep what
+these checks print (e.g. run them inside `script -q "$OUT/logs/$V-$VC-checks.txt"`,
+then `exit`) and attach it, the gradle logs and `SHA256SUMS-$V.txt` to the PR:
 
 ```bash
 APK="$OUT/cleanway-$V-$VC-arm.apk"   # then -rustore.apk, then -play-check.apk
 
-# targetSdkVersion:'36' (Play's floor since 31 Aug 2026), compileSdkVersion='36'.
+# targetSdkVersion:'36' (Play's floor since 31 Aug 2026), compileSdkVersion='37'
+# since Expo SDK 58 (1.1.0; '36' on 1.0.x).
 "$BT/aapt2" dump badging "$APK" | grep -E "targetSdkVersion|compileSdkVersion"
 
 # Should show CN=Cleanway…, NOT "CN=Android Debug".
@@ -478,6 +510,114 @@ in place (no "App not installed"). That proves B2 is fixed end-to-end.
 > blocked site, the QR scanner (camera) and the after-call screen. No release
 > key was used and nothing was installed on the phone during the upgrade.
 
+> **Expo SDK 58 (1.1.0, #327): 2026-10-24 compile check without a log; redone
+> with the release key and logs on 2026-11-03.** For the 2026-10-24 builds the
+> mirror was deleted afterwards and no gradle output or checksum survives, so
+> their results ("The session record" below) are not evidence. **Redone
+> 2026-11-03** with `cw_build` above and
+> the release key, 1.1.0 (110): site and RuStore `assembleRelease`, Play
+> `bundleRelease assembleRelease`, all BUILD SUCCESSFUL, signed `CN=Cleanway`
+> with the same certificate as the published 1.0.3. Logs in
+> `~/Desktop/cleanway-android-out/logs/` (`1.1.0-110-*-gradle.log`, file checks
+> `1.1.0-110-artifact-checks.txt`, store guard `1.1.0-110-distribution-guard.log`,
+> Kotlin tests `1.1.0-110-kotlin-tests.log`: 342 of 344, the same two
+> `MessageAnalyzerTest` time budgets), checksums in `SHA256SUMS-1.1.0.txt`;
+> excerpts in the #327 description (docs/EXPO_UPGRADE_PLAN.md §10.2). The Play
+> AAB of that run has no `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` (none exists yet):
+> rebuild C with it before Play. Also re-checked with a kept log
+> (2026-10-25, excerpts in a #327 comment): on AGP 9.2.1 / Gradle 9.4.1 with
+> the template's AGP-9 opt-outs, `preReleaseBuild` is in the `assembleRelease`
+> and `bundleRelease` graphs and runs before anything compiles, so the
+> share-intent guard prints its 5× `ok:` and fails on a fake 8.0.0 package or
+> a `text/*` manifest, the seed guard fails without the seed, and the store
+> guard fails for a site AAB or another store's `android/` (a minimal Android
+> project with the guards' exact text, not the app). The session record: built
+> in a mirror exactly as above, without the release key (debug-signed), from the
+> branch's `app.json` (still 1.0.6 / 107): site and RuStore `assembleRelease`,
+> Play `bundleRelease assembleRelease`, each with its own prebuild. All succeed
+> (a cold first build ~15 min; later ones 6–8 min). `check-prebuild-gradle.mjs`
+> finds all six plugin markers in each prebuild. `aapt2`: `targetSdkVersion 36`,
+> `compileSdkVersion 37`, `minSdkVersion 24`; the site APK's permission list is
+> identical to the 1.0.6 site APK's; BILLING only in the Play build; the share
+> filter is `text/plain` only; VpnService `specialUse` + subtype `vpn`,
+> BootReceiver in `:boot`, the backup rules and
+> `enableOnBackInvokedCallback=false` are in the manifest. 16 KB: `zipalign -c
+> -P 16` passes and all 27 `arm64-v8a` libraries (APK and AAB) have 16 KB LOAD
+> alignment. ABIs: armeabi-v7a + arm64-v8a only, once `withAbiFilters` learnt
+> the New Architecture (above). No reanimated, worklets or gesture-handler code
+> or `.so` in any build, and none of them in the JS bundle (its source map).
+> The seed is in every build. Release builds are minified by R8 now: our
+> manifest classes keep their names; `mapping.txt` is ~88 MB per build. A
+> release for another store than android/ was generated for, and a site AAB,
+> both stop at the start of gradle as before. The VPN module's Kotlin tests:
+> 341 of 343 pass; the two that fail are the same `MessageAnalyzerTest`
+> wall-clock budgets as above (9.6 ms), and `MessageIosParityTest` needs
+> `CLEANWAY_REPO_ROOT=<checkout>` when run from the mirror. Nothing was run on a
+> phone or an emulator: everything in docs/EXPO_UPGRADE_PLAN.md §6.2 is still open.
+
+> **1.1.0 (111), 2026-11-12 — built with the release key, installed on the
+> founder's Samsung; the first try died at start, and so do the 110 files.**
+> Branch at `c13e82ea` plus the `build.gradle` fix below; `cw_build` as above
+> (kept as `~/Desktop/cleanway-android-out/scripts/build-android-111.sh`, key
+> folder `~/Downloads`, moved to the Trash afterwards; no key or `.env` left
+> in the mirror). No `EXPO_PUBLIC_FREEMIUM_ENABLED` and no RevenueCat key, as
+> for 110 (the script drops the iPhone key that `mobile/.env` holds since
+> 2026-11-11, so it is not in the Android bundle).
+>
+> ⛔ **Never upload a 1.1.0 (110) file, nor the first 111 files (site
+> `2956930b…`): the app dies at every start.** `modules/cleanway-vpn/android/build.gradle`
+> still used the SDK 52 wiring (`apply from: ExpoModulesCorePlugin.gradle`).
+> On SDK 58 a module must be built with `expo-module-gradle-plugin`: it adds
+> the "pika" Kotlin compiler plugin that fills in expo-modules-core's type
+> intrinsics. Without it the module compiles, its unit tests pass, and
+> `CleanwayVpnModule.definition()` throws "This function has a reified type
+> parameter and thus can only be inlined at compilation time" when React
+> Native starts (the shield service itself kept running). Nothing had been run
+> on a phone before, so 110 went unnoticed; its dex has the same 24 calls.
+> Fixed in `build.gradle` (the `plugins { id 'expo-module-gradle-plugin' }`
+> block); `check-android-111.sh` now counts those calls in every APK
+> (`scripts/reified-check.sh`: 110 → 24, 111 → 0) and stops on any.
+>
+> Second build, with the fix: site and RuStore `assembleRelease`, Play
+> `bundleRelease assembleRelease` — BUILD SUCCESSFUL in 6 min 32 s, 7 min 7 s
+> and 7 min 53 s; no "signing with the DEBUG key" line. Every APK and the AAB:
+> `CN=Cleanway, OU=Mobile, O=Cleanway, L=Moscow, C=RU`, SHA-256
+> `6d3813a1…2daa3233` — the certificate of the published 1.0.3. versionCode
+> 111, minSdk 24, targetSdk 36, compileSdk 37, `armeabi-v7a` + `arm64-v8a`;
+> 32 permissions (the same list as 110; Play +BILLING); share filter
+> `text/plain` only; `zipalign -c -P 16` ok and 27 of 27 `arm64-v8a` libraries
+> 16 KB-aligned; the seed and the publishable key in every file.
+> `:cleanway-vpn:testDebugUnitTest` with the new plugin: 344 of 344.
+>
+> | File | SHA-256 |
+> |---|---|
+> | `cleanway-1.1.0-111-arm.apk` | `c2ee47186ac750f871dbad3c42b6a974bfdc29ea6cf7b5198528f13a2ec9b1c5` |
+> | `cleanway-1.1.0-111-rustore.apk` | `3f347346a0c909f6d2eba83ff751ccbab91ccdae34976f0c39ee37ea503fa1e9` |
+> | `cleanway-1.1.0-111-play.aab` | `b1e2deccc76f4a62952c6375454c3a1fd06b8725410926b1f93037368b2c562a` |
+> | `cleanway-1.1.0-111-play-check.apk` | `25d93c53b330eb6e6bda349c87efd8677cde2d8282498af33248ccde7fc96659` |
+>
+> Files, `SHA256SUMS-1.1.0-111.txt` and `mapping-1.1.0-111-*.txt` in
+> `~/Desktop/cleanway-android-out/`; logs in `logs/`: `1.1.0-111-build-run-signed.log`,
+> `1.1.0-111-{site,rustore,play}-gradle.log`, `1.1.0-111-artifact-checks.txt`,
+> `1.1.0-111-bundle-keys.txt`, `1.1.0-111-kotlin-tests.log`; the first try in
+> `logs/1.1.0-111-attempt1-crashes-at-start/` (with the phone's crash log).
+>
+> **On the Samsung (SM-A165F, Android 16)**, `adb install -r` of the site APK
+> over 1.0.6 (107) — same key, history and settings kept, shield still on
+> (`logs/1.1.0-111-device-checks.txt`, `1.1.0-111-device-logcat.txt`): Settings
+> shows 1.1.0; Privacy and Terms open `/ru/`; the plan screen ends above the
+> system buttons; History dates read `13.10.2026`; the examples include
+> `list-canary.cleanway.ai` and it answers «Опасно» (90/100); the back arrow
+> works; `example.com` is safe; `apple-com.ru` does not open in Chrome and the
+> block notification comes; a shared scam text is recognised; the persistent
+> notification follows the language; Arabic (mirrored) → Russian with the
+> shield on shows the restart dialog and the screen comes back unmirrored; no
+> crash in logcat. **One thing left from #423:** Russian → Arabic restarts into
+> Arabic text but the screen is mirrored only after the app is closed and
+> opened again. Not checked on the phone: payment (no key in this build), boot
+> restart, mobile data, the battery manager, the QR scanner, the after-call screen.
+> The Play AAB still has no `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`.
+
 ### Android 15/16 behaviour (targetSdk 34 → 36) and what the app does about it
 
 - **Edge-to-edge is mandatory** (Android 15 enforces it at targetSdk 35; Android
@@ -508,10 +648,12 @@ in place (no "App not installed"). That proves B2 is fixed end-to-end.
 - **16 KB pages**: covered by React Native ≥ 0.77 and NDK r27/r28 builds; see
   the checks above. Play blocks non-compliant updates of apps targeting
   Android 15+ from 1 Feb 2027.
-- **Architecture**: the app stays on React Native's legacy architecture
-  (`newArchEnabled: false`, as on SDK 52; reanimated stays on 3.19 because 4.x
-  needs the New Architecture). Expo SDK 54 is the last SDK that allows this —
-  moving to SDK 55+ means switching to the New Architecture first.
+- **Architecture**: since Expo SDK 58 (1.1.0) the app runs on React Native's
+  New Architecture, the only one since SDK 55 (1.0.x stays on the legacy one,
+  `newArchEnabled: false`). react-native-reanimated is no longer a dependency;
+  npm still installs it with react-native-gesture-handler (and worklets), as
+  required peers of expo-router's drawer, but `react-native.config.js` keeps
+  their native code out of every build (docs/EXPO_UPGRADE_PLAN.md §2.2).
 
 ### When `mobile/package.json` changes: regenerate the mirror lock
 
@@ -538,13 +680,16 @@ iOS 1.0.6 (6) was built with.)
 
 **`overrides` in `mobile/package.json` are read only by the mirror** (npm
 ignores them in a workspace; the root `package.json` carries the same ones for
-CI). Keep the two sets equal. `xcode` stays at `3.0.1` because
-`patches/xcode+3.0.1.patch` and `plugins/withSafariExtension.js` depend on it:
-`@expo/config-plugins` 54.0.6 asks for `xcode ^4.0.0`, and without the override
-the mirror got an unpatched `xcode` 4.0.0 nested under it while CI kept testing
-3.0.1 — a difference `check-mirror-lock.mjs` cannot see, since it compares
-direct dependencies only (#338). After a regeneration,
-`grep '/node_modules/xcode"' "$M/package-lock.json"` should find nothing.
+CI). Keep the two sets equal. Since Expo SDK 58 (1.1.0) there is no `xcode`
+override: `@expo/config-plugins` 58 asks for `xcode ^4.0.0`, and 4.0.0 already
+carries the `correctForPath` fix `plugins/withSafariExtension.js` needs, so
+`patches/xcode+3.0.1.patch` is gone and both locks hold `xcode` 4.0.0 only. Do
+not bring back the `"xcode": "3.0.1"` override 1.0.x had (#338, `release/1.0.x`):
+on SDK 58 it would pin an unpatched 3.0.1 under a config-plugins that wants
+4.x — a difference `check-mirror-lock.mjs` cannot see, since it compares direct
+dependencies only. After a regeneration,
+`grep -c '/node_modules/xcode"' "$M/package-lock.json"` should print `0` (no
+nested copy) and `node_modules/xcode` should be 4.0.0.
 
 **The check names a version, not a range** (`<name>: mirror lock X, root
 package-lock.json Y`): the ranges match, but CI tests one release and the store
@@ -905,6 +1050,40 @@ battery exemption, `ShieldWatchdog`; #108 stay signed in, Account screen,
 unlink, delete; #72 sign-in error texts. The 500 limit above is our own
 target (RuStore allows more); short notes get read.
 
+### 7.5.1 Что нового (1.1.0)
+
+For the 1.1.0 (110) update, after 1.0.6 (107) is published in RuStore:
+upload build B, `cleanway-1.1.0-110-rustore.apk` (§2).
+
+<!-- count: rustore_whatsnew_110 max=500 -->
+```text
+• Новая основа приложения: Cleanway перешёл на свежую версию платформы, на которой он построен, и сможет дальше получать обновления и исправления.
+• Для вас всё как раньше: блокировка мошеннических сайтов через встроенный в Android механизм VPN, проверка СМС, ссылок и QR-кодов, «Мне звонят», история и настройки.
+• Нужен Android 7 или новее — как и раньше.
+```
+
+357 characters of the 500 target above (Python `len()`, 2026-11-02; the §7.7
+snippet prints it as `rustore_whatsnew_110`).
+
+The text is the change since 1.0.6, and on Android 1.1.0 changes nothing a
+person sees. Source: `CHANGELOG.md` → App 1.1.0. Its first item, Expo SDK 58,
+is the new foundation. The rest: iOS 16.4 does not concern Android; the
+Arabic and Italian strings and the publishable key, new on the iPhone, are
+already in Android 1.0.6, built from `release/1.0.x` (cut at `a74e5503`,
+after #310, #350 and #333); #386–#389 only keep the Android shield's native
+module, its VPN strings, `BIND_VPN_SERVICE` and the `vpn-…` icon names out of
+the iPhone build, and on Android the shield, its VPN strings and
+`BIND_VPN_SERVICE` stay as they were; `expo-share-intent` 9 without our
+patch, "Скачать мои данные" waiting for the write and a second share landing
+in the open check screen keep 1.0.6's behaviour. Android 7 or newer: minSdk
+24 on SDK 58 as on SDK 54 (`docs/EXPO_UPGRADE_PLAN.md` §2.1 table, `aapt2` in
+§10.2). "Всё как раньше" is the acceptance criterion of the phone check
+(`docs/EXPO_UPGRADE_PLAN.md` §6.2, Android): if it finds a difference a
+person would notice, rewrite this text. If 1.1.0 reaches RuStore before 1.0.6
+does, paste §7.5 instead (the changes since 1.0.3 are what that person gets)
+and put this text's first line above it; together they pass our 500 target,
+which RuStore allows.
+
 ### 7.6 Подписи к скриншотам
 
 Existing frames (v1.0.0 — recapture on 1.0.6, see §7.0):
@@ -930,7 +1109,8 @@ frames carry the three main promises (sites, SMS, calls).
 ### 7.7 Evidence and character counts
 
 Counts (Python `len()`, 2026-10-08): название 30 · краткое описание 69/80 ·
-полное описание and "Что нового" — run:
+"Что нового" 1.1.0 357/500 (2026-11-02) · полное описание and both "Что
+нового" — run:
 
 ```bash
 python3 - <<'EOF'

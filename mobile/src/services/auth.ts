@@ -146,7 +146,10 @@ async function goTrue<T = GoTrueTokenResponse>(
     return data;
   } catch (err) {
     if (err instanceof AuthError) throw err;
-    if ((err as Error).name === "AbortError") {
+    // Our own timer fired. Not the error's name: since Expo SDK 56 the
+    // global fetch is expo/fetch, which rejects an aborted request with a
+    // FetchError named "Error" (an AbortError only once the body is read).
+    if (controller.signal.aborted || (err as Error).name === "AbortError") {
       throw new AuthError("timeout", "The request timed out. Check your connection.");
     }
     throw new AuthError(

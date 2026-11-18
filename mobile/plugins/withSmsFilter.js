@@ -39,7 +39,7 @@ const EXTENSION_DIR = path.join("targets", "sms-filter", "Extension");
 const ASSETS_DIR = path.join("modules", "cleanway-vpn", "android", "src", "main", "assets");
 /** Shared with Android: one vocabulary, one root zone, one model. */
 const ASSETS = ["message_rules.json", "root_zone_tlds.txt", "message_model.json", "message_model.bin"];
-const DEPLOYMENT_TARGET = "15.1";
+const DEPLOYMENT_TARGET = "16.4"; // the app's own target since Expo SDK 56
 
 function bundleIdFor(appId) {
   return `${appId}.sms-filter`;
