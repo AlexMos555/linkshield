@@ -334,7 +334,8 @@ def test_a_unicode_site_in_a_cache_key_is_redacted():
 
 def test_doh_question_never_reaches_sentry():
     """GET /dns-query?dns=<base64url wire> — the question IS the name being
-    resolved. The landing promises DNS queries never go to Sentry."""
+    resolved, and the gateway sends no query name to Sentry
+    (api/services/doh_gateway.py)."""
     wire = "q80BAAABAAAAAAAAB2V4YW1wbGUDY29tAAABAAE"
     event = {
         "type": "transaction",
