@@ -55,7 +55,7 @@
         "backgroundColor": "#0f172a"
       },
       "package": "ai.cleanway.app",
-      "versionCode": 111,
+      "versionCode": 112,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
@@ -131,7 +131,8 @@
       "./plugins/withDistributionGuard",
       "./plugins/withShareIntentGuard",
       "./plugins/withDarkSystemBars",
-      "./plugins/withBackupRules"
+      "./plugins/withBackupRules",
+      "./plugins/withPortraitOptional"
     ]
   }
 }

@@ -496,6 +496,28 @@ class MainActivity : ReactActivity() {
     assert.strictEqual(app["android:fullBackupContent"], "@xml/cleanway_backup_rules");
     assert.strictEqual(app["android:dataExtractionRules"], "@xml/cleanway_data_extraction_rules");
   });
+
+  // --- Portrait feature not required (withPortraitOptional) ----------------
+  // orientation: "portrait" makes Android imply a REQUIRED screen.portrait
+  // feature; Play then hides the app from devices without it.
+  const portrait = require("../withPortraitOptional.js");
+  check("withPortraitOptional adds the feature as not required", () => {
+    const out = portrait._apply({ manifest: { application: [{ $: {} }] } }).manifest["uses-feature"];
+    assert.deepStrictEqual(out, [{ $: { "android:name": "android.hardware.screen.portrait", "android:required": "false" } }]);
+  });
+  check("withPortraitOptional flips an existing required entry, without a duplicate", () => {
+    const m = { manifest: { "uses-feature": [
+      { $: { "android:name": "android.hardware.camera", "android:required": "false" } },
+      { $: { "android:name": "android.hardware.screen.portrait", "android:required": "true" } },
+    ] } };
+    const out = portrait._apply(portrait._apply(m)).manifest["uses-feature"];
+    assert.strictEqual(out.length, 2);
+    assert.strictEqual(out[1].$["android:required"], "false");
+  });
+  check("app.json lists withPortraitOptional", () => {
+    const plugins = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "app.json"), "utf8")).expo.plugins;
+    assert.ok(plugins.includes("./plugins/withPortraitOptional"));
+  });
   check("app.json registers withBackupRules and turns off expo-secure-store's backup rules", () => {
     assert.ok((appJson.plugins || []).includes("./plugins/withBackupRules"));
     const ss = (appJson.plugins || []).find((p) => Array.isArray(p) && p[0] === "expo-secure-store");
