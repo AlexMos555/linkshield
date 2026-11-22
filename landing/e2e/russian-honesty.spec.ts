@@ -15,6 +15,9 @@ const RELEASED_APP: string = JSON.parse(
   readFileSync(join(__dirname, "..", "..", "mobile", "app.json"), "utf-8"),
 ).expo.version;
 const NEXT_PATCH = RELEASED_APP.replace(/\d+$/, (n) => String(Number(n) + 1));
+// As a whole version number: from 1.1.0 on the next patch, "1.1.1", is also the
+// start of Cloudflare's "1.1.1.1", which the policy names.
+const NEXT_PATCH_VERSION = new RegExp(`(?<![\\d.])${NEXT_PATCH.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\d.])`);
 
 // The committed weekly benchmark the transparency pages render. Each run can move
 // a figure across the publishability gate, so the tests ask the same gate the
@@ -144,7 +147,7 @@ test("/ru/privacy-policy is Russian and describes only the released app", async 
   await expect(body).toContainText("1.1.1.1");
   await expect(body).toContainText("9.9.9.9");
   await expect(body).toContainText(RELEASED_APP);
-  await expect(body).not.toContainText(NEXT_PATCH);
+  await expect(body).not.toContainText(NEXT_PATCH_VERSION);
   // Every service that receives a checked site's name is named (since 2026-10-26
   // the zone's registry over RDAP, no longer rdap.org), and so are the 2026-10
   // infrastructure processors (email, captcha) and the EU server location.

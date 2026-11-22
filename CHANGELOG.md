@@ -23,6 +23,39 @@
 ### Tests
 - 382 backend tests passing (was 373). Added 9 parameterized tests for `CheckoutRequest` URL validation.
 
+## [App 1.1.0] - draft (#327, not merged)
+
+iOS build 7, Android versionCode 110 (108 and 109 stay free for 1.0.x
+hotfixes, which are built only from `release/1.0.x`: Expo SDK 54, cut from
+`main` at `a74e5503`). Expo SDK 58 (React Native 0.88, React 19.3, the New
+Architecture only), prepared on `exp/expo-sdk-upgrade` by
+docs/EXPO_UPGRADE_PLAN.md (§10 has what was built and checked), and the
+iPhone build without the Android shield's VPN code and text (#386–#389, after
+App Review's automated 2.1 flag on 1.0.4; docs/EXPO_UPGRADE_PLAN.md §10.4).
+Merges and ships right after Apple approves 1.0.6, without waiting for 1.0.6
+at 100% (founder, 2026-11-02; docs/EXPO_UPGRADE_PLAN.md §8).
+
+**Что нового**
+- **Новая основа приложения: Expo SDK 58.** Без неё с апреля 2027 года нельзя выпускать обновления для iPhone. iPhone: нужна iOS 16.4 или новее (было 15.1).
+- **Android: «Поделиться» без собственной заплатки.** Исправление обхода пути из 1.0.6 теперь внутри самой библиотеки `expo-share-intent` 9; проверка перед каждой release-сборкой осталась.
+- **«Скачать мои данные»** ждёт, пока файл записан, и только потом открывает меню «Поделиться» (в SDK 58 запись стала асинхронной).
+- Повторный «Поделиться» при открытом экране проверки, как и раньше, попадает в этот экран, а не открывает ещё один.
+- **iPhone: в приложении нет модуля защиты Android и её текстов про VPN.** DNS-защита iPhone теперь в своём модуле, без «VPN» в имени; модуль защиты Android, его тексты про VPN, разрешение `BIND_VPN_SERVICE` и названия иконок «vpn-…» в iPhone-сборку не попадают (#386–#389). Общий JS защиты и её остальные тексты (`mobile.shield.*`, `mobile.keep_alive.*`, `mobile.android_native.*`) в iPhone-бандле остаются — с нейтральными именами и без слова VPN (`docs/IOS.md` §3.6). Для человека на iPhone ничего не меняется.
+- **Впервые на iPhone** (в iOS 1.0.6 (6) этого нет; на Android всё это уже в 1.0.6 из `release/1.0.x`): в арабской «Истории» и на итальянском экране проверки утечек — сами строки, а не заметки переводчику (#310, #350); переводы на react-i18next 17 и i18next 26.5.12 (#339, #359, #361); в сборке есть publishable-ключ Supabase, и вход не слетит, когда старые ключи отключат (#333).
+
+**What's new**
+- **The app moves to Expo SDK 58.** Without it no iPhone update can ship from April 2027. iPhone: iOS 16.4 or later (was 15.1).
+- **Android: sharing without our own patch.** 1.0.6's path-traversal fix now ships inside `expo-share-intent` 9 itself; the check before every release build stays.
+- **"Download my data"** waits until the file is written before opening the share sheet (writing became asynchronous in SDK 58).
+- A second share while a check screen is open still goes to that screen instead of opening another one.
+- **iPhone: no Android shield module or VPN text in the app.** The iPhone's DNS protection has its own module, with no "VPN" in its name; the Android shield module, its VPN text, the `BIND_VPN_SERVICE` permission and the "vpn-…" icon names are no longer in the iPhone build (#386–#389). The shield's shared JS and its other text (`mobile.shield.*`, `mobile.keep_alive.*`, `mobile.android_native.*`) stay in the iPhone bundle, under neutral names and without the word VPN (docs/IOS.md §3.6). Nothing changes for the person on the iPhone.
+- **New on the iPhone** (not in iOS 1.0.6 (6); on Android all of it is already in 1.0.6 from `release/1.0.x`): the Arabic History rows and the Italian breach-check screen show their text instead of translator notes (#310, #350); translations run on react-i18next 17 and i18next 26.5.12 (#339, #359, #361); the build carries the Supabase publishable key, so sign-in survives the legacy keys being turned off (#333).
+
+To check on phones before release (docs/EXPO_UPGRADE_PLAN.md §6.2):
+react-i18next 17 ships on the New Architecture and Hermes V1 for the first
+time — the default language, the plural keys of all 10 locales and switching
+the language.
+
 ## [App 1.0.6] - unreleased
 
 iOS build 6, Android versionCode 107. (iOS build 5, uploaded to TestFlight on

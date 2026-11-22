@@ -330,6 +330,24 @@ First release on Google Play: blocks known scam sites in every app, checks a sus
 
 Дальше — `docs/STORES.md` §6.10, пункты 10–13 (проверка на телефоне из Play, подписки в RevenueCat, страны: все доступные, Россия остаётся в списке; в России Play Billing не работает — приложение там просто бесплатное, `docs/STORES.md` §6.10 п. 12a).
 
+**1.1.0 (versionCode 110)** — следующий выпуск после 1.0.6: AAB `cleanway-1.1.0-110-play.aab` (сборка C в `docs/RUSTORE_SUBMISSION.md` §2) и к нему `mapping-1.1.0-110-play.txt` (App bundle explorer → Downloads). Сначала внутреннее тестирование для проверки на телефонах (`docs/EXPO_UPGRADE_PLAN.md` §6.2), затем Production поэтапно, 10% → 50% → 100% за неделю (там же, §8). Release notes одни и те же:
+
+<!-- field: play.v1_1_0.release_notes max=1000 -->
+```text
+<en-US>
+• New app foundation: Cleanway now runs on an up-to-date version of the platform it is built on, so it can keep getting updates and fixes.
+• Everything works as before: blocking known scam sites through Android's built-in VPN feature; checking texts, links and QR codes; "I'm being called"; your history and settings.
+• Android 7 or later, as before.
+</en-US>
+<ru-RU>
+• Новая основа приложения: Cleanway перешёл на свежую версию платформы, на которой он построен, и сможет дальше получать обновления и исправления.
+• Для вас всё как раньше: блокировка мошеннических сайтов через встроенный в Android механизм VPN, проверка СМС, ссылок и QR-кодов, «Мне звонят», история и настройки.
+• Нужен Android 7 или новее — как и раньше.
+</ru-RU>
+```
+
+Русский текст — тот же, что «Что нового» 1.1.0 в RuStore (`docs/RUSTORE_SUBMISSION.md` §7.5.1); там же, на чём держится каждое утверждение. Английский — те же три пункта (в одном английском предложении перечень читался бы так, будто приложение проверяет историю и настройки). Коротко: на Android 1.1.0 человек ничего нового не видит — новая основа (Expo SDK 58), минимум Android 7 прежний (minSdk 24), а всё, что в `CHANGELOG.md` → App 1.1.0 впервые приходит на iPhone, на Android уже есть в 1.0.6. «Всё как раньше» — критерий приёмки проверки на телефонах (`docs/EXPO_UPGRADE_PLAN.md` §6.2): если она найдёт заметную человеку разницу, переписать оба текста. Если 1.1.0 окажется первой версией в Play (1.0.6 туда не вышла), вставить вместо этого текст первой версии выше.
+
 ---
 
 ## 2. Расширение: общие тексты для Chrome, Edge и Firefox

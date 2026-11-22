@@ -15,7 +15,25 @@
  */
 const { storeBillingLinked, buildEnv } = require("./plugins/store-billing-linking");
 
+/**
+ * Installed, never linked (Expo SDK 58). expo-router 58 depends on
+ * react-native-drawer-layout (only for `expo-router/drawer`, which the app does
+ * not use), and npm installs that package's required peers with it:
+ * react-native-gesture-handler and react-native-reanimated (+ worklets for
+ * reanimated 4). Nothing the app bundles imports them: app code does not
+ * (plugins/__tests__/plugins.test.js), and expo-router reaches them only
+ * from `expo-router/drawer` and `expo-router/js-stack`. Left to autolinking,
+ * their native code would still be compiled into both apps: two more native
+ * libraries, a bigger APK, and worklets' known Hermes V1 memory growth
+ * (docs/EXPO_UPGRADE_PLAN.md §2.2, risk 10). Importing one of them later
+ * means removing it from this list first, or the app crashes on start
+ * ("TurboModuleRegistry.getEnforcing(...): 'RNGestureHandlerModule' could
+ * not be found").
+ */
+const NOT_LINKED = ["react-native-gesture-handler", "react-native-reanimated", "react-native-worklets"];
+
 const dependencies = {};
+for (const name of NOT_LINKED) dependencies[name] = { platforms: { android: null, ios: null } };
 if (!storeBillingLinked(buildEnv(__dirname))) {
   // Android only: the site APK and RuStore must not carry Play Billing. iOS
   // always links it: every iPhone build is the App Store one, which pays

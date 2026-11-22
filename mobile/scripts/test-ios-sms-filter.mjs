@@ -20,7 +20,8 @@
  *   • home and the update check really use those switches (a source check);
  *   • the plugin: target, bundle id, app group, EAS appExtensions entry,
  *     entitlements limited to the app group, the shared Android assets (whose
- *     text never says VPN), and a native module pod not above iOS 15.1.
+ *     text never says VPN), and a native module pod not above iOS 16.4 (the
+ *     app's target since Expo SDK 56).
  */
 import assert from "node:assert/strict";
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
@@ -201,11 +202,11 @@ check("the shared text assets an iPhone build bundles never say VPN", () => {
   }
 });
 
-check("the module's pod is not above the app's iOS deployment target (15.1)", () => {
+check("the module's pod is not above the app's iOS deployment target (16.4)", () => {
   const podspec = read("modules/cleanway-sms-filter/ios/CleanwaySmsFilter.podspec");
   const m = /:ios => '(\d+)\.(\d+)'/.exec(podspec);
   assert.ok(m, "ios platform declared");
-  assert.ok(Number(m[1]) * 100 + Number(m[2]) <= 1501, `pod needs iOS ${m[1]}.${m[2]}`);
+  assert.ok(Number(m[1]) * 100 + Number(m[2]) <= 1604, `pod needs iOS ${m[1]}.${m[2]}`);
   const config = JSON.parse(read("modules/cleanway-sms-filter/expo-module.config.json"));
   assert.deepEqual(config.platforms, ["apple"]);
   // The extension's Swift module must not share the pod's name: its swiftmodule

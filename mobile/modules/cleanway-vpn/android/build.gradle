@@ -1,21 +1,18 @@
-apply plugin: 'com.android.library'
+// Expo SDK 58: the module MUST be built with `expo-module-gradle-plugin`, as
+// every Expo package is. The plugin adds the "pika" Kotlin compiler plugin,
+// which fills in expo-modules-core's compile-time type intrinsics. With the
+// old `apply from: ExpoModulesCorePlugin.gradle` wiring (SDK 52–54) the module
+// still compiles, but every Function/AsyncFunction that returns a value hits
+// an unfilled intrinsic in definition() and the app dies at start with
+// "This function has a reified type parameter and thus can only be inlined at
+// compilation time" (1.1.0 (110) and the first (111), Galaxy, 2026-11-12).
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
 
 group = 'expo.modules.cleanwayvpn'
 version = '0.1.0'
-
-// Expo SDK 52 wires local modules through ExpoModulesCorePlugin.gradle. The
-// newer `expo-module-gradle-plugin` plugin id only exists from SDK 53 — using
-// it here fails the build with "Plugin [id: 'expo-module-gradle-plugin'] was
-// not found in any of the following sources".
-def expoModulesCorePlugin = new File(
-  project(":expo-modules-core").projectDir.absolutePath,
-  "ExpoModulesCorePlugin.gradle"
-)
-apply from: expoModulesCorePlugin
-applyKotlinExpoModulesCorePlugin()
-useCoreDependencies()
-useDefaultAndroidSdkVersions()
-useExpoPublishing()
 
 android {
   namespace "expo.modules.cleanwayvpn"

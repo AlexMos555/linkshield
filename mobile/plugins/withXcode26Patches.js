@@ -16,10 +16,24 @@
  *                           `std::allocator<const T>` (never legal C++).
  *   3. expo-localization  — non-exhaustive `switch` over Calendar.Identifier;
  *                           iOS 26 added cases the module predates.
+ *   4. expo-modules-jsi   — 58.0.21's withEncodedValue trips Swift 6.2's sending
+ *      (Xcode < 26.4 only)  check (expo/expo#52754). This iMac's last Xcode is 26.3
+ *                           (no macOS Tahoe for it), so it is wrapped in the
+ *                           package's own UncheckedSendable (expo #51040).
  *
  * Patches 1 & 2 touch Pods/ (which exist only after `pod install`), so they run
- * from the Podfile `post_install` hook. Patch 3 touches node_modules and is
- * applied directly at prebuild time.
+ * from the Podfile `post_install` hook, as does patch 4. Patch 3 touches
+ * node_modules and is applied directly at prebuild time.
+ *
+ * Expo SDK 58 (RN 0.88, Sentry 8, expo-localization 58): each patch only acts
+ * when it finds its exact old line. Patches 1-3 are not expected to find it any
+ * more (RN 0.88 ships its core prebuilt, Sentry 8 has no such line, the
+ * localization switch changed). Patch 4 does act below Xcode 26.4, and this
+ * iMac's Xcode 26.3 needs it (the 1.1.0 (7) archive was built with it). The
+ * plugin goes, in its own PR, only once iOS builds on Xcode 26.4+ (EAS or a
+ * newer Mac) and that build's `pod install` prints no "[Cleanway] patched"
+ * line (docs/EXPO_UPGRADE_PLAN.md §3.2). It still throws
+ * if a Podfile has no `post_install do |installer|`; SDK 58's template has one.
  */
 const { withDangerousMod } = require("@expo/config-plugins");
 const fs = require("fs");
@@ -51,6 +65,40 @@ const POST_INSTALL_RUBY = `
     # --- end Cleanway Xcode 26 patches ---
 `;
 
+// Patch 4, Xcode < 26.4 only: expo-modules-jsi 58.0.21 trips Swift 6.2's sending check (see the
+// Ruby comment). String.raw keeps the Ruby \n escapes and line-continuation backslashes verbatim.
+const POST_INSTALL_RUBY_JSI = String.raw`
+    # --- Cleanway: expo-modules-jsi 58.0.21 on Xcode < 26.4 (Swift 6.2) ---
+    # ExpoModulesJSI is compiled by its own nested env -i xcodebuild on Package.swift (Swift 6
+    # language mode), so no Pods build setting reaches it; the source line itself must change.
+    # Swift 6.2 ignores nonisolated(unsafe) on the slot local captured by the
+    # JavaScriptActor.assumeIsolated closure ("sending 'slot' risks causing data races");
+    # Swift 6.3 (Xcode 26.4) accepts it. The package's own UncheckedSendable (expo #51040) passes
+    # on every version. Only acts on the exact old text, only below Xcode 26.4.
+    xcode_version = (IO.popen(['xcodebuild', '-version'], err: File::NULL, &:read) rescue '')[/^Xcode (\d+(?:\.\d+)*)/, 1]
+    if xcode_version && Gem::Version.new(xcode_version) < Gem::Version.new('26.4')
+      jsi_obj = File.join(installer.sandbox.pod_dir('ExpoModulesJSI').to_s,
+                          'Sources', 'ExpoModulesJSI', 'Runtime', 'Values', 'JavaScriptObject.swift')
+      if File.exist?(jsi_obj)
+        src = File.read(jsi_obj, encoding: 'UTF-8')
+        old = "    try runtime._withUnsafeGuaranteedRef { runtime in\n" \
+              "      try JavaScriptActor.assumeIsolated {\n" \
+              "        try encode(JavaScriptValue.Slot(slot), runtime)\n"
+        if src.include?(old) && !src.include?('Cleanway: Swift 6.2 sending')
+          File.chmod(0644, jsi_obj)
+          File.write(jsi_obj, src.sub(old,
+            "    // Cleanway: Swift 6.2 sending-check workaround (mobile/plugins/withXcode26Patches.js)\n" \
+            "    let sendableSlot = UncheckedSendable(slot)\n" \
+            "    try runtime._withUnsafeGuaranteedRef { runtime in\n" \
+            "      try JavaScriptActor.assumeIsolated {\n" \
+            "        try encode(JavaScriptValue.Slot(sendableSlot.value), runtime)\n"))
+          Pod::UI.puts "[Cleanway] patched expo-modules-jsi JavaScriptObject.swift for Xcode #{xcode_version} (Swift 6.2 sending check)"
+        end
+      end
+    end
+    # --- end Cleanway expo-modules-jsi patch ---
+`;
+
 function patchPodfile(podfilePath) {
   let src = fs.readFileSync(podfilePath, "utf8");
   if (src.includes("Cleanway: Xcode 26 toolchain patches")) return; // idempotent
@@ -58,7 +106,7 @@ function patchPodfile(podfilePath) {
   if (!src.includes(marker)) {
     throw new Error("withXcode26Patches: no post_install hook found in Podfile");
   }
-  src = src.replace(marker, marker + "\n" + POST_INSTALL_RUBY);
+  src = src.replace(marker, marker + "\n" + POST_INSTALL_RUBY + POST_INSTALL_RUBY_JSI);
   fs.writeFileSync(podfilePath, src);
 }
 
@@ -83,7 +131,10 @@ function patchExpoLocalization(projectRoot) {
   fs.writeFileSync(swift, src.replace(anchor, replacement));
 }
 
-module.exports = function withXcode26Patches(config) {
+module.exports = withXcode26Patches;
+module.exports._patchPodfile = patchPodfile;
+
+function withXcode26Patches(config) {
   return withDangerousMod(config, [
     "ios",
     (cfg) => {
@@ -92,4 +143,4 @@ module.exports = function withXcode26Patches(config) {
       return cfg;
     },
   ]);
-};
+}
