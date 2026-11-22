@@ -4,6 +4,9 @@ import { withSentryConfig } from "@sentry/nextjs";
 // Next's default list of HTML-only bots (see HTML_LIMITED_BOTS below).
 import { HTML_LIMITED_BOT_UA_RE } from "next/dist/shared/lib/router/utils/html-bots";
 
+import { routing } from "./i18n/routing";
+import { PLATFORMS } from "./lib/install-urls";
+
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 /**
@@ -163,6 +166,20 @@ const nextConfig: NextConfig = {
         has: [{ type: "host", value: "www.cleanway.ai" }],
         destination: "https://cleanway.ai/:path*",
         permanent: true,
+      },
+      // cleanway.ai/ios — the short link to the iPhone app, in every locale —
+      // goes to its App Store listing (lib/install-urls.ts). Temporary (307)
+      // on purpose: browsers cache a permanent redirect for good, and the
+      // target may still change (a campaign link, a page of our own).
+      {
+        source: "/ios",
+        destination: PLATFORMS.ios.href,
+        permanent: false,
+      },
+      {
+        source: `/:locale(${routing.locales.join("|")})/ios`,
+        destination: PLATFORMS.ios.href,
+        permanent: false,
       },
     ];
   },

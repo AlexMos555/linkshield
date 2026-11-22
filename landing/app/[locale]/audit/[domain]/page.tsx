@@ -80,7 +80,7 @@ export default async function AuditPage({ params }: Props) {
   if (host !== domain) redirect(pathFor(safeLocale, host));
   const d = displayHost(host);
   const canonical = urlFor(safeLocale, host);
-  // Android-only label for the primary install CTA (see PrimaryInstallLink).
+  // Android- and iPhone-only labels for the primary install CTA (see PrimaryInstallLink).
   const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
   const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
   const t = await getTranslations({ locale: safeLocale, namespace: "Audit" });
@@ -124,6 +124,7 @@ export default async function AuditPage({ params }: Props) {
           </a>
           <PrimaryInstallLink
             androidLabel={nav("install_android")}
+            iosLabel={nav("install_ios")}
             style={{
               background: "#22c55e",
               color: "#052e16",
@@ -172,6 +173,7 @@ export default async function AuditPage({ params }: Props) {
 
         <PrimaryInstallLink
           androidLabel={hero("cta_android")}
+          iosLabel={nav("install_ios")}
           style={{
             display: "inline-block",
             background: "#22c55e",

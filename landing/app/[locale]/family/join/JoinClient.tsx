@@ -17,12 +17,14 @@
 //
 // What each platform can do today (lib/install-urls.ts): Android has the app
 // (/android — never "Google Play", which is blocked), whose Family Hub joins
-// with the code and PIN typed in; the iPhone app and the browser extension
-// are coming soon, so those visitors are pointed at an Android phone.
+// with the code and PIN typed in; the iPhone app (App Store) has the same
+// Family Hub. The browser extension is coming soon, so desktop visitors are
+// pointed at a phone.
 
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
+import { PLATFORMS } from "@/lib/install-urls";
 import { localePath } from "@/lib/locale-path";
 
 type ParsedInvite = {
@@ -176,7 +178,15 @@ export default function JoinClient() {
             <li>{t("app_step3")}</li>
           </>
         )}
-        {platform === "ios" && <li>{t("ios_soon")}</li>}
+        {platform === "ios" && (
+          <>
+            <li>
+              {t("ios_step1")} <a href={PLATFORMS.ios.href} style={link}>{t("ios_link")}</a>
+            </li>
+            <li>{t("app_step2")}</li>
+            <li>{t("app_step3")}</li>
+          </>
+        )}
         {platform === "desktop" && (
           <>
             <li>{t("desktop_soon")}</li>

@@ -49,6 +49,7 @@ export default async function ReferralPage({ params }: Props) {
   const safeLocale = resolveLocale(locale);
   const t = await getTranslations({ locale: safeLocale, namespace: "Ref" });
   const hero = await getTranslations({ locale: safeLocale, namespace: "Hero" });
+  const nav = await getTranslations({ locale: safeLocale, namespace: "Nav" });
   const shownCode = CODE.test(code) ? code.toUpperCase() : null;
 
   return (
@@ -70,7 +71,7 @@ export default async function ReferralPage({ params }: Props) {
           </div>
         )}
 
-        <PrimaryInstallLink androidLabel={hero("cta_android")} style={{
+        <PrimaryInstallLink androidLabel={hero("cta_android")} iosLabel={nav("install_ios")} style={{
           display: "inline-block", background: "#22c55e", color: "#052e16",
           padding: "14px 32px", borderRadius: 10, fontWeight: 700, fontSize: 16, textDecoration: "none",
           marginBottom: 12,
