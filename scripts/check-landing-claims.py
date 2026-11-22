@@ -357,6 +357,44 @@ CLAIMS: tuple[Claim, ...] = (
               "hi": r"(sms|एसएमएस|मैसेज|संदेश)\w*\W+(की\W+)?(स्वचालित|ऑटोमैटिक|अपने आप)",
               "ar": r"(فحص|تحقق)\W+(تلقائي\W+)?(لل)?(رسائل|sms)\W*(النصية\W+)?تلقائي",
           }),
+    # 2026-11-02: /dns said queries "stay in memory just long enough to answer
+    # the request". The gateway caches answers by the question for up to the
+    # TTL (≤ 1 h) plus 6 h serve-stale (api/services/doh_cache.py), and the
+    # host's request logs can hold the IP — policy section 11 is the reference.
+    Claim("says DNS queries stay in memory 'just long enough to answer' — answers are cached by the question "
+          "for up to 1 h + 6 h serve-stale (api/services/doh_cache.py); say what section 11 of the policy says", {
+              "en": r"long enough to answer",
+              "ru": r"ровно столько, чтобы (дать )?ответ",
+              "es": r"el tiempo necesario para responder",
+              "pt": r"o tempo necess[aá]rio para responder",
+              "fr": r"juste le temps de r[ée]pondre",
+              "de": r"nur so lange im arbeitsspeicher, wie f[üu]r die antwort n[öo]tig",
+              "it": r"il tempo necessario per rispondere",
+              "id": r"selama waktu yang dibutuhkan untuk menjawab",
+              "hi": r"जितनी देर में जवाब देना ज़रूरी",
+              "ar": r"بالقدر الذي يكفي للرد",
+          }),
+    # 2026-11-02 review: /dns also said "What we DO keep: an anonymous daily
+    # counter of total queries and total blocks, used to publish our quarterly
+    # transparency report. No domains, no IPs". The DoH counters are
+    # process-wide since start, reset on restart and logged as one doh_stats
+    # line every 300 s (api/services/doh_metrics.py); no transparency report
+    # carries a DNS figure (docs/transparency/); and the gateway does keep an
+    # hourly per-connection count under a keyed hash of the IP (policy §11).
+    Claim("says DNS keeps a 'daily counter' for a 'transparency report' — the counters are process-wide since "
+          "start, logged every 300 s (api/services/doh_metrics.py), no report has DNS figures, and the rate "
+          "limit counts per keyed hash of the IP for an hour; say what section 11 of the policy says", {
+              "en": r"daily counter[^.]{0,120}transparency",
+              "ru": r"суточн\w* сч[её]тчик[^.]{0,120}прозрачност",
+              "es": r"contador diario[^.]{0,120}transparencia",
+              "pt": r"contador di[aá]rio[^.]{0,120}transpar[eê]ncia",
+              "fr": r"compteur quotidien[^.]{0,120}transparence",
+              "de": r"tagesz[äa]hler[^.]{0,160}transparenzbericht",
+              "it": r"contatore giornaliero[^.]{0,120}trasparenza",
+              "id": r"penghitung harian[^.]{0,120}transparansi",
+              "hi": r"दैनिक काउंटर[^।]{0,160}पारदर्शिता",
+              "ar": r"عدّ?اد يومي[^.]{0,160}الشفافية",
+          }),
 )
 
 # Chrome CTAs are allowed again the moment install-urls.ts marks Chrome live.

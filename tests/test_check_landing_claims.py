@@ -164,6 +164,60 @@ def test_policy_may_not_pin_what_the_app_sends_to_one_version(locale: str) -> No
     assert not _findings(locale, _policy(since))
 
 
+# landing.dns.privacy_body as it read until 2026-11-02 (main @29b7136a).
+DNS_MEMORY = {
+    "en": "Queries stay in memory just long enough to answer the request.",
+    "ru": "Запросы лежат в памяти ровно столько, чтобы дать ответ.",
+    "es": "Las consultas viven en memoria justo el tiempo necesario para responder.",
+    "pt": "As consultas ficam na memória só o tempo necessário para responder.",
+    "fr": "Les requêtes restent en mémoire juste le temps de répondre.",
+    "de": "Anfragen bleiben nur so lange im Arbeitsspeicher, wie für die Antwort nötig ist.",
+    "it": "Le query restano in memoria solo il tempo necessario per rispondere.",
+    "id": "Kueri hanya berada di memori selama waktu yang dibutuhkan untuk menjawab permintaan.",
+    "hi": "क्वेरीज़ केवल इतनी देर मेमोरी में रहती हैं जितनी देर में जवाब देना ज़रूरी हो।",
+    "ar": "تبقى الاستعلامات في الذاكرة فقط بالقدر الذي يكفي للرد عليها.",
+}
+
+
+@pytest.mark.parametrize("locale,text", sorted(DNS_MEMORY.items()))
+def test_dns_just_long_enough_claim_is_caught_in_every_language(locale: str, text: str) -> None:
+    assert set(DNS_MEMORY) == set(guard.LOCALES)
+    assert _findings(locale, {"dns": {"privacy_body": text}}), f"{locale} over-claim passed"
+
+
+# landing.dns.privacy_logs as it read until 2026-11-02 (main @29b7136a).
+DNS_DAILY_COUNTER = {
+    "en": "What we DO keep: an anonymous daily counter of total queries and total blocks, used to publish "
+          "our quarterly transparency report. No domains, no IPs, no users.",
+    "ru": "Что мы СОХРАНЯЕМ: анонимный суточный счётчик общего числа запросов и блокировок — для квартального "
+          "отчёта о прозрачности. Никаких доменов, IP или пользователей.",
+    "es": "Lo que SÍ guardamos: un contador diario anónimo del total de consultas y bloqueos, usado para "
+          "publicar nuestro informe trimestral de transparencia. Sin dominios, sin IP, sin usuarios.",
+    "pt": "O que MANTEMOS: um contador diário anônimo do total de consultas e bloqueios, usado para publicar "
+          "o nosso relatório trimestral de transparência. Sem domínios, sem IPs, sem usuários.",
+    "fr": "Ce que nous CONSERVONS : un compteur quotidien anonyme du nombre total de requêtes et de blocages, "
+          "qui sert à publier notre rapport de transparence trimestriel. Aucun domaine, aucune adresse IP, "
+          "aucun utilisateur.",
+    "de": "Was wir SEHR WOHL behalten: einen anonymen Tageszähler über die Gesamtzahl der Anfragen und "
+          "Blockierungen — als Grundlage für unseren vierteljährlichen Transparenzbericht. Keine Domains, "
+          "keine IPs, keine Nutzer.",
+    "it": "Cosa CONSERVIAMO: un contatore giornaliero anonimo del totale di query e blocchi, usato per "
+          "pubblicare il nostro rapporto trimestrale sulla trasparenza. Nessun dominio, nessun IP, nessun utente.",
+    "id": "Yang kami SIMPAN: penghitung harian anonim untuk total kueri dan total pemblokiran, digunakan untuk "
+          "menerbitkan laporan transparansi triwulanan kami. Tanpa domain, tanpa IP, tanpa pengguna.",
+    "hi": "जो हम रखते हैं: कुल क्वेरीज़ और कुल ब्लॉक्स का एक अनाम दैनिक काउंटर, जिसका उपयोग हमारी त्रैमासिक "
+          "पारदर्शिता रिपोर्ट प्रकाशित करने के लिए होता है। न कोई डोमेन, न IP, न उपयोगकर्ता।",
+    "ar": "ما نحتفظ به فعلًا: عدّاد يومي مجهول الهوية لإجمالي عدد الاستعلامات والحجوبات، يُستخدم لإصدار تقرير "
+          "الشفافية الفصلي. بدون نطاقات، وبدون عناوين IP، وبدون مستخدمين.",
+}
+
+
+@pytest.mark.parametrize("locale,text", sorted(DNS_DAILY_COUNTER.items()))
+def test_dns_daily_counter_claim_is_caught_in_every_language(locale: str, text: str) -> None:
+    assert set(DNS_DAILY_COUNTER) == set(guard.LOCALES)
+    assert _findings(locale, {"dns": {"privacy_logs": text}}), f"{locale} daily-counter claim passed"
+
+
 def test_badge_may_not_call_the_server_verdict_blocking() -> None:
     assert _findings("ru", {"hero": {"badge": "{recall}% свежих фишинг-URL заблокированы (замерено)"}})
     assert _findings("en", {"hero": {"badge": "{recall}% of fresh phishing links blocked"}})
