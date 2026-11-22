@@ -141,6 +141,18 @@ def _ask(name: str, qtype: int = 1) -> asyncio.Task:
     return asyncio.create_task(doh_upstream.proxy_to_upstream(query(name, qtype=qtype)))
 
 
+async def _until(cond, what: str, turns: int = 100) -> None:
+    """Event-loop turns, not wall-clock time, until `cond()` holds. A freed
+    slot reaches its query two turns after release(): a busy runner that
+    stalled the loop past a sleep(0.01) ran the test on in the first of them,
+    before the winner was sent (full-suite run 2026-11-03)."""
+    for _ in range(turns):
+        if cond():
+            return
+        await asyncio.sleep(0)
+    raise AssertionError(f"not after {turns} event-loop turns: {what}")
+
+
 async def _ask_many(names: list[str]) -> list[asyncio.Task]:
     tasks = [_ask(n) for n in names]
     await asyncio.sleep(0.05)  # every one of them has reached the upstream or a queue
@@ -287,24 +299,39 @@ async def test_a_busy_zone_is_not_passed_over_while_none_of_its_requests_is_at_t
     requests at the upstream, not queries waiting for a slot (the first
     version counted those, and handed every freed slot to other zones)."""
     holding_upstream.hold = staticmethod(lambda name: True)
-    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 1.0)
+    # Each step waits for loop turns, not time (_until): however long a busy
+    # runner stalls, no query runs out of time and no request is dropped.
+    monkeypatch.setattr(doh_upstream, "UPSTREAM_TIMEOUT_S", 60.0)
+    monkeypatch.setattr(doh_upstream, "REQUEST_TIMEOUT_S", 60.0)
     share = doh_upstream.ZONE_MAX_IN_FLIGHT
+    posted = holding_upstream.posted
+
+    def waiting() -> int:  # queries waiting for a slot or for room in their zone
+        return doh_upstream.status()[0]["waiting"] + doh_upstream.slots_status()["zone_waiting"]
+
     tasks = await _ask_many([f"r{i}.dead{i}.example" for i in range(doh_upstream.MAX_IN_FLIGHT)])
     tasks += await _ask_many([f"h{i}.cdn.example" for i in range(share)])
     try:
+        await _until(lambda: len(posted) == doh_upstream.MAX_IN_FLIGHT and waiting() == share,
+                     "every slot held by a dead name, every cdn.example query waiting")
         winners = []
         for k in range(5):
-            tasks.append(_ask(f"u{k}.solo{k}.example"))
-            await asyncio.sleep(0.01)
-            tasks.append(_ask(f"h{share + k}.cdn.example"))
-            await asyncio.sleep(0.01)
+            for q in (f"u{k}.solo{k}.example", f"h{share + k}.cdn.example"):
+                n = waiting()
+                tasks.append(_ask(q))
+                await _until(lambda: waiting() == n + 1, f"{q} waits")
+            sent = len(posted)
             holding_upstream.release(lambda url, name: ".dead" in name)
-            await asyncio.sleep(0.01)
-            winners.append(holding_upstream.posted[-1])
+            await _until(lambda: len(posted) > sent, "a request sent on the freed slot")
+            winners.append(posted[-1])
+        await asyncio.sleep(0.05)  # time for a second request on a freed slot, were one sent
         cdn_at_upstream = [n for _, n, _ in holding_upstream.held if n.endswith(".cdn.example")]
         assert winners == [f"h{share + k}.cdn.example" for k in range(5)], (
             f"freed slots went to {winners}; cdn.example requests at the upstream: {cdn_at_upstream}")
+        # one request per freed slot, and no query sent twice
+        assert len(posted) == doh_upstream.MAX_IN_FLIGHT + 5 and len(set(posted)) == len(posted), posted[-8:]
     finally:
+        holding_upstream.hold = staticmethod(lambda name: False)  # the queries still waiting: answered at once
         holding_upstream.release_all()
         await asyncio.gather(*tasks)
 
