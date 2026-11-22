@@ -73,6 +73,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   MIN_PHISHING_CLASSIFIED,
+  MIN_PHISHING_RESOLVING,
   MIN_PHISHING_SAMPLE,
   RETIRED_RESOLVERS,
   comparedRows,
@@ -80,7 +81,7 @@ import {
   legitSampleRanking,
   recallIsPublishable,
   MIN_SAFE_CLASSIFIED,
-  MAX_UNKNOWN_RATE,
+  MAX_NO_ANSWER_RATE,
 } from "../landing/lib/benchmark.ts";
 import { apkReleaseFrom } from "../landing/lib/apk-release.ts";
 import {
@@ -192,12 +193,45 @@ check("committed latest.json: recall is shown only by its own numbers", () => {
   const ours = committed.phishing?.cleanway ?? {};
   const answered = (ours.tp ?? 0) + (ours.fn ?? 0);
   const unknown = ours.unknown ?? 0;
+  // method_version 2 counts what got no answer apart; an older snapshot only has "unknown".
+  const methodTwo = typeof ours.no_answer === "number" && typeof ours.resolving === "number";
+  const healthy = methodTwo
+    ? ours.resolving >= MIN_PHISHING_RESOLVING && ours.no_answer / ours.resolving <= MAX_NO_ANSWER_RATE
+    : unknown / (answered + unknown) <= MAX_NO_ANSWER_RATE;
   const expected =
     typeof ours.recall === "number" && ours.recall > 0 &&
     (committed.n_phishing ?? 0) >= MIN_PHISHING_SAMPLE &&
     answered >= MIN_PHISHING_CLASSIFIED &&
-    unknown / (answered + unknown) <= MAX_UNKNOWN_RATE;
+    healthy;
   assert.equal(recallIsPublishable(committed), expected);
+});
+// Both gates decide these the same way: scripts/eval_fresh_urls.check_quality_gate
+// runs them in tests/test_benchmark_quality_gate.py.
+const GATE_CASES = JSON.parse(
+  fs.readFileSync(path.join(ROOT, "tests", "fixtures", "benchmark-gate-cases.json"), "utf-8"),
+).cases;
+for (const gateCase of GATE_CASES) {
+  check(`shared with the script's gate: ${gateCase.name} → ${gateCase.publishable ? "publishable" : "hidden"}`, () => {
+    const snap = { ...snapshot({ nPhishing: gateCase.n_phishing }), method_version: 2 };
+    snap.phishing = { cleanway: stats(gateCase.cleanway) };
+    assert.equal(recallIsPublishable(snap), gateCase.publishable);
+  });
+}
+check("method 2: dead names and cautions do not hide a run whose live links all got an answer", () => {
+  // The old rule ("unknown" ≤ 30%) hid this one: 65 dead + 25 caution = 45%.
+  const fresh = stats({ tp: 100, fn: 10, unknown: 90, recall: 100 / 110, n: 200, dangerous: 100, caution: 25,
+    safe: 10, not_found: 65, no_answer: 0, resolving: 135, answered: 135 });
+  assert.equal(recallIsPublishable({ ...snapshot(), phishing: { cleanway: fresh } }), true);
+  // The same run with 41 live links rate-limited (41/135 > 30%) is hidden.
+  const limited = { ...fresh, caution: 0, no_answer: 41, safe: 0, tp: 94, fn: 0, dangerous: 94, answered: 94,
+    unknown: 106, recall: 1 };
+  assert.equal(recallIsPublishable({ ...snapshot(), phishing: { cleanway: limited } }), false);
+});
+check(`method 2: fewer than ${MIN_PHISHING_RESOLVING} live links → hidden`, () => {
+  // Never more verdicts than live links: below this floor the verdict floor holds it back too.
+  const dead = stats({ tp: 47, fn: 2, unknown: 151, recall: 47 / 49, n: 200, dangerous: 47, caution: 0,
+    safe: 2, not_found: 151, no_answer: 0, resolving: 49, answered: 49 });
+  assert.equal(recallIsPublishable({ ...snapshot(), phishing: { cleanway: dead } }), false);
 });
 
 console.log("falsePositiveRateIsPublishable");
